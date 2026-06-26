@@ -1,6 +1,6 @@
 import { resolveManagementApiBase } from "@/lib/config.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
-import { httpSend } from "@/lib/http.ts";
+import { httpSend, httpSendDetailed, type HttpResponseDetail } from "@/lib/http.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
 import { urlencode } from "@/lib/encode.ts";
 
@@ -20,21 +20,47 @@ export function encodeManagementEndpoint(endpoint: string): string {
   return `${encodeManagementPath(path)}${query}`;
 }
 
+function resolveManagementUrl(endpoint: string): string {
+  const session = getCliRuntime().session;
+  const encodedEndpoint = encodeManagementEndpoint(endpoint);
+  return `${session?.managementApiBase ?? resolveManagementApiBase()}${encodedEndpoint}`;
+}
+
+function resolveManagementAuthHeader(): string {
+  const session = getCliRuntime().session;
+  return session?.managementAuthHeader ?? getManagementAuthHeader();
+}
+
 export async function managementRequest(
   method: string,
   endpoint: string,
   body?: string,
+  extraHeaders?: Record<string, string>,
 ): Promise<string> {
-  const session = getCliRuntime().session;
-  const encodedEndpoint = encodeManagementEndpoint(endpoint);
-  const url = `${session?.managementApiBase ?? resolveManagementApiBase()}${encodedEndpoint}`;
-  const authHeader = session?.managementAuthHeader ?? getManagementAuthHeader();
   return httpSend({
     method,
-    url,
-    authHeader,
+    url: resolveManagementUrl(endpoint),
+    authHeader: resolveManagementAuthHeader(),
     body,
     contentType: body ? "application/json" : undefined,
+    extraHeaders,
+    authPlane: "management",
+  });
+}
+
+export async function managementRequestDetailed(
+  method: string,
+  endpoint: string,
+  body?: string,
+  extraHeaders?: Record<string, string>,
+): Promise<HttpResponseDetail> {
+  return httpSendDetailed({
+    method,
+    url: resolveManagementUrl(endpoint),
+    authHeader: resolveManagementAuthHeader(),
+    body,
+    contentType: body ? "application/json" : undefined,
+    extraHeaders,
     authPlane: "management",
   });
 }

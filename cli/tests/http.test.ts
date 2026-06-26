@@ -8,6 +8,7 @@ import {
   computeRetryDelayMs,
   getSharedDispatcher,
   httpSend,
+  httpSendDetailed,
   httpSendStream,
   isRetryableMethod,
   parseRetryAfterMs,
@@ -391,5 +392,41 @@ describe("retry-after header", () => {
 
     expect(response).toBe("ok");
     expect(elapsedMs).toBeLessThan(500);
+  });
+});
+
+describe("httpSendDetailed", () => {
+  test("returns status, headers, and body from a mock response", async () => {
+    const home = mkdtempSync(join(tmpdir(), "altertable-http-detail-"));
+    const mockFileLocal = join(home, "mocks.json");
+    writeFileSync(
+      mockFileLocal,
+      JSON.stringify([
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          status: 200,
+          statusText: "OK",
+          headers: { "X-Trace": "abc123" },
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFileLocal;
+    try {
+      const detail = await httpSendDetailed({
+        method: "GET",
+        url: "https://app.example.com/rest/v1/whoami",
+        authHeader: "Authorization: Bearer atm_test",
+        authPlane: "management",
+      });
+      expect(detail.status).toBe(200);
+      expect(detail.statusText).toBe("OK");
+      expect(detail.headers["X-Trace"]).toBe("abc123");
+      expect(detail.body).toBe('{"ok":true}');
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    }
   });
 });

@@ -134,6 +134,7 @@ describe("completion command", () => {
     const topLevelCount = flattenTopLevelNames(spec).length;
     expect(topLevelCount).toBeGreaterThan(10);
     expect(output).toContain("completion");
-    expect(output).toContain("GET");
+    // api-docs is the top-level command for OpenAPI inspection (api is a pure path invoker)
+    expect(output).toContain("api-docs");
   });
 });

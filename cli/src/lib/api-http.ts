@@ -1,7 +1,12 @@
-import { resolveApiRequestPayload, type ParsedApiField } from "@/lib/api-body.ts";
+import { parseApiHeaders, resolveApiRequestPayload, type ParsedApiField } from "@/lib/api-body.ts";
 import { writeCommandOutput, writeManagementOutput } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
-import { encodeManagementEndpoint, managementRequest } from "@/lib/management-transport.ts";
+import type { HttpResponseDetail } from "@/lib/http.ts";
+import {
+  encodeManagementEndpoint,
+  managementRequest,
+  managementRequestDetailed,
+} from "@/lib/management-transport.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 
 export type ApiHttpArgs = {
@@ -14,6 +19,8 @@ export type ApiHttpArgs = {
   fields?: Record<string, string> | string[] | string;
   env?: string;
   format?: string;
+  headers?: string[];
+  include?: boolean;
 };
 
 export function normalizeApiEndpoint(endpoint: string, env?: string): string {
@@ -76,6 +83,12 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
   return `${endpoint}${separator}${searchParams.toString()}`;
 }
 
+function formatIncludeOutput(detail: HttpResponseDetail): string {
+  const statusLine = `HTTP/1.1 ${detail.status} ${detail.statusText}`.trimEnd();
+  const headerLines = Object.entries(detail.headers).map(([name, value]) => `${name}: ${value}`);
+  return [statusLine, ...headerLines, "", detail.body].join("\n");
+}
+
 export async function runApiHttp(
   args: ApiHttpArgs,
   sink: OutputSink = getOutputSink(),
@@ -96,7 +109,21 @@ export async function runApiHttp(
   const endpointWithQuery = appendQueryFields(endpoint, payload.queryFields);
   encodeManagementEndpoint(endpointWithQuery);
 
-  const response = await managementRequest(method, endpointWithQuery, payload.body);
+  const extraHeaders =
+    args.headers && args.headers.length > 0 ? parseApiHeaders(args.headers) : undefined;
+
+  if (args.include) {
+    const detail = await managementRequestDetailed(
+      method,
+      endpointWithQuery,
+      payload.body,
+      extraHeaders,
+    );
+    sink.writeHuman(formatIncludeOutput(detail));
+    return;
+  }
+
+  const response = await managementRequest(method, endpointWithQuery, payload.body, extraHeaders);
 
   if (method === "DELETE" && response.trim().length === 0) {
     if (sink.json) {

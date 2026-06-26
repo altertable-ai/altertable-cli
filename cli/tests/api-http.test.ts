@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { buildBodyFromFields, readJsonBody, resolveApiBody } from "@/lib/api-body.ts";
+import { buildBodyFromFields, readJsonBody, resolveApiBody, extractHeaderArgs, parseApiHeaders } from "@/lib/api-body.ts";
 import { normalizeApiEndpoint, runApiHttp } from "@/lib/api-http.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
@@ -90,6 +90,23 @@ describe("api-body", () => {
     const filePath = join(testHome, "payload.json");
     writeFileSync(filePath, '{"name":"from-file"}', "utf8");
     expect(readJsonBody(`@${filePath}`)).toBe('{"name":"from-file"}');
+  });
+
+  test("extractHeaderArgs collects -H and --header values", () => {
+    expect(
+      extractHeaderArgs(["api", "/whoami", "-H", "X-A: 1", "--header=X-B: 2"]),
+    ).toEqual(["X-A: 1", "X-B: 2"]);
+  });
+
+  test("parseApiHeaders splits key:value pairs and trims whitespace", () => {
+    expect(parseApiHeaders(["X-A: 1", "Accept:application/json"])).toEqual({
+      "X-A": "1",
+      Accept: "application/json",
+    });
+  });
+
+  test("parseApiHeaders rejects entries without a colon", () => {
+    expect(() => parseApiHeaders(["bogus"])).toThrow("Expected key:value");
   });
 });
 
@@ -341,5 +358,39 @@ describe("runApiHttp", () => {
 
     await runApiHttp({ method: "DELETE", endpoint: "/service_accounts/sa_1" });
     expect(JSON.parse(stdout)).toEqual({ deleted: true });
+  });
+
+  test("--header sends custom headers", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([{ urlPattern: "/whoami", method: "GET", body: "{}" }]),
+    );
+
+    await runApiHttp({ method: "GET", endpoint: "/whoami", headers: ["X-Demo: yes"] });
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("X-Demo: yes");
+  });
+
+  test("--include prints the status line, headers, and body", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          status: 200,
+          statusText: "OK",
+          headers: { "X-Trace": "abc" },
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+
+    await runApiHttp({ method: "GET", endpoint: "/whoami", include: true });
+
+    expect(stdout).toContain("HTTP/1.1 200 OK");
+    expect(stdout).toContain("X-Trace: abc");
+    expect(stdout).toContain('{"ok":true}');
   });
 });
