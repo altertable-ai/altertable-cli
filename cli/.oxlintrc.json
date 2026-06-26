@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "jsPlugins": [
+    {
+      "name": "no-relative-import-paths",
+      "specifier": "./lint/no-relative-import-paths.js"
+    }
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "ignorePatterns": ["dist/**", "src/generated/**"],
+  "rules": {
+    "no-relative-import-paths/no-relative-import-paths": [
+      "error",
+      {
+        "allowSameFolder": false,
+        "rootDir": "src",
+        "prefix": "@"
+      }
+    ]
+  },
+  "env": {
+    "builtin": true
+  }
+}

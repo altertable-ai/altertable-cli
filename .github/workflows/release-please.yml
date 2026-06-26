@@ -1,0 +1,57 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Log build environment
+        if: ${{ steps.release.outputs.release_created }}
+        run: bun --version
+
+      - name: Build CLI bundle
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          cd cli
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Compile release binaries
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          mkdir -p dist
+          cd cli
+          bun build --compile --target=bun-darwin-arm64 src/cli.ts --outfile ../dist/altertable-darwin-arm64
+          bun build --compile --target=bun-darwin-x64 src/cli.ts --outfile ../dist/altertable-darwin-x64
+          bun build --compile --target=bun-linux-x64 src/cli.ts --outfile ../dist/altertable-linux-x64
+          bun build --compile --target=bun-linux-arm64 src/cli.ts --outfile ../dist/altertable-linux-arm64
+          cp dist/cli.js ../dist/altertable-cli.js
+          cd ../dist && shasum -a 256 altertable-* altertable-cli.js > checksums.txt
+
+      - name: Upload release assets
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.release.outputs.tag_name }}" dist/altertable-* dist/altertable-cli.js dist/checksums.txt --clobber

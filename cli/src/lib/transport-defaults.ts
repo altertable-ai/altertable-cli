@@ -1,0 +1,3 @@
+export const DEFAULT_CONNECT_TIMEOUT_MS = 5_000;
+export const DEFAULT_READ_TIMEOUT_MS = 60_000;
+export const STREAM_READ_TIMEOUT_MS = 0;

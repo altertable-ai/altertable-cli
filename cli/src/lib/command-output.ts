@@ -1,0 +1,144 @@
+import { parseQueryFormat, type QueryOutputFormat } from "@/lib/lakehouse-client.ts";
+import { renderManagementOutput } from "@/lib/management-output.ts";
+import { parseApiJson } from "@/lib/parse-api-json.ts";
+import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+
+export type CommandOutputMode =
+  | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
+  | { kind: "normalized"; data: unknown; humanText: string }
+  | { kind: "human"; text: string }
+  | {
+      kind: "tabular";
+      body: string;
+      format?: QueryOutputFormat;
+      humanFormatter?: (data: unknown) => string;
+    }
+  | { kind: "deleted"; message: string; id?: string };
+
+export function writeCommandOutput(
+  mode: CommandOutputMode,
+  sink: OutputSink = getOutputSink(),
+): void {
+  const json = sink.json;
+
+  if (mode.kind === "deleted") {
+    if (json) {
+      sink.writeJson({
+        deleted: true,
+        ...(mode.id !== undefined ? { id: mode.id } : {}),
+      });
+      return;
+    }
+    sink.writeHuman(mode.message);
+    return;
+  }
+
+  if (mode.kind === "human") {
+    if (json) {
+      sink.writeJson({ text: mode.text });
+      return;
+    }
+    sink.writeHuman(mode.text);
+    return;
+  }
+
+  if (mode.kind === "normalized") {
+    if (json) {
+      sink.writeJson(mode.data);
+      return;
+    }
+    sink.writeHuman(mode.humanText);
+    return;
+  }
+
+  if (mode.kind === "raw_api") {
+    if (json) {
+      sink.writeRaw(mode.body);
+      return;
+    }
+    if (mode.humanFormatter) {
+      sink.writeHuman(mode.humanFormatter(parseApiJson(mode.body)));
+      return;
+    }
+    sink.writeRaw(mode.body);
+    return;
+  }
+
+  if (mode.kind === "tabular") {
+    if (json) {
+      sink.writeRaw(mode.body);
+      return;
+    }
+    if (mode.humanFormatter) {
+      sink.writeHuman(mode.humanFormatter(parseApiJson(mode.body)));
+      return;
+    }
+    const format = mode.format ?? "table";
+    sink.writeHuman(renderManagementOutput(mode.body, format));
+    return;
+  }
+}
+
+export function writeManagementOutput(
+  body: string,
+  options?: {
+    format?: string;
+    humanFormatter?: (data: unknown) => string;
+  },
+  sink: OutputSink = getOutputSink(),
+): void {
+  const formatArg = options?.format;
+  const parsedFormat =
+    formatArg !== undefined && String(formatArg).length > 0
+      ? parseQueryFormat(String(formatArg))
+      : undefined;
+
+  writeCommandOutput(
+    {
+      kind: "tabular",
+      body,
+      format: parsedFormat,
+      humanFormatter: options?.humanFormatter,
+    },
+    sink,
+  );
+}
+
+export function writeJsonOrRaw(
+  body: string,
+  formatter?: (data: unknown) => string,
+  sink: OutputSink = getOutputSink(),
+): void {
+  writeCommandOutput(
+    {
+      kind: "tabular",
+      body,
+      humanFormatter: formatter,
+    },
+    sink,
+  );
+}
+
+export type LakehouseOutputOptions = {
+  humanFormatter?: (data: unknown) => string;
+  sink?: OutputSink;
+};
+
+export function writeLakehouseCommandOutput(body: string, options?: LakehouseOutputOptions): void {
+  writeCommandOutput(
+    {
+      kind: "raw_api",
+      body,
+      humanFormatter: options?.humanFormatter,
+    },
+    options?.sink ?? getOutputSink(),
+  );
+}
+
+export function writeDeleteSuccess(
+  message: string,
+  id?: string,
+  sink: OutputSink = getOutputSink(),
+): void {
+  writeCommandOutput({ kind: "deleted", message, id }, sink);
+}

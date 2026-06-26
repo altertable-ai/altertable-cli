@@ -1,0 +1,95 @@
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import type { CommandDef } from "citty";
+import { buildMainCommand } from "@/cli.ts";
+import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
+import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
+import { setCliContext } from "@/context.ts";
+import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+
+function createCaptureSink(json: boolean) {
+  const stdout: string[] = [];
+  const runtime = createCliRuntime({ debug: false, json });
+  runtime.output.writeRaw = (body) => {
+    stdout.push(body);
+  };
+  runtime.output.writeHuman = (text) => {
+    stdout.push(text);
+  };
+  runtime.output.writeJson = (data) => {
+    stdout.push(JSON.stringify(data));
+  };
+  return { sink: runtime.output, stdout };
+}
+
+async function runApiSpec(json: boolean): Promise<string> {
+  const { sink, stdout } = createCaptureSink(json);
+  runApiSpecCommand(sink);
+  return stdout.join("");
+}
+
+async function runApiRoutes(json: boolean, operation?: string): Promise<string> {
+  const { sink, stdout } = createCaptureSink(json);
+  runApiRoutesCommand(sink, operation);
+  return stdout.join("");
+}
+
+describe("api", () => {
+  beforeEach(() => {
+    setCliContext({ debug: false, json: false });
+  });
+
+  afterEach(() => {
+    setCliContext({ debug: false, json: false });
+  });
+
+  test("api spec prints YAML containing Altertable Management API", async () => {
+    const output = await runApiSpec(false);
+    expect(output).toContain("Altertable Management API");
+    expect(output).toContain("openapi: 3.1.0");
+  });
+
+  test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
+    setCliContext({ debug: false, json: true });
+    const output = await runApiSpec(true);
+    const document = JSON.parse(output) as { openapi?: string; info?: { title?: string } };
+    expect(document.openapi).toBe("3.1.0");
+    expect(document.info?.title).toBe("Altertable Management API");
+  });
+
+  test("OPENAPI_OPERATIONS lists createDatabase", () => {
+    expect(OPENAPI_OPERATIONS.some((operation) => operation.operationId === "createDatabase")).toBe(
+      true,
+    );
+  });
+
+  test("api routes inspects one operation in human mode", async () => {
+    const output = await runApiRoutes(false, "createDatabase");
+    expect(output).toContain("Operation: createDatabase");
+    expect(output).toContain("Path: /environments/{environment_id}/databases");
+    expect(output).toContain("Parameters: environment_id");
+  });
+
+  test("api routes operation detail includes path parameters in JSON mode", async () => {
+    const output = await runApiRoutes(true, "createServiceAccountCredential");
+    const operation = JSON.parse(output) as { operationId?: string; parameters?: string[] };
+    expect(operation.operationId).toBe("createServiceAccountCredential");
+    expect(operation.parameters).toEqual(["service_account_id", "environment_id"]);
+  });
+
+  test("buildMainCommand top-level names include api and exclude connections", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const topLevelNames = flattenTopLevelNames(spec);
+    expect(topLevelNames).toContain("api");
+    expect(topLevelNames).not.toContain("connections");
+    expect(topLevelNames).not.toContain("service-accounts");
+    expect(topLevelNames).not.toContain("databases");
+    expect(topLevelNames).not.toContain("credentials");
+  });
+
+  test("api command tree exposes spec and routes subcommands", () => {
+    const subCommands = apiCommand.subCommands as Record<string, CommandDef>;
+    expect(subCommands.spec?.run).toBeDefined();
+    expect(subCommands.routes?.run).toBeDefined();
+  });
+});

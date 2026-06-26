@@ -1,0 +1,133 @@
+name: Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Test TypeScript CLI
+    runs-on: ubuntu-latest
+    services:
+      altertable:
+        image: ghcr.io/altertable-ai/altertable-mock:latest
+        ports:
+          - 15000:15000
+        env:
+          ALTERTABLE_MOCK_USERS: testuser:testpass
+        options: >-
+          --health-cmd "exit 0"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
+          --health-start-period 10s
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        working-directory: cli
+
+      - name: Typecheck
+        run: bun run typecheck
+        working-directory: cli
+
+      - name: Lint
+        run: bun run lint
+        working-directory: cli
+
+      - name: Check formatting
+        run: bun run format:check
+        working-directory: cli
+
+      - name: Dead code check (knip)
+        run: bun run knip
+        working-directory: cli
+
+      - name: Verify OpenAPI types are up to date
+        run: |
+          bun run generate
+          git diff --exit-code src/generated/openapi-types.ts
+        working-directory: cli
+
+      - name: Unit tests
+        run: bun test
+        working-directory: cli
+
+      - name: Build JS bundle
+        run: bun run build
+        working-directory: cli
+
+      - name: Verify package contents
+        run: bun run pack:check
+        working-directory: cli
+
+      - name: Verify executable
+        run: |
+          chmod +x ../bin/altertable
+          ../bin/altertable --version
+          ../bin/altertable --help
+
+      - name: Run Configure Tests
+        run: ./tests/configure_test.sh
+
+      - name: Run Management Tests
+        run: ./tests/management_test.sh
+
+      - name: Run Whoami Tests
+        run: ./tests/whoami_test.sh
+
+      - name: Run Catalogs Tests
+        run: ./tests/catalogs_test.sh
+
+      - name: Run Scripting Tests
+        run: ./tests/scripting_test.sh
+
+      - name: Run Profile Tests
+        run: ./tests/profile_test.sh
+
+      - name: Run Integration Tests
+        run: ./tests/integration_test.sh
+
+  compile:
+    name: Compile binaries
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - target: bun-linux-x64
+            artifact: altertable-linux-x64
+          - target: bun-linux-arm64
+            artifact: altertable-linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install and build
+        run: |
+          cd cli
+          bun install --frozen-lockfile
+          bun run build
+          bun build --compile --target=${{ matrix.target }} src/cli.ts --outfile ../dist/${{ matrix.artifact }}
+
+      - name: Smoke test compiled binary
+        run: |
+          chmod +x dist/${{ matrix.artifact }}
+          dist/${{ matrix.artifact }} --version
+          dist/${{ matrix.artifact }} --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}

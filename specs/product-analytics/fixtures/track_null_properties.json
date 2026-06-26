@@ -1,0 +1,20 @@
+{
+  "description": "Track call with null properties defaulting to empty object",
+  "input": {
+    "event": "Viewed Page",
+    "properties": null,
+    "distinct_id": "user_123"
+  },
+  "output": {
+    "payload": {
+      "event": "Viewed Page",
+      "properties": {
+        "$lib": "altertable-sdk",
+        "$lib_version": "1.0.0"
+      },
+      "distinct_id": "user_123",
+      "anonymous_id": "anon_abc123",
+      "timestamp": "2023-01-01T12:00:00.000Z"
+    }
+  }
+}

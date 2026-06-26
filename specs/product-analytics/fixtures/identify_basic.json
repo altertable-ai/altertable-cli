@@ -1,0 +1,21 @@
+{
+  "description": "Standard identify call with traits and no active session",
+  "input": {
+    "distinct_id": "user_123",
+    "traits": {
+      "email": "user@example.com",
+      "plan": "pro"
+    }
+  },
+  "output": {
+    "payload": {
+      "distinct_id": "user_123",
+      "traits": {
+        "email": "user@example.com",
+        "plan": "pro"
+      },
+      "anonymous_id": "anon_abc123",
+      "timestamp": "2023-01-01T12:00:00.000Z"
+    }
+  }
+}

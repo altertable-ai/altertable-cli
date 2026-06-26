@@ -1,0 +1,21 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "@altertable/cli",
+      "component": "altertable-cli",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "cli/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "cli/src/version.ts",
+          "glob": false
+        }
+      ]
+    }
+  }
+}
