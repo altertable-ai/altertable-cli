@@ -11,11 +11,7 @@ import { renderFixedTable } from "@/lib/table-format.ts";
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
-const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>([
-  "spec",
-  "routes",
-  ...HTTP_METHOD_NAMES,
-]);
+const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
 function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
   for (const arg of rawArgs) {
