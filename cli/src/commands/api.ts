@@ -1,41 +1,15 @@
 import type { ArgsDef } from "citty";
-import { getOpenapiSpecJson, getOpenapiSpecYaml } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
+import { getOpenapiSpecJson, getOpenapiSpecYaml } from "@/lib/openapi-spec.ts";
 import { runApiHttp } from "@/lib/api-http.ts";
-import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
+import { extractFieldArgs, extractHeaderArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { renderFixedTable } from "@/lib/table-format.ts";
 
-const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
-const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
-
-function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
-  for (const arg of rawArgs) {
-    if (arg === "--") {
-      return undefined;
-    }
-    if (arg.startsWith("-")) {
-      continue;
-    }
-    return arg;
-  }
-  return undefined;
-}
-
-function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
-  const subCommandName = firstPositionalRawArg(rawArgs);
-  if (!subCommandName) {
-    return false;
-  }
-  if (API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName)) {
-    return true;
-  }
-  return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
-}
 
 const API_HTTP_ARGS = withManagementFormatArg({
   method: {
@@ -58,42 +32,42 @@ const API_HTTP_ARGS = withManagementFormatArg({
     alias: "F",
     description: "Typed request parameter key=value (true, false, null, integers; repeatable)",
   },
+  header: {
+    type: "string",
+    alias: "H",
+    description: "Add an HTTP header in key:value form (repeatable)",
+  },
+  include: {
+    type: "boolean",
+    alias: "i",
+    description: "Include the HTTP response status line and headers in the output",
+  },
   body: { type: "string", description: "JSON body or @file" },
   input: { type: "string", description: "Alias for --body (file path or - for stdin)" },
   env: { type: "string", description: "Replace {environment_id} in the path" },
 } satisfies ArgsDef);
 
-function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], method?: string) {
+function stringArg(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[]) {
   const rawFieldArgs = extractRawFieldArgs(rawArgs);
   const fieldArgs = extractFieldArgs(rawArgs);
+  const headerArgs = extractHeaderArgs(rawArgs);
 
   return {
-    method: stringArg(args.method) ?? method,
+    method: stringArg(args.method),
     endpoint: stringArg(args.endpoint),
     body: stringArg(args.body),
     input: stringArg(args.input),
     rawFields: rawFieldArgs.length > 0 ? rawFieldArgs : undefined,
     typedFields: fieldArgs.length > 0 ? fieldArgs : undefined,
+    headers: headerArgs.length > 0 ? headerArgs : undefined,
     env: stringArg(args.env),
     format: stringArg(args.format),
+    include: args.include === true,
   };
-}
-
-function stringArg(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function createApiMethodCommand(method: string) {
-  return defineAltertableCommand({
-    meta: {
-      name: method,
-      description: `${method} request to the management REST API.`,
-    },
-    args: API_HTTP_ARGS,
-    async run({ args, rawArgs, sink }) {
-      await runApiHttp(buildApiHttpArgs(args, rawArgs, method), sink);
-    },
-  });
 }
 
 function extractPathParameters(path: string): string[] {
@@ -194,25 +168,24 @@ const apiRoutesCommand = defineAltertableCommand({
   },
 });
 
-const apiMethodSubCommands = Object.fromEntries(
-  HTTP_METHOD_NAMES.map((method) => [method, createApiMethodCommand(method)]),
-);
+export const apiDocsCommand = defineAltertableCommand({
+  meta: {
+    name: "api-docs",
+    description: "Inspect the bundled management OpenAPI spec and routes.",
+  },
+  subCommands: {
+    spec: apiSpecCommand,
+    routes: apiRoutesCommand,
+  },
+});
 
 export const apiCommand = defineAltertableCommand({
   meta: {
     name: "api",
-    description: "Management REST API — HTTP invoker and OpenAPI spec.",
+    description: "Management REST API HTTP invoker.",
   },
   args: API_HTTP_ARGS,
-  subCommands: {
-    spec: apiSpecCommand,
-    routes: apiRoutesCommand,
-    ...apiMethodSubCommands,
-  },
   async run({ args, rawArgs, sink }) {
-    if (isDelegatedApiSubCommand(rawArgs)) {
-      return;
-    }
     await runApiHttp(buildApiHttpArgs(args, rawArgs), sink);
   },
 });

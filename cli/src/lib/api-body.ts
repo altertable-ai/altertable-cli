@@ -63,6 +63,27 @@ export function extractFieldArgs(rawArgs: string[]): string[] {
   return extractFlagValues(rawArgs, ["-F", "--field"]);
 }
 
+export function extractHeaderArgs(rawArgs: string[]): string[] {
+  return extractFlagValues(rawArgs, ["-H", "--header"]);
+}
+
+export function parseApiHeaders(entries: string[]): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const entry of entries) {
+    const separatorIndex = entry.indexOf(":");
+    if (separatorIndex <= 0) {
+      throw new CliError(`Invalid header ${JSON.stringify(entry)}. Expected key:value.`);
+    }
+    const key = entry.slice(0, separatorIndex).trim();
+    const value = entry.slice(separatorIndex + 1).trim();
+    if (key.length === 0) {
+      throw new CliError(`Invalid header ${JSON.stringify(entry)}. Expected key:value.`);
+    }
+    headers[key] = value;
+  }
+  return headers;
+}
+
 function normalizeFieldEntries(
   fields: Record<string, string> | string[] | string | undefined,
 ): string[] {

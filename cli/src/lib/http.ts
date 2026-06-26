@@ -37,10 +37,19 @@ export type HttpStreamOptions = HttpSendOptions & {
   readTimeoutMs?: number;
 };
 
+export type HttpResponseDetail = {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  body: string;
+};
+
 type MockHttpEntry = {
   urlPattern: string;
   method?: string;
   status?: number;
+  statusText?: string;
+  headers?: Record<string, string>;
   body: string;
   chunked?: boolean;
   retryAfter?: string;
@@ -139,7 +148,7 @@ function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
   });
 }
 
-async function executeMockRequest(options: HttpSendOptions, attemptIndex: number): Promise<string> {
+async function executeMockRequest(options: HttpSendOptions, attemptIndex: number): Promise<HttpResponseDetail> {
   const mockFile = process.env.ALTERTABLE_MOCK_HTTP_FILE;
   if (!mockFile) {
     throw new CliError("Mock HTTP file is not configured.");
@@ -155,7 +164,12 @@ async function executeMockRequest(options: HttpSendOptions, attemptIndex: number
 
   const status = match.status ?? 200;
   if (status >= 200 && status < 300) {
-    return match.body;
+    return {
+      status,
+      statusText: match.statusText ?? (status === 200 ? "OK" : ""),
+      headers: match.headers ?? {},
+      body: match.body,
+    };
   }
 
   throwHttpError(
@@ -242,9 +256,14 @@ function logHttpRequest(options: HttpSendOptions): void {
     payload = "@stream";
   }
 
+  const extraHeaders = options.extraHeaders ?? {};
+  const headerLine = Object.entries(extraHeaders)
+    .map(([name, value]) => `${name}: ${redactHeaderValue(name, value)}`)
+    .join("; ");
+
   appendFileSync(
     logPath,
-    `METHOD=${options.method}\nURL=${options.url}\nAUTH=${redactAuthHeader(options.authHeader)}\nPAYLOAD=${payload}\n---\n`,
+    `METHOD=${options.method}\nURL=${options.url}\nAUTH=${redactAuthHeader(options.authHeader)}\nHEADERS=${headerLine}\nPAYLOAD=${payload}\n---\n`,
   );
 }
 
@@ -314,7 +333,7 @@ function buildRequestHeaders(options: HttpSendOptions): Record<string, string> {
   return headers;
 }
 
-async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
+async function executeLiveRequest(options: HttpSendOptions): Promise<HttpResponseDetail> {
   const headers = buildRequestHeaders(options);
   const timeoutMs = resolveFetchTimeoutMs(options);
   const signal = AbortSignal.timeout(timeoutMs);
@@ -355,7 +374,12 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
   }
 
   if (response.status >= 200 && response.status < 300) {
-    return responseBody;
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      body: responseBody,
+    };
   }
 
   throwHttpError(
@@ -412,7 +436,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   );
 }
 
-export async function httpSend(options: HttpSendOptions): Promise<string> {
+async function httpSendDetailedInternal(options: HttpSendOptions): Promise<HttpResponseDetail> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
   const mockFile = process.env.ALTERTABLE_MOCK_HTTP_FILE;
 
@@ -429,12 +453,19 @@ export async function httpSend(options: HttpSendOptions): Promise<string> {
           continue;
         }
       }
-
       throw error;
     }
   }
 
   throw new NetworkError("Request failed after retries.");
+}
+
+export async function httpSend(options: HttpSendOptions): Promise<string> {
+  return (await httpSendDetailedInternal(options)).body;
+}
+
+export async function httpSendDetailed(options: HttpSendOptions): Promise<HttpResponseDetail> {
+  return httpSendDetailedInternal(options);
 }
 
 export async function httpSendStream(

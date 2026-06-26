@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
+import { apiCommand, apiDocsCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
@@ -85,14 +85,19 @@ describe("api", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const topLevelNames = flattenTopLevelNames(spec);
     expect(topLevelNames).toContain("api");
+    expect(topLevelNames).toContain("api-docs");
     expect(topLevelNames).not.toContain("connections");
     expect(topLevelNames).not.toContain("service-accounts");
     expect(topLevelNames).not.toContain("databases");
     expect(topLevelNames).not.toContain("credentials");
   });
 
-  test("api command tree exposes spec and routes subcommands", () => {
-    const subCommands = apiCommand.subCommands as Record<string, CommandDef>;
+  test("api command is a pure invoker with no subcommands", () => {
+    expect(apiCommand.subCommands).toBeUndefined();
+  });
+
+  test("api-docs exposes spec and routes subcommands", () => {
+    const subCommands = apiDocsCommand.subCommands as Record<string, CommandDef>;
     expect(subCommands.spec?.run).toBeDefined();
     expect(subCommands.routes?.run).toBeDefined();
   });
@@ -119,7 +124,7 @@ describe("api", () => {
 
     try {
       await runCommand(buildMainCommand(), {
-        rawArgs: ["api", "POST", "/service_accounts", "-f", "label=CI Bot"],
+        rawArgs: ["api", "-X", "POST", "/service_accounts", "-f", "label=CI Bot"],
       });
 
       const logContent = readFileSync(logFile, "utf8");
@@ -127,6 +132,33 @@ describe("api", () => {
       expect(payloadLines).toHaveLength(1);
       expect(logContent).toContain("/rest/v1/service_accounts");
       expect(logContent).not.toContain("/rest/v1/POST");
+    } finally {
+      rmSync(testHome, { recursive: true, force: true });
+      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+      delete process.env.ALTERTABLE_HTTP_LOG;
+      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+      delete process.env.ALTERTABLE_API_KEY;
+    }
+  });
+
+  test("api treats a literal path that looks like a keyword as a path", async () => {
+    const testHome = mkdtempSync(join(tmpdir(), "altertable-api-literal-test-"));
+    const mockFile = join(testHome, "mocks.json");
+    const logFile = join(testHome, "http.log");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([{ urlPattern: "/spec", method: "GET", body: "{}" }]),
+    );
+
+    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+    process.env.ALTERTABLE_HTTP_LOG = logFile;
+    process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+    process.env.ALTERTABLE_API_KEY = "atm_test";
+
+    try {
+      await runCommand(buildMainCommand(), { rawArgs: ["api", "/spec"] });
+      const logContent = readFileSync(logFile, "utf8");
+      expect(logContent).toContain("/rest/v1/spec");
     } finally {
       rmSync(testHome, { recursive: true, force: true });
       delete process.env.ALTERTABLE_MOCK_HTTP_FILE;

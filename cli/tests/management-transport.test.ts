@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
+import { managementRequest, managementRequestDetailed } from "@/lib/management-transport.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 let testHome = "";
@@ -28,6 +28,44 @@ afterEach(() => {
   delete process.env.ALTERTABLE_HTTP_LOG;
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
   delete process.env.ALTERTABLE_API_KEY;
+});
+
+test("managementRequestDetailed forwards extra headers and returns status", async () => {
+  const home = mkdtempSync(join(tmpdir(), "altertable-mgmt-detail-"));
+  const mockFile = join(home, "mocks.json");
+  const logFile = join(home, "http.log");
+  writeFileSync(
+    mockFile,
+    JSON.stringify([
+      {
+        urlPattern: "/whoami",
+        method: "GET",
+        status: 200,
+        statusText: "OK",
+        headers: { "X-Trace": "zzz" },
+        body: '{"ok":true}',
+      },
+    ]),
+  );
+  process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+  process.env.ALTERTABLE_HTTP_LOG = logFile;
+  process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+  process.env.ALTERTABLE_API_KEY = "atm_test";
+  try {
+    const detail = await managementRequestDetailed("GET", "/whoami", undefined, {
+      "X-Demo": "yes",
+    });
+    expect(detail.status).toBe(200);
+    expect(detail.headers["X-Trace"]).toBe("zzz");
+    const log = readFileSync(logFile, "utf8");
+    expect(log).toContain("X-Demo: yes");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    delete process.env.ALTERTABLE_HTTP_LOG;
+    delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+    delete process.env.ALTERTABLE_API_KEY;
+  }
 });
 
 describe("managementRequest", () => {

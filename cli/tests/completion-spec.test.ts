@@ -66,30 +66,27 @@ describe("buildCompletionSpec", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const catalogs = findNode(spec, "catalogs");
     const api = findNode(spec, "api");
+    const apiDocs = findNode(spec, "api-docs");
 
     expect(findNode(spec, "query")).toBeDefined();
     expect(findNode(spec, "agent")).toBeUndefined();
     expect(catalogs).toBeDefined();
     expect(api).toBeDefined();
+    expect(apiDocs).toBeDefined();
     expect(findNode(spec, "connections")).toBeUndefined();
     expect(catalogs?.subcommands.map((node) => node.name)).toEqual(["create", "list"]);
-    expect(api?.subcommands.map((node) => node.name)).toEqual([
-      "DELETE",
-      "GET",
-      "PATCH",
-      "POST",
-      "PUT",
-      "routes",
-      "spec",
-    ]);
+    // api is now a pure path invoker with no subcommands
+    expect(api?.subcommands).toEqual([]);
+    // api-docs carries the OpenAPI inspection commands
+    expect(apiDocs?.subcommands.map((node) => node.name)).toEqual(["routes", "spec"]);
 
-    const getCommand = api?.subcommands.find((node) => node.name === "GET");
-    expect(getCommand?.subcommands).toEqual([]);
+    // api flags: method (-X), raw-field, field, body, header (-H), include (-i)
     expect(api?.flags.some((flag) => flag.name === "method")).toBe(true);
     expect(api?.flags.some((flag) => flag.name === "raw-field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "raw-field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "body")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "field")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "body")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "header")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "include")).toBe(true);
   });
 
   test("includes completion top-level command", () => {
@@ -116,7 +113,10 @@ describe("completion format helpers", () => {
     const contexts = collectCompletionContexts(spec);
     const grouped = groupCompletionContextsByTopLevel(contexts);
 
-    expect(grouped.get("api")?.some((context) => context.segments[1] === "GET")).toBe(true);
+    // api-docs has spec and routes children; api itself is a leaf (no children)
+    expect(grouped.get("api-docs")?.some((context) => context.segments[1] === "spec")).toBe(true);
+    expect(grouped.get("api-docs")?.some((context) => context.segments[1] === "routes")).toBe(true);
+    expect(grouped.get("api")).toBeDefined();
   });
 
   test("mergeCompletionFlags preserves node flags before root flags", () => {
@@ -142,7 +142,7 @@ describe("formatBashCompletion", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
     expect(output).toContain("api)");
-    expect(output).toContain("GET");
+    expect(output).toContain("api-docs)");
     expect(output).toContain("catalogs");
   });
 
@@ -160,12 +160,13 @@ describe("collectCompletionContexts", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const contexts = collectCompletionContexts(spec);
 
-    const postServiceAccounts = contexts.find(
-      (context) => context.segments.join("/") === "api/POST",
+    // api is now a leaf (pure path invoker) — it has field/body flags directly
+    const apiContext = contexts.find(
+      (context) => context.segments.join("/") === "api",
     );
-    expect(postServiceAccounts?.flags.some((flag) => flag.name === "field")).toBe(true);
-    expect(postServiceAccounts?.flags.some((flag) => flag.name === "body")).toBe(true);
-    expect(postServiceAccounts?.subcommands).toEqual([]);
+    expect(apiContext?.flags.some((flag) => flag.name === "field")).toBe(true);
+    expect(apiContext?.flags.some((flag) => flag.name === "body")).toBe(true);
+    expect(apiContext?.subcommands).toEqual([]);
   });
 });
 

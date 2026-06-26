@@ -21,7 +21,7 @@ import {
   uploadCommand,
   validateCommand,
 } from "@/commands/lakehouse.ts";
-import { apiCommand } from "@/commands/api.ts";
+import { apiCommand, apiDocsCommand } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import {
   CliError,
@@ -59,6 +59,7 @@ export function buildMainCommand(): CommandDef {
     upload: uploadCommand,
     autocomplete: autocompleteCommand,
     api: apiCommand,
+    "api-docs": apiDocsCommand,
     completion: completionCommand,
   };
 
