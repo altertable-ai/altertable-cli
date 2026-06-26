@@ -1,5 +1,9 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import type { CommandDef } from "citty";
+import { runCommand } from "citty";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
 import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
@@ -91,5 +95,44 @@ describe("api", () => {
     const subCommands = apiCommand.subCommands as Record<string, CommandDef>;
     expect(subCommands.spec?.run).toBeDefined();
     expect(subCommands.routes?.run).toBeDefined();
+  });
+
+  test("api POST subcommand issues a single HTTP request", async () => {
+    const testHome = mkdtempSync(join(tmpdir(), "altertable-api-command-test-"));
+    const mockFile = join(testHome, "mocks.json");
+    const logFile = join(testHome, "http.log");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/service_accounts",
+          method: "POST",
+          body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
+        },
+      ]),
+    );
+
+    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+    process.env.ALTERTABLE_HTTP_LOG = logFile;
+    process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+    process.env.ALTERTABLE_API_KEY = "atm_test";
+
+    try {
+      await runCommand(buildMainCommand(), {
+        rawArgs: ["api", "POST", "/service_accounts", "-f", "label=CI Bot"],
+      });
+
+      const logContent = readFileSync(logFile, "utf8");
+      const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];
+      expect(payloadLines).toHaveLength(1);
+      expect(logContent).toContain("/rest/v1/service_accounts");
+      expect(logContent).not.toContain("/rest/v1/POST");
+    } finally {
+      rmSync(testHome, { recursive: true, force: true });
+      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+      delete process.env.ALTERTABLE_HTTP_LOG;
+      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+      delete process.env.ALTERTABLE_API_KEY;
+    }
   });
 });
