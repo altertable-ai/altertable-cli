@@ -73,9 +73,9 @@ jobs:
 
       - name: Verify executable
         run: |
-          chmod +x ../bin/altertable
-          ../bin/altertable --version
-          ../bin/altertable --help
+          chmod +x bin/altertable
+          bin/altertable --version
+          bin/altertable --help
 
       - name: Run Configure Tests
         run: ./tests/configure_test.sh
