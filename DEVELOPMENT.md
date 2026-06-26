@@ -35,7 +35,18 @@ bun run pack:check             # ensures dist/ is the only packed file
 
 ## Compile native binaries
 
-Release and CI compile standalone executables (no Bun runtime required on the target machine):
+Release and CI compile standalone executables (no Bun runtime required on the target machine).
+
+The root `Makefile` is the easiest path. `make` (default target) detects the host OS/architecture and compiles the matching binary to `dist/altertable-<os>-<arch>`:
+
+```bash
+make                           # native binary for this host, e.g. dist/altertable-darwin-arm64
+make cross                     # cross-compile all four released targets
+make clean                     # remove dist/ and cli/dist/
+make help                      # list targets
+```
+
+To invoke Bun directly instead:
 
 ```bash
 cd cli
