@@ -52,8 +52,9 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     },
     args: {
       shell: {
-        type: "string",
+        type: "enum",
         description: "Shell: bash, zsh, or fish. Defaults to the current shell.",
+        options: [...SUPPORTED_SHELLS],
       },
     },
     async run({ args }) {

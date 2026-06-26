@@ -21,7 +21,7 @@ beforeEach(() => {
   process.env.ALTERTABLE_HTTP_LOG = logFile;
   process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
   process.env.ALTERTABLE_API_KEY = "atm_test";
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
   refreshCliRuntimeContext(getCliRuntime().context);
 
   const runtime = getCliRuntime();
@@ -125,7 +125,7 @@ describe("runApiHttp", () => {
   });
 
   test("GET --json writes raw API body", async () => {
-    setCliContext({ debug: false, json: true });
+    setCliContext({ debug: false, json: true, agent: false });
     refreshCliRuntimeContext(getCliRuntime().context);
     stdout = "";
 
@@ -324,7 +324,7 @@ describe("runApiHttp", () => {
   });
 
   test("DELETE with empty body emits deleted envelope with --json", async () => {
-    setCliContext({ debug: false, json: true });
+    setCliContext({ debug: false, json: true, agent: false });
     refreshCliRuntimeContext(getCliRuntime().context);
     stdout = "";
 

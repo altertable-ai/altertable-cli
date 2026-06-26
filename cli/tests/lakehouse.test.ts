@@ -44,7 +44,7 @@ beforeEach(() => {
   process.env.ALTERTABLE_API_BASE = "https://example.com";
   process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "testuser";
   process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "testpass";
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
 });
 
 afterEach(() => {

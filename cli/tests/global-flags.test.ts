@@ -1,21 +1,69 @@
 import { describe, expect, test } from "bun:test";
-import { CliError } from "@/lib/errors.ts";
+import { isAgentMode, isJsonOutput, setCliContext } from "@/context.ts";
 import { parseGlobalFlags } from "@/lib/global-flags.ts";
+import {
+  createCliRuntime,
+  getOutputSink,
+  refreshCliRuntimeContext,
+  runWithCliRuntime,
+  setCliRuntime,
+} from "@/lib/runtime.ts";
+import { renderCliErrorJson } from "@/lib/errors.ts";
+import { CliError } from "@/lib/errors.ts";
 
 describe("parseGlobalFlags", () => {
-  test("does not parse subcommand --profile during early bootstrap", () => {
-    const context = parseGlobalFlags([
-      "query",
-      "run",
-      "--profile",
-      "staging",
-      "--statement",
-      "SELECT 1",
-    ]);
-    expect(context.profile).toBeUndefined();
+  test("parses --agent", () => {
+    const context = parseGlobalFlags(["--agent", "query", "--statement", "SELECT 1"]);
+    expect(context.agent).toBe(true);
+    expect(context.json).toBe(false);
   });
 
-  test("rejects invalid --connect-timeout values", () => {
-    expect(() => parseGlobalFlags(["--connect-timeout", "foo"])).toThrow(CliError);
+  test("parses --profile from argv", () => {
+    const context = parseGlobalFlags(["--profile", "staging", "--help"]);
+    expect(context.profile).toBe("staging");
+  });
+
+  test("parses --no-color", () => {
+    const context = parseGlobalFlags(["--no-color", "context"]);
+    expect(context.noColor).toBe(true);
+  });
+
+  test("parses --json and --agent independently", () => {
+    const both = parseGlobalFlags(["--json", "--agent", "context"]);
+    expect(both.json).toBe(true);
+    expect(both.agent).toBe(true);
+  });
+});
+
+describe("agent output preset", () => {
+  test("isJsonOutput is true when agent is set", () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: true });
+    runWithCliRuntime(runtime, () => {
+      expect(isJsonOutput()).toBe(true);
+      expect(isAgentMode()).toBe(true);
+    });
+  });
+
+  test("runtime sink treats agent as JSON-capable", () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: true });
+    expect(runtime.output.json).toBe(true);
+  });
+
+  test("agent mode uses JSON error envelopes", () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: true });
+    runWithCliRuntime(runtime, () => {
+      const envelope = renderCliErrorJson(new CliError("agent failure"));
+      expect(envelope).toContain('"error"');
+      expect(envelope).toContain("agent failure");
+    });
+  });
+
+  test("refreshCliRuntimeContext enables sink json for --agent", () => {
+    setCliRuntime(createCliRuntime({ debug: false, json: false, agent: false }));
+    const context = parseGlobalFlags(["--agent", "context"]);
+    setCliContext(context);
+    expect(isJsonOutput()).toBe(true);
+    expect(getOutputSink().json).toBe(true);
+    refreshCliRuntimeContext({ debug: false, json: false, agent: false });
   });
 });

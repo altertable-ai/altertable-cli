@@ -35,11 +35,14 @@ Query and manage your Altertable data platform from the terminal.
 npm install -g @altertable/cli
 
 # 2. Configure credentials
+altertable configure
+
+# Or non-interactive (CI/scripts):
 altertable configure --api-key atm_xxxx --env production
 altertable configure --user your_username --password your_password
 
-# 3. Verify
-altertable whoami
+# 3. Verify (optional — the wizard verifies by default)
+altertable context
 
 # 4. Query
 altertable query --statement "SELECT * FROM users LIMIT 10"
@@ -61,14 +64,14 @@ Requires [Bun](https://bun.sh) 1.1+ at runtime (used as the JS engine when runni
 
 Download the platform binary from [GitHub Releases](https://github.com/altertable-ai/altertable-cli/releases). Each release ships:
 
-| Asset | Description |
-|---|---|
-| `altertable-darwin-arm64` | macOS Apple Silicon |
-| `altertable-darwin-x64` | macOS Intel |
-| `altertable-linux-x64` | Linux x86-64 |
-| `altertable-linux-arm64` | Linux ARM64 |
-| `altertable-cli.js` | Bun bundle (`bun altertable-cli.js`) |
-| `checksums.txt` | SHA-256 checksums for all assets |
+| Asset                     | Description                          |
+| ------------------------- | ------------------------------------ |
+| `altertable-darwin-arm64` | macOS Apple Silicon                  |
+| `altertable-darwin-x64`   | macOS Intel                          |
+| `altertable-linux-x64`    | Linux x86-64                         |
+| `altertable-linux-arm64`  | Linux ARM64                          |
+| `altertable-cli.js`       | Bun bundle (`bun altertable-cli.js`) |
+| `checksums.txt`           | SHA-256 checksums for all assets     |
 
 Verify and install:
 
@@ -96,17 +99,28 @@ altertable --version
 
 The CLI talks to two independent APIs with separate auth schemes:
 
-| Plane | Purpose | Auth |
-|---|---|---|
-| **Management (control)** | `whoami`, `catalogs` | Bearer API key |
-| **Lakehouse (data)** | `query`, `upload`, `append`, `validate` | HTTP Basic |
+| Plane                    | Purpose                                 | Auth           |
+| ------------------------ | --------------------------------------- | -------------- |
+| **Management (control)** | `context`, `catalogs`                   | Bearer API key |
+| **Lakehouse (data)**     | `query`, `upload`, `append`, `validate` | HTTP Basic     |
 
-Most users need both. Configure them independently — they coexist in the same profile:
+Most users need both. Run the interactive wizard or configure each plane with flags:
 
 ```bash
+# Interactive wizard (TTY) — configures management and lakehouse
+altertable configure
+
+# Plane-specific wizards
+altertable configure management
+altertable configure lakehouse
+
+# Non-interactive (scripts/CI)
 altertable configure --api-key atm_xxxx --env production
 altertable configure --user your_username --password your_password
 altertable configure --show
+
+# Verify after flag-based configure
+altertable configure --api-key atm_xxxx --env production --verify
 ```
 
 Passing `--user` and `--api-key` in a single invocation is not allowed. Run two separate `configure` calls — one per plane.
@@ -161,7 +175,7 @@ Rules for updating credentials:
 
 ### Profiles
 
-Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_col_width`, `query_pager`) stay in the root config and apply to all profiles.
+Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
 ```bash
 # Set up multiple environments
@@ -172,7 +186,7 @@ altertable configure --profile production --api-key atm_yyy --env production
 altertable profile use staging
 
 # Use a profile for one command
-altertable --profile production whoami
+altertable --profile production context
 
 # Inspect profiles
 export ALTERTABLE_PROFILE=staging
@@ -182,37 +196,37 @@ altertable profile show staging
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
 
-| Scope | Keys |
-|---|---|
-| Global (root `config`) | `active_profile`, `query_layout`, `query_max_col_width`, `query_pager` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base` |
+| Scope                              | Keys                                                               |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager` |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`           |
 
 ### Credential precedence
 
 **Management plane**
 
-| Priority | API key | Environment slug | Control-plane base |
-|---|---|---|---|
-| 1 (highest) | `ALTERTABLE_API_KEY` | `ALTERTABLE_ENV` | `ALTERTABLE_MANAGEMENT_API_BASE` |
-| 2 | profile secret `api-key` | profile `api_key_env` | profile `management_api_base` |
-| 3 (default) | — | — | `https://app.altertable.ai` |
+| Priority    | API key                  | Environment slug      | Control-plane base               |
+| ----------- | ------------------------ | --------------------- | -------------------------------- |
+| 1 (highest) | `ALTERTABLE_API_KEY`     | `ALTERTABLE_ENV`      | `ALTERTABLE_MANAGEMENT_API_BASE` |
+| 2           | profile secret `api-key` | profile `api_key_env` | profile `management_api_base`    |
+| 3 (default) | —                        | —                     | `https://app.altertable.ai`      |
 
 **Lakehouse plane**
 
-| Priority | Credentials | Data-plane base |
-|---|---|---|
-| 1 | `ALTERTABLE_BASIC_AUTH_TOKEN` | `ALTERTABLE_API_BASE` |
-| 2 | `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` | profile `api_base` |
-| 3 | stored basic token / user+password | `https://api.altertable.ai` |
+| Priority | Credentials                                                       | Data-plane base             |
+| -------- | ----------------------------------------------------------------- | --------------------------- |
+| 1        | `ALTERTABLE_BASIC_AUTH_TOKEN`                                     | `ALTERTABLE_API_BASE`       |
+| 2        | `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` | profile `api_base`          |
+| 3        | stored basic token / user+password                                | `https://api.altertable.ai` |
 
 > **Note:** Setting `ALTERTABLE_ENV` overrides the slug in `/environments/{env}/…` paths without changing the Bearer token. Make sure the env var, stored `api_key_env`, and API key permissions all refer to the same environment.
 
 You can also override endpoints per-command with flags:
 
-| Purpose | Flag | Environment variable |
-|---|---|---|
+| Purpose                    | Flag                  | Environment variable             |
+| -------------------------- | --------------------- | -------------------------------- |
 | Management / control plane | `--control-plane-url` | `ALTERTABLE_MANAGEMENT_API_BASE` |
-| Lakehouse / data plane | `--data-plane-url` | `ALTERTABLE_API_BASE` |
+| Lakehouse / data plane     | `--data-plane-url`    | `ALTERTABLE_API_BASE`            |
 
 ---
 
@@ -225,31 +239,38 @@ You can also override endpoints per-command with flags:
 ```bash
 altertable query --statement "SELECT * FROM users LIMIT 10"
 
-# Layout options
-altertable query --statement "SELECT * FROM events LIMIT 3" --expanded
+# Human layout and script-friendly formats
+altertable query --statement "SELECT * FROM events LIMIT 3"
+altertable query --statement "SELECT * FROM events LIMIT 3" --layout auto
+altertable query --statement "SELECT * FROM events LIMIT 3" --layout table
+altertable query --statement "SELECT * FROM events LIMIT 3" --layout line
 altertable query --statement "SELECT * FROM events LIMIT 3" --columns uuid,event,timestamp
-altertable query --statement "SELECT * FROM events LIMIT 3" --max-col-width 24
+altertable query --statement "SELECT * FROM events LIMIT 3" --max-width 24
 
-# Output format
-altertable query --statement "SELECT 1" --format table
+# Serialized output
 altertable query --statement "SELECT 1" --format csv
+altertable query --statement "SELECT 1" --format json
 altertable query --statement "SELECT 1" --format markdown
 
 # Long results — pipe through a pager
-altertable query --statement "SELECT * FROM big_table" --pager
+altertable query --statement "SELECT * FROM big_table" --pager always
+altertable query --statement "SELECT * FROM big_table" --pager never
 
 # JSON for scripting
 altertable --json query --statement "SELECT 1"
+
+# Agent-friendly preset (structured JSON, no pager or terminal styling)
+altertable --agent query --statement "SELECT 1"
 ```
 
-Query output defaults to a readable table. When the result is wider than your terminal, the CLI automatically switches to a vertical record layout. Use `--expanded` / `--no-expanded` to force a layout, `--columns` to select fields, and `--max-col-width` to cap column widths. `--format markdown` emits a GitHub-flavored pipe table. `--pager` (or auto-pager when output exceeds terminal height) pipes through your `$PAGER`.
+Use `--format human|json|csv|markdown` for serialized output (default `human`). Human output respects `--layout auto|table|line` (default `auto`), `--columns`, `--max-width`, and `--pager auto|always|never`. `auto` picks a table when it fits and line layout when the table would be too wide. `--format json|csv|markdown` skips pager and layout controls. For machine-readable query output, prefer `--format json` or the global `--agent` preset.
 
 Set display defaults in `~/.config/altertable/config`:
 
 ```ini
-query_layout=auto          # auto | table | expanded
-query_max_col_width=32     # integer >= 8
-query_pager=auto           # auto | always | never
+query_layout=auto       # auto | table | line
+query_max_width=32      # integer >= 8
+query_pager=auto        # auto | always | never
 ```
 
 **Validate, append, upload**
@@ -277,7 +298,7 @@ altertable append task <task-id>
 Product-level commands stay at the top level. The full management REST surface is available via `altertable api` (HTTP invoker):
 
 ```bash
-altertable whoami
+altertable context
 altertable catalogs list
 altertable catalogs create --engine altertable --name "My Catalog"
 
@@ -326,7 +347,7 @@ altertable completion zsh > ~/.local/share/zsh/site-functions/_altertable
 altertable completion fish > ~/.config/fish/completions/altertable.fish
 ```
 
-Omit the shell name and the CLI detects it from `$SHELL`. Reload your shell after installation. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--debug`). Regenerate scripts after upgrading the CLI.
+Omit the shell name and the CLI detects it from `$SHELL`. Reload your shell after installation. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate scripts after upgrading the CLI.
 
 ---
 
@@ -334,18 +355,20 @@ Omit the shell name and the CLI detects it from `$SHELL`. Reload your shell afte
 
 These flags apply to every command and must be placed before the subcommand:
 
-| Flag | Description |
-|---|---|
-| `--profile <name>` | Use a named profile for this invocation |
-| `--json` | Output raw JSON (machine-readable success; JSON error envelope on stderr) |
-| `--debug`, `-d` | Enable debug output |
-| `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`) |
-| `--read-timeout <s>` | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams) |
+| Flag                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `--profile <name>`      | Use a named profile for this invocation                                     |
+| `--json`                | Output raw JSON (machine-readable success; JSON error envelope on stderr)   |
+| `--agent`               | Agent preset: structured JSON output, no pager, colors, or terminal styling |
+| `--debug`, `-d`         | Enable debug output                                                         |
+| `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
+| `--read-timeout <s>`    | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams)   |
 
-Per-request read timeout on `query` and `upload`:
+Per-request read timeout on `query`, `validate`, and `upload`:
 
 ```bash
-altertable query --statement "SELECT ..." --timeout 180
+altertable query --statement "SELECT ..." --read-timeout 180
+altertable validate --statement "SELECT ..." --read-timeout 30
 altertable --read-timeout 120 query --statement "SELECT ..."
 altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --format csv --mode overwrite --file large.csv
 ```
@@ -356,40 +379,40 @@ Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited
 
 ## Scripting
 
-Use `--json` for machine-readable output. On failure the error is a JSON object on stderr; stdout remains empty.
+Use `--json` or `--agent` for machine-readable output. On failure the error is a JSON object on stderr; stdout remains empty.
 
 ### Output tiers
 
 With `--json`, success stdout follows one of three contracts:
 
-1. **Raw API** — verbatim API response body (`whoami`, `validate`, most `api *` commands).
-2. **Normalized query** — `{ metadata, columns, rows }` from `query --json` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json` or `{ profiles: [...] }` from `profile list --json`.
+1. **Raw API** — verbatim API response body (`validate`, most `api *` commands).
+2. **Normalized query** — `{ metadata, columns, rows }` from `query --format json`, `query --json`, or `altertable --agent query` (stable scripting contract).
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, environment, principal, … }` from `context --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 
 ### Exit codes
 
-| Code | Meaning |
-|---|---|
-| `0` | Success |
-| `1` | Usage, validation, or unexpected CLI error |
-| `2` | Authentication failed (HTTP 401) |
-| `3` | Permission denied (HTTP 403) |
-| `4` | Not found (HTTP 404) |
-| `5` | Conflict (HTTP 409) |
-| `6` | Validation error (HTTP 422) |
-| `7` | Rate limited (HTTP 429) |
-| `8` | Server error (HTTP 5xx) |
-| `9` | Network or timeout error |
-| `10` | Configuration error (missing credentials) |
+| Code | Meaning                                    |
+| ---- | ------------------------------------------ |
+| `0`  | Success                                    |
+| `1`  | Usage, validation, or unexpected CLI error |
+| `2`  | Authentication failed (HTTP 401)           |
+| `3`  | Permission denied (HTTP 403)               |
+| `4`  | Not found (HTTP 404)                       |
+| `5`  | Conflict (HTTP 409)                        |
+| `6`  | Validation error (HTTP 422)                |
+| `7`  | Rate limited (HTTP 429)                    |
+| `8`  | Server error (HTTP 5xx)                    |
+| `9`  | Network or timeout error                   |
+| `10` | Configuration error (missing credentials)  |
 
 ### Error envelope
 
 JSON error objects on stderr have the following fields: `error` (always `true`), `code` (stable snake_case identifier), `message`, `exit_code`, and optional `details` and `status`.
 
 ```bash
-if ! out=$(altertable --json whoami 2>err.json); then
+if ! out=$(altertable --json context 2>err.json); then
   code=$(jq -r .exit_code err.json)
   msg=$(jq -r .message err.json)
   echo "Failed ($code): $msg" >&2

@@ -50,6 +50,25 @@ ROW1=$(echo "${RESP}" | jq -r '.rows[0][1]')
 [[ "${ROW1}" == "Alice" ]] || fail "query --json: expected first row name 'Alice', got '${ROW1}'"
 pass "query --json returns structured metadata, columns, and rows"
 
+RESP=$("${CLI}" --agent query --statement "SELECT * FROM cli_test ORDER BY id")
+COLS=$(echo "${RESP}" | jq -r '.columns[0]')
+[[ "${COLS}" == "id" ]] || fail "query --agent: expected first column 'id', got '${COLS}'"
+pass "query --agent returns structured metadata, columns, and rows"
+
+if "${CLI}" --agent query --statement "SELECT 1" --layout table >/dev/null 2>&1; then
+  fail "query --agent with --layout should fail"
+fi
+pass "query --agent rejects human-only --layout flag"
+
+# ── management --agent (structured output contract) ──
+export ALTERTABLE_API_KEY=atm_test
+setup_mock_http '[{"urlPattern":"/whoami","method":"GET","body":"{\"principal\":{\"type\":\"User\",\"name\":\"Agent User\",\"email\":\"agent@x.io\"},\"organization\":{\"name\":\"Acme\",\"slug\":\"acme\"}}"}]'
+RESP=$("${CLI}" --agent context 2>/dev/null)
+teardown_mock_http
+unset ALTERTABLE_API_KEY
+[[ $(echo "${RESP}" | jq -r '.principal.email') == "agent@x.io" ]] || fail "context --agent: expected agent@x.io principal email"
+pass "context --agent returns structured session JSON on integration mock"
+
 # ── query with explicit query_id (used by query show / query cancel) ────────────
 
 QID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"

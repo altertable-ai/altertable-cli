@@ -20,19 +20,19 @@ describe("resolvePagerOptions", () => {
 
   test("config always forces pager when CLI flags unset", () => {
     configSet("query_pager", "always");
-    expect(resolvePagerOptions({})).toEqual({ force: true });
+    expect(resolvePagerOptions()).toEqual({ mode: "always" });
   });
 
-  test("CLI --no-pager wins over config always", () => {
+  test("CLI pager mode wins over config always", () => {
     configSet("query_pager", "always");
-    expect(resolvePagerOptions({ disable: true })).toEqual({ disable: true });
+    expect(resolvePagerOptions("never")).toEqual({ mode: "never" });
   });
 
   test("config always triggers pager for short text on TTY", () => {
     configSet("query_pager", "always");
     const originalIsTTY = process.stdout.isTTY;
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    expect(shouldUsePager("short", resolvePagerOptions({}))).toBe(true);
+    expect(shouldUsePager("short", resolvePagerOptions())).toBe(true);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
   });
 });
@@ -40,21 +40,22 @@ describe("resolvePagerOptions", () => {
 describe("shouldUsePager", () => {
   const originalIsTTY = process.stdout.isTTY;
   const originalRows = process.stdout.rows;
+  const originalColumns = process.stdout.columns;
 
   test("returns false when disabled", () => {
-    expect(shouldUsePager("line1\nline2\nline3", { disable: true, force: true })).toBe(false);
+    expect(shouldUsePager("line1\nline2\nline3", { mode: "never" })).toBe(false);
   });
 
   test("returns false when stdout is not a TTY", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
-    expect(shouldUsePager("line1\nline2\nline3", { force: true })).toBe(false);
+    expect(shouldUsePager("line1\nline2\nline3", { mode: "always" })).toBe(false);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
   });
 
   test("returns true when forced on TTY", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: 24, configurable: true });
-    expect(shouldUsePager("short", { force: true })).toBe(true);
+    expect(shouldUsePager("short", { mode: "always" })).toBe(true);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: originalRows, configurable: true });
   });
@@ -63,16 +64,32 @@ describe("shouldUsePager", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: 3, configurable: true });
     const text = "line1\nline2\nline3\nline4";
-    expect(shouldUsePager(text, {})).toBe(true);
+    expect(shouldUsePager(text, { mode: "auto" })).toBe(true);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: originalRows, configurable: true });
+  });
+
+  test("returns true when output exceeds terminal columns", () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdout, "columns", { value: 10, configurable: true });
+    expect(shouldUsePager("short\nthis line is too wide", { mode: "auto" })).toBe(true);
+    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
+    Object.defineProperty(process.stdout, "columns", {
+      value: originalColumns,
+      configurable: true,
+    });
   });
 
   test("returns false when output fits terminal", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: 24, configurable: true });
-    expect(shouldUsePager("line1\nline2", {})).toBe(false);
+    Object.defineProperty(process.stdout, "columns", { value: 80, configurable: true });
+    expect(shouldUsePager("line1\nline2", { mode: "auto" })).toBe(false);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: originalRows, configurable: true });
+    Object.defineProperty(process.stdout, "columns", {
+      value: originalColumns,
+      configurable: true,
+    });
   });
 });

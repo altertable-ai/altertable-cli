@@ -54,11 +54,19 @@ teardown_mock_http
 teardown_http_log
 [[ -n "$DB_URL_LINE" && -n "$CONN_URL_LINE" ]] || fail "list: expected both /databases and /connections calls"
 [[ "$DB_URL_LINE" -lt "$CONN_URL_LINE" ]] || fail "list: /databases must be called before /connections"
-echo "${OUT}" | grep -Eq '^TYPE[[:space:]]+NAME[[:space:]]+SLUG[[:space:]]+ENGINE[[:space:]]+CATALOG' || fail "list: missing header: '${OUT}'"
-DB_OUT_LINE="$(echo "${OUT}" | grep -n 'database' | head -1 | cut -d: -f1)"
-CONN_OUT_LINE="$(echo "${OUT}" | grep -n 'connection' | head -1 | cut -d: -f1)"
+echo "${OUT}" | grep -Eq 'SLUG[[:space:]]+NAME[[:space:]]+ENGINE[[:space:]]+CATALOG[[:space:]]+TYPE' || fail "list: missing header: '${OUT}'"
+DB_OUT_LINE="$(echo "${OUT}" | grep -nE '^my-cat[[:space:]]' | head -1 | cut -d: -f1)"
+CONN_OUT_LINE="$(echo "${OUT}" | grep -nE '^prod-pg[[:space:]]' | head -1 | cut -d: -f1)"
 [[ -n "$DB_OUT_LINE" && -n "$CONN_OUT_LINE" && "$DB_OUT_LINE" -lt "$CONN_OUT_LINE" ]] || fail "list: databases must render before connections: '${OUT}'"
 pass "catalogs list shows databases before connections in a table"
+
+# ── list: --agent returns structured JSON envelope ──
+setup_mock_http "${CATALOGS_MOCK}"
+OUT="$("${CLI}" --agent catalogs list 2>/dev/null)"
+teardown_mock_http
+CATALOG_COUNT=$(echo "${OUT}" | jq -r '.catalogs | length')
+[[ "${CATALOG_COUNT}" == "2" ]] || fail "catalogs list --agent: expected 2 catalogs, got '${CATALOG_COUNT}'"
+pass "catalogs list --agent returns structured catalogs envelope"
 
 # ── list: databases always render the hardcoded "altertable" engine ──
 setup_mock_http '[
@@ -67,8 +75,8 @@ setup_mock_http '[
 ]'
 OUT="$("${CLI}" catalogs list 2>/dev/null)"
 teardown_mock_http
-echo "${OUT}" | grep -E '^database[[:space:]]' | grep -q 'altertable' || fail "list: database engine must be hardcoded altertable: '${OUT}'"
-echo "${OUT}" | grep -E '^connection[[:space:]]' | grep -q 'postgres' || fail "list: connection engine must be preserved: '${OUT}'"
+echo "${OUT}" | grep -E '^my-cat[[:space:]]' | grep -q 'altertable' || fail "list: database engine must be hardcoded altertable: '${OUT}'"
+echo "${OUT}" | grep -E '^prod-pg[[:space:]]' | grep -q 'postgres' || fail "list: connection engine must be preserved: '${OUT}'"
 pass "catalogs list always shows the altertable engine for databases"
 
 # ── list: a non-2xx (e.g. 404 from /databases) hard-fails ──

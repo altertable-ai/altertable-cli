@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline tests for the management API helpers (whoami / catalogs share these).
+# Offline tests for the management API helpers (context / catalogs share these).
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +19,7 @@ PROFILE_CONFIG="${TEST_HOME}/profiles/default/config"
 "${CLI}" configure --api-key atm_stored --env production >/dev/null 2>&1
 setup_http_log
 setup_mock_http "${WHOAMI_MOCK}"
-"${CLI}" whoami >/dev/null 2>&1
+"${CLI}" context >/dev/null 2>&1
 assert_http_log_auth_redacted "mgmt: stored Bearer api-key"
 assert_http_log_has_no_secrets "mgmt: stored Bearer api-key" "atm_stored"
 grep -q '^URL=https://app.altertable.ai/rest/v1/whoami$' "${HTTP_LOG}" || fail "mgmt: expected default base /whoami URL, got '$(grep '^URL=' "${HTTP_LOG}")'"
@@ -31,7 +31,7 @@ pass "management auth uses stored Bearer api-key against the default base URL"
 setup_http_log
 setup_mock_http "${WHOAMI_MOCK}"
 ALTERTABLE_API_KEY=atm_env ALTERTABLE_MANAGEMENT_API_BASE=http://localhost:9 \
-  "${CLI}" whoami >/dev/null 2>&1
+  "${CLI}" context >/dev/null 2>&1
 assert_http_log_auth_redacted "mgmt: ALTERTABLE_API_KEY should win"
 assert_http_log_has_no_secrets "mgmt: ALTERTABLE_API_KEY should win" "atm_env" "atm_stored"
 grep -q '^URL=http://localhost:9/rest/v1/whoami$' "${HTTP_LOG}" || fail "mgmt: expected root + /rest/v1, got '$(grep '^URL=' "${HTTP_LOG}")'"
@@ -43,7 +43,7 @@ pass "ALTERTABLE_MANAGEMENT_API_BASE is a root; the CLI appends /rest/v1"
 printf 'management_api_base=http://localhost:7\n' >> "${PROFILE_CONFIG}"
 setup_http_log
 setup_mock_http "${WHOAMI_MOCK}"
-ALTERTABLE_API_KEY=atm_env "${CLI}" whoami >/dev/null 2>&1
+ALTERTABLE_API_KEY=atm_env "${CLI}" context >/dev/null 2>&1
 grep -q '^URL=http://localhost:7/rest/v1/whoami$' "${HTTP_LOG}" || fail "mgmt: stored root should be used, got '$(grep '^URL=' "${HTTP_LOG}")'"
 teardown_mock_http
 teardown_http_log
@@ -53,7 +53,7 @@ pass "a stored management_api_base root is honored"
 setup_http_log
 setup_mock_http "${WHOAMI_MOCK}"
 ALTERTABLE_API_KEY=atm_env ALTERTABLE_MANAGEMENT_API_BASE=http://localhost:8/ \
-  "${CLI}" whoami >/dev/null 2>&1
+  "${CLI}" context >/dev/null 2>&1
 grep -q '^URL=http://localhost:8/rest/v1/whoami$' "${HTTP_LOG}" || fail "mgmt: trailing slash should be trimmed, got '$(grep '^URL=' "${HTTP_LOG}")'"
 teardown_mock_http
 teardown_http_log
@@ -62,7 +62,7 @@ pass "a trailing slash on the control-plane root is trimmed"
 # ── 500 with an HTML body: friendly message, HTML never leaked ──
 "${CLI}" configure --api-key atm_stored --env production >/dev/null 2>&1
 setup_mock_http '[{"urlPattern":"/whoami","method":"GET","status":500,"body":"<html><body>Internal Server Error</body></html>"}]'
-ERR="$("${CLI}" whoami 2>&1 >/dev/null)"
+ERR="$("${CLI}" context 2>&1 >/dev/null)"
 teardown_mock_http
 echo "${ERR}" | grep -q "Server error (500)" || fail "500: expected friendly server error, got '${ERR}'"
 echo "${ERR}" | grep -q "<html>" && fail "500: HTML body must not be displayed, got '${ERR}'"
@@ -70,7 +70,7 @@ pass "a 5xx HTML error page shows a friendly message and never leaks the HTML"
 
 # ── 401 with a JSON body: friendly message + extracted message ──
 setup_mock_http '[{"urlPattern":"/whoami","method":"GET","status":401,"body":"{\"error\":{\"message\":\"invalid api key\"}}"}]'
-ERR="$("${CLI}" whoami 2>&1 >/dev/null)"
+ERR="$("${CLI}" context 2>&1 >/dev/null)"
 teardown_mock_http
 echo "${ERR}" | grep -q "Authentication failed (401)" || fail "401: expected auth-failed message, got '${ERR}'"
 echo "${ERR}" | grep -q "invalid api key" || fail "401: expected extracted JSON message, got '${ERR}'"
@@ -78,16 +78,21 @@ pass "a 401 shows an authentication message and the JSON error detail"
 
 # ── 404 with a JSON body lacking a message: friendly message, no HTML leak ──
 setup_mock_http '[{"urlPattern":"/whoami","method":"GET","status":404,"body":"{\"error\":{\"code\":\"not_found\"}}"}]'
-ERR="$("${CLI}" whoami 2>&1 >/dev/null)"
+ERR="$("${CLI}" context 2>&1 >/dev/null)"
 teardown_mock_http
 echo "${ERR}" | grep -q "Not found (404)" || fail "404: expected not-found message, got '${ERR}'"
 pass "a 404 shows a not-found message"
 
-# ── no api-key configured → clear error ──
+# ── no api-key configured → context shows local session; api /whoami errors ──
 "${CLI}" configure --clear >/dev/null 2>&1
-ERR="$("${CLI}" whoami 2>&1 >/dev/null)"
+OUT="$("${CLI}" context 2>/dev/null)"
+echo "${OUT}" | grep -Fq 'Management:' || fail "context: expected Management line, got '${OUT}'"
+echo "${OUT}" | grep -Fq 'not set' || fail "context: expected unset management, got '${OUT}'"
+pass "context works without management API key"
+
+ERR="$("${CLI}" api GET /whoami 2>&1 >/dev/null)"
 echo "${ERR}" | grep -q "No management API key" || fail "mgmt: expected 'No management API key' error, got '${ERR}'"
-pass "missing management API key errors clearly"
+pass "api GET /whoami errors clearly without management API key"
 
 # ── HTTP invocations (reconfigure auth + env) ──
 "${CLI}" configure --api-key atm_stored --env production >/dev/null 2>&1

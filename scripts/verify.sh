@@ -67,7 +67,7 @@ run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
 
 cd "${REPO_ROOT}"
-for script in configure management whoami catalogs scripting profile; do
+for script in configure management context catalogs scripting profile; do
   run_step "tests/${script}_test.sh" "./tests/${script}_test.sh"
 done
 

@@ -26,6 +26,7 @@ describe("buildCompletionSpec", () => {
       meta: { name: "altertable" },
       args: {
         json: { type: "boolean", description: "Output raw JSON" },
+        format: { type: "enum", options: ["json", "table"] },
       },
       subCommands: {
         alpha: {
@@ -43,7 +44,8 @@ describe("buildCompletionSpec", () => {
     };
 
     const spec = buildCompletionSpec(root);
-    expect(spec.flags.map((flag) => flag.name)).toEqual(["json"]);
+    expect(spec.flags.map((flag) => flag.name)).toEqual(["format", "json"]);
+    expect(spec.flags.find((flag) => flag.name === "format")?.values).toEqual(["json", "table"]);
     expect(spec.subcommands).toHaveLength(1);
     expect(spec.subcommands[0]?.name).toBe("alpha");
     expect(spec.subcommands[0]?.subcommands.map((node) => node.name)).toEqual(["sub"]);
@@ -68,7 +70,7 @@ describe("buildCompletionSpec", () => {
     const api = findNode(spec, "api");
 
     expect(findNode(spec, "query")).toBeDefined();
-    expect(findNode(spec, "agent")).toBeUndefined();
+    expect(spec.flags.some((flag) => flag.name === "agent")).toBe(true);
     expect(catalogs).toBeDefined();
     expect(api).toBeDefined();
     expect(findNode(spec, "connections")).toBeUndefined();
@@ -101,6 +103,28 @@ describe("buildCompletionSpec", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     expect(spec.flags.some((flag) => flag.name === "json")).toBe(true);
     expect(spec.flags.some((flag) => flag.name === "debug")).toBe(true);
+  });
+
+  test("extracts fixed flag values from real commands", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const query = findNode(spec, "query");
+    const completion = findNode(spec, "completion");
+
+    expect(query?.flags.find((flag) => flag.name === "layout")?.values).toEqual([
+      "auto",
+      "table",
+      "line",
+    ]);
+    expect(query?.flags.find((flag) => flag.name === "pager")?.values).toEqual([
+      "auto",
+      "always",
+      "never",
+    ]);
+    expect(completion?.flags.find((flag) => flag.name === "shell")?.values).toEqual([
+      "bash",
+      "zsh",
+      "fish",
+    ]);
   });
 
   test("sorts subcommands alphabetically", () => {
@@ -153,6 +177,14 @@ describe("formatBashCompletion", () => {
     expect(output).toContain("--field");
     expect(output).toContain("--body");
   });
+
+  test("includes flag value completions", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const output = formatBashCompletion(spec);
+    expect(output).toContain("_altertable_complete_flag_value");
+    expect(output).toContain('"--layout=auto,table,line"');
+    expect(output).toContain('"--pager=auto,always,never"');
+  });
 });
 
 describe("collectCompletionContexts", () => {
@@ -175,6 +207,14 @@ describe("formatFishCompletion", () => {
     const output = formatFishCompletion(spec);
     expect(output).toContain("-l field");
   });
+
+  test("includes flag value completions", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const output = formatFishCompletion(spec);
+    expect(output).toContain(
+      "-l layout -d 'Human layout: auto, table, or line' -f -r -a \"auto table line\"",
+    );
+  });
 });
 
 describe("formatZshCompletion", () => {
@@ -183,5 +223,12 @@ describe("formatZshCompletion", () => {
     const output = formatZshCompletion(spec);
     expect(output).toContain("--field");
     expect(output).toContain("--body");
+  });
+
+  test("includes flag value completions", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const output = formatZshCompletion(spec);
+    expect(output).toContain(":layout:(auto table line)");
+    expect(output).toContain(":pager:(auto always never)");
   });
 });

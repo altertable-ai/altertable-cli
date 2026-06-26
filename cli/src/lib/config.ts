@@ -207,12 +207,12 @@ export function resolveManagementApiBase(): string {
   return `${resolveManagementApiRoot()}/rest/v1`;
 }
 
-const QUERY_LAYOUT_VALUES = new Set(["auto", "table", "expanded"]);
+const QUERY_LAYOUT_VALUES = new Set(["auto", "table", "line"]);
 const QUERY_PAGER_VALUES = new Set(["auto", "always", "never"]);
 const MIN_QUERY_MAX_COL_WIDTH = 8;
 
 export function getQueryDefaultMaxColumnWidth(): number | undefined {
-  const value = configGet("query_max_col_width");
+  const value = configGet("query_max_width");
   if (value.length === 0) {
     return undefined;
   }
@@ -223,13 +223,13 @@ export function getQueryDefaultMaxColumnWidth(): number | undefined {
   return parsed;
 }
 
-export function getQueryDefaultLayout(): "auto" | "table" | "expanded" | undefined {
+export function getQueryDefaultLayout(): "auto" | "table" | "line" | undefined {
   const value = configGet("query_layout");
   if (value.length === 0) {
     return undefined;
   }
   if (QUERY_LAYOUT_VALUES.has(value)) {
-    return value as "auto" | "table" | "expanded";
+    return value as "auto" | "table" | "line";
   }
   return undefined;
 }

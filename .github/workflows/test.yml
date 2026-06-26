@@ -83,8 +83,8 @@ jobs:
       - name: Run Management Tests
         run: ./tests/management_test.sh
 
-      - name: Run Whoami Tests
-        run: ./tests/whoami_test.sh
+      - name: Run Context Tests
+        run: ./tests/context_test.sh
 
       - name: Run Catalogs Tests
         run: ./tests/catalogs_test.sh

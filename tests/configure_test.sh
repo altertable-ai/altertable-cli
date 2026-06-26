@@ -109,13 +109,30 @@ echo "${OUT}" | grep -Fq "${CRED_FILE}" || fail "--show: should show the credent
 "${CLI}" configure --show >/dev/null 2>&1 || fail "--show: should exit 0"
 pass "--show shows the stored mechanism, masks secrets, names the secret store, exits 0"
 
-# ── interactive ──
+# ── non-TTY bare configure rejects without flags ──
 rm -f "${CONFIG_FILE}" "${CRED_FILE}"
 rm -rf "${TEST_HOME}/profiles"
-printf 'alice\nsecret\n' | "${CLI}" configure >/dev/null 2>&1
-grep -q '^user=alice$' "${PROFILE_CONFIG}" || fail "interactive: should store the username"
-grep -q '^profile/default/lakehouse/password=secret$' "${CRED_FILE}" || fail "interactive: should store the password"
-pass "interactive configure stores lakehouse credentials"
+ERR="$("${CLI}" configure 2>&1 >/dev/null)" && fail "bare configure without TTY should error"
+echo "${ERR}" | grep -q 'Interactive configure requires a TTY' || fail "expected non-TTY error, got '${ERR}'"
+pass "bare configure without TTY requires flags"
+
+# ── flag-based configure stores lakehouse credentials ──
+rm -f "${CONFIG_FILE}" "${CRED_FILE}"
+rm -rf "${TEST_HOME}/profiles"
+"${CLI}" configure --user alice --password secret >/dev/null 2>&1
+grep -q '^user=alice$' "${PROFILE_CONFIG}" || fail "flags: should store the username"
+grep -q '^profile/default/lakehouse/password=secret$' "${CRED_FILE}" || fail "flags: should store the password"
+pass "flag-based configure stores lakehouse credentials"
+
+# ── configure --verify (management) ──
+rm -f "${CONFIG_FILE}" "${CRED_FILE}"
+rm -rf "${TEST_HOME}/profiles"
+setup_http_log
+setup_mock_http "${WHOAMI_MOCK}"
+"${CLI}" configure --api-key atm_x --env prod --control-plane-url http://localhost:13000 --verify >/dev/null 2>&1 || fail "--verify should exit 0 on successful context lookup"
+teardown_mock_http
+teardown_http_log
+pass "--verify checks management credentials after save"
 
 # ── stored credentials drive authentication ──
 rm -f "${CONFIG_FILE}" "${CRED_FILE}"
@@ -187,7 +204,7 @@ rm -rf "${TEST_HOME}/profiles"
 "${CLI}" configure --api-key atm_x --env prod --control-plane-url http://localhost:13000 >/dev/null 2>&1
 setup_http_log
 setup_mock_http "${WHOAMI_MOCK}"
-"${CLI}" whoami >/dev/null 2>&1
+"${CLI}" context >/dev/null 2>&1
 URL="$(http_log_url)"
 teardown_mock_http
 teardown_http_log
