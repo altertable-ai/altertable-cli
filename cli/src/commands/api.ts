@@ -11,6 +11,35 @@ import { renderFixedTable } from "@/lib/table-format.ts";
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
+const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>([
+  "spec",
+  "routes",
+  ...HTTP_METHOD_NAMES,
+]);
+
+function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
+  for (const arg of rawArgs) {
+    if (arg === "--") {
+      return undefined;
+    }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    return arg;
+  }
+  return undefined;
+}
+
+function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
+  const subCommandName = firstPositionalRawArg(rawArgs);
+  if (!subCommandName) {
+    return false;
+  }
+  if (API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName)) {
+    return true;
+  }
+  return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
+}
 
 const API_HTTP_ARGS = withManagementFormatArg({
   method: {
@@ -185,6 +214,9 @@ export const apiCommand = defineAltertableCommand({
     ...apiMethodSubCommands,
   },
   async run({ args, rawArgs, sink }) {
+    if (isDelegatedApiSubCommand(rawArgs)) {
+      return;
+    }
     await runApiHttp(buildApiHttpArgs(args, rawArgs), sink);
   },
 });
