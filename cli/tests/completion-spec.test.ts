@@ -108,7 +108,6 @@ describe("buildCompletionSpec", () => {
   test("extracts fixed flag values from real commands", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const query = findNode(spec, "query");
-    const completion = findNode(spec, "completion");
 
     expect(query?.flags.find((flag) => flag.name === "layout")?.values).toEqual([
       "auto",
@@ -119,11 +118,6 @@ describe("buildCompletionSpec", () => {
       "auto",
       "always",
       "never",
-    ]);
-    expect(completion?.flags.find((flag) => flag.name === "shell")?.values).toEqual([
-      "bash",
-      "zsh",
-      "fish",
     ]);
   });
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   classifyStringDataType,
   formatCommandExamplesSection,
+  formatTerminalMarkdownLinks,
   formatTerminalLabelValue,
   formatTerminalSection,
   formatTerminalUrls,
@@ -252,6 +253,23 @@ describe("terminal-style", () => {
     process.env.OSC_HYPERLINK = "0";
     expect(shouldUseTerminalHyperlinks()).toBe(false);
     expect(terminalLink("docs", "https://example.com")).toBe("docs");
+  });
+
+  test("formatTerminalMarkdownLinks renders clickable labeled links when supported", () => {
+    enableTerminalColorForTests();
+    process.env.OSC_HYPERLINK = "1";
+    const output = formatTerminalMarkdownLinks("[Docs](https://example.com)");
+
+    expect(output).toContain("\u001b]8;;https://example.com\u0007");
+    expect(output).toContain("Docs");
+    expect(output).not.toContain("[Docs]");
+  });
+
+  test("formatTerminalMarkdownLinks falls back to label and URL without color", () => {
+    process.env.NO_COLOR = "1";
+    expect(formatTerminalMarkdownLinks("[Docs](https://example.com)")).toBe(
+      "Docs (https://example.com)",
+    );
   });
 
   test("linkifyUrls option decorates configure label values", () => {
