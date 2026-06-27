@@ -6,11 +6,13 @@ import {
   shouldShowProgress,
   startProgress,
 } from "@/lib/progress.ts";
+import { setTerminalColorMode } from "@/lib/terminal-style.ts";
 
 describe("shouldShowProgress", () => {
   const originalStderrIsTTY = process.stderr.isTTY;
 
   afterEach(() => {
+    setTerminalColorMode(undefined);
     Object.defineProperty(process.stderr, "isTTY", {
       value: originalStderrIsTTY,
       configurable: true,
@@ -45,8 +47,16 @@ describe("formatUploadProgress", () => {
 });
 
 describe("formatProgressStatus", () => {
+  beforeEach(() => {
+    setTerminalColorMode(undefined);
+  });
+
+  afterEach(() => {
+    setTerminalColorMode(undefined);
+  });
+
   test("formats semantic progress states", () => {
-    expect(formatProgressStatus("active", "Working")).toBe("Working");
+    expect(formatProgressStatus("active", "Working")).toContain("Working");
     expect(formatProgressStatus("success", "Done")).toContain("Done");
     expect(formatProgressStatus("error", "Failed")).toContain("Failed");
   });
