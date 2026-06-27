@@ -49,7 +49,7 @@ describe("auth", () => {
   test("requireManagementEnv throws ConfigurationError when environment is missing", () => {
     expect(() => requireManagementEnv()).toThrow(ConfigurationError);
     expect(() => requireManagementEnv()).toThrow(
-      "No environment set. Run 'altertable configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
+      "No environment set. Run 'altertable env use <name>', pass --env <name>, or set ALTERTABLE_ENV.",
     );
   });
 

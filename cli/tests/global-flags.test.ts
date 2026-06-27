@@ -18,15 +18,15 @@ describe("parseGlobalFlags", () => {
     expect(context.json).toBe(false);
   });
 
-  test("parses --profile from argv", () => {
-    const context = parseGlobalFlags(["--profile", "staging", "--help"]);
+  test("parses --org from argv", () => {
+    const context = parseGlobalFlags(["--org", "staging", "--help"]);
     expect(context.profile).toBe("staging");
   });
 
-  test("ignores configure --profile when parsing early global flags", () => {
+  test("ignores configure --org when parsing early global flags", () => {
     const context = parseGlobalFlags([
       "configure",
-      "--profile",
+      "--org",
       "production",
       "--api-key",
       "atm_prod",
@@ -36,9 +36,14 @@ describe("parseGlobalFlags", () => {
     expect(context.profile).toBeUndefined();
   });
 
-  test("parses global --profile before a subcommand", () => {
-    const context = parseGlobalFlags(["--profile", "staging", "context"]);
+  test("parses global --org before a subcommand", () => {
+    const context = parseGlobalFlags(["--org", "staging", "context"]);
     expect(context.profile).toBe("staging");
+  });
+
+  test("parses global --env before a subcommand", () => {
+    const context = parseGlobalFlags(["--env", "production", "context"]);
+    expect(context.environment).toBe("production");
   });
 
   test("parses --no-color", () => {

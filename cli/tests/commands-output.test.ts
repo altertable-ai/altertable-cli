@@ -99,11 +99,11 @@ describe("writeCommandOutput", () => {
     runWithCliRuntime(runtime, () => {
       writeCommandOutput({
         kind: "ack",
-        data: { active_profile: "staging" },
-        metadataMessage: "Active profile set to staging.",
+        data: { active_org: "staging" },
+        metadataMessage: "Active org set to staging.",
       });
     });
-    expect(stdout).toEqual([JSON.stringify({ active_profile: "staging" }, null, 2)]);
+    expect(stdout).toEqual([JSON.stringify({ active_org: "staging" }, null, 2)]);
   });
 
   test("ack writes metadata in human mode", () => {
@@ -113,8 +113,8 @@ describe("writeCommandOutput", () => {
     runWithCliRuntime(runtime, () => {
       writeCommandOutput({
         kind: "ack",
-        data: { active_profile: "staging" },
-        metadataMessage: "Active profile set to staging.",
+        data: { active_org: "staging" },
+        metadataMessage: "Active org set to staging.",
       });
     });
     if (previousNoColor === undefined) {
@@ -122,7 +122,7 @@ describe("writeCommandOutput", () => {
     } else {
       process.env.NO_COLOR = previousNoColor;
     }
-    expect(stderr).toEqual(["Active profile set to staging."]);
+    expect(stderr).toEqual(["Active org set to staging."]);
   });
 });
 

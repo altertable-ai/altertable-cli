@@ -16,7 +16,7 @@ trap cleanup EXIT
 setup_mock_http '[{"urlPattern":"/whoami","method":"GET","body":"{\"principal\":{\"type\":\"User\",\"name\":\"Jane Doe\",\"email\":\"jane@x.io\"},\"organization\":{\"name\":\"Acme\",\"slug\":\"acme\"}}"}]'
 OUT="$("${CLI}" context 2>/dev/null)"
 teardown_mock_http
-echo "${OUT}" | grep -Fq 'Profile:' || fail "context profile line missing: '${OUT}'"
+echo "${OUT}" | grep -Fq 'Organization:' || fail "context organization line missing: '${OUT}'"
 echo "${OUT}" | grep -Fq 'User:' || fail "context user line wrong: '${OUT}'"
 echo "${OUT}" | grep -Fq 'Jane Doe <jane@x.io>' || fail "context user line wrong: '${OUT}'"
 echo "${OUT}" | grep -Fq 'Organization:' || fail "context org line wrong: '${OUT}'"
@@ -38,9 +38,9 @@ setup_mock_http '[{"urlPattern":"/whoami","method":"GET","body":"{\"principal\":
 OUT="$("${CLI}" --agent context 2>/dev/null)"
 teardown_mock_http
 PRINCIPAL=$(echo "${OUT}" | jq -r '.principal.name')
-PROFILE=$(echo "${OUT}" | jq -r '.profile')
+ORG=$(echo "${OUT}" | jq -r '.org')
 [[ "${PRINCIPAL}" == "Jane Doe" ]] || fail "context --agent: expected principal.name 'Jane Doe', got '${PRINCIPAL}'"
-[[ "${PROFILE}" == "default" ]] || fail "context --agent: expected profile 'default', got '${PROFILE}'"
+[[ "${ORG}" == "Acme (acme)" ]] || fail "context --agent: expected org 'Acme (acme)', got '${ORG}'"
 pass "context --agent returns structured session JSON"
 
 # ── ServiceAccount principal ──

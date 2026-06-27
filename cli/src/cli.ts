@@ -11,7 +11,8 @@ import {
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
 import { configureCommand } from "@/commands/configure.ts";
-import { profileCommand } from "@/commands/profile.ts";
+import { orgCommand } from "@/commands/org.ts";
+import { envCommand } from "@/commands/env.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
 import {
@@ -56,7 +57,8 @@ export function buildMainCommand(): CommandDef {
 
   const topLevelCommands: Record<string, CommandDef> = {
     configure: configureCommand,
-    profile: profileCommand,
+    env: envCommand,
+    org: orgCommand,
     context: contextCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
@@ -91,9 +93,13 @@ export function buildMainCommand(): CommandDef {
         type: "boolean",
         description: "Disable terminal colors and styling",
       },
-      profile: {
+      org: {
         type: "string",
-        description: "Use a named profile for this command only",
+        description: "Use a configured org for this command only",
+      },
+      env: {
+        type: "string",
+        description: "Use an environment for this command only",
       },
       "connect-timeout": {
         type: "string",

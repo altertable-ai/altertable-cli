@@ -22,7 +22,7 @@ function isProfileScopedKey(key: string): boolean {
 }
 
 function resolveConfigProfile(override?: string): string {
-  return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
+  return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_ORG);
 }
 
 function trim(value: string): string {
@@ -190,7 +190,7 @@ export function resolveApiBase(): string {
   return normalized;
 }
 
-function resolveManagementApiRoot(): string {
+export function resolveManagementApiRoot(): string {
   let root = process.env.ALTERTABLE_MANAGEMENT_API_BASE ?? "";
   if (!root) {
     root = configGet("management_api_base");

@@ -43,13 +43,13 @@ afterEach(async () => {
 });
 
 describe("active context formatters", () => {
-  test("summary shows profile and credential gaps when unconfigured", async () => {
+  test("summary shows org and credential gaps when unconfigured", async () => {
     await runInTestHome(async () => {
       configureClearAll();
       const summary = formatActiveContextSummary(buildActiveContext());
       expect(summary).not.toContain("CONTEXT");
-      expect(summary).toContain("PROFILE");
-      expect(summary).toMatch(/\n  PROFILE/);
+      expect(summary).toContain("ORG");
+      expect(summary).toMatch(/\n  ORG/);
       expect(summary).toContain("not set");
       expect(summary).toContain("altertable configure");
     });
@@ -66,7 +66,7 @@ describe("active context formatters", () => {
         }),
       );
       expect(details).not.toContain("CONTEXT\n");
-      expect(details).toContain("Profile:");
+      expect(details).toContain("Organization:");
       expect(details).toContain("Environment:");
       expect(details).toContain("production");
       expect(details).toContain("Jane Doe <jane@x.io>");
@@ -82,17 +82,17 @@ describe("active context formatters", () => {
         organization: { name: "Acme", slug: "acme" },
       });
       const json = activeContextToJson(context);
-      expect(json.profile).toBe("default");
+      expect(json.org).toBe("Acme (acme)");
       expect(json.environment).toBe("production");
       expect((json.principal as { email?: string }).email).toBe("jane@x.io");
     });
   });
 
-  test("tryFormatActiveContextSummary renders an empty profile", async () => {
+  test("tryFormatActiveContextSummary renders an empty org", async () => {
     await runInTestHome(async () => {
       configureClearAll();
       const summary = tryFormatActiveContextSummary("staging");
-      expect(summary).toContain("PROFILE");
+      expect(summary).toContain("ORG");
       expect(summary).toContain("staging");
       expect(summary).toContain("not set");
     });

@@ -38,7 +38,7 @@ afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
   delete process.env.ALTERTABLE_SECRET_BACKEND;
-  delete process.env.ALTERTABLE_PROFILE;
+  delete process.env.ALTERTABLE_ORG;
 });
 
 describe("profiles layout", () => {
@@ -61,11 +61,11 @@ describe("resolveProfileName", () => {
     expect(resolveProfileName(getCliContext().profile)).toBe("staging");
   });
 
-  test("prefers ALTERTABLE_PROFILE over active profile", async () => {
+  test("prefers ALTERTABLE_ORG over active profile", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     setActiveProfile("default");
-    process.env.ALTERTABLE_PROFILE = "staging";
+    process.env.ALTERTABLE_ORG = "staging";
     expect(resolveProfileName()).toBe("staging");
   });
 
@@ -106,7 +106,7 @@ describe("profile storage", () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     setActiveProfile("staging");
-    expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
+    expect(() => deleteProfile("staging")).toThrow("Cannot delete the active org");
   });
 
   test("deleteProfile refuses to delete the last profile", async () => {

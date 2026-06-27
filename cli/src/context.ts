@@ -6,6 +6,7 @@ export type CliContext = {
   json: boolean;
   agent: boolean;
   noColor?: boolean;
+  environment?: string;
   profile?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;

@@ -95,11 +95,11 @@ describe("renderAltertableUsage active context", () => {
       });
       setCliRuntime(runtime);
       const usage = await renderAltertableUsage(buildMainCommand());
-      expect(usage).toContain("PROFILE");
+      expect(usage).toContain("ORG");
       expect(usage).toContain("production");
       expect(usage).not.toContain("(altertable");
-      expect(visibleTerminalText(usage)).toMatch(/\n  PROFILE/);
-      const profileIndex = usage.indexOf("PROFILE");
+      expect(visibleTerminalText(usage)).toMatch(/\n  ORG/);
+      const profileIndex = usage.indexOf("ORG");
       const usageIndex = usage.indexOf("USAGE");
       expect(profileIndex).toBeGreaterThan(-1);
       expect(usageIndex).toBeGreaterThan(profileIndex);

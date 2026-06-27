@@ -174,7 +174,7 @@ describe("terminal-style", () => {
     expect(terminalWarning("careful")).toContain("\u001b[93mcareful\u001b[39m");
     expect(terminalError("failed")).toContain("\u001b[31mfailed\u001b[39m");
     expect(terminalSectionHeader("Usage")).toContain("USAGE");
-    expect(terminalLabel("Active profile:")).toContain("\u001b[2mActive profile:\u001b[22m");
+    expect(terminalLabel("Active org:")).toContain("\u001b[2mActive org:\u001b[22m");
   });
 
   test("maps each data type to a dedicated color", () => {

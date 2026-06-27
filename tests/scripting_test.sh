@@ -145,15 +145,15 @@ echo "${STDERR}" | jq -e '.error == true and .exit_code == 9 and .code == "netwo
   || fail "network: expected JSON error, got '${STDERR}'"
 pass "network: --json context exits 9 on unreachable host"
 
-# ── Profile show missing (ConfigurationError → exit 10) ──
+# ── Org show missing (ConfigurationError → exit 10) ──
 set +e
-STDERR="$("${CLI}" --json profile show --name missing-profile 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json org show --name missing-org 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
-[[ "${EXIT_CODE}" -eq 10 ]] || fail "profile show missing: expected exit 10, got ${EXIT_CODE}"
+[[ "${EXIT_CODE}" -eq 10 ]] || fail "org show missing: expected exit 10, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 10 and .code == "configuration_error"' >/dev/null \
-  || fail "profile show missing: expected JSON error, got '${STDERR}'"
-pass "profile show missing: exits 10 with configuration_error"
+  || fail "org show missing: expected JSON error, got '${STDERR}'"
+pass "org show missing: exits 10 with configuration_error"
 
 # ── Usage (missing required arg → exit 1) ──
 set +e

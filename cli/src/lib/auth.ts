@@ -1,4 +1,5 @@
 import { configGet } from "@/lib/config.ts";
+import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { secretGet } from "@/lib/secrets.ts";
 
@@ -46,14 +47,14 @@ export function getManagementAuthHeader(): string {
 }
 
 function managementEnv(): string {
-  return process.env.ALTERTABLE_ENV ?? configGet("api_key_env");
+  return getCliContext().environment ?? process.env.ALTERTABLE_ENV ?? configGet("api_key_env");
 }
 
 export function requireManagementEnv(): string {
   const env = managementEnv();
   if (!env) {
     throw new ConfigurationError(
-      "No environment set. Run 'altertable configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
+      "No environment set. Run 'altertable env use <name>', pass --env <name>, or set ALTERTABLE_ENV.",
     );
   }
   return env;

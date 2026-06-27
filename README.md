@@ -16,7 +16,7 @@ Query and manage your Altertable data platform from the terminal.
   - [Management API key](#management-api-key)
   - [Lakehouse credentials](#lakehouse-credentials)
   - [Dual-plane model](#dual-plane-model)
-  - [Profiles](#profiles)
+  - [Orgs and environments](#orgs-and-environments)
   - [Credential precedence](#credential-precedence)
 - [Commands](#commands)
   - [Lakehouse](#lakehouse)
@@ -167,39 +167,45 @@ export ALTERTABLE_LAKEHOUSE_PASSWORD="your_password"
 
 Rules for updating credentials:
 
-- Separate `configure` invocations — lakehouse and management credentials coexist in the active profile.
+- Separate `configure` invocations — lakehouse and management credentials coexist in the active org.
 - Within one `configure` invocation — only one plane may be written.
 - Within the same plane — a new value replaces the previous one.
 - Environment variables override stored credentials when set.
 - `altertable configure --clear` removes **both** planes and resets endpoint overrides.
 
-### Profiles
+### Orgs and environments
 
-Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
+Named orgs store credentials and endpoint overrides for an Altertable organization. Each org also stores the last selected environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all orgs.
 
 ```bash
-# Set up multiple environments
-altertable configure --profile staging --api-key atm_xxx --env staging
-altertable configure --profile production --api-key atm_yyy --env production
+# Set up multiple orgs
+altertable configure --org acme --api-key atm_xxx --env production
+altertable configure --org umbrella --api-key atm_yyy --env sandbox
 
-# Switch active profile
-altertable profile use staging
+# Switch active org
+altertable org use acme
 
-# Use a profile for one command
-altertable --profile production context
+# Switch active environment inside the active org
+altertable env use staging
 
-# Inspect profiles
-export ALTERTABLE_PROFILE=staging
-altertable profile list
-altertable profile show staging
+# Use an org/environment for one command
+altertable --org umbrella --env sandbox context
+
+# Inspect organizations and environments from the API
+export ALTERTABLE_ORG=acme
+altertable org list
+altertable org show acme
+altertable env list
+altertable env show
 ```
 
-Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
+Organization selection precedence: `--org` flag → `ALTERTABLE_ORG` env var → active organization config → `default`.
+Environment selection precedence: `--env` flag → `ALTERTABLE_ENV` env var → organization `api_key_env`.
 
 | Scope                              | Keys                                                               |
 | ---------------------------------- | ------------------------------------------------------------------ |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`           |
+| Org (`profiles/<name>/config`)     | `user`, `api_key_env`, `api_base`, `management_api_base`           |
 
 ### Credential precedence
 
@@ -208,7 +214,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Priority    | API key                  | Environment slug      | Control-plane base               |
 | ----------- | ------------------------ | --------------------- | -------------------------------- |
 | 1 (highest) | `ALTERTABLE_API_KEY`     | `ALTERTABLE_ENV`      | `ALTERTABLE_MANAGEMENT_API_BASE` |
-| 2           | profile secret `api-key` | profile `api_key_env` | profile `management_api_base`    |
+| 2           | org secret `api-key` | org `api_key_env` | org `management_api_base`    |
 | 3 (default) | —                        | —                     | `https://app.altertable.ai`      |
 
 **Lakehouse plane**
@@ -216,10 +222,10 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Priority | Credentials                                                       | Data-plane base             |
 | -------- | ----------------------------------------------------------------- | --------------------------- |
 | 1        | `ALTERTABLE_BASIC_AUTH_TOKEN`                                     | `ALTERTABLE_API_BASE`       |
-| 2        | `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` | profile `api_base`          |
+| 2        | `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` | org `api_base`          |
 | 3        | stored basic token / user+password                                | `https://api.altertable.ai` |
 
-> **Note:** Setting `ALTERTABLE_ENV` overrides the slug in `/environments/{env}/…` paths without changing the Bearer token. Make sure the env var, stored `api_key_env`, and API key permissions all refer to the same environment.
+> **Note:** Setting `ALTERTABLE_ENV` or passing `--env` overrides the slug in `/environments/{env}/…` paths without changing the Bearer token. Make sure the selected org and environment belong together.
 
 You can also override endpoints per-command with flags:
 
@@ -357,7 +363,8 @@ These flags apply to every command and must be placed before the subcommand:
 
 | Flag                    | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
-| `--profile <name>`      | Use a named profile for this invocation                                     |
+| `--org <name>`          | Use a configured org for this invocation                                    |
+| `--env <name>`          | Use an environment for this invocation                                      |
 | `--json`                | Output raw JSON (machine-readable success; JSON error envelope on stderr)   |
 | `--agent`               | Agent preset: structured JSON output, no pager, colors, or terminal styling |
 | `--debug`, `-d`         | Enable debug output                                                         |
@@ -387,7 +394,7 @@ With `--json`, success stdout follows one of three contracts:
 
 1. **Raw API** — verbatim API response body (`validate`, most `api *` commands).
 2. **Normalized query** — `{ metadata, columns, rows }` from `query --format json`, `query --json`, or `altertable --agent query` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, environment, principal, … }` from `context --json`.
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ orgs: [...] }` from `org list --json`, or `{ org, environment, principal, … }` from `context --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 

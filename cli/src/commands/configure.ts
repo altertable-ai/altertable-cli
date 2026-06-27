@@ -2,6 +2,7 @@ import {
   configureRunClear,
   configureRunSet,
   configureRunShow,
+  configureRunShowForProfile,
   buildConfigureShowDataForProfile,
   type ConfigureOptions,
 } from "@/lib/configure.ts";
@@ -26,7 +27,7 @@ type ConfigureCommandArgs = {
   "api-key-stdin"?: boolean;
   show?: boolean;
   clear?: boolean;
-  profile?: string;
+  org?: string;
   "data-plane-url"?: string;
   "control-plane-url"?: string;
   "allow-insecure-http"?: boolean;
@@ -35,9 +36,9 @@ type ConfigureCommandArgs = {
 };
 
 const configurePlaneArgs = {
-  profile: {
+  org: {
     type: "string",
-    description: "Profile to configure (default: active profile)",
+    description: "Org to configure (default: active org)",
   },
   verify: { type: "boolean", description: "Verify credentials after saving" },
   "no-verify": { type: "boolean", description: "Skip verification" },
@@ -58,7 +59,7 @@ function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
     apiKeyStdin: args["api-key-stdin"],
     dataPlaneUrl: args["data-plane-url"],
     controlPlaneUrl: args["control-plane-url"],
-    profile: args.profile ? String(args.profile) : undefined,
+    profile: args.org ? String(args.org) : undefined,
     allowInsecureHttp: args["allow-insecure-http"],
     verify: args.verify,
   };
@@ -92,13 +93,17 @@ async function runConfigureWizardFromArgs(
 }
 
 async function runConfigureDispatch(args: ConfigureCommandArgs, sink: OutputSink): Promise<void> {
+  const options = buildConfigureOptions(args);
+
   if (args.show) {
-    const configuration = buildConfigureShowDataForProfile();
+    const configuration = buildConfigureShowDataForProfile(options.profile);
     writeCommandOutput(
       {
         kind: "normalized",
         data: { configuration },
-        humanText: configureRunShow(),
+        humanText: options.profile
+          ? configureRunShowForProfile(options.profile)
+          : configureRunShow(),
       },
       sink,
     );
@@ -108,8 +113,6 @@ async function runConfigureDispatch(args: ConfigureCommandArgs, sink: OutputSink
     configureRunClear(sink);
     return;
   }
-
-  const options = buildConfigureOptions(args);
 
   if (hasConfigureCredentialFlags(options)) {
     await runConfigureFromFlags(options, sink);
@@ -165,9 +168,9 @@ export const configureCommand = defineAltertableCommand({
     "password-stdin": { type: "boolean", description: "Read the lakehouse password from stdin" },
     "api-key-stdin": { type: "boolean", description: "Read the management API key from stdin" },
     show: { type: "boolean", description: "Show stored configuration (secrets masked)" },
-    profile: {
+    org: {
       type: "string",
-      description: "Profile to configure (default: active profile)",
+      description: "Org to configure (default: active org)",
     },
     clear: {
       type: "boolean",

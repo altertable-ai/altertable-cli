@@ -60,9 +60,8 @@ function formatConfiguredValue(detail: string | null | undefined): string {
 }
 
 type ContextSummaryRow = {
-  profile: string;
+  org: string;
   environment: string;
-  management: string;
   lakehouse: string;
 };
 
@@ -82,11 +81,21 @@ function formatStatusCell(value: string): string {
 
 function contextSummaryRow(context: ActiveContext): ContextSummaryRow {
   return {
-    profile: context.profile,
+    org: contextOrganizationLabel(context),
     environment: plainStatus(context.environment),
-    management: plainStatus(context.management),
     lakehouse: plainStatus(context.lakehouse),
   };
+}
+
+function contextOrganizationLabel(context: ActiveContext): string {
+  const organization = context.organization;
+  if (!organization) {
+    return context.profile;
+  }
+  if (organization.name && organization.slug) {
+    return `${organization.name} (${organization.slug})`;
+  }
+  return organization.name || organization.slug || context.profile;
 }
 
 function formatContextSummaryTable(context: ActiveContext): string {
@@ -95,19 +104,14 @@ function formatContextSummaryTable(context: ActiveContext): string {
     [row],
     [
       {
-        header: "PROFILE",
-        cell: (entry) => formatStatusCell(entry.profile),
+        header: "ORG",
+        cell: (entry) => formatStatusCell(entry.org),
         style: "strong",
       },
       {
         header: "ENV",
         cell: (entry) => formatStatusCell(entry.environment),
         style: "accent",
-      },
-      {
-        header: "MGMT",
-        cell: (entry) => formatStatusCell(entry.management),
-        style: "muted",
       },
       {
         header: "LAKEHOUSE",
@@ -130,6 +134,10 @@ function formatContextSummaryLines(context: ActiveContext): string[] {
 }
 
 function resolveEnvironment(showData: ConfigureShowData): string | undefined {
+  const contextEnv = getCliContext().environment;
+  if (contextEnv && contextEnv.length > 0) {
+    return contextEnv;
+  }
   const envOverride = process.env.ALTERTABLE_ENV;
   if (envOverride && envOverride.length > 0) {
     return envOverride;
@@ -139,7 +147,11 @@ function resolveEnvironment(showData: ConfigureShowData): string | undefined {
 
 function formatContextDetailLines(context: ActiveContext): string[] {
   const lines = [
-    formatTerminalLabelValue("Profile:", context.profile, DETAIL_LABEL_OPTIONS),
+    formatTerminalLabelValue(
+      "Organization:",
+      contextOrganizationLabel(context),
+      DETAIL_LABEL_OPTIONS,
+    ),
     formatTerminalLabelValue(
       "Environment:",
       formatConfiguredValue(context.environment),
@@ -154,7 +166,7 @@ function formatContextDetailLines(context: ActiveContext): string[] {
           principal: context.principal ?? {},
           organization: context.organization ?? {},
         },
-        DETAIL_LABEL_OPTIONS,
+        { ...DETAIL_LABEL_OPTIONS, includeOrganization: false },
       ),
     );
   }
@@ -212,7 +224,7 @@ export function withAuthenticatedIdentity(
 
 export function activeContextToJson(context: ActiveContext): Record<string, unknown> {
   return {
-    profile: context.profile,
+    org: contextOrganizationLabel(context),
     environment: context.environment ?? null,
     data_plane: context.data_plane,
     control_plane: context.control_plane,

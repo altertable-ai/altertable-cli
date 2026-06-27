@@ -2,7 +2,12 @@ import type { CliContext } from "@/context.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { parseTimeoutSeconds, readArgvFlagValue } from "@/lib/timeout-args.ts";
 
-const GLOBAL_ARGV_FLAGS_WITH_VALUE = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
+const GLOBAL_ARGV_FLAGS_WITH_VALUE = new Set([
+  "--org",
+  "--env",
+  "--connect-timeout",
+  "--read-timeout",
+]);
 
 function findFirstSubcommandIndex(argv: readonly string[]): number {
   for (let index = 0; index < argv.length; index += 1) {
@@ -40,9 +45,14 @@ export function parseGlobalFlags(argv: readonly string[]): CliContext {
     context.readTimeoutMs = parseTimeoutSeconds(readTimeout, "--read-timeout");
   }
 
-  const profile = readGlobalArgvFlagValue(argv, "--profile");
-  if (profile !== undefined && profile.length > 0) {
-    context.profile = profile;
+  const org = readGlobalArgvFlagValue(argv, "--org");
+  if (org !== undefined && org.length > 0) {
+    context.profile = org;
+  }
+
+  const env = readGlobalArgvFlagValue(argv, "--env");
+  if (env !== undefined && env.length > 0) {
+    context.environment = env;
   }
 
   return context;
@@ -56,9 +66,14 @@ export function parseGlobalFlagsFromArgs(args: Record<string, unknown>): CliCont
     noColor: Boolean(args["no-color"]),
   };
 
-  const profile = asCliArgString(args.profile);
-  if (profile.length > 0) {
-    context.profile = profile;
+  const org = asCliArgString(args.org);
+  if (org.length > 0) {
+    context.profile = org;
+  }
+
+  const env = asCliArgString(args.env);
+  if (env.length > 0) {
+    context.environment = env;
   }
 
   if (args["connect-timeout"] !== undefined) {

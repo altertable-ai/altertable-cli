@@ -96,7 +96,7 @@ export function setActiveProfile(name: string): void {
 export function resolveProfileName(override?: string): string {
   ensureProfilesLayout();
 
-  const explicit = override ?? process.env.ALTERTABLE_PROFILE ?? "";
+  const explicit = override ?? process.env.ALTERTABLE_ORG ?? "";
 
   if (explicit.length > 0) {
     assertSafeProfileName(explicit);
@@ -151,7 +151,7 @@ export function deleteProfile(name: string): void {
   const active = getActiveProfileName();
   if (name === active) {
     throw new ConfigurationError(
-      `Cannot delete the active profile "${name}". Switch with: altertable profile use <name>`,
+      `Cannot delete the active org "${name}". Switch with: altertable org use <name>`,
     );
   }
 
@@ -168,7 +168,7 @@ export function profileScopedSecretAccount(account: string, profileName?: string
     return `profile/${profileName}/${account}`;
   }
   const contextProfile = isCliRuntimeReady() ? getCliContext().profile : undefined;
-  const profile = resolveProfileName(contextProfile ?? process.env.ALTERTABLE_PROFILE);
+  const profile = resolveProfileName(contextProfile ?? process.env.ALTERTABLE_ORG);
   return `profile/${profile}/${account}`;
 }
 

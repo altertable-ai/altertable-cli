@@ -31,6 +31,7 @@ export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
 type WhoamiLabelOptions = {
   indent?: string;
   labelWidth?: number;
+  includeOrganization?: boolean;
 };
 
 export function formatWhoamiIdentityLines(
@@ -43,6 +44,7 @@ export function formatWhoamiIdentityLines(
     indent: labelOptions.indent ?? DETAIL_INDENT,
     labelWidth: labelOptions.labelWidth ?? DETAIL_LABEL_WIDTH,
   };
+  const includeOrganization = labelOptions.includeOrganization ?? true;
 
   const lines: string[] = [];
 
@@ -62,7 +64,7 @@ export function formatWhoamiIdentityLines(
     lines.push(formatTerminalLabelValue("User:", principal.name, options));
   }
 
-  if (organization.name || organization.slug) {
+  if (includeOrganization && (organization.name || organization.slug)) {
     lines.push(
       formatTerminalLabelValue(
         "Organization:",

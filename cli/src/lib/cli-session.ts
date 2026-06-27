@@ -30,7 +30,7 @@ function resolveOptionalManagementEnv(): string | undefined {
 }
 
 export function createCliSession(context: CliContext): CliSession {
-  const profile = resolveProfileName(context.profile ?? process.env.ALTERTABLE_PROFILE);
+  const profile = resolveProfileName(context.profile ?? process.env.ALTERTABLE_ORG);
 
   return {
     profile,
@@ -38,6 +38,6 @@ export function createCliSession(context: CliContext): CliSession {
     managementApiBase: resolveManagementApiBase(),
     lakehouseAuthHeader: tryAuthHeader(getLakehouseAuthHeader),
     managementAuthHeader: tryAuthHeader(getManagementAuthHeader),
-    managementEnv: resolveOptionalManagementEnv(),
+    managementEnv: context.environment ?? resolveOptionalManagementEnv(),
   };
 }

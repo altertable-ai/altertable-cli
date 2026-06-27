@@ -14,7 +14,7 @@ import {
 export const contextCommand = defineAltertableCommand({
   meta: {
     name: "context",
-    description: "Show the active profile, environment, and authenticated identity.",
+    description: "Show the active org, environment, and authenticated identity.",
     examples: ["altertable context", "altertable --json context"],
   },
   async run({ sink }) {

@@ -223,7 +223,7 @@ function configureRunShowInternal(profileOverride?: string): string {
 
   const lines = [
     formatTerminalLabelValue("Config dir:", configDir(), { indent, labelWidth }),
-    formatTerminalLabelValue("Active profile:", displayProfile, { indent, labelWidth }),
+    formatTerminalLabelValue("Active org:", displayProfile, { indent, labelWidth }),
     formatTerminalLabelValue("Secret store:", secretStoreDisplay(), { indent, labelWidth }),
   ];
 
