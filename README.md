@@ -334,7 +334,24 @@ altertable api POST /environments/production/connections --body @postgres-connec
 
 ### Shell completion
 
-Generate and install completion scripts for bash, zsh, or fish:
+Install completion for bash, zsh, or fish:
+
+```bash
+altertable completion install
+```
+
+The CLI detects your shell from `$SHELL`, writes the completion script to the
+standard user directory, and updates your shell startup file when bash or zsh
+needs it. Open a new terminal, or reload your shell, to start using completion.
+
+You can also choose a shell explicitly:
+
+```bash
+altertable completion install zsh
+altertable completion install fish
+```
+
+For manual installs, generate the script without writing files:
 
 ```bash
 # bash
@@ -347,7 +364,7 @@ altertable completion zsh > ~/.local/share/zsh/site-functions/_altertable
 altertable completion fish > ~/.config/fish/completions/altertable.fish
 ```
 
-Omit the shell name and the CLI detects it from `$SHELL`. Reload your shell after installation. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate scripts after upgrading the CLI.
+Omit the shell name and the CLI detects it from `$SHELL`. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
 
 ---
 
