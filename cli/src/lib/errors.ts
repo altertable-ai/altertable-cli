@@ -15,6 +15,8 @@
  * | 9    | EXIT_NETWORK       | NetworkError, TimeoutError       |
  * | 10   | EXIT_CONFIG        | ConfigurationError               |
  */
+import { terminalError } from "@/lib/terminal-style.ts";
+
 export const EXIT_SUCCESS = 0;
 export const EXIT_GENERIC = 1;
 export const EXIT_AUTH = 2;
@@ -270,12 +272,12 @@ export function renderCliErrorJson(error: unknown): string {
 
 export function renderCliError(error: unknown): string {
   if (error instanceof CliError) {
-    return `[ERROR] ${error.message}`;
+    return `${terminalError("ERROR")} ${error.message}`;
   }
   if (error instanceof Error && error.name === "CLIError") {
-    return `[ERROR] ${error.message}`;
+    return `${terminalError("ERROR")} ${error.message}`;
   }
-  return "[ERROR] Unexpected error.";
+  return `${terminalError("ERROR")} Unexpected error.`;
 }
 
 export function getCliExitCode(error: unknown): number {
@@ -290,4 +292,19 @@ export function getCliExitCode(error: unknown): number {
 
 export function isCittyCliError(error: unknown): error is Error & { code: string } {
   return error instanceof Error && error.name === "CLIError" && "code" in error;
+}
+
+export function shouldShowCommandExamplesOnError(error: unknown): boolean {
+  if (!(error instanceof CliError)) {
+    return false;
+  }
+  if (
+    error instanceof HttpError ||
+    error instanceof NetworkError ||
+    error instanceof TimeoutError ||
+    error instanceof ParseError
+  ) {
+    return false;
+  }
+  return error.exitCode === EXIT_GENERIC || error.exitCode === EXIT_CONFIG;
 }

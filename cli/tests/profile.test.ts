@@ -31,7 +31,7 @@ beforeEach(() => {
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
   resetSecretWarningsForTests();
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
 });
 
 afterEach(() => {
@@ -57,7 +57,7 @@ describe("resolveProfileName", () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
 
     setActiveProfile("default");
-    setCliContext({ debug: false, json: false, profile: "staging" });
+    setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
     expect(resolveProfileName(getCliContext().profile)).toBe("staging");
   });
 
@@ -80,7 +80,7 @@ describe("profile storage", () => {
   test("configure creates implicit profile directories", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
-    setCliContext({ debug: false, json: false, profile: "staging" });
+    setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
     expect(configGet("api_key_env")).toBe("staging");
     expect(secretGet("api-key")).toBe("atm_staging");
   });
@@ -96,9 +96,9 @@ describe("profile storage", () => {
   });
 
   test("global query defaults stay in root config across profiles", async () => {
-    configSet("query_layout", "expanded");
+    configSet("query_layout", "line");
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
-    expect(kvGet(join(testHome, "config"), "query_layout")).toBe("expanded");
+    expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
     expect(kvGet(profileConfigFile("staging"), "query_layout")).toBe("");
   });
 

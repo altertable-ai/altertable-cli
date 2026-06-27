@@ -20,11 +20,12 @@ import {
   renderCliError,
   renderCliErrorJson,
   serializeCliError,
+  shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
 
 describe("errors", () => {
   test("renderCliError formats CliError", () => {
-    expect(renderCliError(new CliError("x"))).toBe("[ERROR] x");
+    expect(renderCliError(new CliError("x"))).toBe("ERROR x");
   });
 
   test("ConfigurationError uses EXIT_CONFIG", () => {
@@ -35,9 +36,25 @@ describe("errors", () => {
 
   test("unknown errors render without stack traces", () => {
     const rendered = renderCliError(new TypeError("secret internal detail"));
-    expect(rendered).toBe("[ERROR] Unexpected error.");
+    expect(rendered).toBe("ERROR Unexpected error.");
     expect(rendered).not.toContain("secret internal detail");
     expect(rendered).not.toContain("TypeError");
+  });
+
+  test("shouldShowCommandExamplesOnError is true for usage CliErrors", () => {
+    expect(shouldShowCommandExamplesOnError(new CliError("Endpoint path is required."))).toBe(true);
+    expect(shouldShowCommandExamplesOnError(new ConfigurationError("Not configured."))).toBe(true);
+  });
+
+  test("shouldShowCommandExamplesOnError is false for transport and HTTP errors", () => {
+    expect(
+      shouldShowCommandExamplesOnError(
+        new HttpError({ status: 404, body: "", method: "GET", url: "/x" }),
+      ),
+    ).toBe(false);
+    expect(shouldShowCommandExamplesOnError(new NetworkError())).toBe(false);
+    expect(shouldShowCommandExamplesOnError(new TimeoutError())).toBe(false);
+    expect(shouldShowCommandExamplesOnError(new ParseError("bad json"))).toBe(false);
   });
 });
 
@@ -75,7 +92,7 @@ describe("transport error exit codes", () => {
   });
 
   test("writeRawIfJsonElseHuman throws ParseError on malformed JSON", () => {
-    const runtime = createCliRuntime({ debug: false, json: false });
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     expect(() =>
       runWithCliRuntime(runtime, () => writeRawIfJsonElseHuman("not json", () => "")),
     ).toThrow(ParseError);

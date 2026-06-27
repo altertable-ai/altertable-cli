@@ -1,0 +1,124 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildMainCommand } from "@/cli.ts";
+import { getBootstrapCliContext } from "@/context.ts";
+import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/citty-usage.ts";
+import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
+import { formatCommandExamplesSection } from "@/lib/terminal-style.ts";
+
+const TERMINAL_CONTROL_PATTERN = new RegExp(
+  `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
+  "g",
+);
+
+function visibleTerminalText(text: string): string {
+  return text.replace(TERMINAL_CONTROL_PATTERN, "");
+}
+
+describe("formatCommandExamplesSection", () => {
+  test("returns empty string when there are no examples", () => {
+    expect(formatCommandExamplesSection([])).toBe("");
+  });
+
+  test("renders an EXAMPLES section with indented lines", () => {
+    const section = formatCommandExamplesSection([
+      "altertable api /whoami",
+      "altertable api routes",
+    ]);
+    expect(section).toContain("EXAMPLES");
+    expect(section).toContain("altertable api /whoami");
+    expect(section).toContain("altertable api routes");
+  });
+});
+
+describe("renderAltertableUsage", () => {
+  test("appends command examples to citty usage output", async () => {
+    const command = defineAltertableCommand({
+      meta: {
+        name: "demo",
+        description: "Demo command.",
+        examples: ["altertable demo --flag value"],
+      },
+    });
+
+    const usage = await renderAltertableUsage(command);
+    expect(usage).toContain("Demo command.");
+    expect(usage).not.toContain("(demo)");
+    expect(usage).toContain("EXAMPLES");
+    expect(usage).toContain("altertable demo --flag value");
+  });
+
+  test("resolves api command examples for unknown endpoint errors", async () => {
+    const main = buildMainCommand();
+    const [command] = await resolveSubCommandForUsage(main, ["api", "/environments/production"]);
+    const usage = await renderAltertableUsage(command, main);
+
+    expect(usage).toContain("altertable api /whoami");
+    expect(usage).toContain("altertable api GET /environments/production/connections");
+  });
+});
+
+describe("renderAltertableUsage active context", () => {
+  const originalIsTty = process.stdout.isTTY;
+  let testHome = "";
+
+  beforeEach(() => {
+    testHome = mkdtempSync(join(tmpdir(), "altertable-citty-usage-test-"));
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTty, configurable: true });
+    runWithCliRuntime(createCliRuntime(getBootstrapCliContext()), () => {
+      process.env.ALTERTABLE_CONFIG_HOME = testHome;
+      process.env.ALTERTABLE_SECRET_BACKEND = "file";
+      configureClearAll();
+    });
+    rmSync(testHome, { recursive: true, force: true });
+    delete process.env.ALTERTABLE_CONFIG_HOME;
+    delete process.env.ALTERTABLE_SECRET_BACKEND;
+  });
+
+  test("shows active context on root help when stdout is a TTY", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    process.env.ALTERTABLE_CONFIG_HOME = testHome;
+    process.env.ALTERTABLE_SECRET_BACKEND = "file";
+
+    const runtime = createCliRuntime(getBootstrapCliContext());
+    await runWithCliRuntime(runtime, async () => {
+      await configureRunSet({
+        apiKey: "atm_test",
+        env: "production",
+      });
+      setCliRuntime(runtime);
+      const usage = await renderAltertableUsage(buildMainCommand());
+      expect(usage).toContain("PROFILE");
+      expect(usage).toContain("production");
+      expect(usage).not.toContain("(altertable");
+      expect(visibleTerminalText(usage)).toMatch(/\n  PROFILE/);
+      const profileIndex = usage.indexOf("PROFILE");
+      const usageIndex = usage.indexOf("USAGE");
+      expect(profileIndex).toBeGreaterThan(-1);
+      expect(usageIndex).toBeGreaterThan(profileIndex);
+    });
+  });
+
+  test("omits active context on subcommand help", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    process.env.ALTERTABLE_CONFIG_HOME = testHome;
+    process.env.ALTERTABLE_SECRET_BACKEND = "file";
+
+    const runtime = createCliRuntime(getBootstrapCliContext());
+    await runWithCliRuntime(runtime, async () => {
+      await configureRunSet({ apiKey: "atm_test", env: "production" });
+      setCliRuntime(runtime);
+      const main = buildMainCommand();
+      const [command] = await resolveSubCommandForUsage(main, ["query"]);
+      const usage = await renderAltertableUsage(command, main);
+      expect(usage).not.toContain("ENV");
+    });
+  });
+});

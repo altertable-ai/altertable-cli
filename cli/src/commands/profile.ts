@@ -1,8 +1,10 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
-import { configureRunShowForProfile } from "@/lib/configure.ts";
+import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { renderFixedTableSection } from "@/lib/table-format.ts";
+import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
   deleteProfile,
   getActiveProfileName,
@@ -23,24 +25,32 @@ const profileListCommand = defineAltertableCommand({
   meta: { name: "list", description: "List configured profiles" },
   run({ sink }) {
     const profiles = listProfiles();
-    if (sink.json) {
-      sink.writeJson({ profiles });
-      return;
-    }
-
-    if (profiles.length === 0) {
-      sink.writeHuman("No profiles configured.");
-      return;
-    }
-
-    const lines = ["NAME\tACTIVE\tENV\tDATA PLANE"];
-    for (const profile of profiles) {
-      const active = profile.active ? "*" : "";
-      lines.push(
-        `${profile.name}\t${active}\t${profile.management_env ?? ""}\t${profile.data_plane ?? ""}`,
-      );
-    }
-    sink.writeHuman(lines.join("\n"));
+    const table = renderFixedTableSection(
+      profiles,
+      [
+        { header: "NAME", cell: (profile) => profile.name, style: "strong" },
+        { header: "ACTIVE", cell: (profile) => (profile.active ? "*" : ""), style: "subtle" },
+        {
+          header: "ENV",
+          cell: (profile) => profile.management_env ?? "",
+          style: "muted",
+        },
+        {
+          header: "DATA PLANE",
+          cell: (profile) => formatTerminalUrls(profile.data_plane ?? ""),
+          style: "muted",
+        },
+      ],
+      "No profiles configured.",
+    );
+    writeCommandOutput(
+      {
+        kind: "normalized",
+        data: { profiles },
+        humanText: table,
+      },
+      sink,
+    );
   },
 });
 
@@ -54,10 +64,12 @@ const profileShowCommand = defineAltertableCommand({
     if (!profileExists(profileName)) {
       throw new ConfigurationError(`Profile not found: ${profileName}`);
     }
+    const profile = buildConfigureShowDataForProfile(profileName);
     writeCommandOutput(
       {
-        kind: "human",
-        text: configureRunShowForProfile(profileName),
+        kind: "normalized",
+        data: { profile },
+        humanText: configureRunShowForProfile(profileName),
       },
       sink,
     );
@@ -72,11 +84,14 @@ const profileUseCommand = defineAltertableCommand({
   run({ args, sink }) {
     const profileName = requireProfileName(args.name);
     setActiveProfile(profileName);
-    if (sink.json) {
-      sink.writeJson({ active_profile: profileName });
-      return;
-    }
-    sink.writeMetadata([`Active profile set to ${profileName}.`]);
+    writeCommandOutput(
+      {
+        kind: "ack",
+        data: { active_profile: profileName },
+        metadataMessage: `Active profile set to ${profileName}.`,
+      },
+      sink,
+    );
   },
 });
 
@@ -92,11 +107,14 @@ const profileDeleteCommand = defineAltertableCommand({
     }
     const profileName = requireProfileName(args.name);
     deleteProfile(profileName);
-    if (sink.json) {
-      sink.writeJson({ deleted: profileName });
-      return;
-    }
-    sink.writeMetadata([`Deleted profile ${profileName}.`]);
+    writeCommandOutput(
+      {
+        kind: "ack",
+        data: { deleted: profileName },
+        metadataMessage: `Deleted profile ${profileName}.`,
+      },
+      sink,
+    );
   },
 });
 
@@ -104,6 +122,11 @@ export const profileCommand = defineAltertableCommand({
   meta: {
     name: "profile",
     description: "Manage named configuration profiles.",
+    examples: [
+      "altertable profile list",
+      "altertable profile use staging",
+      "altertable profile show production",
+    ],
   },
   subCommands: {
     list: profileListCommand,

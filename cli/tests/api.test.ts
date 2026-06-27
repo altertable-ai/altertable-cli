@@ -9,11 +9,11 @@ import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/a
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 
 function createCaptureSink(json: boolean) {
   const stdout: string[] = [];
-  const runtime = createCliRuntime({ debug: false, json });
+  const runtime = createCliRuntime({ debug: false, json, agent: false });
   runtime.output.writeRaw = (body) => {
     stdout.push(body);
   };
@@ -26,9 +26,9 @@ function createCaptureSink(json: boolean) {
   return { sink: runtime.output, stdout };
 }
 
-async function runApiSpec(json: boolean): Promise<string> {
+async function runApiSpec(json: boolean, format?: string): Promise<string> {
   const { sink, stdout } = createCaptureSink(json);
-  runApiSpecCommand(sink);
+  runApiSpecCommand(sink, { format });
   return stdout.join("");
 }
 
@@ -40,25 +40,59 @@ async function runApiRoutes(json: boolean, operation?: string): Promise<string> 
 
 describe("api", () => {
   beforeEach(() => {
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
   });
 
   afterEach(() => {
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
   });
 
   test("api spec prints YAML containing Altertable Management API", async () => {
-    const output = await runApiSpec(false);
+    const output = await runApiSpec(false, "yaml");
     expect(output).toContain("Altertable Management API");
     expect(output).toContain("openapi: 3.1.0");
+    expect(output).not.toContain("AUTO-GENERATED");
   });
 
   test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    setCliContext({ debug: false, json: true });
+    setCliContext({ debug: false, json: true, agent: false });
     const output = await runApiSpec(true);
     const document = JSON.parse(output) as { openapi?: string; info?: { title?: string } };
     expect(document.openapi).toBe("3.1.0");
     expect(document.info?.title).toBe("Altertable Management API");
+  });
+
+  test("api spec subcommand runs without ENDPOINT validation errors", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    runtime.output.writeHuman = (text) => {
+      stdout.push(text);
+    };
+    runtime.output.writeRaw = (body) => {
+      stdout.push(body);
+    };
+    runtime.output.writeStderr = (line) => {
+      stderr.push(line);
+    };
+    runtime.output.writeMetadata = (lines) => {
+      stderr.push(...lines);
+    };
+
+    const previousRuntime = getCliRuntime();
+    setCliRuntime(runtime);
+
+    try {
+      await runCommand(buildMainCommand(), { rawArgs: ["api", "spec", "--format", "yaml"] });
+    } finally {
+      setCliRuntime(previousRuntime);
+    }
+
+    const output = stdout.join("");
+    const errorOutput = stderr.join("");
+    expect(errorOutput).not.toContain("ENDPOINT");
+    expect(output).toContain("openapi: 3.1.0");
+    expect(output).not.toContain("AUTO-GENERATED");
   });
 
   test("OPENAPI_OPERATIONS lists createDatabase", () => {
@@ -69,9 +103,10 @@ describe("api", () => {
 
   test("api routes inspects one operation in human mode", async () => {
     const output = await runApiRoutes(false, "createDatabase");
-    expect(output).toContain("Operation: createDatabase");
-    expect(output).toContain("Path: /environments/{environment_id}/databases");
-    expect(output).toContain("Parameters: environment_id");
+    expect(output).toContain("createDatabase");
+    expect(output).toContain("Path:");
+    expect(output).toContain("/environments/{environment_id}/databases");
+    expect(output).toContain("environment_id");
   });
 
   test("api routes operation detail includes path parameters in JSON mode", async () => {

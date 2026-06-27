@@ -1,4 +1,16 @@
 export const SENSITIVE_JSON_KEYS = new Set(["password", "secret", "token", "api_key"]);
+export const MASKED_PASSWORD_PLACEHOLDER = "[MASKED]";
+
+const PASSWORD_FIELD_PATTERN = /password\s*:\s*\S+/gi;
+
+/** Replace password values in credential strings (e.g. requested_by) with a fixed placeholder. */
+export function redactPasswordFieldInText(text: string): string {
+  return text.replace(PASSWORD_FIELD_PATTERN, (match) => {
+    const separatorIndex = match.search(/:/);
+    const label = match.slice(0, separatorIndex + 1);
+    return `${label} ${MASKED_PASSWORD_PLACEHOLDER}`;
+  });
+}
 
 const BODY_MAX_LENGTH = 512;
 const BODY_ELLIPSIS = "…";

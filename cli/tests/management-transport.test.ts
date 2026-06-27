@@ -18,7 +18,7 @@ beforeEach(() => {
   process.env.ALTERTABLE_HTTP_LOG = logFile;
   process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
   process.env.ALTERTABLE_API_KEY = "atm_test";
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
   refreshCliRuntimeContext(getCliRuntime().context);
 });
 

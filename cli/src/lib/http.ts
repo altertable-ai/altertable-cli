@@ -3,6 +3,7 @@ import { getCliContext, getConnectTimeoutMs } from "@/context.ts";
 import { VERSION } from "@/version.ts";
 import { CliError, HttpError, NetworkError, TimeoutError, type AuthPlane } from "@/lib/errors.ts";
 import { logDebug } from "@/lib/log.ts";
+import { getOutputSink } from "@/lib/runtime.ts";
 import {
   redactResponseBodyForDebug,
   redactSensitiveJsonString,
@@ -314,6 +315,16 @@ function buildRequestHeaders(options: HttpSendOptions): Record<string, string> {
   return headers;
 }
 
+function logHttpDebug(lines: string[]): void {
+  if (!getCliContext().debug) {
+    return;
+  }
+  const sink = getOutputSink();
+  for (const line of lines) {
+    sink.writeStderr(line);
+  }
+}
+
 async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
   const headers = buildRequestHeaders(options);
   const timeoutMs = resolveFetchTimeoutMs(options);
@@ -322,12 +333,10 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
   logHttpRequest(options);
   logDebug(`Request: ${options.method} ${options.url}`);
 
-  if (getCliContext().debug) {
-    console.error(`> ${options.method} ${options.url}`);
-    for (const [key, value] of Object.entries(headers)) {
-      console.error(`> ${key}: ${redactHeaderValue(key, value)}`);
-    }
-  }
+  logHttpDebug([
+    `> ${options.method} ${options.url}`,
+    ...Object.entries(headers).map(([key, value]) => `> ${key}: ${redactHeaderValue(key, value)}`),
+  ]);
 
   let response: Response;
   try {
@@ -347,12 +356,10 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
 
   const responseBody = await response.text();
 
-  if (getCliContext().debug) {
-    console.error(`< HTTP/${response.status}`);
-    if (responseBody) {
-      console.error(redactResponseBodyForDebug(responseBody));
-    }
-  }
+  logHttpDebug([
+    `< HTTP/${response.status}`,
+    ...(responseBody ? [redactResponseBodyForDebug(responseBody)] : []),
+  ]);
 
   if (response.status >= 200 && response.status < 300) {
     return responseBody;

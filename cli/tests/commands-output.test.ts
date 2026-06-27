@@ -15,13 +15,7 @@ function captureOutput(json: boolean): {
 } {
   const stdout: string[] = [];
   const stderr: string[] = [];
-  const runtime = createCliRuntime({ debug: false, json });
-  runtime.output.writeStdout = (line) => {
-    stdout.push(line);
-  };
-  runtime.output.writeStderr = (line) => {
-    stderr.push(line);
-  };
+  const runtime = createCliRuntime({ debug: false, json, agent: false });
   runtime.output.writeJson = (data) => {
     stdout.push(JSON.stringify(data, null, 2));
   };
@@ -84,6 +78,51 @@ describe("writeCommandOutput", () => {
     });
     expect(stdout[0]).toContain("id");
     expect(stdout[0]).toContain("Analytics");
+  });
+
+  test("normalized writes metadata lines in human mode", () => {
+    const { stdout, stderr, runtime } = captureOutput(false);
+    runWithCliRuntime(runtime, () => {
+      writeCommandOutput({
+        kind: "normalized",
+        data: { catalogs: [], summary: "0 catalogs" },
+        humanText: "table output",
+        metadataLines: ["", "0 catalogs"],
+      });
+    });
+    expect(stdout).toEqual(["table output"]);
+    expect(stderr).toEqual(["", "0 catalogs"]);
+  });
+
+  test("ack emits json data in json mode", () => {
+    const { stdout, runtime } = captureOutput(true);
+    runWithCliRuntime(runtime, () => {
+      writeCommandOutput({
+        kind: "ack",
+        data: { active_profile: "staging" },
+        metadataMessage: "Active profile set to staging.",
+      });
+    });
+    expect(stdout).toEqual([JSON.stringify({ active_profile: "staging" }, null, 2)]);
+  });
+
+  test("ack writes metadata in human mode", () => {
+    const previousNoColor = process.env.NO_COLOR;
+    process.env.NO_COLOR = "1";
+    const { stderr, runtime } = captureOutput(false);
+    runWithCliRuntime(runtime, () => {
+      writeCommandOutput({
+        kind: "ack",
+        data: { active_profile: "staging" },
+        metadataMessage: "Active profile set to staging.",
+      });
+    });
+    if (previousNoColor === undefined) {
+      delete process.env.NO_COLOR;
+    } else {
+      process.env.NO_COLOR = previousNoColor;
+    }
+    expect(stderr).toEqual(["Active profile set to staging."]);
   });
 });
 

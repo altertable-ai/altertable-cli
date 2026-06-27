@@ -95,8 +95,17 @@ export async function lakehouseQuery(
   );
 }
 
-export async function lakehouseValidate(statement: string): Promise<string> {
-  return lakehouseRequest("POST", "/validate", JSON.stringify({ statement }), "application/json");
+export async function lakehouseValidate(
+  statement: string,
+  httpOptions?: Partial<HttpSendOptions>,
+): Promise<string> {
+  return lakehouseRequest(
+    "POST",
+    "/validate",
+    JSON.stringify({ statement }),
+    "application/json",
+    httpOptions,
+  );
 }
 
 export async function lakehouseAppend(
