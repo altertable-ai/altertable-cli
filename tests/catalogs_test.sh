@@ -21,7 +21,7 @@ CATALOGS_MOCK='[
 
 # ── create: engine validation ──
 ERR="$("${CLI}" catalogs create --engine postgres --name "X" 2>&1 >/dev/null)"
-echo "${ERR}" | grep -Fq "Only the 'altertable' engine is supported" || fail "create: expected engine rejection, got '${ERR}'"
+echo "${ERR}" | grep -Fq "Expected one of: altertable" || fail "create: expected engine rejection, got '${ERR}'"
 pass "catalogs create rejects non-altertable engines"
 
 # ── create: request shape ──

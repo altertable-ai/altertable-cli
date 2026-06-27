@@ -23,6 +23,24 @@ describe("parseGlobalFlags", () => {
     expect(context.profile).toBe("staging");
   });
 
+  test("ignores configure --profile when parsing early global flags", () => {
+    const context = parseGlobalFlags([
+      "configure",
+      "--profile",
+      "production",
+      "--api-key",
+      "atm_prod",
+      "--env",
+      "production",
+    ]);
+    expect(context.profile).toBeUndefined();
+  });
+
+  test("parses global --profile before a subcommand", () => {
+    const context = parseGlobalFlags(["--profile", "staging", "context"]);
+    expect(context.profile).toBe("staging");
+  });
+
   test("parses --no-color", () => {
     const context = parseGlobalFlags(["--no-color", "context"]);
     expect(context.noColor).toBe(true);
