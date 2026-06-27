@@ -10,17 +10,6 @@ export ALTERTABLE_LAKEHOUSE_PASSWORD="testpass"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 
-# ── validate ──────────────────────────────────────────────────────────────────
-
-RESP=$("${CLI}" validate --statement "SELECT 1")
-[[ $(echo "${RESP}" | jq -r '.valid') == "true" ]] || fail "validate: expected valid=true"
-pass "validate returns valid=true for correct SQL"
-
-RESP=$("${CLI}" validate --statement "NOT VALID SQL !!!")
-[[ $(echo "${RESP}" | jq -r '.valid') == "false" ]] || fail "validate: expected valid=false for invalid SQL"
-[[ $(echo "${RESP}" | jq -r '.error') != "null" ]] || fail "validate: expected error message for invalid SQL"
-pass "validate returns valid=false with error for invalid SQL"
-
 # ── upload (create) ───────────────────────────────────────────────────────────
 
 printf 'id,name\n1,Alice\n2,Bob\n' > /tmp/at_test_upload.csv
@@ -101,16 +90,6 @@ RESP=$("${CLI}" query cancel "${QID2}" --session-id "wrong-session")
 [[ $(echo "${RESP}" | jq -r '.cancelled') == "false" ]] || fail "query cancel: expected cancelled=false for wrong session"
 pass "query cancel returns cancelled=false for wrong session_id"
 
-# ── autocomplete ──────────────────────────────────────────────────────────────
-
-RESP=$("${CLI}" autocomplete --statement "SELECT * FROM ")
-echo "${RESP}" | grep -q "." || fail "autocomplete: expected at least one suggestion line"
-pass "autocomplete returns human-readable suggestions"
-
-RESP=$("${CLI}" --json autocomplete --statement "SELECT * FROM ")
-[[ $(echo "${RESP}" | jq -r '.suggestions | type') == "array" ]] || fail "autocomplete --json: expected suggestions array"
-pass "autocomplete --json returns structured response"
-
 # ── append (single datum) ─────────────────────────────────────────────────────
 
 setup_curl_spy
@@ -165,12 +144,12 @@ teardown_curl_spy
 
 # ── --debug flag ─────────────────────────────────────────────────────────────
 
-STDERR=$("${CLI}" --debug validate --statement "SELECT 1" 2>&1 >/dev/null)
+STDERR=$("${CLI}" --debug query --statement "SELECT 1" 2>&1 >/dev/null)
 echo "${STDERR}" | grep -q '\[DEBUG\]' || fail "--debug before command: expected [DEBUG] output on stderr"
 echo "${STDERR}" | grep -q 'Request: POST' || fail "--debug before command: expected request debug output on stderr"
 pass "--debug before command produces debug output"
 
-STDERR=$("${CLI}" validate --debug --statement "SELECT 1" 2>&1 >/dev/null)
+STDERR=$("${CLI}" query --debug --statement "SELECT 1" 2>&1 >/dev/null)
 echo "${STDERR}" | grep -q '\[DEBUG\]' || fail "--debug after command: expected [DEBUG] output on stderr"
 echo "${STDERR}" | grep -q 'Request: POST' || fail "--debug after command: expected request debug output on stderr"
 pass "--debug after command produces debug output"

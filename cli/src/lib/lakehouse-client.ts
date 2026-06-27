@@ -14,7 +14,6 @@ import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/
 
 export {
   lakehouseAppend,
-  lakehouseAutocomplete,
   lakehouseCancel,
   lakehouseGetQuery,
   lakehouseGetTask,
@@ -22,9 +21,7 @@ export {
   lakehouseQueryAll,
   lakehouseQueryStream,
   lakehouseUpload,
-  lakehouseValidate,
   type LakehouseAppendOptions,
-  type LakehouseAutocompleteOptions,
 } from "@/lib/lakehouse-transport.ts";
 
 export {
@@ -105,19 +102,6 @@ export function renderQueryJson(
   result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
 ): string {
   return JSON.stringify(result, null, 2);
-}
-
-export function formatAutocompleteHumanOutput(parsed: unknown): string {
-  const body = parsed as {
-    suggestions?: Array<{ suggestion?: string }>;
-  };
-  if (!Array.isArray(body.suggestions)) {
-    return JSON.stringify(parsed);
-  }
-  return body.suggestions
-    .map((entry) => entry.suggestion ?? "")
-    .filter((suggestion) => suggestion.length > 0)
-    .join("\n");
 }
 
 export function writeLakehouseOutput(body: string, options?: LakehouseOutputOptions): void {

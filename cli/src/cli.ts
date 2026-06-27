@@ -14,13 +14,7 @@ import { configureCommand } from "@/commands/configure.ts";
 import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
-import {
-  appendCommand,
-  autocompleteCommand,
-  queryCommand,
-  uploadCommand,
-  validateCommand,
-} from "@/commands/lakehouse.ts";
+import { appendCommand, queryCommand, uploadCommand } from "@/commands/lakehouse.ts";
 import { apiCommand } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import {
@@ -60,10 +54,8 @@ export function buildMainCommand(): CommandDef {
     context: contextCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
-    validate: validateCommand,
     append: appendCommand,
     upload: uploadCommand,
-    autocomplete: autocompleteCommand,
     api: apiCommand,
     completion: completionCommand,
   };

@@ -23,6 +23,16 @@ describe("parseGlobalFlags", () => {
     expect(context.profile).toBe("staging");
   });
 
+  test("does not parse configure --profile as a root profile override", () => {
+    const context = parseGlobalFlags(["configure", "--profile", "staging"]);
+    expect(context.profile).toBeUndefined();
+  });
+
+  test("parses root --profile after another root flag with a value", () => {
+    const context = parseGlobalFlags(["--connect-timeout", "5", "--profile", "prod", "context"]);
+    expect(context.profile).toBe("prod");
+  });
+
   test("parses --no-color", () => {
     const context = parseGlobalFlags(["--no-color", "context"]);
     expect(context.noColor).toBe(true);

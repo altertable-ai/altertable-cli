@@ -86,7 +86,7 @@ pass "a 404 shows a not-found message"
 # ── no api-key configured → context shows local session; api /whoami errors ──
 "${CLI}" configure --clear >/dev/null 2>&1
 OUT="$("${CLI}" context 2>/dev/null)"
-echo "${OUT}" | grep -Fq 'Management:' || fail "context: expected Management line, got '${OUT}'"
+echo "${OUT}" | grep -Fq 'No credentials configured' || fail "context: expected no-credentials summary, got '${OUT}'"
 echo "${OUT}" | grep -Fq 'not set' || fail "context: expected unset management, got '${OUT}'"
 pass "context works without management API key"
 

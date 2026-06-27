@@ -11,16 +11,13 @@ import {
   validateUploadPrimaryKey,
 } from "@/commands/lakehouse-args.ts";
 import {
-  formatAutocompleteHumanOutput,
   lakehouseAppend,
-  lakehouseAutocomplete,
   lakehouseCancel,
   lakehouseGetQuery,
   lakehouseGetTask,
   lakehouseQuery,
   lakehouseQueryAll,
   lakehouseUpload,
-  lakehouseValidate,
   parseLakehouseQueryResponse,
   writeLakehouseOutput,
   writeQueryOutput,
@@ -168,29 +165,6 @@ export const queryCommand = defineAltertableCommand({
   },
 });
 
-export const validateCommand = defineAltertableCommand({
-  meta: {
-    name: "validate",
-    description: "Validate a SQL statement without executing it.",
-    examples: ['altertable validate --statement "SELECT 1"'],
-  },
-  args: {
-    statement: { type: "string", description: "SQL to validate", required: true },
-    "read-timeout": {
-      type: "string",
-      description: "Read timeout in seconds for this request (overrides global --read-timeout)",
-    },
-  },
-  async run({ args, sink }) {
-    const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    const response = await lakehouseValidate(
-      String(args.statement),
-      readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
-    );
-    writeLakehouseOutput(response, { sink });
-  },
-});
-
 const appendRowsCommand = defineAltertableCommand({
   meta: {
     name: "run",
@@ -315,38 +289,5 @@ export const uploadCommand = defineAltertableCommand({
       readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     );
     writeLakehouseOutput(response, { sink });
-  },
-});
-
-export const autocompleteCommand = defineAltertableCommand({
-  meta: {
-    name: "autocomplete",
-    description: "Get SQL autocomplete suggestions.",
-    examples: ['altertable autocomplete --statement "SELECT * FROM "'],
-  },
-  args: {
-    statement: { type: "string", description: "Partial SQL statement", required: true },
-    catalog: { type: "string", description: "Optional catalog context" },
-    schema: { type: "string", description: "Optional schema context" },
-    "session-id": { type: "string", description: "Optional session id" },
-    "max-suggestions": { type: "string", description: "Maximum number of suggestions" },
-  },
-  async run({ args, sink }) {
-    const maxSuggestionsRaw = args["max-suggestions"];
-    const maxSuggestions =
-      maxSuggestionsRaw !== undefined ? Number.parseInt(String(maxSuggestionsRaw), 10) : undefined;
-    if (maxSuggestions !== undefined && Number.isNaN(maxSuggestions)) {
-      throw new CliError("--max-suggestions must be a number.");
-    }
-
-    const response = await lakehouseAutocomplete({
-      statement: String(args.statement),
-      catalog: args.catalog ? String(args.catalog) : undefined,
-      schema: args.schema ? String(args.schema) : undefined,
-      sessionId: args["session-id"] ? String(args["session-id"]) : undefined,
-      maxSuggestions,
-    });
-
-    writeLakehouseOutput(response, { humanFormatter: formatAutocompleteHumanOutput, sink });
   },
 });

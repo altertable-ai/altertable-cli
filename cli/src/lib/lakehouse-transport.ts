@@ -19,14 +19,6 @@ export type LakehouseAppendOptions = {
   sync?: boolean;
 };
 
-export type LakehouseAutocompleteOptions = {
-  statement: string;
-  catalog?: string;
-  schema?: string;
-  sessionId?: string;
-  maxSuggestions?: number;
-};
-
 type LakehouseQueryStream = {
   metadata: LakehouseQueryMetadata;
   columns: string[] | LakehouseColumn[];
@@ -90,19 +82,6 @@ export async function lakehouseQuery(
     "POST",
     "/query",
     JSON.stringify(buildLakehouseQueryPayload(statement, queryId, sessionId)),
-    "application/json",
-    httpOptions,
-  );
-}
-
-export async function lakehouseValidate(
-  statement: string,
-  httpOptions?: Partial<HttpSendOptions>,
-): Promise<string> {
-  return lakehouseRequest(
-    "POST",
-    "/validate",
-    JSON.stringify({ statement }),
     "application/json",
     httpOptions,
   );
@@ -213,25 +192,6 @@ export async function lakehouseGetTask(taskId: string): Promise<string> {
   return lakehouseRequest("GET", `/tasks/${urlencode(taskId)}`, undefined, undefined, {
     retry: true,
   });
-}
-
-export async function lakehouseAutocomplete(
-  options: LakehouseAutocompleteOptions,
-): Promise<string> {
-  const payload: Record<string, string | number> = { statement: options.statement };
-  if (options.catalog) {
-    payload.catalog = options.catalog;
-  }
-  if (options.schema) {
-    payload.schema = options.schema;
-  }
-  if (options.sessionId) {
-    payload.session_id = options.sessionId;
-  }
-  if (options.maxSuggestions !== undefined) {
-    payload.max_suggestions = options.maxSuggestions;
-  }
-  return lakehouseRequest("POST", "/autocomplete", JSON.stringify(payload), "application/json");
 }
 
 export async function lakehouseQueryStream(

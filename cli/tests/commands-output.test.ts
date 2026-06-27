@@ -5,7 +5,7 @@ import {
   writeJsonOrRaw,
   writeManagementOutput,
 } from "@/lib/command-output.ts";
-import { formatAutocompleteHumanOutput, writeLakehouseOutput } from "@/lib/lakehouse-client.ts";
+import { writeLakehouseOutput } from "@/lib/lakehouse-client.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 function captureOutput(json: boolean): {
@@ -151,15 +151,5 @@ describe("writeLakehouseOutput", () => {
       writeLakehouseOutput('{"ok":true}', { humanFormatter: () => "human" });
     });
     expect(stdout).toEqual(["human"]);
-  });
-});
-
-describe("formatAutocompleteHumanOutput", () => {
-  test("prints one suggestion per line", () => {
-    const output = formatAutocompleteHumanOutput({
-      suggestions: [{ suggestion: "users" }, { suggestion: "orders" }],
-      statement: "SELECT * FROM ",
-    });
-    expect(output).toBe("users\norders");
   });
 });

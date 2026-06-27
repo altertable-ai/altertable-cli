@@ -119,7 +119,7 @@ Source of truth: `src/cli.ts` + `commands/api.ts`. Verify with `bin/altertable -
 altertable
 ├── configure (management, lakehouse), profile, context, catalogs
 ├── query (run, show, cancel)
-├── validate, append (run, task), upload, autocomplete
+├── append (run, task), upload
 ├── api
 │   ├── spec
 │   ├── routes

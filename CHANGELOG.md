@@ -14,8 +14,6 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 #### Lakehouse (data plane)
 
 - `query` — run SQL with human layout (`--layout auto|table|line`), serialized output (`--format human|json|csv|markdown`), column selection, max width, and pager controls
-- `validate` — dry-run SQL validation
-- `autocomplete` — statement completion hints
 - `append` — insert rows (async or `--sync`)
 - `upload` — bulk file ingest with streaming upload support
 - `query show` and `query cancel` — inspect and cancel running queries
