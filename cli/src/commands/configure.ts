@@ -7,6 +7,7 @@ import {
 } from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { localEffect, operationPlan } from "@/lib/operation-effect.ts";
 import {
   configuredPlanesFromOptions,
   configureRunVerifyIfRequested,
@@ -126,13 +127,18 @@ function createConfigurePlaneCommand(
   return defineOperationCommand({
     id: `configure.${scope}`,
     capabilities: ["local-config", "local-file-write"],
+    catalog: { effects: ["local"], mutates: true, output: "none" },
     meta: { name: scope, description },
     args: configurePlaneArgs,
     parse({ args }) {
       return args;
     },
-    async run(args, { sink }) {
-      await runConfigureWizardFromArgs(scope, args, sink);
+    run(args) {
+      return operationPlan(
+        localEffect(async ({ sink }) => {
+          await runConfigureWizardFromArgs(scope, args, sink);
+        }),
+      );
     },
   });
 }
@@ -150,6 +156,7 @@ const configureLakehouseCommand = createConfigurePlaneCommand(
 export const configureCommand = defineOperationCommand({
   id: "configure",
   capabilities: ["local-config", "local-file-write"],
+  catalog: { effects: ["local"], mutates: true, output: "none" },
   meta: {
     name: "configure",
     description: "Configure and securely store credentials and settings.",
@@ -211,7 +218,11 @@ export const configureCommand = defineOperationCommand({
   parse({ args }) {
     return args;
   },
-  async run(args, { sink }) {
-    await runConfigureDispatch(args, sink);
+  run(args) {
+    return operationPlan(
+      localEffect(async ({ sink }) => {
+        await runConfigureDispatch(args, sink);
+      }),
+    );
   },
 });

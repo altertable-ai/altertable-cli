@@ -3,8 +3,13 @@ import type { CommandOutputMode } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
-import { httpEffect, type OperationEffect } from "@/lib/operation-effect.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
+import {
+  defineHttpOperation,
+  httpOperationPlan,
+  type HttpOperationDescriptor,
+} from "@/lib/http-operation.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
 
 export type ApiHttpArgs = {
   method?: string;
@@ -30,6 +35,23 @@ export type ApiHttpResult = {
   response: string;
   format?: string;
 };
+
+const API_HTTP_OPERATION: HttpOperationDescriptor<ResolvedApiHttp, ApiHttpResult> =
+  defineHttpOperation({
+    id: "api.http",
+    request: (resolved) => ({
+      plane: "management",
+      method: resolved.method,
+      endpoint: resolved.endpoint,
+      body: resolved.body,
+      contentType: resolved.body ? "application/json" : undefined,
+    }),
+    decode: (response, _context, resolved) => ({
+      method: resolved.method,
+      response,
+      format: resolved.format,
+    }),
+  });
 
 export function normalizeApiEndpoint(endpoint: string, env?: string): string {
   const trimmed = endpoint.trim();
@@ -116,18 +138,8 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
   };
 }
 
-export function apiHttpEffect(args: ApiHttpArgs): OperationEffect<ApiHttpResult> {
-  const resolved = resolveApiHttp(args);
-  return httpEffect<ApiHttpResult>(
-    {
-      plane: "management",
-      method: resolved.method,
-      endpoint: resolved.endpoint,
-      body: resolved.body,
-      contentType: resolved.body ? "application/json" : undefined,
-    },
-    (response) => ({ method: resolved.method, response, format: resolved.format }),
-  );
+export function apiHttpOperationPlan(args: ApiHttpArgs, context: OperationContext) {
+  return httpOperationPlan(API_HTTP_OPERATION, resolveApiHttp(args), context);
 }
 
 export function apiHttpResultOutput(

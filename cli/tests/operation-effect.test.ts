@@ -8,8 +8,13 @@ import {
   allEffects,
   httpEffect,
   httpStreamEffect,
+  isOperationPlan,
+  localEffect,
+  operationPlan,
+  outputEffect,
   progressEffect,
   runOperationEffect,
+  runOperationPlan,
   scopedEffect,
   valueEffect,
 } from "@/lib/operation-effect.ts";
@@ -48,6 +53,37 @@ function createOperationContext(): OperationContext {
 }
 
 describe("operation effects", () => {
+  test("runs operation plans and identifies plan data", async () => {
+    const plan = operationPlan(valueEffect("planned"));
+    expect(isOperationPlan(plan)).toBe(true);
+    const result = await runOperationPlan(plan, createOperationContext());
+    expect(result).toBe("planned");
+  });
+
+  test("runs output effects through the output sink", async () => {
+    const runtime = getCliRuntime();
+    const output: string[] = [];
+    runtime.output.writeHuman = (text) => {
+      output.push(text);
+    };
+
+    await runOperationEffect(
+      outputEffect({ kind: "human", text: "hello" }),
+      createOperationContext(),
+    );
+
+    expect(output).toEqual(["hello"]);
+  });
+
+  test("runs local effects inside the operation interpreter", async () => {
+    const result = await runOperationEffect(
+      localEffect(() => ({ saved: true })),
+      createOperationContext(),
+    );
+
+    expect(result).toEqual({ saved: true });
+  });
+
   test("returns value effects without transport", async () => {
     const result = await runOperationEffect(valueEffect("done"), createOperationContext());
     expect(result).toBe("done");

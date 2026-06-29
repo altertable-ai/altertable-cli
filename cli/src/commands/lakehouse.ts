@@ -1,5 +1,4 @@
 import { CliError } from "@/lib/errors.ts";
-import { urlencode } from "@/lib/encode.ts";
 import {
   booleanArg,
   enumArg,
@@ -7,14 +6,9 @@ import {
   optionalStringArg,
   stringArg,
 } from "@/lib/operation-codec.ts";
-import {
-  httpEffect,
-  httpStreamEffect,
-  progressEffect,
-  scopedEffect,
-} from "@/lib/operation-effect.ts";
+import { httpEffect, operationPlan, progressEffect, scopedEffect } from "@/lib/operation-effect.ts";
+import { httpOperationPlan, httpStreamOperationPlan } from "@/lib/http-operation.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 import {
   PAGER_MODE_OPTIONS,
   parseAppendJsonContent,
@@ -24,49 +18,29 @@ import {
   QUERY_RESULT_FORMAT_OPTIONS,
   validateUploadPrimaryKey,
 } from "@/commands/lakehouse-args.ts";
+import { formatAutocompleteHumanOutput, writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import { createLakehouseUploadRequest } from "@/lib/lakehouse-transport.ts";
 import {
-  formatAutocompleteHumanOutput,
-  parseLakehouseQueryResponse,
-  writeQueryOutput,
-} from "@/lib/lakehouse-client.ts";
-import { parseLakehouseQueryStream, type LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
-import {
-  buildLakehouseAppendRequest,
-  createLakehouseUploadRequest,
-} from "@/lib/lakehouse-transport.ts";
+  lakehouseAppendOperation,
+  lakehouseAppendTaskOperation,
+  lakehouseAutocompleteOperation,
+  lakehouseQueryCancelOperation,
+  lakehouseQueryOperation,
+  lakehouseQueryShowOperation,
+  lakehouseQueryStreamOperation,
+  lakehouseValidateOperation,
+} from "@/lib/lakehouse-operations.ts";
 
 const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
-
-function buildLakehouseQueryPayload(
-  statement: string,
-  queryId?: string,
-  sessionId?: string,
-): Record<string, string> {
-  const payload: Record<string, string> = { statement };
-  if (queryId) {
-    payload.query_id = queryId;
-  }
-  if (sessionId) {
-    payload.session_id = sessionId;
-  }
-  return payload;
-}
-
-async function collectLakehouseQueryStream(
-  stream: ReadableStream<Uint8Array>,
-): Promise<LakehouseQueryResult> {
-  const parser = parseLakehouseQueryStream(stream);
-  while (true) {
-    const next = await parser.next();
-    if (next.done) {
-      return next.value;
-    }
-  }
-}
 
 const queryRunCommand = defineOperationCommand({
   id: "lakehouse.query.run",
   capabilities: ["lakehouse-http", "streaming"],
+  catalog: {
+    effects: ["http", "http-stream"],
+    planes: ["lakehouse"],
+    output: "normalized",
+  },
   meta: {
     name: "run",
     description: "Run a SQL statement.",
@@ -119,37 +93,12 @@ const queryRunCommand = defineOperationCommand({
     const sessionId = optionalStringArg(args, "session-id");
     return { statement, format, displayOptions, pagerOptions, httpOptions, queryId, sessionId };
   },
-  run(input, { sink }) {
-    const { statement, format, httpOptions, queryId, sessionId } = input;
-    const body = JSON.stringify(buildLakehouseQueryPayload(statement, queryId, sessionId));
-
-    if (format === "json" || sink.json) {
-      return httpEffect(
-        {
-          plane: "lakehouse",
-          method: "POST",
-          endpoint: "/query",
-          body,
-          contentType: "application/json",
-          ...httpOptions,
-        },
-        parseLakehouseQueryResponse,
-      );
+  run(input, context) {
+    if (input.format === "json" || context.sink.json) {
+      return httpOperationPlan(lakehouseQueryOperation, input, context);
     }
 
-    return httpStreamEffect(
-      {
-        plane: "lakehouse",
-        method: "POST",
-        endpoint: "/query",
-        body,
-        contentType: "application/json",
-        readTimeoutMs: httpOptions?.readTimeoutMs ?? STREAM_READ_TIMEOUT_MS,
-        retry: false,
-        ...httpOptions,
-      },
-      collectLakehouseQueryStream,
-    );
+    return httpStreamOperationPlan(lakehouseQueryStreamOperation, input, context);
   },
   async present(result, { sink }, input) {
     await writeQueryOutput(result, input.format, input.displayOptions, input.pagerOptions, sink);
@@ -159,6 +108,7 @@ const queryRunCommand = defineOperationCommand({
 const queryShowCommand = defineOperationCommand({
   id: "lakehouse.query.show",
   capabilities: ["lakehouse-http"],
+  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
   meta: {
     name: "show",
     description: "Fetch metadata for a completed or running query.",
@@ -169,13 +119,8 @@ const queryShowCommand = defineOperationCommand({
   parse({ args }) {
     return stringArg(args, "query-id");
   },
-  run(queryId) {
-    return httpEffect({
-      plane: "lakehouse",
-      method: "GET",
-      endpoint: `/query/${urlencode(queryId)}`,
-      retry: true,
-    });
+  run(queryId, context) {
+    return httpOperationPlan(lakehouseQueryShowOperation, queryId, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -185,6 +130,7 @@ const queryShowCommand = defineOperationCommand({
 const queryCancelCommand = defineOperationCommand({
   id: "lakehouse.query.cancel",
   capabilities: ["lakehouse-http"],
+  catalog: { effects: ["http"], planes: ["lakehouse"], mutates: true, output: "raw-api" },
   meta: {
     name: "cancel",
     description: "Cancel a running query.",
@@ -199,13 +145,8 @@ const queryCancelCommand = defineOperationCommand({
       sessionId: stringArg(args, "session-id"),
     };
   },
-  run(input) {
-    const params = new URLSearchParams({ session_id: input.sessionId });
-    return httpEffect({
-      plane: "lakehouse",
-      method: "DELETE",
-      endpoint: `/query/${urlencode(input.queryId)}?${params.toString()}`,
-    });
+  run(input, context) {
+    return httpOperationPlan(lakehouseQueryCancelOperation, input, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -262,6 +203,7 @@ export const queryCommand = defineOperationCommand({
 export const validateCommand = defineOperationCommand({
   id: "lakehouse.validate",
   capabilities: ["lakehouse-http"],
+  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
   meta: {
     name: "validate",
     description: "Validate a SQL statement without executing it.",
@@ -281,15 +223,8 @@ export const validateCommand = defineOperationCommand({
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
   },
-  run(input) {
-    return httpEffect({
-      plane: "lakehouse",
-      method: "POST",
-      endpoint: "/validate",
-      body: JSON.stringify({ statement: input.statement }),
-      contentType: "application/json",
-      ...input.httpOptions,
-    });
+  run(input, context) {
+    return httpOperationPlan(lakehouseValidateOperation, input, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -299,6 +234,12 @@ export const validateCommand = defineOperationCommand({
 const appendRowsCommand = defineOperationCommand({
   id: "lakehouse.append.run",
   capabilities: ["lakehouse-http", "progress"],
+  catalog: {
+    effects: ["http", "progress"],
+    planes: ["lakehouse"],
+    mutates: true,
+    output: "raw-api",
+  },
   meta: {
     name: "run",
     description: "Append JSON rows to a table.",
@@ -318,16 +259,10 @@ const appendRowsCommand = defineOperationCommand({
     return { catalog, schema, table, payload, sync: booleanArg(args, "sync") };
   },
   run(input) {
-    const { catalog, schema, table, payload } = input;
-    const request = buildLakehouseAppendRequest({
-      catalog,
-      schema,
-      table,
-      jsonContent: payload,
-      options: { sync: input.sync },
-    });
-    const effect = httpEffect(request);
-    return input.sync ? progressEffect("Waiting for append to complete…", effect) : effect;
+    const effect = httpEffect(lakehouseAppendOperation.request(input));
+    return operationPlan(
+      input.sync ? progressEffect("Waiting for append to complete…", effect) : effect,
+    );
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -337,6 +272,7 @@ const appendRowsCommand = defineOperationCommand({
 const appendTaskCommand = defineOperationCommand({
   id: "lakehouse.append.task",
   capabilities: ["lakehouse-http"],
+  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
   meta: {
     name: "task",
     description: "Fetch status for an append task.",
@@ -347,13 +283,8 @@ const appendTaskCommand = defineOperationCommand({
   parse({ args }) {
     return stringArg(args, "task-id");
   },
-  run(taskId) {
-    return httpEffect({
-      plane: "lakehouse",
-      method: "GET",
-      endpoint: `/tasks/${urlencode(taskId)}`,
-      retry: true,
-    });
+  run(taskId, context) {
+    return httpOperationPlan(lakehouseAppendTaskOperation, taskId, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -386,6 +317,12 @@ export const appendCommand = defineOperationCommand({
 export const uploadCommand = defineOperationCommand({
   id: "lakehouse.upload",
   capabilities: ["lakehouse-http", "local-file-read", "progress"],
+  catalog: {
+    effects: ["scope", "http"],
+    planes: ["lakehouse"],
+    mutates: true,
+    output: "raw-api",
+  },
   meta: {
     name: "upload",
     description: "Upload a file to create or update a table.",
@@ -438,22 +375,24 @@ export const uploadCommand = defineOperationCommand({
     };
   },
   run(input) {
-    return scopedEffect(() => {
-      const scope = createLakehouseUploadRequest({
-        catalog: input.catalog,
-        schema: input.schema,
-        table: input.table,
-        format: input.format,
-        mode: input.mode,
-        filePath: input.filePath,
-        primaryKey: input.primaryKey,
-        httpOptions: input.httpOptions,
-      });
-      return {
-        effect: httpEffect(scope.request),
-        release: scope.release,
-      };
-    });
+    return operationPlan(
+      scopedEffect(() => {
+        const scope = createLakehouseUploadRequest({
+          catalog: input.catalog,
+          schema: input.schema,
+          table: input.table,
+          format: input.format,
+          mode: input.mode,
+          filePath: input.filePath,
+          primaryKey: input.primaryKey,
+          httpOptions: input.httpOptions,
+        });
+        return {
+          effect: httpEffect(scope.request),
+          release: scope.release,
+        };
+      }),
+    );
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -463,6 +402,7 @@ export const uploadCommand = defineOperationCommand({
 export const autocompleteCommand = defineOperationCommand({
   id: "lakehouse.autocomplete",
   capabilities: ["lakehouse-http"],
+  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
   meta: {
     name: "autocomplete",
     description: "Get SQL autocomplete suggestions.",
@@ -484,27 +424,8 @@ export const autocompleteCommand = defineOperationCommand({
       maxSuggestions: optionalIntegerArg(args, "max-suggestions"),
     };
   },
-  run(input) {
-    const payload: Record<string, string | number> = { statement: input.statement };
-    if (input.catalog) {
-      payload.catalog = input.catalog;
-    }
-    if (input.schema) {
-      payload.schema = input.schema;
-    }
-    if (input.sessionId) {
-      payload.session_id = input.sessionId;
-    }
-    if (input.maxSuggestions !== undefined) {
-      payload.max_suggestions = input.maxSuggestions;
-    }
-    return httpEffect({
-      plane: "lakehouse",
-      method: "POST",
-      endpoint: "/autocomplete",
-      body: JSON.stringify(payload),
-      contentType: "application/json",
-    });
+  run(input, context) {
+    return httpOperationPlan(lakehouseAutocompleteOperation, input, context);
   },
   present(response) {
     return {

@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { localEffect, operationPlan, outputEffect, valueEffect } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   formatTerminalMarkdownLinks,
@@ -236,12 +237,15 @@ function createShellCompletionCommand(
   return defineOperationCommand({
     id: `completion.${shell}`,
     capabilities: ["raw-stdout"],
+    catalog: { effects: ["output"], output: "raw-api" },
     meta: {
       name: shell,
       description: `Generate ${shell} completion script.`,
     },
     run() {
-      console.log(formatCompletionScript(shell, getRootCommand()));
+      return operationPlan(
+        outputEffect({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) }),
+      );
     },
   });
 }
@@ -253,6 +257,7 @@ function createInstallShellCommand(
   return defineOperationCommand({
     id: `completion.install.${shell}`,
     capabilities: ["local-file-write", "local-config"],
+    catalog: { effects: ["local"], mutates: true, output: "human" },
     meta: {
       name: shell,
       description: `Install ${shell} completion.`,
@@ -268,15 +273,19 @@ function createInstallShellCommand(
         updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
       };
     },
-    async run(input, { sink }) {
-      const script = formatCompletionScript(shell, getRootCommand());
-      const result = await installCompletion(shell, script, input);
+    run(input) {
+      return operationPlan(
+        localEffect(async ({ sink }) => {
+          const script = formatCompletionScript(shell, getRootCommand());
+          const result = await installCompletion(shell, script, input);
 
-      if (sink.json) {
-        sink.writeJson(result);
-        return;
-      }
-      sink.writeHuman(formatInstallMessage(result));
+          if (sink.json) {
+            sink.writeJson(result);
+            return;
+          }
+          sink.writeHuman(formatInstallMessage(result));
+        }),
+      );
     },
   });
 }
@@ -285,6 +294,7 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
   const installCommand = defineOperationCommand({
     id: "completion.install",
     capabilities: ["local-file-write", "local-config"],
+    catalog: { effects: ["local", "value"], mutates: true, output: "human" },
     meta: {
       name: "install",
       description: "Install shell completion for the current shell.",
@@ -312,28 +322,33 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
         updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
       };
     },
-    async run(input, { sink }) {
+    run(input) {
       if (input.explicitShell) {
-        return;
+        return operationPlan(valueEffect(undefined));
       }
 
-      const shell = resolveShell(undefined);
-      const script = formatCompletionScript(shell, getRootCommand());
-      const result = await installCompletion(shell, script, {
-        updateRc: input.updateRc,
-      });
+      return operationPlan(
+        localEffect(async ({ sink }) => {
+          const shell = resolveShell(undefined);
+          const script = formatCompletionScript(shell, getRootCommand());
+          const result = await installCompletion(shell, script, {
+            updateRc: input.updateRc,
+          });
 
-      if (sink.json) {
-        sink.writeJson(result);
-        return;
-      }
-      sink.writeHuman(formatInstallMessage(result));
+          if (sink.json) {
+            sink.writeJson(result);
+            return;
+          }
+          sink.writeHuman(formatInstallMessage(result));
+        }),
+      );
     },
   });
 
   return defineOperationCommand({
     id: "completion",
     capabilities: ["raw-stdout"],
+    catalog: { effects: ["output", "value"], output: "raw-api" },
     meta: {
       name: "completion",
       description: "Generate or install shell completion scripts.",
@@ -354,10 +369,12 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     },
     run(rawArgs) {
       if (rawArgs.some((arg) => arg === "install" || isSupportedShell(arg))) {
-        return;
+        return operationPlan(valueEffect(undefined));
       }
       const shell = resolveShell(undefined);
-      console.log(formatCompletionScript(shell, getRootCommand()));
+      return operationPlan(
+        outputEffect({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) }),
+      );
     },
   });
 }

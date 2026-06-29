@@ -2,16 +2,30 @@ import type { OperationHttpRequest } from "@/lib/operation-transport.ts";
 import { sendOperationHttp, sendOperationHttpStream } from "@/lib/operation-transport.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { startProgress } from "@/lib/progress.ts";
+import { writeCommandOutput, type CommandOutputMode } from "@/lib/command-output.ts";
 
 export type OperationScope<TResult> = {
   effect: OperationEffect<TResult>;
   release?: () => void | Promise<void>;
 };
 
+export type OperationPlan<TResult = unknown> = {
+  kind: "operation-plan";
+  effect: OperationEffect<TResult>;
+};
+
 export type OperationEffect<TResult = unknown> =
   | {
       kind: "value";
       value: TResult;
+    }
+  | {
+      kind: "output";
+      output: CommandOutputMode;
+    }
+  | {
+      kind: "local";
+      run: (context: OperationContext) => TResult | Promise<TResult>;
     }
   | {
       kind: "http";
@@ -43,8 +57,20 @@ export type OperationEffect<TResult = unknown> =
       ) => OperationScope<TResult> | Promise<OperationScope<TResult>>;
     };
 
+export type OperationEffectKind = OperationEffect["kind"];
+
 export function valueEffect<TResult>(value: TResult): OperationEffect<TResult> {
   return { kind: "value", value };
+}
+
+export function outputEffect(output: CommandOutputMode): OperationEffect<void> {
+  return { kind: "output", output };
+}
+
+export function localEffect<TResult>(
+  run: (context: OperationContext) => TResult | Promise<TResult>,
+): OperationEffect<TResult> {
+  return { kind: "local", run };
 }
 
 export function httpEffect<TResult = string>(
@@ -86,6 +112,10 @@ export function scopedEffect<TResult>(
   return { kind: "scope", acquire };
 }
 
+export function operationPlan<TResult>(effect: OperationEffect<TResult>): OperationPlan<TResult> {
+  return { kind: "operation-plan", effect };
+}
+
 export function isOperationEffect(value: unknown): value is OperationEffect {
   return (
     typeof value === "object" &&
@@ -93,6 +123,8 @@ export function isOperationEffect(value: unknown): value is OperationEffect {
     "kind" in value &&
     (value.kind === "value" ||
       value.kind === "http" ||
+      value.kind === "output" ||
+      value.kind === "local" ||
       value.kind === "http-stream" ||
       value.kind === "all" ||
       value.kind === "progress" ||
@@ -100,32 +132,45 @@ export function isOperationEffect(value: unknown): value is OperationEffect {
   );
 }
 
-export async function runOperationEffect<TResult>(
-  effect: OperationEffect<TResult>,
-  context: OperationContext,
-): Promise<TResult> {
-  if (effect.kind === "value") {
-    return effect.value;
-  }
+export function isOperationPlan(value: unknown): value is OperationPlan {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "kind" in value &&
+    value.kind === "operation-plan" &&
+    "effect" in value &&
+    isOperationEffect(value.effect)
+  );
+}
 
-  if (effect.kind === "http") {
+type OperationEffectHandlers = {
+  [TKind in OperationEffect["kind"]]: (
+    effect: Extract<OperationEffect, { kind: TKind }>,
+    context: OperationContext,
+  ) => Promise<unknown>;
+};
+
+const OPERATION_EFFECT_HANDLERS = {
+  value: async (effect) => effect.value,
+  output: async (effect, context) => {
+    writeCommandOutput(effect.output, context.sink);
+  },
+  local: async (effect, context) => effect.run(context),
+  http: async (effect, context) => {
     const body = await sendOperationHttp(effect.request, context.execution);
-    return effect.decode ? await effect.decode(body, context) : (body as TResult);
-  }
-
-  if (effect.kind === "http-stream") {
+    return effect.decode ? await effect.decode(body, context) : body;
+  },
+  "http-stream": async (effect, context) => {
     const stream = await sendOperationHttpStream(effect.request, context.execution);
     return effect.decode(stream, context);
-  }
-
-  if (effect.kind === "all") {
+  },
+  all: async (effect, context) => {
     const results = await Promise.all(
       effect.effects.map((nestedEffect) => runOperationEffect(nestedEffect, context)),
     );
     return effect.combine(results, context);
-  }
-
-  if (effect.kind === "progress") {
+  },
+  progress: async (effect, context) => {
     const progress = startProgress(effect.message);
     try {
       const result = await runOperationEffect(effect.effect, context);
@@ -135,12 +180,27 @@ export async function runOperationEffect<TResult>(
       progress.fail();
       throw error;
     }
-  }
+  },
+  scope: async (effect, context) => {
+    const scope = await effect.acquire(context);
+    try {
+      return await runOperationEffect(scope.effect, context);
+    } finally {
+      await scope.release?.();
+    }
+  },
+} satisfies OperationEffectHandlers;
 
-  const scope = await effect.acquire(context);
-  try {
-    return await runOperationEffect(scope.effect, context);
-  } finally {
-    await scope.release?.();
-  }
+export async function runOperationEffect<TResult>(
+  effect: OperationEffect<TResult>,
+  context: OperationContext,
+): Promise<TResult> {
+  return (await OPERATION_EFFECT_HANDLERS[effect.kind](effect as never, context)) as TResult;
+}
+
+export function runOperationPlan<TResult>(
+  plan: OperationPlan<TResult>,
+  context: OperationContext,
+): Promise<TResult> {
+  return runOperationEffect(plan.effect, context);
 }

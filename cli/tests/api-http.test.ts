@@ -4,10 +4,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { buildBodyFromFields, readJsonBody, resolveApiBody } from "@/lib/api-body.ts";
-import { apiHttpEffect, apiHttpResultOutput, normalizeApiEndpoint } from "@/lib/api-http.ts";
+import {
+  apiHttpOperationPlan,
+  apiHttpResultOutput,
+  normalizeApiEndpoint,
+  type ApiHttpArgs,
+} from "@/lib/api-http.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { runOperationEffect } from "@/lib/operation-effect.ts";
+import { runOperationPlan } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
@@ -48,7 +53,7 @@ afterEach(() => {
   delete process.env.ALTERTABLE_API_KEY;
 });
 
-async function runApiOperation(args: Parameters<typeof apiHttpEffect>[0]): Promise<void> {
+async function runApiOperation(args: ApiHttpArgs): Promise<void> {
   const runtime = getCliRuntime();
   const context: OperationContext = {
     args: {},
@@ -57,7 +62,7 @@ async function runApiOperation(args: Parameters<typeof apiHttpEffect>[0]): Promi
     sink: runtime.output,
     execution: createExecutionContext(runtime),
   };
-  const result = await runOperationEffect(apiHttpEffect(args), context);
+  const result = await runOperationPlan(apiHttpOperationPlan(args, context), context);
   const output = apiHttpResultOutput(result, context.sink);
   if (output) {
     writeCommandOutput(output, context.sink);
@@ -127,7 +132,7 @@ describe("normalizeApiEndpoint", () => {
   });
 });
 
-describe("apiHttpEffect", () => {
+describe("apiHttpOperationPlan", () => {
   test("GET writes generic tabular output in human mode", async () => {
     writeFileSync(
       mockFile,

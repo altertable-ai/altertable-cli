@@ -3,10 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { urlencode } from "@/lib/encode.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
-  buildLakehouseAppendRequest,
   buildLakehouseQueryPayload,
   createLakehouseUploadRequest,
   csvEscapeCell,
@@ -22,9 +20,22 @@ import {
 } from "@/lib/lakehouse-client.ts";
 import { httpSendStream } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { httpEffect, httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts";
+import {
+  httpEffect,
+  httpStreamEffect,
+  runOperationEffect,
+  runOperationPlan,
+} from "@/lib/operation-effect.ts";
+import { httpOperationPlan } from "@/lib/http-operation.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import {
+  lakehouseAppendOperation,
+  lakehouseAppendTaskOperation,
+  lakehouseAutocompleteOperation,
+  lakehouseQueryCancelOperation,
+  lakehouseValidateOperation,
+} from "@/lib/lakehouse-operations.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',
@@ -320,17 +331,20 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await runOperationEffect(
-      httpEffect(
-        buildLakehouseAppendRequest({
+    const context = createOperationContext();
+    await runOperationPlan(
+      httpOperationPlan(
+        lakehouseAppendOperation,
+        {
           catalog: "memory",
           schema: "main",
           table: "users",
-          jsonContent: '{"id":1}',
-          options: { sync: true },
-        }),
+          payload: '{"id":1}',
+          sync: true,
+        },
+        context,
       ),
-      createOperationContext(),
+      context,
     );
 
     const logContent = readFileSync(logFile, "utf8");
@@ -351,14 +365,10 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const response = await runOperationEffect(
-      httpEffect({
-        plane: "lakehouse",
-        method: "GET",
-        endpoint: `/tasks/${urlencode(taskId)}`,
-        retry: true,
-      }),
-      createOperationContext(),
+    const context = createOperationContext();
+    const response = await runOperationPlan(
+      httpOperationPlan(lakehouseAppendTaskOperation, taskId, context),
+      context,
     );
     expect(response).toContain("completed");
 
@@ -378,21 +388,20 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await runOperationEffect(
-      httpEffect({
-        plane: "lakehouse",
-        method: "POST",
-        endpoint: "/autocomplete",
-        body: JSON.stringify({
+    const context = createOperationContext();
+    await runOperationPlan(
+      httpOperationPlan(
+        lakehouseAutocompleteOperation,
+        {
           statement: "SELECT * FROM ",
           catalog: "memory",
           schema: "main",
-          session_id: "session-1",
-          max_suggestions: 5,
-        }),
-        contentType: "application/json",
-      }),
-      createOperationContext(),
+          sessionId: "session-1",
+          maxSuggestions: 5,
+        },
+        context,
+      ),
+      context,
     );
 
     const logContent = readFileSync(logFile, "utf8");
@@ -422,15 +431,10 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await runOperationEffect(
-      httpEffect({
-        plane: "lakehouse",
-        method: "POST",
-        endpoint: "/autocomplete",
-        body: JSON.stringify({ statement: "SELECT 1" }),
-        contentType: "application/json",
-      }),
-      createOperationContext(),
+    const context = createOperationContext();
+    await runOperationPlan(
+      httpOperationPlan(lakehouseAutocompleteOperation, { statement: "SELECT 1" }, context),
+      context,
     );
 
     const logContent = readFileSync(logFile, "utf8");
@@ -454,15 +458,10 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await runOperationEffect(
-      httpEffect({
-        plane: "lakehouse",
-        method: "POST",
-        endpoint: "/validate",
-        body: JSON.stringify({ statement: "SELECT 1" }),
-        contentType: "application/json",
-      }),
-      createOperationContext(),
+    const context = createOperationContext();
+    await runOperationPlan(
+      httpOperationPlan(lakehouseValidateOperation, { statement: "SELECT 1" }, context),
+      context,
     );
 
     const logContent = readFileSync(logFile, "utf8");
@@ -522,14 +521,14 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const params = new URLSearchParams({ session_id: "session-1" });
-    await runOperationEffect(
-      httpEffect({
-        plane: "lakehouse",
-        method: "DELETE",
-        endpoint: `/query/${urlencode(queryId)}?${params.toString()}`,
-      }),
-      createOperationContext(),
+    const context = createOperationContext();
+    await runOperationPlan(
+      httpOperationPlan(
+        lakehouseQueryCancelOperation,
+        { queryId, sessionId: "session-1" },
+        context,
+      ),
+      context,
     );
 
     const logContent = readFileSync(logFile, "utf8");

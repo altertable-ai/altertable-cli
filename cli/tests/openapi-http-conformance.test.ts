@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
-import { apiHttpEffect } from "@/lib/api-http.ts";
+import { apiHttpOperationPlan } from "@/lib/api-http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import { encodeManagementEndpoint } from "@/lib/management-transport.ts";
-import { runOperationEffect } from "@/lib/operation-effect.ts";
+import { runOperationPlan } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
@@ -53,7 +53,7 @@ describe("openapi HTTP conformance", () => {
     expect(OPENAPI_OPERATIONS.length).toBe(21);
   });
 
-  test("every operation is reachable via apiHttpEffect", async () => {
+  test("every operation is reachable via apiHttpOperationPlan", async () => {
     const mocks = OPENAPI_OPERATIONS.map((operation) => {
       const endpoint = substituteOpenapiPath(operation.path);
       const encodedPath = encodeManagementEndpoint(endpoint);
@@ -81,12 +81,15 @@ describe("openapi HTTP conformance", () => {
           ? { fields: ["label=default"] }
           : {};
 
-      await runOperationEffect(
-        apiHttpEffect({
-          method: operation.method,
-          endpoint,
-          ...bodyFields,
-        }),
+      await runOperationPlan(
+        apiHttpOperationPlan(
+          {
+            method: operation.method,
+            endpoint,
+            ...bodyFields,
+          },
+          context,
+        ),
         context,
       );
     }

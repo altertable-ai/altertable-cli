@@ -5,7 +5,7 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { apiHttpEffect, apiHttpResultOutput } from "@/lib/api-http.ts";
+import { apiHttpOperationPlan, apiHttpResultOutput } from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -16,6 +16,7 @@ import {
   isDelegatedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
+import { operationPlan, outputEffect, valueEffect } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
@@ -138,6 +139,12 @@ function createApiMethodCommand(method: string) {
   return defineOperationCommand({
     id: `api.${method.toLowerCase()}`,
     capabilities: ["management-http"],
+    catalog: {
+      effects: ["http"],
+      planes: ["management"],
+      mutates: method !== "GET",
+      output: "tabular",
+    },
     meta: {
       name: method,
       description: `${method} request to the management REST API.`,
@@ -147,8 +154,8 @@ function createApiMethodCommand(method: string) {
     parse({ args, rawArgs }) {
       return buildApiHttpArgs(args, rawArgs, method);
     },
-    run(input) {
-      return apiHttpEffect(input);
+    run(input, context) {
+      return apiHttpOperationPlan(input, context);
     },
     present(result, { sink }) {
       return apiHttpResultOutput(result, sink);
@@ -194,7 +201,7 @@ function operationDetailsJson(operationId: string): Record<string, unknown> {
   };
 }
 
-export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
+function apiSpecOutput(sink: OutputSink, options?: { format?: string }) {
   const format = resolveOpenapiSpecFormat(
     sink.json,
     process.stdout.isTTY === true,
@@ -202,24 +209,23 @@ export function runApiSpecCommand(sink: OutputSink, options?: { format?: string 
   );
 
   if (format === "json") {
-    writeCommandOutput({ kind: "raw_api", body: getOpenapiSpecJson() }, sink);
-    return;
+    return { kind: "raw_api" as const, body: getOpenapiSpecJson() };
   }
 
-  writeCommandOutput({ kind: "human", text: getOpenapiSpecYaml() }, sink);
+  return { kind: "human" as const, text: getOpenapiSpecYaml() };
 }
 
-export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
+export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
+  writeCommandOutput(apiSpecOutput(sink, options), sink);
+}
+
+function apiRoutesOutput(operationId?: string) {
   if (operationId) {
-    writeCommandOutput(
-      {
-        kind: "normalized",
-        data: operationDetailsJson(operationId),
-        humanText: formatOperationDetails(operationId),
-      },
-      sink,
-    );
-    return;
+    return {
+      kind: "normalized" as const,
+      data: operationDetailsJson(operationId),
+      humanText: formatOperationDetails(operationId),
+    };
   }
 
   const table = renderApiRoutesTableSection(
@@ -230,19 +236,21 @@ export function runApiRoutesCommand(sink: OutputSink, operationId?: string): voi
       summary: operation.summary,
     })),
   );
-  writeCommandOutput(
-    {
-      kind: "normalized",
-      data: OPENAPI_OPERATIONS,
-      humanText: table,
-    },
-    sink,
-  );
+  return {
+    kind: "normalized" as const,
+    data: OPENAPI_OPERATIONS,
+    humanText: table,
+  };
+}
+
+export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
+  writeCommandOutput(apiRoutesOutput(operationId), sink);
 }
 
 const apiSpecCommand = defineOperationCommand({
   id: "api.spec",
   capabilities: ["raw-stdout"],
+  catalog: { effects: ["output"], output: "raw-api" },
   meta: {
     name: "spec",
     description:
@@ -261,13 +269,14 @@ const apiSpecCommand = defineOperationCommand({
     return { format: stringArg(args.format) };
   },
   run(input, { sink }) {
-    runApiSpecCommand(sink, input);
+    return operationPlan(outputEffect(apiSpecOutput(sink, input)));
   },
 });
 
 const apiRoutesCommand = defineOperationCommand({
   id: "api.routes",
   capabilities: [],
+  catalog: { effects: ["output"], output: "normalized" },
   meta: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
@@ -283,8 +292,8 @@ const apiRoutesCommand = defineOperationCommand({
   parse({ args }) {
     return stringArg(args.operation);
   },
-  run(operationId, { sink }) {
-    runApiRoutesCommand(sink, operationId);
+  run(operationId) {
+    return operationPlan(outputEffect(apiRoutesOutput(operationId)));
   },
 });
 
@@ -295,6 +304,11 @@ const apiMethodSubCommands = Object.fromEntries(
 export const apiCommand = defineOperationCommand({
   id: "api.invoke",
   capabilities: ["management-http"],
+  catalog: {
+    effects: ["http"],
+    planes: ["management"],
+    output: "tabular",
+  },
   meta: {
     name: "api",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
@@ -317,11 +331,11 @@ export const apiCommand = defineOperationCommand({
       args: buildApiHttpArgs(args, rawArgs),
     };
   },
-  run(input) {
+  run(input, context) {
     if (input.delegated) {
-      return;
+      return operationPlan(valueEffect(undefined));
     }
-    return apiHttpEffect(input.args);
+    return apiHttpOperationPlan(input.args, context);
   },
   present(result, { sink }) {
     if (result === undefined) {

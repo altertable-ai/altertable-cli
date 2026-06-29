@@ -3,26 +3,23 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { buildCatalogRowsFromResponses } from "@/lib/catalog-rows.ts";
-import { allEffects, httpEffect } from "@/lib/operation-effect.ts";
+import { allEffects, httpEffect, operationPlan } from "@/lib/operation-effect.ts";
+import { httpOperationPlan } from "@/lib/http-operation.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
-
-type CatalogCreateInput = {
-  env: string;
-  name: string;
-  body: string;
-};
-
-type CatalogCreateResult = {
-  response: string;
-  env: string;
-  fallbackName: string;
-};
+import {
+  buildManagementCatalogRows,
+  managementCatalogConnectionsOperation,
+  managementCatalogCreateOperation,
+  managementCatalogDatabasesOperation,
+  type ManagementCatalogCreateInput,
+  type ManagementCatalogCreateResult,
+} from "@/lib/management-operations.ts";
 
 const catalogsCreateCommand = defineOperationCommand({
   id: "catalogs.create",
   capabilities: ["management-http"],
+  catalog: { effects: ["http"], planes: ["management"], mutates: true, output: "raw-api" },
   meta: {
     name: "create",
     description: "Create a catalog. Only the 'altertable' engine is supported.",
@@ -37,7 +34,7 @@ const catalogsCreateCommand = defineOperationCommand({
     },
     name: { type: "string", description: "Catalog name", required: true },
   },
-  parse({ args }): CatalogCreateInput {
+  parse({ args }): ManagementCatalogCreateInput {
     if (args.engine !== "altertable") {
       throw new CliError(
         `Only the 'altertable' engine is supported (got '${String(args.engine)}').`,
@@ -52,19 +49,10 @@ const catalogsCreateCommand = defineOperationCommand({
       body: buildCreateCatalogBody({ name }),
     };
   },
-  run(input) {
-    return httpEffect<CatalogCreateResult>(
-      {
-        plane: "management",
-        method: "POST",
-        endpoint: `/environments/${input.env}/databases`,
-        body: input.body,
-        contentType: "application/json",
-      },
-      (response) => ({ response, env: input.env, fallbackName: input.name }),
-    );
+  run(input, context) {
+    return httpOperationPlan(managementCatalogCreateOperation, input, context);
   },
-  present(result) {
+  present(result: ManagementCatalogCreateResult) {
     const data = parseApiJson(result.response) as {
       database?: { slug?: string; name?: string; engine?: string };
       connection?: { slug?: string; name?: string; engine?: string };
@@ -85,28 +73,22 @@ const catalogsCreateCommand = defineOperationCommand({
 const catalogsListCommand = defineOperationCommand({
   id: "catalogs.list",
   capabilities: ["management-http"],
+  catalog: { effects: ["all", "http"], planes: ["management"], output: "normalized" },
   meta: {
     name: "list",
     description: "List catalogs in the current environment.",
     examples: ["altertable catalogs list", "altertable --json catalogs list"],
   },
-  run() {
+  run(_input, context) {
     const env = requireManagementEnv();
-    return allEffects(
-      [
-        httpEffect({
-          plane: "management",
-          method: "GET",
-          endpoint: `/environments/${env}/databases`,
-        }),
-        httpEffect({
-          plane: "management",
-          method: "GET",
-          endpoint: `/environments/${env}/connections`,
-        }),
-      ],
-      ([databasesResponse, connectionsResponse]) =>
-        buildCatalogRowsFromResponses(String(databasesResponse), String(connectionsResponse)),
+    return operationPlan(
+      allEffects(
+        [
+          httpEffect(managementCatalogDatabasesOperation.request(env, context)),
+          httpEffect(managementCatalogConnectionsOperation.request(env, context)),
+        ],
+        buildManagementCatalogRows,
+      ),
     );
   },
   present(rows) {

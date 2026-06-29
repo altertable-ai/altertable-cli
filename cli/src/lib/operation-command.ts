@@ -7,11 +7,13 @@ import {
 import { writeCommandOutput, type CommandOutputMode } from "@/lib/command-output.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import {
-  isOperationEffect,
-  runOperationEffect,
-  type OperationEffect,
+  isOperationPlan,
+  operationPlan,
+  runOperationPlan,
+  type OperationPlan,
 } from "@/lib/operation-effect.ts";
 import { registerOperation, type OperationCapability } from "@/lib/operation-catalog.ts";
+import type { OperationCatalogMetadata } from "@/lib/operation-catalog.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
 export type OperationContext = {
@@ -31,6 +33,7 @@ export type OperationPresenter<TResult, TInput> = (
 export type OperationSpec<TInput = void, TResult = void> = {
   id?: string;
   capabilities?: readonly OperationCapability[];
+  catalog?: OperationCatalogMetadata;
   meta?: AltertableCommandMeta;
   args?: ArgsDef;
   default?: string;
@@ -39,7 +42,7 @@ export type OperationSpec<TInput = void, TResult = void> = {
   run?: (
     input: TInput,
     context: OperationContext,
-  ) => TResult | OperationEffect<TResult> | Promise<TResult | OperationEffect<TResult>>;
+  ) => OperationPlan<TResult> | Promise<OperationPlan<TResult>>;
   present?: OperationPresenter<TResult, TInput>;
 };
 
@@ -73,6 +76,7 @@ export function defineOperationCommand<TInput = void, TResult = void>(
       id: spec.id,
       meta: spec.meta,
       capabilities: spec.capabilities ?? [],
+      ...spec.catalog,
     });
   }
 
@@ -94,10 +98,10 @@ export function defineOperationCommand<TInput = void, TResult = void>(
       const operationContext = createOperationContext(context);
       const input = spec.parse ? await spec.parse(operationContext) : (undefined as TInput);
       const plannedResult = await run(input, operationContext);
-      const result = isOperationEffect(plannedResult)
-        ? await runOperationEffect(plannedResult, operationContext)
-        : plannedResult;
+      const result = await runOperationPlan(plannedResult, operationContext);
       await writePresentedOutput(result, input, operationContext, spec.present);
     },
   });
 }
+
+export { isOperationPlan, operationPlan };

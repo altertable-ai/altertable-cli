@@ -2,6 +2,7 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { localEffect, operationPlan, valueEffect } from "@/lib/operation-effect.ts";
 import { renderFixedTableSection } from "@/lib/table-format.ts";
 import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
@@ -23,9 +24,10 @@ function requireProfileName(name: unknown): string {
 const profileListCommand = defineOperationCommand({
   id: "profile.list",
   capabilities: ["local-config"],
+  catalog: { effects: ["value"], output: "normalized" },
   meta: { name: "list", description: "List configured profiles" },
   run() {
-    return listProfiles();
+    return operationPlan(valueEffect(listProfiles()));
   },
   present(profiles) {
     const table = renderFixedTableSection(
@@ -57,6 +59,7 @@ const profileListCommand = defineOperationCommand({
 const profileShowCommand = defineOperationCommand({
   id: "profile.show",
   capabilities: ["local-config"],
+  catalog: { effects: ["value"], output: "normalized" },
   meta: { name: "show", description: "Show profile configuration (secrets masked)" },
   args: {
     name: { type: "string", description: "Profile name (default: active profile)" },
@@ -70,7 +73,7 @@ const profileShowCommand = defineOperationCommand({
   },
   run(profileName) {
     const profile = buildConfigureShowDataForProfile(profileName);
-    return { profileName, profile };
+    return operationPlan(valueEffect({ profileName, profile }));
   },
   present(result) {
     return {
@@ -84,6 +87,7 @@ const profileShowCommand = defineOperationCommand({
 const profileUseCommand = defineOperationCommand({
   id: "profile.use",
   capabilities: ["local-config", "local-file-write"],
+  catalog: { effects: ["local"], mutates: true, output: "normalized" },
   meta: { name: "use", description: "Set the active profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -92,8 +96,12 @@ const profileUseCommand = defineOperationCommand({
     return requireProfileName(args.name);
   },
   run(profileName) {
-    setActiveProfile(profileName);
-    return profileName;
+    return operationPlan(
+      localEffect(() => {
+        setActiveProfile(profileName);
+        return profileName;
+      }),
+    );
   },
   present(profileName) {
     return {
@@ -107,6 +115,7 @@ const profileUseCommand = defineOperationCommand({
 const profileDeleteCommand = defineOperationCommand({
   id: "profile.delete",
   capabilities: ["local-config", "local-file-write"],
+  catalog: { effects: ["local"], mutates: true, output: "normalized" },
   meta: { name: "delete", description: "Delete a profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -119,8 +128,12 @@ const profileDeleteCommand = defineOperationCommand({
     return requireProfileName(args.name);
   },
   run(profileName) {
-    deleteProfile(profileName);
-    return profileName;
+    return operationPlan(
+      localEffect(() => {
+        deleteProfile(profileName);
+        return profileName;
+      }),
+    );
   },
   present(profileName) {
     return {
