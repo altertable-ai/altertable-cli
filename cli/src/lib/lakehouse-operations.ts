@@ -146,6 +146,17 @@ export const lakehouseValidateOperation = defineHttpOperation<
   }),
 });
 
+export const lakehouseVerifyOperation = defineHttpOperation<void, string>({
+  id: "lakehouse.verify",
+  request: () => ({
+    plane: "lakehouse",
+    method: "POST",
+    endpoint: "/query",
+    body: JSON.stringify(buildLakehouseQueryPayload("SELECT 1")),
+    contentType: "application/json",
+  }),
+});
+
 export const lakehouseAppendOperation = defineHttpOperation<LakehouseAppendOperationInput, string>({
   id: "lakehouse.append.run",
   request: (input) =>

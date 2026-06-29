@@ -5,7 +5,7 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { apiHttpOperationPlan, apiHttpResultOutput } from "@/lib/api-http.ts";
+import { apiHttpOperationPlan, apiHttpResultOutput, type ApiHttpResult } from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -17,7 +17,7 @@ import {
   isDelegatedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
-import { operationPlan, outputEffect, valueEffect } from "@/lib/operation-effect.ts";
+import { noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
@@ -120,6 +120,11 @@ function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], meth
     format: optionalStringArg(args, "format") ?? readArgvFlagValue(rawArgs, "--format"),
   };
 }
+
+type ApiInvokeInput = {
+  delegated: boolean;
+  args: ReturnType<typeof buildApiHttpArgs>;
+};
 
 const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly string[]> = {
   GET: ["altertable api /whoami", "altertable api GET /environments/production/connections"],
@@ -270,7 +275,7 @@ const apiSpecCommand = defineOperationCommand({
     return { format: optionalStringArg(args, "format") };
   },
   run(input, { sink }) {
-    return operationPlan(outputEffect(apiSpecOutput(sink, input)));
+    return outputPlan(apiSpecOutput(sink, input));
   },
 });
 
@@ -294,7 +299,7 @@ const apiRoutesCommand = defineOperationCommand({
     return optionalStringArg(args, "operation");
   },
   run(operationId) {
-    return operationPlan(outputEffect(apiRoutesOutput(operationId)));
+    return outputPlan(apiRoutesOutput(operationId));
   },
 });
 
@@ -302,7 +307,7 @@ const apiMethodSubCommands = Object.fromEntries(
   HTTP_METHOD_NAMES.map((method) => [method, createApiMethodCommand(method)]),
 );
 
-export const apiCommand = defineOperationCommand({
+export const apiCommand = defineOperationCommand<ApiInvokeInput, ApiHttpResult | undefined>({
   id: "api.invoke",
   capabilities: ["management-http"],
   catalog: {
@@ -334,7 +339,7 @@ export const apiCommand = defineOperationCommand({
   },
   run(input, context) {
     if (input.delegated) {
-      return operationPlan(valueEffect(undefined));
+      return noopPlan<ApiHttpResult | undefined>();
     }
     return apiHttpOperationPlan(input.args, context);
   },

@@ -26,7 +26,6 @@ import {
   runOperationEffect,
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
-import { httpOperationPlan } from "@/lib/http-operation.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import {
@@ -333,8 +332,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     await runOperationPlan(
-      httpOperationPlan(
-        lakehouseAppendOperation,
+      lakehouseAppendOperation.plan(
         {
           catalog: "memory",
           schema: "main",
@@ -367,7 +365,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     const response = await runOperationPlan(
-      httpOperationPlan(lakehouseAppendTaskOperation, taskId, context),
+      lakehouseAppendTaskOperation.plan(taskId, context),
       context,
     );
     expect(response).toContain("completed");
@@ -390,8 +388,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     await runOperationPlan(
-      httpOperationPlan(
-        lakehouseAutocompleteOperation,
+      lakehouseAutocompleteOperation.plan(
         {
           statement: "SELECT * FROM ",
           catalog: "memory",
@@ -433,7 +430,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     await runOperationPlan(
-      httpOperationPlan(lakehouseAutocompleteOperation, { statement: "SELECT 1" }, context),
+      lakehouseAutocompleteOperation.plan({ statement: "SELECT 1" }, context),
       context,
     );
 
@@ -460,7 +457,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     await runOperationPlan(
-      httpOperationPlan(lakehouseValidateOperation, { statement: "SELECT 1" }, context),
+      lakehouseValidateOperation.plan({ statement: "SELECT 1" }, context),
       context,
     );
 
@@ -523,11 +520,7 @@ describe("lakehouse request construction", () => {
 
     const context = createOperationContext();
     await runOperationPlan(
-      httpOperationPlan(
-        lakehouseQueryCancelOperation,
-        { queryId, sessionId: "session-1" },
-        context,
-      ),
+      lakehouseQueryCancelOperation.plan({ queryId, sessionId: "session-1" }, context),
       context,
     );
 

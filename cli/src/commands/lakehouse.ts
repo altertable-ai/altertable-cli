@@ -6,7 +6,7 @@ import {
   optionalStringArg,
   stringArg,
 } from "@/lib/operation-codec.ts";
-import { httpEffect, operationPlan, progressEffect, scopedEffect } from "@/lib/operation-effect.ts";
+import { httpEffect, progressPlan, scopedPlan } from "@/lib/operation-effect.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import {
   PAGER_MODE_OPTIONS,
@@ -259,9 +259,9 @@ const appendRowsCommand = defineOperationCommand({
   },
   run(input, context) {
     const effect = lakehouseAppendOperation.effect(input, context);
-    return operationPlan(
-      input.sync ? progressEffect("Waiting for append to complete…", effect) : effect,
-    );
+    return input.sync
+      ? progressPlan("Waiting for append to complete…", effect)
+      : lakehouseAppendOperation.plan(input, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -374,24 +374,22 @@ export const uploadCommand = defineOperationCommand({
     };
   },
   run(input) {
-    return operationPlan(
-      scopedEffect(() => {
-        const scope = createLakehouseUploadRequest({
-          catalog: input.catalog,
-          schema: input.schema,
-          table: input.table,
-          format: input.format,
-          mode: input.mode,
-          filePath: input.filePath,
-          primaryKey: input.primaryKey,
-          httpOptions: input.httpOptions,
-        });
-        return {
-          effect: httpEffect(scope.request),
-          release: scope.release,
-        };
-      }),
-    );
+    return scopedPlan(() => {
+      const scope = createLakehouseUploadRequest({
+        catalog: input.catalog,
+        schema: input.schema,
+        table: input.table,
+        format: input.format,
+        mode: input.mode,
+        filePath: input.filePath,
+        primaryKey: input.primaryKey,
+        httpOptions: input.httpOptions,
+      });
+      return {
+        effect: httpEffect(scope.request),
+        release: scope.release,
+      };
+    });
   },
   present(response) {
     return { kind: "raw_api", body: response };

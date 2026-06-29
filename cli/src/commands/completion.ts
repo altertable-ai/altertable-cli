@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { localEffect, operationPlan, outputEffect, valueEffect } from "@/lib/operation-effect.ts";
+import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   formatTerminalMarkdownLinks,
@@ -34,6 +34,10 @@ type InstallResult = {
   rcPath?: string;
   rcUpdated: boolean;
   startupAction: "updated" | "skipped" | "not-needed";
+};
+type CompletionInstallInput = {
+  explicitShell?: SupportedShell;
+  updateRc: boolean;
 };
 
 const SUPPORTED_SHELLS = ["bash", "zsh", "fish"] as const;
@@ -243,9 +247,7 @@ function createShellCompletionCommand(
       description: `Generate ${shell} completion script.`,
     },
     run() {
-      return operationPlan(
-        outputEffect({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) }),
-      );
+      return outputPlan({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) });
     },
   });
 }
@@ -274,24 +276,23 @@ function createInstallShellCommand(
       };
     },
     run(input) {
-      return operationPlan(
-        localEffect(async ({ sink }) => {
-          const script = formatCompletionScript(shell, getRootCommand());
-          const result = await installCompletion(shell, script, input);
-
-          if (sink.json) {
-            sink.writeJson(result);
-            return;
-          }
-          sink.writeHuman(formatInstallMessage(result));
-        }),
-      );
+      return localPlan(() => {
+        const script = formatCompletionScript(shell, getRootCommand());
+        return installCompletion(shell, script, input);
+      });
+    },
+    present(result, { sink }) {
+      if (sink.json) {
+        sink.writeJson(result);
+        return;
+      }
+      sink.writeHuman(formatInstallMessage(result));
     },
   });
 }
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): CommandDef {
-  const installCommand = defineOperationCommand({
+  const installCommand = defineOperationCommand<CompletionInstallInput, InstallResult | undefined>({
     id: "completion.install",
     capabilities: ["local-file-write", "local-config"],
     catalog: { effects: ["local", "value"], mutates: true, output: "human" },
@@ -324,24 +325,26 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     },
     run(input) {
       if (input.explicitShell) {
-        return operationPlan(valueEffect(undefined));
+        return noopPlan<InstallResult | undefined>();
       }
 
-      return operationPlan(
-        localEffect(async ({ sink }) => {
-          const shell = resolveShell(undefined);
-          const script = formatCompletionScript(shell, getRootCommand());
-          const result = await installCompletion(shell, script, {
-            updateRc: input.updateRc,
-          });
-
-          if (sink.json) {
-            sink.writeJson(result);
-            return;
-          }
-          sink.writeHuman(formatInstallMessage(result));
-        }),
-      );
+      return localPlan(() => {
+        const shell = resolveShell(undefined);
+        const script = formatCompletionScript(shell, getRootCommand());
+        return installCompletion(shell, script, {
+          updateRc: input.updateRc,
+        });
+      });
+    },
+    present(result, { sink }) {
+      if (result === undefined) {
+        return;
+      }
+      if (sink.json) {
+        sink.writeJson(result);
+        return;
+      }
+      sink.writeHuman(formatInstallMessage(result));
     },
   });
 
@@ -369,12 +372,10 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     },
     run(rawArgs) {
       if (rawArgs.some((arg) => arg === "install" || isSupportedShell(arg))) {
-        return operationPlan(valueEffect(undefined));
+        return noopPlan();
       }
       const shell = resolveShell(undefined);
-      return operationPlan(
-        outputEffect({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) }),
-      );
+      return outputPlan({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) });
     },
   });
 }

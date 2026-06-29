@@ -116,6 +116,46 @@ export function operationPlan<TResult>(effect: OperationEffect<TResult>): Operat
   return { kind: "operation-plan", effect };
 }
 
+export function valuePlan<TResult>(value: TResult): OperationPlan<TResult> {
+  return operationPlan(valueEffect(value));
+}
+
+export function noopPlan<TResult = void>(): OperationPlan<TResult> {
+  return valuePlan(undefined as TResult);
+}
+
+export function outputPlan(output: CommandOutputMode): OperationPlan<void> {
+  return operationPlan(outputEffect(output));
+}
+
+export function localPlan<TResult>(
+  run: (context: OperationContext) => TResult | Promise<TResult>,
+): OperationPlan<TResult> {
+  return operationPlan(localEffect(run));
+}
+
+export function allPlan<TResult>(
+  effects: readonly OperationEffect[],
+  combine: (results: unknown[], context: OperationContext) => TResult | Promise<TResult>,
+): OperationPlan<TResult> {
+  return operationPlan(allEffects(effects, combine));
+}
+
+export function progressPlan<TResult>(
+  message: string,
+  effect: OperationEffect<TResult>,
+): OperationPlan<TResult> {
+  return operationPlan(progressEffect(message, effect));
+}
+
+export function scopedPlan<TResult>(
+  acquire: (
+    context: OperationContext,
+  ) => OperationScope<TResult> | Promise<OperationScope<TResult>>,
+): OperationPlan<TResult> {
+  return operationPlan(scopedEffect(acquire));
+}
+
 export function isOperationEffect(value: unknown): value is OperationEffect {
   return (
     typeof value === "object" &&

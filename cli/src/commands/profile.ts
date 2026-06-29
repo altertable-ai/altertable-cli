@@ -2,7 +2,7 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { localEffect, operationPlan, valueEffect } from "@/lib/operation-effect.ts";
+import { localPlan, valuePlan } from "@/lib/operation-effect.ts";
 import { renderFixedTableSection } from "@/lib/table-format.ts";
 import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
@@ -27,7 +27,7 @@ const profileListCommand = defineOperationCommand({
   catalog: { effects: ["value"], output: "normalized" },
   meta: { name: "list", description: "List configured profiles" },
   run() {
-    return operationPlan(valueEffect(listProfiles()));
+    return valuePlan(listProfiles());
   },
   present(profiles) {
     const table = renderFixedTableSection(
@@ -73,7 +73,7 @@ const profileShowCommand = defineOperationCommand({
   },
   run(profileName) {
     const profile = buildConfigureShowDataForProfile(profileName);
-    return operationPlan(valueEffect({ profileName, profile }));
+    return valuePlan({ profileName, profile });
   },
   present(result) {
     return {
@@ -96,12 +96,10 @@ const profileUseCommand = defineOperationCommand({
     return requireProfileName(args.name);
   },
   run(profileName) {
-    return operationPlan(
-      localEffect(() => {
-        setActiveProfile(profileName);
-        return profileName;
-      }),
-    );
+    return localPlan(() => {
+      setActiveProfile(profileName);
+      return profileName;
+    });
   },
   present(profileName) {
     return {
@@ -128,12 +126,10 @@ const profileDeleteCommand = defineOperationCommand({
     return requireProfileName(args.name);
   },
   run(profileName) {
-    return operationPlan(
-      localEffect(() => {
-        deleteProfile(profileName);
-        return profileName;
-      }),
-    );
+    return localPlan(() => {
+      deleteProfile(profileName);
+      return profileName;
+    });
   },
   present(profileName) {
     return {

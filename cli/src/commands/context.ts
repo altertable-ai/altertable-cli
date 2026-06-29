@@ -1,5 +1,5 @@
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { operationPlan, valueEffect } from "@/lib/operation-effect.ts";
+import { valuePlan } from "@/lib/operation-effect.ts";
 import { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
 import {
   activeContextToJson,
@@ -21,7 +21,7 @@ export const contextCommand = defineOperationCommand({
     const context = buildActiveContext();
 
     if (!configureCredentialStatus().hasManagement) {
-      return operationPlan(valueEffect(context));
+      return valuePlan(context);
     }
 
     return managementWhoamiOperation.plan(context, operationContext);

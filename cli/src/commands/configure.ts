@@ -7,7 +7,7 @@ import {
 } from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { localEffect, operationPlan } from "@/lib/operation-effect.ts";
+import { localPlan } from "@/lib/operation-effect.ts";
 import {
   configuredPlanesFromOptions,
   configureRunVerifyIfRequested,
@@ -134,11 +134,9 @@ function createConfigurePlaneCommand(
       return args;
     },
     run(args) {
-      return operationPlan(
-        localEffect(async ({ sink }) => {
-          await runConfigureWizardFromArgs(scope, args, sink);
-        }),
-      );
+      return localPlan(async ({ sink }) => {
+        await runConfigureWizardFromArgs(scope, args, sink);
+      });
     },
   });
 }
@@ -219,10 +217,8 @@ export const configureCommand = defineOperationCommand({
     return args;
   },
   run(args) {
-    return operationPlan(
-      localEffect(async ({ sink }) => {
-        await runConfigureDispatch(args, sink);
-      }),
-    );
+    return localPlan(async ({ sink }) => {
+      await runConfigureDispatch(args, sink);
+    });
   },
 });

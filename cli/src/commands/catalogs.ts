@@ -3,7 +3,7 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { allEffects, operationPlan } from "@/lib/operation-effect.ts";
+import { allPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 import {
@@ -80,14 +80,12 @@ const catalogsListCommand = defineOperationCommand({
   },
   run(_input, context) {
     const env = requireManagementEnv();
-    return operationPlan(
-      allEffects(
-        [
-          managementCatalogDatabasesOperation.effect(env, context),
-          managementCatalogConnectionsOperation.effect(env, context),
-        ],
-        buildManagementCatalogRows,
-      ),
+    return allPlan(
+      [
+        managementCatalogDatabasesOperation.effect(env, context),
+        managementCatalogConnectionsOperation.effect(env, context),
+      ],
+      buildManagementCatalogRows,
     );
   },
   present(rows) {
