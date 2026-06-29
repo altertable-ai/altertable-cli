@@ -21,6 +21,8 @@ function requireProfileName(name: unknown): string {
 }
 
 const profileListCommand = defineOperationCommand({
+  id: "profile.list",
+  capabilities: ["local-config"],
   meta: { name: "list", description: "List configured profiles" },
   run() {
     return listProfiles();
@@ -53,6 +55,8 @@ const profileListCommand = defineOperationCommand({
 });
 
 const profileShowCommand = defineOperationCommand({
+  id: "profile.show",
+  capabilities: ["local-config"],
   meta: { name: "show", description: "Show profile configuration (secrets masked)" },
   args: {
     name: { type: "string", description: "Profile name (default: active profile)" },
@@ -78,6 +82,8 @@ const profileShowCommand = defineOperationCommand({
 });
 
 const profileUseCommand = defineOperationCommand({
+  id: "profile.use",
+  capabilities: ["local-config", "local-file-write"],
   meta: { name: "use", description: "Set the active profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -99,6 +105,8 @@ const profileUseCommand = defineOperationCommand({
 });
 
 const profileDeleteCommand = defineOperationCommand({
+  id: "profile.delete",
+  capabilities: ["local-config", "local-file-write"],
   meta: { name: "delete", description: "Delete a profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -124,6 +132,8 @@ const profileDeleteCommand = defineOperationCommand({
 });
 
 export const profileCommand = defineOperationCommand({
+  id: "profile",
+  capabilities: ["local-config"],
   meta: {
     name: "profile",
     description: "Manage named configuration profiles.",

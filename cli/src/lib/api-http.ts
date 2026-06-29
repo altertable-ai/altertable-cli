@@ -1,13 +1,10 @@
 import { resolveApiRequestPayload, type ParsedApiField } from "@/lib/api-body.ts";
-import { writeCommandOutput, type CommandOutputMode } from "@/lib/command-output.ts";
+import type { CommandOutputMode } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
-import { getCliRuntime } from "@/lib/runtime.ts";
 import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 import { httpEffect, type OperationEffect } from "@/lib/operation-effect.ts";
-import { sendOperationHttp } from "@/lib/operation-transport.ts";
+import type { OutputSink } from "@/lib/runtime.ts";
 
 export type ApiHttpArgs = {
   method?: string;
@@ -92,31 +89,6 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
     searchParams.append(field.key, field.value === null ? "null" : String(field.value));
   }
   return `${endpoint}${separator}${searchParams.toString()}`;
-}
-
-export async function runApiHttp(
-  args: ApiHttpArgs,
-  sink: OutputSink = getOutputSink(),
-  execution: ExecutionContext = createExecutionContext(getCliRuntime()),
-): Promise<void> {
-  const resolved = resolveApiHttp(args);
-  const response = await sendOperationHttp(
-    {
-      plane: "management",
-      method: resolved.method,
-      endpoint: resolved.endpoint,
-      body: resolved.body,
-      contentType: resolved.body ? "application/json" : undefined,
-    },
-    execution,
-  );
-  const output = apiHttpResultOutput(
-    { method: resolved.method, response, format: resolved.format },
-    sink,
-  );
-  if (output) {
-    writeCommandOutput(output, sink);
-  }
 }
 
 export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {

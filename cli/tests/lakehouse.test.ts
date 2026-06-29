@@ -3,26 +3,28 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
+import { urlencode } from "@/lib/encode.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
+  buildLakehouseAppendRequest,
+  buildLakehouseQueryPayload,
+  createLakehouseUploadRequest,
   csvEscapeCell,
   formatAutocompleteHumanOutput,
   getQueryColumnNames,
-  lakehouseAppend,
-  lakehouseAutocomplete,
-  lakehouseCancel,
-  lakehouseGetTask,
-  lakehouseQueryAll,
-  lakehouseUpload,
-  lakehouseValidate,
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
   renderQueryCsv,
   renderQueryJson,
   renderQueryTable,
+  type LakehouseQueryResult,
   type LakehouseRow,
 } from "@/lib/lakehouse-client.ts";
 import { httpSendStream } from "@/lib/http.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
+import { httpEffect, httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
+import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',
@@ -45,7 +47,31 @@ beforeEach(() => {
   process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "testuser";
   process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "testpass";
   setCliContext({ debug: false, json: false, agent: false });
+  refreshCliRuntimeContext(getCliRuntime().context);
 });
+
+function createOperationContext(): OperationContext {
+  const runtime = getCliRuntime();
+  return {
+    args: {},
+    rawArgs: [],
+    runtime,
+    sink: runtime.output,
+    execution: createExecutionContext(runtime),
+  };
+}
+
+async function collectLakehouseQueryStream(
+  stream: ReadableStream<Uint8Array>,
+): Promise<LakehouseQueryResult> {
+  const parser = parseLakehouseQueryStream(stream);
+  while (true) {
+    const next = await parser.next();
+    if (next.done) {
+      return next.value;
+    }
+  }
+}
 
 afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
@@ -195,7 +221,7 @@ describe("parseLakehouseQueryStream", () => {
   });
 });
 
-describe("lakehouseQueryAll", () => {
+describe("lakehouse query stream effect", () => {
   test("returns the same result as parseLakehouseQueryResponse", async () => {
     writeFileSync(
       mockFile,
@@ -209,7 +235,20 @@ describe("lakehouseQueryAll", () => {
       ]),
     );
 
-    const streamedResult = await lakehouseQueryAll("SELECT 1");
+    const streamedResult = await runOperationEffect(
+      httpStreamEffect(
+        {
+          plane: "lakehouse",
+          method: "POST",
+          endpoint: "/query",
+          body: JSON.stringify(buildLakehouseQueryPayload("SELECT 1")),
+          contentType: "application/json",
+          retry: false,
+        },
+        collectLakehouseQueryStream,
+      ),
+      createOperationContext(),
+    );
     const bufferedResult = parseLakehouseQueryResponse(SAMPLE_NDJSON);
 
     expect(streamedResult).toEqual(bufferedResult);
@@ -281,7 +320,18 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseAppend("memory", "main", "users", '{"id":1}', { sync: true });
+    await runOperationEffect(
+      httpEffect(
+        buildLakehouseAppendRequest({
+          catalog: "memory",
+          schema: "main",
+          table: "users",
+          jsonContent: '{"id":1}',
+          options: { sync: true },
+        }),
+      ),
+      createOperationContext(),
+    );
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/append?");
@@ -301,7 +351,15 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const response = await lakehouseGetTask(taskId);
+    const response = await runOperationEffect(
+      httpEffect({
+        plane: "lakehouse",
+        method: "GET",
+        endpoint: `/tasks/${urlencode(taskId)}`,
+        retry: true,
+      }),
+      createOperationContext(),
+    );
     expect(response).toContain("completed");
 
     const logContent = readFileSync(logFile, "utf8");
@@ -320,13 +378,22 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseAutocomplete({
-      statement: "SELECT * FROM ",
-      catalog: "memory",
-      schema: "main",
-      sessionId: "session-1",
-      maxSuggestions: 5,
-    });
+    await runOperationEffect(
+      httpEffect({
+        plane: "lakehouse",
+        method: "POST",
+        endpoint: "/autocomplete",
+        body: JSON.stringify({
+          statement: "SELECT * FROM ",
+          catalog: "memory",
+          schema: "main",
+          session_id: "session-1",
+          max_suggestions: 5,
+        }),
+        contentType: "application/json",
+      }),
+      createOperationContext(),
+    );
 
     const logContent = readFileSync(logFile, "utf8");
     const payloadLine = logContent
@@ -355,7 +422,16 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseAutocomplete({ statement: "SELECT 1" });
+    await runOperationEffect(
+      httpEffect({
+        plane: "lakehouse",
+        method: "POST",
+        endpoint: "/autocomplete",
+        body: JSON.stringify({ statement: "SELECT 1" }),
+        contentType: "application/json",
+      }),
+      createOperationContext(),
+    );
 
     const logContent = readFileSync(logFile, "utf8");
     const payloadLine = logContent
@@ -378,7 +454,16 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseValidate("SELECT 1");
+    await runOperationEffect(
+      httpEffect({
+        plane: "lakehouse",
+        method: "POST",
+        endpoint: "/validate",
+        body: JSON.stringify({ statement: "SELECT 1" }),
+        contentType: "application/json",
+      }),
+      createOperationContext(),
+    );
 
     const logContent = readFileSync(logFile, "utf8");
     const payloadLine = logContent
@@ -402,7 +487,20 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseUpload("memory", "main", "users", "csv", "upsert", uploadFile, "id");
+    const uploadScope = createLakehouseUploadRequest({
+      catalog: "memory",
+      schema: "main",
+      table: "users",
+      format: "csv",
+      mode: "upsert",
+      filePath: uploadFile,
+      primaryKey: "id",
+    });
+    try {
+      await runOperationEffect(httpEffect(uploadScope.request), createOperationContext());
+    } finally {
+      uploadScope.release();
+    }
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/upload?");
@@ -424,7 +522,15 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    await lakehouseCancel(queryId, "session-1");
+    const params = new URLSearchParams({ session_id: "session-1" });
+    await runOperationEffect(
+      httpEffect({
+        plane: "lakehouse",
+        method: "DELETE",
+        endpoint: `/query/${urlencode(queryId)}?${params.toString()}`,
+      }),
+      createOperationContext(),
+    );
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(`URL=https://example.com/query/${encodedQueryId}`);

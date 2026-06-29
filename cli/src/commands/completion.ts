@@ -234,6 +234,8 @@ function createShellCompletionCommand(
   getRootCommand: GetRootCommand,
 ): CommandDef {
   return defineOperationCommand({
+    id: `completion.${shell}`,
+    capabilities: ["raw-stdout"],
     meta: {
       name: shell,
       description: `Generate ${shell} completion script.`,
@@ -249,6 +251,8 @@ function createInstallShellCommand(
   getRootCommand: GetRootCommand,
 ): CommandDef {
   return defineOperationCommand({
+    id: `completion.install.${shell}`,
+    capabilities: ["local-file-write", "local-config"],
     meta: {
       name: shell,
       description: `Install ${shell} completion.`,
@@ -279,6 +283,8 @@ function createInstallShellCommand(
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): CommandDef {
   const installCommand = defineOperationCommand({
+    id: "completion.install",
+    capabilities: ["local-file-write", "local-config"],
     meta: {
       name: "install",
       description: "Install shell completion for the current shell.",
@@ -326,6 +332,8 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
   });
 
   return defineOperationCommand({
+    id: "completion",
+    capabilities: ["raw-stdout"],
     meta: {
       name: "completion",
       description: "Generate or install shell completion scripts.",

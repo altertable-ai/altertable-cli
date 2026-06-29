@@ -1,11 +1,13 @@
 import { getCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { lakehouseQuery } from "@/lib/lakehouse-transport.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
+import { buildLakehouseQueryPayload } from "@/lib/lakehouse-transport.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
+import { sendOperationHttp } from "@/lib/operation-transport.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
-import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { getActiveProfileName } from "@/lib/profile.ts";
 
 export { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
@@ -61,7 +63,16 @@ async function verifyPlane(plane: ConfigureAuthPlane): Promise<string> {
     return `Management API key verified (${principalLine}).`;
   }
 
-  await lakehouseQuery("SELECT 1");
+  await sendOperationHttp(
+    {
+      plane: "lakehouse",
+      method: "POST",
+      endpoint: "/query",
+      body: JSON.stringify(buildLakehouseQueryPayload("SELECT 1")),
+      contentType: "application/json",
+    },
+    createExecutionContext(getCliRuntime()),
+  );
   return "Lakehouse credentials verified.";
 }
 

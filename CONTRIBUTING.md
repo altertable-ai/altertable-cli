@@ -30,6 +30,26 @@ Match existing conventions in `cli/src/`:
 - Explicit variable names
 - Minimal scope — focused diffs only
 
+## Command Architecture
+
+Commands should keep platform concepts split and composed. The intended flow is:
+
+```text
+parse args -> build operation effect -> run transport -> decode result -> present output
+```
+
+Use these boundaries when adding or changing commands:
+
+- `cli/src/commands/**` owns command shape, argument parsing, operation ids, capability metadata, and presentation choice.
+- `cli/src/lib/operation-codec.ts` owns small reusable argument codecs. Prefer these helpers over ad hoc `String(...)` coercion.
+- `cli/src/lib/operation-effect.ts` owns executable operation plans such as HTTP, stream, parallel, progress, and scoped cleanup effects.
+- `cli/src/lib/operation-transport.ts` owns plane-aware HTTP transport. Do not build management/lakehouse URLs in commands.
+- Request builders should return data structures. They should not perform transport as a side effect.
+- Presentation should return `CommandOutputMode` or write through the command output sink. Avoid mixing transport, parsing, and terminal output in the same function.
+- Register every command surface with a stable operation id and capabilities through `defineOperationCommand`.
+
+Avoid adding compatibility wrappers that both build and execute requests. If a shared path is needed, share the request builder, effect builder, parser, or presenter instead.
+
 ## Tests
 
 - Unit tests: `cd cli && bun test`

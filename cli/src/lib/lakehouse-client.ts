@@ -13,17 +13,12 @@ import {
 import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/pager.ts";
 
 export {
-  lakehouseAppend,
-  lakehouseAutocomplete,
-  lakehouseCancel,
-  lakehouseGetTask,
-  lakehouseQuery,
-  lakehouseQueryAll,
-  lakehouseQueryStream,
-  lakehouseUpload,
-  lakehouseValidate,
-  type LakehouseAppendOptions,
-  type LakehouseAutocompleteOptions,
+  buildLakehouseAppendRequest,
+  buildLakehouseQueryPayload,
+  createLakehouseUploadRequest,
+  type LakehouseAppendRequestInput,
+  type LakehouseUploadRequestInput,
+  type LakehouseUploadRequestScope,
 } from "@/lib/lakehouse-transport.ts";
 
 export {

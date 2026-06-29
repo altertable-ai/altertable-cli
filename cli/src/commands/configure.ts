@@ -124,6 +124,8 @@ function createConfigurePlaneCommand(
   description: string,
 ) {
   return defineOperationCommand({
+    id: `configure.${scope}`,
+    capabilities: ["local-config", "local-file-write"],
     meta: { name: scope, description },
     args: configurePlaneArgs,
     parse({ args }) {
@@ -146,6 +148,8 @@ const configureLakehouseCommand = createConfigurePlaneCommand(
 );
 
 export const configureCommand = defineOperationCommand({
+  id: "configure",
+  capabilities: ["local-config", "local-file-write"],
   meta: {
     name: "configure",
     description: "Configure and securely store credentials and settings.",

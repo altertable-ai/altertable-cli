@@ -3,6 +3,7 @@ import type { AltertableCommandMeta } from "@/lib/command-context.ts";
 export type OperationCapability =
   | "local-config"
   | "local-file-read"
+  | "local-file-write"
   | "management-http"
   | "lakehouse-http"
   | "streaming"

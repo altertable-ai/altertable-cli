@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { buildBodyFromFields, readJsonBody, resolveApiBody } from "@/lib/api-body.ts";
-import { normalizeApiEndpoint, runApiHttp } from "@/lib/api-http.ts";
+import { apiHttpEffect, apiHttpResultOutput, normalizeApiEndpoint } from "@/lib/api-http.ts";
+import { writeCommandOutput } from "@/lib/command-output.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
+import { runOperationEffect } from "@/lib/operation-effect.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 let testHome = "";
@@ -43,6 +47,22 @@ afterEach(() => {
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
   delete process.env.ALTERTABLE_API_KEY;
 });
+
+async function runApiOperation(args: Parameters<typeof apiHttpEffect>[0]): Promise<void> {
+  const runtime = getCliRuntime();
+  const context: OperationContext = {
+    args: {},
+    rawArgs: [],
+    runtime,
+    sink: runtime.output,
+    execution: createExecutionContext(runtime),
+  };
+  const result = await runOperationEffect(apiHttpEffect(args), context);
+  const output = apiHttpResultOutput(result, context.sink);
+  if (output) {
+    writeCommandOutput(output, context.sink);
+  }
+}
 
 describe("api-body", () => {
   test("buildBodyFromFields merges key=value pairs into JSON", () => {
@@ -107,7 +127,7 @@ describe("normalizeApiEndpoint", () => {
   });
 });
 
-describe("runApiHttp", () => {
+describe("apiHttpEffect", () => {
   test("GET writes generic tabular output in human mode", async () => {
     writeFileSync(
       mockFile,
@@ -120,7 +140,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "GET", endpoint: "/whoami" });
+    await runApiOperation({ method: "GET", endpoint: "/whoami" });
     expect(stdout).toContain("Acme");
   });
 
@@ -140,7 +160,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "GET", endpoint: "/whoami" });
+    await runApiOperation({ method: "GET", endpoint: "/whoami" });
     expect(stdout).toBe('{"principal":{"name":"Jane"},"organization":{"name":"Acme"}}');
   });
 
@@ -156,7 +176,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({
+    await runApiOperation({
       method: "POST",
       endpoint: "/service_accounts",
       fields: ["label=CI Bot"],
@@ -179,7 +199,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({
+    await runApiOperation({
       endpoint: "/service_accounts",
       rawFields: ["label=CI Bot"],
     });
@@ -202,7 +222,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({
+    await runApiOperation({
       method: "GET",
       endpoint: "/service_accounts",
       rawFields: ["label=CI Bot"],
@@ -227,7 +247,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({
+    await runApiOperation({
       endpoint: "/service_accounts",
       typedFields: ["enabled=true", "priority=3", "description=null"],
     });
@@ -250,7 +270,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({
+    await runApiOperation({
       method: "POST",
       endpoint: "/service_accounts",
       input: `@${payloadPath}`,
@@ -279,7 +299,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "GET", endpoint: `/service_accounts/${id}` });
+    await runApiOperation({ method: "GET", endpoint: `/service_accounts/${id}` });
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(
@@ -299,7 +319,10 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "GET", endpoint: "/service_accounts?limit=10&label=CI%20Bot" });
+    await runApiOperation({
+      method: "GET",
+      endpoint: "/service_accounts?limit=10&label=CI%20Bot",
+    });
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(
@@ -319,7 +342,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "DELETE", endpoint: "/service_accounts/sa_1" });
+    await runApiOperation({ method: "DELETE", endpoint: "/service_accounts/sa_1" });
     expect(stdout).toBe("");
   });
 
@@ -339,7 +362,7 @@ describe("runApiHttp", () => {
       ]),
     );
 
-    await runApiHttp({ method: "DELETE", endpoint: "/service_accounts/sa_1" });
+    await runApiOperation({ method: "DELETE", endpoint: "/service_accounts/sa_1" });
     expect(JSON.parse(stdout)).toEqual({ deleted: true });
   });
 });
