@@ -6,7 +6,7 @@ import {
   type ConfigureOptions,
 } from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
 import {
   configuredPlanesFromOptions,
   configureRunVerifyIfRequested,
@@ -123,10 +123,13 @@ function createConfigurePlaneCommand(
   scope: Exclude<ConfigureWizardScope, "both">,
   description: string,
 ) {
-  return defineAltertableCommand({
+  return defineOperationCommand({
     meta: { name: scope, description },
     args: configurePlaneArgs,
-    async run({ args, sink }) {
+    parse({ args }) {
+      return args;
+    },
+    async run(args, { sink }) {
       await runConfigureWizardFromArgs(scope, args, sink);
     },
   });
@@ -142,7 +145,7 @@ const configureLakehouseCommand = createConfigurePlaneCommand(
   "Interactively configure lakehouse credentials.",
 );
 
-export const configureCommand = defineAltertableCommand({
+export const configureCommand = defineOperationCommand({
   meta: {
     name: "configure",
     description: "Configure and securely store credentials and settings.",
@@ -201,7 +204,10 @@ export const configureCommand = defineAltertableCommand({
     management: configureManagementCommand,
     lakehouse: configureLakehouseCommand,
   },
-  async run({ args, sink }) {
+  parse({ args }) {
+    return args;
+  },
+  async run(args, { sink }) {
     await runConfigureDispatch(args, sink);
   },
 });

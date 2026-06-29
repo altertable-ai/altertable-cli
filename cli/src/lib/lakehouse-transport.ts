@@ -1,10 +1,10 @@
-import { resolveApiBase } from "@/lib/config.ts";
-import { getLakehouseAuthHeader } from "@/lib/auth.ts";
-import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
+import { type HttpSendOptions } from "@/lib/http.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
 import { STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 import { urlencode } from "@/lib/encode.ts";
 import { createUploadProgressReporter, shouldShowProgress } from "@/lib/progress.ts";
+import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
+import { sendOperationHttp, sendOperationHttpStream } from "@/lib/operation-transport.ts";
 import {
   parseLakehouseQueryHeader,
   type LakehouseColumn,
@@ -65,19 +65,19 @@ async function lakehouseRequest(
   body?: string | Blob | ReadableStream,
   contentType?: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution: ExecutionContext = createExecutionContext(getCliRuntime()),
 ): Promise<string> {
-  const session = getCliRuntime().session;
-  const url = `${session?.apiBase ?? resolveApiBase()}${endpoint}`;
-  const authHeader = session?.lakehouseAuthHeader ?? getLakehouseAuthHeader();
-  return httpSend({
-    method,
-    url,
-    authHeader,
-    body,
-    contentType,
-    authPlane: "lakehouse",
-    ...httpOptions,
-  });
+  return sendOperationHttp(
+    {
+      plane: "lakehouse",
+      method,
+      endpoint,
+      body,
+      contentType,
+      ...httpOptions,
+    },
+    execution,
+  );
 }
 
 export async function lakehouseQuery(
@@ -85,6 +85,7 @@ export async function lakehouseQuery(
   queryId?: string,
   sessionId?: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution?: ExecutionContext,
 ): Promise<string> {
   return lakehouseRequest(
     "POST",
@@ -92,12 +93,14 @@ export async function lakehouseQuery(
     JSON.stringify(buildLakehouseQueryPayload(statement, queryId, sessionId)),
     "application/json",
     httpOptions,
+    execution,
   );
 }
 
 export async function lakehouseValidate(
   statement: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution?: ExecutionContext,
 ): Promise<string> {
   return lakehouseRequest(
     "POST",
@@ -105,6 +108,7 @@ export async function lakehouseValidate(
     JSON.stringify({ statement }),
     "application/json",
     httpOptions,
+    execution,
   );
 }
 
@@ -114,6 +118,7 @@ export async function lakehouseAppend(
   table: string,
   jsonContent: string,
   options: LakehouseAppendOptions = {},
+  execution?: ExecutionContext,
 ): Promise<string> {
   const params = new URLSearchParams({
     catalog,
@@ -123,7 +128,14 @@ export async function lakehouseAppend(
   if (options.sync) {
     params.set("sync", "true");
   }
-  return lakehouseRequest("POST", `/append?${params.toString()}`, jsonContent);
+  return lakehouseRequest(
+    "POST",
+    `/append?${params.toString()}`,
+    jsonContent,
+    undefined,
+    undefined,
+    execution,
+  );
 }
 
 export async function lakehouseUpload(
@@ -135,6 +147,7 @@ export async function lakehouseUpload(
   filePath: string,
   primaryKey?: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution?: ExecutionContext,
 ): Promise<string> {
   const params = new URLSearchParams({
     catalog,
@@ -167,6 +180,7 @@ export async function lakehouseUpload(
       body,
       "application/octet-stream",
       httpOptions,
+      execution,
     );
   } finally {
     uploadProgress.clear();
@@ -198,25 +212,57 @@ function wrapStreamWithByteProgress(
   });
 }
 
-export async function lakehouseGetQuery(queryId: string): Promise<string> {
-  return lakehouseRequest("GET", `/query/${urlencode(queryId)}`, undefined, undefined, {
-    retry: true,
-  });
+export async function lakehouseGetQuery(
+  queryId: string,
+  execution?: ExecutionContext,
+): Promise<string> {
+  return lakehouseRequest(
+    "GET",
+    `/query/${urlencode(queryId)}`,
+    undefined,
+    undefined,
+    {
+      retry: true,
+    },
+    execution,
+  );
 }
 
-export async function lakehouseCancel(queryId: string, sessionId: string): Promise<string> {
+export async function lakehouseCancel(
+  queryId: string,
+  sessionId: string,
+  execution?: ExecutionContext,
+): Promise<string> {
   const params = new URLSearchParams({ session_id: sessionId });
-  return lakehouseRequest("DELETE", `/query/${urlencode(queryId)}?${params.toString()}`);
+  return lakehouseRequest(
+    "DELETE",
+    `/query/${urlencode(queryId)}?${params.toString()}`,
+    undefined,
+    undefined,
+    undefined,
+    execution,
+  );
 }
 
-export async function lakehouseGetTask(taskId: string): Promise<string> {
-  return lakehouseRequest("GET", `/tasks/${urlencode(taskId)}`, undefined, undefined, {
-    retry: true,
-  });
+export async function lakehouseGetTask(
+  taskId: string,
+  execution?: ExecutionContext,
+): Promise<string> {
+  return lakehouseRequest(
+    "GET",
+    `/tasks/${urlencode(taskId)}`,
+    undefined,
+    undefined,
+    {
+      retry: true,
+    },
+    execution,
+  );
 }
 
 export async function lakehouseAutocomplete(
   options: LakehouseAutocompleteOptions,
+  execution?: ExecutionContext,
 ): Promise<string> {
   const payload: Record<string, string | number> = { statement: options.statement };
   if (options.catalog) {
@@ -231,7 +277,14 @@ export async function lakehouseAutocomplete(
   if (options.maxSuggestions !== undefined) {
     payload.max_suggestions = options.maxSuggestions;
   }
-  return lakehouseRequest("POST", "/autocomplete", JSON.stringify(payload), "application/json");
+  return lakehouseRequest(
+    "POST",
+    "/autocomplete",
+    JSON.stringify(payload),
+    "application/json",
+    undefined,
+    execution,
+  );
 }
 
 export async function lakehouseQueryStream(
@@ -239,20 +292,22 @@ export async function lakehouseQueryStream(
   queryId?: string,
   sessionId?: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution: ExecutionContext = createExecutionContext(getCliRuntime()),
 ): Promise<LakehouseQueryStream> {
-  const session = getCliRuntime().session;
   const payload = buildLakehouseQueryPayload(statement, queryId, sessionId);
-  const byteStream = await httpSendStream({
-    method: "POST",
-    url: `${session?.apiBase ?? resolveApiBase()}/query`,
-    authHeader: session?.lakehouseAuthHeader ?? getLakehouseAuthHeader(),
-    body: JSON.stringify(payload),
-    contentType: "application/json",
-    readTimeoutMs: httpOptions?.readTimeoutMs ?? STREAM_READ_TIMEOUT_MS,
-    retry: false,
-    authPlane: "lakehouse",
-    ...httpOptions,
-  });
+  const byteStream = await sendOperationHttpStream(
+    {
+      plane: "lakehouse",
+      method: "POST",
+      endpoint: "/query",
+      body: JSON.stringify(payload),
+      contentType: "application/json",
+      readTimeoutMs: httpOptions?.readTimeoutMs ?? STREAM_READ_TIMEOUT_MS,
+      retry: false,
+      ...httpOptions,
+    },
+    execution,
+  );
 
   const header = await parseLakehouseQueryHeader(readTextStreamLines(byteStream));
   let lineNumber = header.lineNumber;
@@ -291,8 +346,15 @@ export async function lakehouseQueryAll(
   queryId?: string,
   sessionId?: string,
   httpOptions?: Partial<HttpSendOptions>,
+  execution?: ExecutionContext,
 ): Promise<LakehouseQueryResult> {
-  const queryStream = await lakehouseQueryStream(statement, queryId, sessionId, httpOptions);
+  const queryStream = await lakehouseQueryStream(
+    statement,
+    queryId,
+    sessionId,
+    httpOptions,
+    execution,
+  );
   const rows: LakehouseRow[] = [];
   for await (const row of queryStream.rows) {
     rows.push(row);

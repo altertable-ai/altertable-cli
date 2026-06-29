@@ -1,5 +1,5 @@
-import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { startProgress } from "@/lib/progress.ts";
 import {
   PAGER_MODE_OPTIONS,
@@ -22,13 +22,16 @@ import {
   lakehouseUpload,
   lakehouseValidate,
   parseLakehouseQueryResponse,
-  writeLakehouseOutput,
   writeQueryOutput,
 } from "@/lib/lakehouse-client.ts";
 
 const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
 
-const queryRunCommand = defineAltertableCommand({
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+const queryRunCommand = defineOperationCommand({
   meta: {
     name: "run",
     description: "Run a SQL statement.",
@@ -72,27 +75,34 @@ const queryRunCommand = defineAltertableCommand({
       description: "Read timeout in seconds for this request (overrides global --read-timeout)",
     },
   },
-  async run({ args, rawArgs, sink }) {
+  parse({ args, rawArgs }) {
     const statement = String(args.statement);
     const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, rawArgs);
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     const httpOptions = readTimeoutMs !== undefined ? { readTimeoutMs } : undefined;
-    const queryId = args["query-id"] ? String(args["query-id"]) : undefined;
-    const sessionId = args["session-id"] ? String(args["session-id"]) : undefined;
+    const queryId = optionalString(args["query-id"]);
+    const sessionId = optionalString(args["session-id"]);
+    return { statement, format, displayOptions, pagerOptions, httpOptions, queryId, sessionId };
+  },
+  async run(input, { sink, execution }) {
+    const { statement, format, httpOptions, queryId, sessionId } = input;
 
     let result;
     if (format === "json" || sink.json) {
-      const response = await lakehouseQuery(statement, queryId, sessionId, httpOptions);
+      const response = await lakehouseQuery(statement, queryId, sessionId, httpOptions, execution);
       result = parseLakehouseQueryResponse(response);
     } else {
-      result = await lakehouseQueryAll(statement, queryId, sessionId, httpOptions);
+      result = await lakehouseQueryAll(statement, queryId, sessionId, httpOptions, execution);
     }
 
-    await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
+    return result;
+  },
+  async present(result, { sink }, input) {
+    await writeQueryOutput(result, input.format, input.displayOptions, input.pagerOptions, sink);
   },
 });
 
-const queryShowCommand = defineAltertableCommand({
+const queryShowCommand = defineOperationCommand({
   meta: {
     name: "show",
     description: "Fetch metadata for a completed or running query.",
@@ -100,13 +110,18 @@ const queryShowCommand = defineAltertableCommand({
   args: {
     "query-id": { type: "positional", description: "Query id returned by the API", required: true },
   },
-  async run({ args, sink }) {
-    const response = await lakehouseGetQuery(String(args["query-id"]));
-    writeLakehouseOutput(response, { sink });
+  parse({ args }) {
+    return String(args["query-id"]);
+  },
+  run(queryId, { execution }) {
+    return lakehouseGetQuery(queryId, execution);
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-const queryCancelCommand = defineAltertableCommand({
+const queryCancelCommand = defineOperationCommand({
   meta: {
     name: "cancel",
     description: "Cancel a running query.",
@@ -115,13 +130,21 @@ const queryCancelCommand = defineAltertableCommand({
     "query-id": { type: "positional", description: "Query id to cancel", required: true },
     "session-id": { type: "string", description: "Session id that owns the query", required: true },
   },
-  async run({ args, sink }) {
-    const response = await lakehouseCancel(String(args["query-id"]), String(args["session-id"]));
-    writeLakehouseOutput(response, { sink });
+  parse({ args }) {
+    return {
+      queryId: String(args["query-id"]),
+      sessionId: String(args["session-id"]),
+    };
+  },
+  run(input, { execution }) {
+    return lakehouseCancel(input.queryId, input.sessionId, execution);
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-export const queryCommand = defineAltertableCommand({
+export const queryCommand = defineOperationCommand({
   meta: {
     name: "query",
     description: "Run SQL queries against the lakehouse.",
@@ -168,7 +191,7 @@ export const queryCommand = defineAltertableCommand({
   },
 });
 
-export const validateCommand = defineAltertableCommand({
+export const validateCommand = defineOperationCommand({
   meta: {
     name: "validate",
     description: "Validate a SQL statement without executing it.",
@@ -181,17 +204,22 @@ export const validateCommand = defineAltertableCommand({
       description: "Read timeout in seconds for this request (overrides global --read-timeout)",
     },
   },
-  async run({ args, sink }) {
+  parse({ args }) {
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    const response = await lakehouseValidate(
-      String(args.statement),
-      readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
-    );
-    writeLakehouseOutput(response, { sink });
+    return {
+      statement: String(args.statement),
+      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
+    };
+  },
+  run(input, { execution }) {
+    return lakehouseValidate(input.statement, input.httpOptions, execution);
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-const appendRowsCommand = defineAltertableCommand({
+const appendRowsCommand = defineOperationCommand({
   meta: {
     name: "run",
     description: "Append JSON rows to a table.",
@@ -203,30 +231,44 @@ const appendRowsCommand = defineAltertableCommand({
     data: { type: "string", description: "JSON object, array, or @file", required: true },
     sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
   },
-  async run({ args, sink }) {
+  parse({ args }) {
     const catalog = String(args.catalog);
     const schema = String(args.schema);
     const table = String(args.table);
     const payload = parseAppendJsonContent(String(args.data));
+    return { catalog, schema, table, payload, sync: args.sync === true };
+  },
+  async run(input, { execution }) {
+    const { catalog, schema, table, payload } = input;
 
     let response: string;
-    if (args.sync) {
+    if (input.sync) {
       const progress = startProgress("Waiting for append to complete…");
       try {
-        response = await lakehouseAppend(catalog, schema, table, payload, { sync: true });
+        response = await lakehouseAppend(
+          catalog,
+          schema,
+          table,
+          payload,
+          { sync: true },
+          execution,
+        );
         progress.done();
       } catch (error) {
         progress.fail();
         throw error;
       }
     } else {
-      response = await lakehouseAppend(catalog, schema, table, payload);
+      response = await lakehouseAppend(catalog, schema, table, payload, {}, execution);
     }
-    writeLakehouseOutput(response, { sink });
+    return response;
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-const appendTaskCommand = defineAltertableCommand({
+const appendTaskCommand = defineOperationCommand({
   meta: {
     name: "task",
     description: "Fetch status for an append task.",
@@ -234,13 +276,18 @@ const appendTaskCommand = defineAltertableCommand({
   args: {
     "task-id": { type: "positional", description: "Task id returned by append", required: true },
   },
-  async run({ args, sink }) {
-    const response = await lakehouseGetTask(String(args["task-id"]));
-    writeLakehouseOutput(response, { sink });
+  parse({ args }) {
+    return String(args["task-id"]);
+  },
+  run(taskId, { execution }) {
+    return lakehouseGetTask(taskId, execution);
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-export const appendCommand = defineAltertableCommand({
+export const appendCommand = defineOperationCommand({
   meta: {
     name: "append",
     description: "Append JSON rows to a table.",
@@ -263,7 +310,7 @@ export const appendCommand = defineAltertableCommand({
   },
 });
 
-export const uploadCommand = defineAltertableCommand({
+export const uploadCommand = defineOperationCommand({
   meta: {
     name: "upload",
     description: "Upload a file to create or update a table.",
@@ -292,7 +339,7 @@ export const uploadCommand = defineAltertableCommand({
       description: "Read timeout in seconds for this request (overrides global --read-timeout)",
     },
   },
-  async run({ args, sink }) {
+  async parse({ args }) {
     const mode = String(args.mode);
     const filePath = String(args.file);
     validateUploadPrimaryKey(mode, args["primary-key"]);
@@ -304,21 +351,36 @@ export const uploadCommand = defineAltertableCommand({
     }
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    const response = await lakehouseUpload(
-      String(args.catalog),
-      String(args.schema),
-      String(args.table),
-      String(args.format),
+    return {
+      catalog: String(args.catalog),
+      schema: String(args.schema),
+      table: String(args.table),
+      format: String(args.format),
       mode,
       filePath,
-      args["primary-key"] ? String(args["primary-key"]) : undefined,
-      readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
+      primaryKey: optionalString(args["primary-key"]),
+      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
+    };
+  },
+  run(input, { execution }) {
+    return lakehouseUpload(
+      input.catalog,
+      input.schema,
+      input.table,
+      input.format,
+      input.mode,
+      input.filePath,
+      input.primaryKey,
+      input.httpOptions,
+      execution,
     );
-    writeLakehouseOutput(response, { sink });
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
   },
 });
 
-export const autocompleteCommand = defineAltertableCommand({
+export const autocompleteCommand = defineOperationCommand({
   meta: {
     name: "autocomplete",
     description: "Get SQL autocomplete suggestions.",
@@ -331,22 +393,30 @@ export const autocompleteCommand = defineAltertableCommand({
     "session-id": { type: "string", description: "Optional session id" },
     "max-suggestions": { type: "string", description: "Maximum number of suggestions" },
   },
-  async run({ args, sink }) {
+  parse({ args }) {
     const maxSuggestionsRaw = args["max-suggestions"];
     const maxSuggestions =
-      maxSuggestionsRaw !== undefined ? Number.parseInt(String(maxSuggestionsRaw), 10) : undefined;
+      typeof maxSuggestionsRaw === "string" ? Number.parseInt(maxSuggestionsRaw, 10) : undefined;
     if (maxSuggestions !== undefined && Number.isNaN(maxSuggestions)) {
       throw new CliError("--max-suggestions must be a number.");
     }
 
-    const response = await lakehouseAutocomplete({
+    return {
       statement: String(args.statement),
-      catalog: args.catalog ? String(args.catalog) : undefined,
-      schema: args.schema ? String(args.schema) : undefined,
-      sessionId: args["session-id"] ? String(args["session-id"]) : undefined,
+      catalog: optionalString(args.catalog),
+      schema: optionalString(args.schema),
+      sessionId: optionalString(args["session-id"]),
       maxSuggestions,
-    });
-
-    writeLakehouseOutput(response, { humanFormatter: formatAutocompleteHumanOutput, sink });
+    };
+  },
+  run(input, { execution }) {
+    return lakehouseAutocomplete(input, execution);
+  },
+  present(response) {
+    return {
+      kind: "raw_api",
+      body: response,
+      humanFormatter: formatAutocompleteHumanOutput,
+    };
   },
 });

@@ -1,8 +1,6 @@
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
 import { type WhoamiResponse } from "@/lib/management-formatters.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import {
   activeContextToJson,
@@ -10,28 +8,32 @@ import {
   formatActiveContextDetails,
   withAuthenticatedIdentity,
 } from "@/lib/active-context.ts";
+import { sendOperationHttp } from "@/lib/operation-transport.ts";
 
-export const contextCommand = defineAltertableCommand({
+export const contextCommand = defineOperationCommand({
   meta: {
     name: "context",
     description: "Show the active profile, environment, and authenticated identity.",
     examples: ["altertable context", "altertable --json context"],
   },
-  async run({ sink }) {
+  async run(_, { execution }) {
     let context = buildActiveContext();
 
     if (configureCredentialStatus().hasManagement) {
-      const response = await managementRequest("GET", "/whoami");
+      const response = await sendOperationHttp(
+        { plane: "management", method: "GET", endpoint: "/whoami" },
+        execution,
+      );
       context = withAuthenticatedIdentity(context, parseApiJson(response) as WhoamiResponse);
     }
 
-    writeCommandOutput(
-      {
-        kind: "normalized",
-        data: activeContextToJson(context),
-        humanText: formatActiveContextDetails(context),
-      },
-      sink,
-    );
+    return context;
+  },
+  present(context) {
+    return {
+      kind: "normalized",
+      data: activeContextToJson(context),
+      humanText: formatActiveContextDetails(context),
+    };
   },
 });

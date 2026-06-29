@@ -3,6 +3,8 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { type CatalogRow, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 
+type CatalogRowsRequest = (method: string, endpoint: string) => Promise<string>;
+
 type DatabaseSummary = {
   name?: string;
   slug?: string;
@@ -17,16 +19,13 @@ type ConnectionSummary = {
   catalog?: string;
 };
 
-export async function buildCatalogRows(env?: string): Promise<CatalogRow[]> {
+export async function buildCatalogRows(
+  env?: string,
+  request: CatalogRowsRequest = managementRequest,
+): Promise<CatalogRow[]> {
   const environment = env ?? requireManagementEnv();
-  const databasesResponse = await managementRequest(
-    "GET",
-    `/environments/${environment}/databases`,
-  );
-  const connectionsResponse = await managementRequest(
-    "GET",
-    `/environments/${environment}/connections`,
-  );
+  const databasesResponse = await request("GET", `/environments/${environment}/databases`);
+  const connectionsResponse = await request("GET", `/environments/${environment}/connections`);
 
   const databases = parseApiJson(databasesResponse) as { databases?: DatabaseSummary[] };
   const connections = parseApiJson(connectionsResponse) as { connections?: ConnectionSummary[] };

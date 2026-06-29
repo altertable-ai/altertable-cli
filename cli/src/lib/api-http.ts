@@ -1,8 +1,11 @@
 import { resolveApiRequestPayload, type ParsedApiField } from "@/lib/api-body.ts";
 import { writeCommandOutput, writeManagementOutput } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
-import { encodeManagementEndpoint, managementRequest } from "@/lib/management-transport.ts";
+import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
+import { getCliRuntime } from "@/lib/runtime.ts";
+import { sendOperationHttp } from "@/lib/operation-transport.ts";
 
 export type ApiHttpArgs = {
   method?: string;
@@ -79,6 +82,7 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
 export async function runApiHttp(
   args: ApiHttpArgs,
   sink: OutputSink = getOutputSink(),
+  execution: ExecutionContext = createExecutionContext(getCliRuntime()),
 ): Promise<void> {
   if (!args.endpoint) {
     throw new CliError("Endpoint path is required, e.g. /whoami.");
@@ -96,7 +100,16 @@ export async function runApiHttp(
   const endpointWithQuery = appendQueryFields(endpoint, payload.queryFields);
   encodeManagementEndpoint(endpointWithQuery);
 
-  const response = await managementRequest(method, endpointWithQuery, payload.body);
+  const response = await sendOperationHttp(
+    {
+      plane: "management",
+      method,
+      endpoint: endpointWithQuery,
+      body: payload.body,
+      contentType: payload.body ? "application/json" : undefined,
+    },
+    execution,
+  );
 
   if (method === "DELETE" && response.trim().length === 0) {
     if (sink.json) {

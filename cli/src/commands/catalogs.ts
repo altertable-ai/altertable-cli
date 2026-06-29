@@ -2,14 +2,25 @@ import { CliError } from "@/lib/errors.ts";
 import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { buildCatalogRows } from "@/lib/catalog-rows.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
+import { sendOperationHttp } from "@/lib/operation-transport.ts";
 
-const catalogsCreateCommand = defineAltertableCommand({
+type CatalogCreateInput = {
+  env: string;
+  name: string;
+  body: string;
+};
+
+type CatalogCreateResult = {
+  response: string;
+  env: string;
+  fallbackName: string;
+};
+
+const catalogsCreateCommand = defineOperationCommand({
   meta: {
     name: "create",
     description: "Create a catalog. Only the 'altertable' engine is supported.",
@@ -24,7 +35,7 @@ const catalogsCreateCommand = defineAltertableCommand({
     },
     name: { type: "string", description: "Catalog name", required: true },
   },
-  async run({ args, sink }) {
+  parse({ args }): CatalogCreateInput {
     if (args.engine !== "altertable") {
       throw new CliError(
         `Only the 'altertable' engine is supported (got '${String(args.engine)}').`,
@@ -32,53 +43,70 @@ const catalogsCreateCommand = defineAltertableCommand({
     }
 
     const env = requireManagementEnv();
-    const body = buildCreateCatalogBody({ name: String(args.name) });
-    const response = await managementRequest("POST", `/environments/${env}/databases`, body);
-    const data = parseApiJson(response) as {
+    const name = String(args.name);
+    return {
+      env,
+      name,
+      body: buildCreateCatalogBody({ name }),
+    };
+  },
+  async run(input, { execution }): Promise<CatalogCreateResult> {
+    const response = await sendOperationHttp(
+      {
+        plane: "management",
+        method: "POST",
+        endpoint: `/environments/${input.env}/databases`,
+        body: input.body,
+        contentType: "application/json",
+      },
+      execution,
+    );
+    return { response, env: input.env, fallbackName: input.name };
+  },
+  present(result) {
+    const data = parseApiJson(result.response) as {
       database?: { slug?: string; name?: string; engine?: string };
       connection?: { slug?: string; name?: string; engine?: string };
     };
     const catalog = data.database ?? data.connection;
-    const name = catalog?.name ?? String(args.name);
+    const name = catalog?.name ?? result.fallbackName;
     const slug = catalog?.slug ?? "";
     const engine = catalog?.engine ?? "altertable";
-    writeCommandOutput(
-      {
-        kind: "raw_api",
-        body: response,
-        humanFormatter: () =>
-          `Created catalog "${name}" (slug: ${slug}, engine: ${engine}, environment: ${env}).`,
-      },
-      sink,
-    );
+    return {
+      kind: "raw_api",
+      body: result.response,
+      humanFormatter: () =>
+        `Created catalog "${name}" (slug: ${slug}, engine: ${engine}, environment: ${result.env}).`,
+    };
   },
 });
 
-const catalogsListCommand = defineAltertableCommand({
+const catalogsListCommand = defineOperationCommand({
   meta: {
     name: "list",
     description: "List catalogs in the current environment.",
     examples: ["altertable catalogs list", "altertable --json catalogs list"],
   },
-  async run({ sink }) {
-    const rows = await buildCatalogRows();
-    const summary = formatCatalogsSummary(rows);
-    writeCommandOutput(
-      {
-        kind: "normalized",
-        data: {
-          catalogs: rows,
-          ...(summary !== null ? { summary } : {}),
-        },
-        humanText: formatCatalogsTable(rows),
-        metadataLines: summary !== null ? ["", terminalMetadata(summary)] : undefined,
-      },
-      sink,
+  run(_, { execution }) {
+    return buildCatalogRows(undefined, (method, endpoint) =>
+      sendOperationHttp({ plane: "management", method, endpoint }, execution),
     );
+  },
+  present(rows) {
+    const summary = formatCatalogsSummary(rows);
+    return {
+      kind: "normalized",
+      data: {
+        catalogs: rows,
+        ...(summary !== null ? { summary } : {}),
+      },
+      humanText: formatCatalogsTable(rows),
+      metadataLines: summary !== null ? ["", terminalMetadata(summary)] : undefined,
+    };
   },
 });
 
-export const catalogsCommand = defineAltertableCommand({
+export const catalogsCommand = defineOperationCommand({
   meta: {
     name: "catalogs",
     description: "Manage catalogs (databases and connections) in the current environment.",
