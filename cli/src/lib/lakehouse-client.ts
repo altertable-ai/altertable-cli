@@ -16,7 +16,6 @@ export {
   lakehouseAppend,
   lakehouseAutocomplete,
   lakehouseCancel,
-  lakehouseGetQuery,
   lakehouseGetTask,
   lakehouseQuery,
   lakehouseQueryAll,

@@ -1,10 +1,12 @@
 import { resolveApiRequestPayload, type ParsedApiField } from "@/lib/api-body.ts";
-import { writeCommandOutput, writeManagementOutput } from "@/lib/command-output.ts";
+import { writeCommandOutput, type CommandOutputMode } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
+import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
+import { httpEffect, type OperationEffect } from "@/lib/operation-effect.ts";
 import { sendOperationHttp } from "@/lib/operation-transport.ts";
 
 export type ApiHttpArgs = {
@@ -16,6 +18,19 @@ export type ApiHttpArgs = {
   typedFields?: Record<string, string> | string[] | string;
   fields?: Record<string, string> | string[] | string;
   env?: string;
+  format?: string;
+};
+
+export type ResolvedApiHttp = {
+  method: string;
+  endpoint: string;
+  body?: string;
+  format?: string;
+};
+
+export type ApiHttpResult = {
+  method: string;
+  response: string;
   format?: string;
 };
 
@@ -84,6 +99,27 @@ export async function runApiHttp(
   sink: OutputSink = getOutputSink(),
   execution: ExecutionContext = createExecutionContext(getCliRuntime()),
 ): Promise<void> {
+  const resolved = resolveApiHttp(args);
+  const response = await sendOperationHttp(
+    {
+      plane: "management",
+      method: resolved.method,
+      endpoint: resolved.endpoint,
+      body: resolved.body,
+      contentType: resolved.body ? "application/json" : undefined,
+    },
+    execution,
+  );
+  const output = apiHttpResultOutput(
+    { method: resolved.method, response, format: resolved.format },
+    sink,
+  );
+  if (output) {
+    writeCommandOutput(output, sink);
+  }
+}
+
+export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
   if (!args.endpoint) {
     throw new CliError("Endpoint path is required, e.g. /whoami.");
   }
@@ -100,33 +136,46 @@ export async function runApiHttp(
   const endpointWithQuery = appendQueryFields(endpoint, payload.queryFields);
   encodeManagementEndpoint(endpointWithQuery);
 
-  const response = await sendOperationHttp(
+  return {
+    method,
+    endpoint: endpointWithQuery,
+    body: payload.body,
+    format: args.format ? String(args.format) : undefined,
+  };
+}
+
+export function apiHttpEffect(args: ApiHttpArgs): OperationEffect<ApiHttpResult> {
+  const resolved = resolveApiHttp(args);
+  return httpEffect<ApiHttpResult>(
     {
       plane: "management",
-      method,
-      endpoint: endpointWithQuery,
-      body: payload.body,
-      contentType: payload.body ? "application/json" : undefined,
+      method: resolved.method,
+      endpoint: resolved.endpoint,
+      body: resolved.body,
+      contentType: resolved.body ? "application/json" : undefined,
     },
-    execution,
+    (response) => ({ method: resolved.method, response, format: resolved.format }),
   );
+}
 
-  if (method === "DELETE" && response.trim().length === 0) {
+export function apiHttpResultOutput(
+  result: ApiHttpResult,
+  sink: OutputSink,
+): CommandOutputMode | undefined {
+  if (result.method === "DELETE" && result.response.trim().length === 0) {
     if (sink.json) {
-      writeCommandOutput({ kind: "deleted", message: "" }, sink);
+      return { kind: "deleted", message: "" };
     }
     return;
   }
 
-  if (response.trim().length === 0) {
+  if (result.response.trim().length === 0) {
     return;
   }
 
-  writeManagementOutput(
-    response,
-    {
-      format: args.format ? String(args.format) : undefined,
-    },
-    sink,
-  );
+  return {
+    kind: "tabular",
+    body: result.response,
+    format: result.format ? parseManagementOutputFormat(result.format) : undefined,
+  };
 }

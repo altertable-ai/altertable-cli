@@ -5,6 +5,7 @@ import { urlencode } from "@/lib/encode.ts";
 import { createUploadProgressReporter, shouldShowProgress } from "@/lib/progress.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import { sendOperationHttp, sendOperationHttpStream } from "@/lib/operation-transport.ts";
+import type { OperationHttpRequest } from "@/lib/operation-transport.ts";
 import {
   parseLakehouseQueryHeader,
   type LakehouseColumn,
@@ -17,6 +18,30 @@ import { ParseError } from "@/lib/errors.ts";
 
 export type LakehouseAppendOptions = {
   sync?: boolean;
+};
+
+export type LakehouseAppendRequestInput = {
+  catalog: string;
+  schema: string;
+  table: string;
+  jsonContent: string;
+  options?: LakehouseAppendOptions;
+};
+
+export type LakehouseUploadRequestInput = {
+  catalog: string;
+  schema: string;
+  table: string;
+  format: string;
+  mode: string;
+  filePath: string;
+  primaryKey?: string;
+  httpOptions?: Partial<HttpSendOptions>;
+};
+
+export type LakehouseUploadRequestScope = {
+  request: OperationHttpRequest;
+  release: () => void;
 };
 
 export type LakehouseAutocompleteOptions = {
@@ -120,22 +145,29 @@ export async function lakehouseAppend(
   options: LakehouseAppendOptions = {},
   execution?: ExecutionContext,
 ): Promise<string> {
+  return sendOperationHttp(
+    buildLakehouseAppendRequest({ catalog, schema, table, jsonContent, options }),
+    execution ?? createExecutionContext(getCliRuntime()),
+  );
+}
+
+export function buildLakehouseAppendRequest(
+  input: LakehouseAppendRequestInput,
+): OperationHttpRequest {
   const params = new URLSearchParams({
-    catalog,
-    schema,
-    table,
+    catalog: input.catalog,
+    schema: input.schema,
+    table: input.table,
   });
-  if (options.sync) {
+  if (input.options?.sync) {
     params.set("sync", "true");
   }
-  return lakehouseRequest(
-    "POST",
-    `/append?${params.toString()}`,
-    jsonContent,
-    undefined,
-    undefined,
-    execution,
-  );
+  return {
+    plane: "lakehouse",
+    method: "POST",
+    endpoint: `/append?${params.toString()}`,
+    body: input.jsonContent,
+  };
 }
 
 export async function lakehouseUpload(
@@ -149,18 +181,41 @@ export async function lakehouseUpload(
   httpOptions?: Partial<HttpSendOptions>,
   execution?: ExecutionContext,
 ): Promise<string> {
-  const params = new URLSearchParams({
+  const scope = createLakehouseUploadRequest({
     catalog,
     schema,
     table,
     format,
     mode,
+    filePath,
+    primaryKey,
+    httpOptions,
   });
-  if (primaryKey) {
-    params.set("primary_key", primaryKey);
+  try {
+    return await sendOperationHttp(
+      scope.request,
+      execution ?? createExecutionContext(getCliRuntime()),
+    );
+  } finally {
+    scope.release();
+  }
+}
+
+export function createLakehouseUploadRequest(
+  input: LakehouseUploadRequestInput,
+): LakehouseUploadRequestScope {
+  const params = new URLSearchParams({
+    catalog: input.catalog,
+    schema: input.schema,
+    table: input.table,
+    format: input.format,
+    mode: input.mode,
+  });
+  if (input.primaryKey) {
+    params.set("primary_key", input.primaryKey);
   }
 
-  const file = Bun.file(filePath);
+  const file = Bun.file(input.filePath);
   const fileSizeBytes = file.size;
   let body: Blob | ReadableStream = file;
   let uploadProgress = createUploadProgressReporter(fileSizeBytes);
@@ -173,18 +228,17 @@ export async function lakehouseUpload(
     uploadProgress = createUploadProgressReporter(0);
   }
 
-  try {
-    return await lakehouseRequest(
-      "POST",
-      `/upload?${params.toString()}`,
+  return {
+    request: {
+      plane: "lakehouse",
+      method: "POST",
+      endpoint: `/upload?${params.toString()}`,
       body,
-      "application/octet-stream",
-      httpOptions,
-      execution,
-    );
-  } finally {
-    uploadProgress.clear();
-  }
+      contentType: "application/octet-stream",
+      ...input.httpOptions,
+    },
+    release: () => uploadProgress.clear(),
+  };
 }
 
 function wrapStreamWithByteProgress(
@@ -210,22 +264,6 @@ function wrapStreamWithByteProgress(
       return reader.cancel(reason);
     },
   });
-}
-
-export async function lakehouseGetQuery(
-  queryId: string,
-  execution?: ExecutionContext,
-): Promise<string> {
-  return lakehouseRequest(
-    "GET",
-    `/query/${urlencode(queryId)}`,
-    undefined,
-    undefined,
-    {
-      retry: true,
-    },
-    execution,
-  );
 }
 
 export async function lakehouseCancel(

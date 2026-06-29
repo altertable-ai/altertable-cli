@@ -5,7 +5,7 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { runApiHttp } from "@/lib/api-http.ts";
+import { apiHttpEffect, apiHttpResultOutput } from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -136,6 +136,8 @@ function createApiMethodCommand(method: string) {
   const methodExamples = HTTP_METHOD_EXAMPLES[method as (typeof HTTP_METHOD_NAMES)[number]];
 
   return defineOperationCommand({
+    id: `api.${method.toLowerCase()}`,
+    capabilities: ["management-http"],
     meta: {
       name: method,
       description: `${method} request to the management REST API.`,
@@ -145,8 +147,11 @@ function createApiMethodCommand(method: string) {
     parse({ args, rawArgs }) {
       return buildApiHttpArgs(args, rawArgs, method);
     },
-    async run(input, { sink, execution }) {
-      await runApiHttp(input, sink, execution);
+    run(input) {
+      return apiHttpEffect(input);
+    },
+    present(result, { sink }) {
+      return apiHttpResultOutput(result, sink);
     },
   });
 }
@@ -236,6 +241,8 @@ export function runApiRoutesCommand(sink: OutputSink, operationId?: string): voi
 }
 
 const apiSpecCommand = defineOperationCommand({
+  id: "api.spec",
+  capabilities: ["raw-stdout"],
   meta: {
     name: "spec",
     description:
@@ -259,6 +266,8 @@ const apiSpecCommand = defineOperationCommand({
 });
 
 const apiRoutesCommand = defineOperationCommand({
+  id: "api.routes",
+  capabilities: [],
   meta: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
@@ -284,6 +293,8 @@ const apiMethodSubCommands = Object.fromEntries(
 );
 
 export const apiCommand = defineOperationCommand({
+  id: "api.invoke",
+  capabilities: ["management-http"],
   meta: {
     name: "api",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
@@ -306,10 +317,16 @@ export const apiCommand = defineOperationCommand({
       args: buildApiHttpArgs(args, rawArgs),
     };
   },
-  async run(input, { sink, execution }) {
+  run(input) {
     if (input.delegated) {
       return;
     }
-    await runApiHttp(input.args, sink, execution);
+    return apiHttpEffect(input.args);
+  },
+  present(result, { sink }) {
+    if (result === undefined) {
+      return;
+    }
+    return apiHttpResultOutput(result, sink);
   },
 });

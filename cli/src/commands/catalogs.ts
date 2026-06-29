@@ -3,10 +3,10 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { buildCatalogRows } from "@/lib/catalog-rows.ts";
+import { buildCatalogRowsFromResponses } from "@/lib/catalog-rows.ts";
+import { allEffects, httpEffect } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
-import { sendOperationHttp } from "@/lib/operation-transport.ts";
 
 type CatalogCreateInput = {
   env: string;
@@ -21,6 +21,8 @@ type CatalogCreateResult = {
 };
 
 const catalogsCreateCommand = defineOperationCommand({
+  id: "catalogs.create",
+  capabilities: ["management-http"],
   meta: {
     name: "create",
     description: "Create a catalog. Only the 'altertable' engine is supported.",
@@ -50,8 +52,8 @@ const catalogsCreateCommand = defineOperationCommand({
       body: buildCreateCatalogBody({ name }),
     };
   },
-  async run(input, { execution }): Promise<CatalogCreateResult> {
-    const response = await sendOperationHttp(
+  run(input) {
+    return httpEffect<CatalogCreateResult>(
       {
         plane: "management",
         method: "POST",
@@ -59,9 +61,8 @@ const catalogsCreateCommand = defineOperationCommand({
         body: input.body,
         contentType: "application/json",
       },
-      execution,
+      (response) => ({ response, env: input.env, fallbackName: input.name }),
     );
-    return { response, env: input.env, fallbackName: input.name };
   },
   present(result) {
     const data = parseApiJson(result.response) as {
@@ -82,14 +83,30 @@ const catalogsCreateCommand = defineOperationCommand({
 });
 
 const catalogsListCommand = defineOperationCommand({
+  id: "catalogs.list",
+  capabilities: ["management-http"],
   meta: {
     name: "list",
     description: "List catalogs in the current environment.",
     examples: ["altertable catalogs list", "altertable --json catalogs list"],
   },
-  run(_, { execution }) {
-    return buildCatalogRows(undefined, (method, endpoint) =>
-      sendOperationHttp({ plane: "management", method, endpoint }, execution),
+  run() {
+    const env = requireManagementEnv();
+    return allEffects(
+      [
+        httpEffect({
+          plane: "management",
+          method: "GET",
+          endpoint: `/environments/${env}/databases`,
+        }),
+        httpEffect({
+          plane: "management",
+          method: "GET",
+          endpoint: `/environments/${env}/connections`,
+        }),
+      ],
+      ([databasesResponse, connectionsResponse]) =>
+        buildCatalogRowsFromResponses(String(databasesResponse), String(connectionsResponse)),
     );
   },
   present(rows) {
