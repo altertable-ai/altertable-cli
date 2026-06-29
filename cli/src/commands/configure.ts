@@ -6,8 +6,7 @@ import {
   type ConfigureOptions,
 } from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { localPlan } from "@/lib/operation-effect.ts";
+import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import {
   configuredPlanesFromOptions,
   configureRunVerifyIfRequested,
@@ -124,19 +123,17 @@ function createConfigurePlaneCommand(
   scope: Exclude<ConfigureWizardScope, "both">,
   description: string,
 ) {
-  return defineOperationCommand({
+  return defineLocalCommand({
     id: `configure.${scope}`,
-    capabilities: ["local-config", "local-file-write"],
-    catalog: { effects: ["local"], mutates: true, output: "none" },
+    mutates: true,
+    output: "none",
     meta: { name: scope, description },
     args: configurePlaneArgs,
     parse({ args }) {
       return args;
     },
-    run(args) {
-      return localPlan(async ({ sink }) => {
-        await runConfigureWizardFromArgs(scope, args, sink);
-      });
+    async local(args, { sink }) {
+      await runConfigureWizardFromArgs(scope, args, sink);
     },
   });
 }
@@ -151,10 +148,10 @@ const configureLakehouseCommand = createConfigurePlaneCommand(
   "Interactively configure lakehouse credentials.",
 );
 
-export const configureCommand = defineOperationCommand({
+export const configureCommand = defineLocalCommand({
   id: "configure",
-  capabilities: ["local-config", "local-file-write"],
-  catalog: { effects: ["local"], mutates: true, output: "none" },
+  mutates: true,
+  output: "none",
   meta: {
     name: "configure",
     description: "Configure and securely store credentials and settings.",
@@ -216,9 +213,7 @@ export const configureCommand = defineOperationCommand({
   parse({ args }) {
     return args;
   },
-  run(args) {
-    return localPlan(async ({ sink }) => {
-      await runConfigureDispatch(args, sink);
-    });
+  async local(args, { sink }) {
+    await runConfigureDispatch(args, sink);
   },
 });

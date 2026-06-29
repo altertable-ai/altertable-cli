@@ -32,7 +32,7 @@ export type ApiHttpResult = {
   format?: string;
 };
 
-const API_HTTP_OPERATION: HttpOperationDescriptor<ResolvedApiHttp, ApiHttpResult> =
+export const API_HTTP_OPERATION: HttpOperationDescriptor<ResolvedApiHttp, ApiHttpResult> =
   defineHttpOperation({
     id: "api.http",
     request: (resolved) => ({

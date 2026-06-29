@@ -1,3 +1,4 @@
+import type { ArgsDef } from "citty";
 import { CliError } from "@/lib/errors.ts";
 import {
   booleanArg,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/operation-codec.ts";
 import { httpEffect, progressPlan, scopedPlan } from "@/lib/operation-effect.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
 import {
   PAGER_MODE_OPTIONS,
   parseAppendJsonContent,
@@ -18,8 +20,10 @@ import {
   validateUploadPrimaryKey,
 } from "@/commands/lakehouse-args.ts";
 import { formatAutocompleteHumanOutput, writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
 import { createLakehouseUploadRequest } from "@/lib/lakehouse-transport.ts";
 import {
+  type LakehouseQueryOperationInput,
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
   lakehouseAutocompleteOperation,
@@ -32,7 +36,53 @@ import {
 
 const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
 
-const queryRunCommand = defineOperationCommand({
+const queryRunArgs = {
+  statement: { type: "string", description: "SQL statement to run", required: true },
+  format: {
+    type: "enum",
+    description: "Output format: human, json, csv, or markdown",
+    default: "human",
+    options: [...QUERY_RESULT_FORMAT_OPTIONS],
+  },
+  layout: {
+    type: "enum",
+    description: "Human layout: auto, table, or line",
+    options: [...QUERY_LAYOUT_OPTIONS],
+  },
+  "query-id": { type: "string", description: "Optional stable query id" },
+  "session-id": { type: "string", description: "Optional session id" },
+  columns: {
+    type: "string",
+    description: "Comma-separated columns to show",
+  },
+  "max-width": {
+    type: "string",
+    description: "Maximum display width for table columns",
+    default: "32",
+  },
+  pager: {
+    type: "enum",
+    description: "Pager mode for human output: auto, always, or never",
+    default: "auto",
+    options: [...PAGER_MODE_OPTIONS],
+  },
+  "read-timeout": {
+    type: "string",
+    description: "Read timeout in seconds for this request (overrides global --read-timeout)",
+  },
+} satisfies ArgsDef;
+
+const appendRunArgs = {
+  catalog: { type: "string", description: "Catalog name", required: true },
+  schema: { type: "string", description: "Schema name", required: true },
+  table: { type: "string", description: "Table name", required: true },
+  data: { type: "string", description: "JSON object, array, or @file", required: true },
+  sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
+} satisfies ArgsDef;
+
+type QueryRunInput = LakehouseQueryOperationInput & ReturnType<typeof parseQueryOutputOptions>;
+
+const queryRunCommand = defineOperationCommand<QueryRunInput, LakehouseQueryResult>({
   id: "lakehouse.query.run",
   capabilities: ["lakehouse-http", "streaming"],
   catalog: {
@@ -48,41 +98,7 @@ const queryRunCommand = defineOperationCommand({
       'altertable query --statement "SELECT 1" --format json',
     ],
   },
-  args: {
-    statement: { type: "string", description: "SQL statement to run", required: true },
-    format: {
-      type: "enum",
-      description: "Output format: human, json, csv, or markdown",
-      default: "human",
-      options: [...QUERY_RESULT_FORMAT_OPTIONS],
-    },
-    layout: {
-      type: "enum",
-      description: "Human layout: auto, table, or line",
-      options: [...QUERY_LAYOUT_OPTIONS],
-    },
-    "query-id": { type: "string", description: "Optional stable query id" },
-    "session-id": { type: "string", description: "Optional session id" },
-    columns: {
-      type: "string",
-      description: "Comma-separated columns to show",
-    },
-    "max-width": {
-      type: "string",
-      description: "Maximum display width for table columns",
-      default: "32",
-    },
-    pager: {
-      type: "enum",
-      description: "Pager mode for human output: auto, always, or never",
-      default: "auto",
-      options: [...PAGER_MODE_OPTIONS],
-    },
-    "read-timeout": {
-      type: "string",
-      description: "Read timeout in seconds for this request (overrides global --read-timeout)",
-    },
-  },
+  args: queryRunArgs,
   parse({ args, rawArgs }) {
     const statement = stringArg(args, "statement");
     const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, rawArgs);
@@ -104,10 +120,11 @@ const queryRunCommand = defineOperationCommand({
   },
 });
 
-const queryShowCommand = defineOperationCommand({
+const queryShowCommand = defineHttpCommand({
   id: "lakehouse.query.show",
-  capabilities: ["lakehouse-http"],
-  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
+  plane: "lakehouse",
+  operation: lakehouseQueryShowOperation,
+  output: "raw-api",
   meta: {
     name: "show",
     description: "Fetch metadata for a completed or running query.",
@@ -118,18 +135,17 @@ const queryShowCommand = defineOperationCommand({
   parse({ args }) {
     return stringArg(args, "query-id");
   },
-  run(queryId, context) {
-    return lakehouseQueryShowOperation.plan(queryId, context);
-  },
   present(response) {
     return { kind: "raw_api", body: response };
   },
 });
 
-const queryCancelCommand = defineOperationCommand({
+const queryCancelCommand = defineHttpCommand({
   id: "lakehouse.query.cancel",
-  capabilities: ["lakehouse-http"],
-  catalog: { effects: ["http"], planes: ["lakehouse"], mutates: true, output: "raw-api" },
+  plane: "lakehouse",
+  operation: lakehouseQueryCancelOperation,
+  mutates: true,
+  output: "raw-api",
   meta: {
     name: "cancel",
     description: "Cancel a running query.",
@@ -144,15 +160,12 @@ const queryCancelCommand = defineOperationCommand({
       sessionId: stringArg(args, "session-id"),
     };
   },
-  run(input, context) {
-    return lakehouseQueryCancelOperation.plan(input, context);
-  },
   present(response) {
     return { kind: "raw_api", body: response };
   },
 });
 
-export const queryCommand = defineOperationCommand({
+export const queryCommand = defineGroupCommand({
   meta: {
     name: "query",
     description: "Run SQL queries against the lakehouse.",
@@ -163,35 +176,7 @@ export const queryCommand = defineOperationCommand({
     ],
   },
   default: "run",
-  args: {
-    statement: { type: "string", description: "SQL statement to run" },
-    format: {
-      type: "enum",
-      description: "Output format: human, json, csv, or markdown",
-      options: [...QUERY_RESULT_FORMAT_OPTIONS],
-    },
-    layout: {
-      type: "enum",
-      description: "Human layout: auto, table, or line",
-      options: [...QUERY_LAYOUT_OPTIONS],
-    },
-    "query-id": { type: "string", description: "Optional stable query id" },
-    "session-id": { type: "string", description: "Optional session id" },
-    columns: {
-      type: "string",
-      description: "Comma-separated columns to show",
-    },
-    "max-width": { type: "string", description: "Maximum display width for table columns" },
-    pager: {
-      type: "enum",
-      description: "Pager mode for human output: auto, always, or never",
-      options: [...PAGER_MODE_OPTIONS],
-    },
-    "read-timeout": {
-      type: "string",
-      description: "Read timeout in seconds for this request (overrides global --read-timeout)",
-    },
-  },
+  args: queryRunArgs,
   subCommands: {
     run: queryRunCommand,
     show: queryShowCommand,
@@ -199,10 +184,11 @@ export const queryCommand = defineOperationCommand({
   },
 });
 
-export const validateCommand = defineOperationCommand({
+export const validateCommand = defineHttpCommand({
   id: "lakehouse.validate",
-  capabilities: ["lakehouse-http"],
-  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
+  plane: "lakehouse",
+  operation: lakehouseValidateOperation,
+  output: "raw-api",
   meta: {
     name: "validate",
     description: "Validate a SQL statement without executing it.",
@@ -222,9 +208,6 @@ export const validateCommand = defineOperationCommand({
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
   },
-  run(input, context) {
-    return lakehouseValidateOperation.plan(input, context);
-  },
   present(response) {
     return { kind: "raw_api", body: response };
   },
@@ -243,13 +226,7 @@ const appendRowsCommand = defineOperationCommand({
     name: "run",
     description: "Append JSON rows to a table.",
   },
-  args: {
-    catalog: { type: "string", required: true },
-    schema: { type: "string", required: true },
-    table: { type: "string", required: true },
-    data: { type: "string", description: "JSON object, array, or @file", required: true },
-    sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
-  },
+  args: appendRunArgs,
   parse({ args }) {
     const catalog = stringArg(args, "catalog");
     const schema = stringArg(args, "schema");
@@ -268,10 +245,11 @@ const appendRowsCommand = defineOperationCommand({
   },
 });
 
-const appendTaskCommand = defineOperationCommand({
+const appendTaskCommand = defineHttpCommand({
   id: "lakehouse.append.task",
-  capabilities: ["lakehouse-http"],
-  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
+  plane: "lakehouse",
+  operation: lakehouseAppendTaskOperation,
+  output: "raw-api",
   meta: {
     name: "task",
     description: "Fetch status for an append task.",
@@ -282,15 +260,12 @@ const appendTaskCommand = defineOperationCommand({
   parse({ args }) {
     return stringArg(args, "task-id");
   },
-  run(taskId, context) {
-    return lakehouseAppendTaskOperation.plan(taskId, context);
-  },
   present(response) {
     return { kind: "raw_api", body: response };
   },
 });
 
-export const appendCommand = defineOperationCommand({
+export const appendCommand = defineGroupCommand({
   meta: {
     name: "append",
     description: "Append JSON rows to a table.",
@@ -300,13 +275,7 @@ export const appendCommand = defineOperationCommand({
     ],
   },
   default: "run",
-  args: {
-    catalog: { type: "string", description: "Catalog name" },
-    schema: { type: "string", description: "Schema name" },
-    table: { type: "string", description: "Table name" },
-    data: { type: "string", description: "JSON object, array, or @file" },
-    sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
-  },
+  args: appendRunArgs,
   subCommands: {
     run: appendRowsCommand,
     task: appendTaskCommand,
@@ -396,10 +365,11 @@ export const uploadCommand = defineOperationCommand({
   },
 });
 
-export const autocompleteCommand = defineOperationCommand({
+export const autocompleteCommand = defineHttpCommand({
   id: "lakehouse.autocomplete",
-  capabilities: ["lakehouse-http"],
-  catalog: { effects: ["http"], planes: ["lakehouse"], output: "raw-api" },
+  plane: "lakehouse",
+  operation: lakehouseAutocompleteOperation,
+  output: "raw-api",
   meta: {
     name: "autocomplete",
     description: "Get SQL autocomplete suggestions.",
@@ -420,9 +390,6 @@ export const autocompleteCommand = defineOperationCommand({
       sessionId: optionalStringArg(args, "session-id"),
       maxSuggestions: optionalIntegerArg(args, "max-suggestions"),
     };
-  },
-  run(input, context) {
-    return lakehouseAutocompleteOperation.plan(input, context);
   },
   present(response) {
     return {

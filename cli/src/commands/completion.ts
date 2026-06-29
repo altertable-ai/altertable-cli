@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineLocalCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
 import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
@@ -238,16 +239,16 @@ function createShellCompletionCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
 ): CommandDef {
-  return defineOperationCommand({
+  return defineOutputCommand({
     id: `completion.${shell}`,
     capabilities: ["raw-stdout"],
-    catalog: { effects: ["output"], output: "raw-api" },
+    output: "raw-api",
     meta: {
       name: shell,
       description: `Generate ${shell} completion script.`,
     },
-    run() {
-      return outputPlan({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) });
+    value() {
+      return { kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) };
     },
   });
 }
@@ -256,10 +257,10 @@ function createInstallShellCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
 ): CommandDef {
-  return defineOperationCommand({
+  return defineLocalCommand({
     id: `completion.install.${shell}`,
-    capabilities: ["local-file-write", "local-config"],
-    catalog: { effects: ["local"], mutates: true, output: "human" },
+    mutates: true,
+    output: "human",
     meta: {
       name: shell,
       description: `Install ${shell} completion.`,
@@ -275,11 +276,9 @@ function createInstallShellCommand(
         updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
       };
     },
-    run(input) {
-      return localPlan(() => {
-        const script = formatCompletionScript(shell, getRootCommand());
-        return installCompletion(shell, script, input);
-      });
+    local(input) {
+      const script = formatCompletionScript(shell, getRootCommand());
+      return installCompletion(shell, script, input);
     },
     present(result, { sink }) {
       if (sink.json) {

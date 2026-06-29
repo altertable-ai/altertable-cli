@@ -5,11 +5,18 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { apiHttpOperationPlan, apiHttpResultOutput, type ApiHttpResult } from "@/lib/api-http.ts";
+import {
+  API_HTTP_OPERATION,
+  apiHttpResultOutput,
+  resolveApiHttp,
+  type ApiHttpResult,
+  type ResolvedApiHttp,
+} from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineHttpCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
 import { optionalStringArg } from "@/lib/operation-codec.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import {
@@ -17,7 +24,7 @@ import {
   isDelegatedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
-import { noopPlan, outputPlan } from "@/lib/operation-effect.ts";
+import { noopPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
@@ -61,10 +68,6 @@ const API_HTTP_BASE_ARGS = {
 
 const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
 const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
-
-function stringArg(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
 
 function isHttpMethodName(value: string): boolean {
   return HTTP_METHOD_NAME_SET.has(value.toUpperCase());
@@ -123,7 +126,7 @@ function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], meth
 
 type ApiInvokeInput = {
   delegated: boolean;
-  args: ReturnType<typeof buildApiHttpArgs>;
+  request?: ResolvedApiHttp;
 };
 
 const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly string[]> = {
@@ -142,15 +145,12 @@ const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly 
 function createApiMethodCommand(method: string) {
   const methodExamples = HTTP_METHOD_EXAMPLES[method as (typeof HTTP_METHOD_NAMES)[number]];
 
-  return defineOperationCommand({
+  return defineHttpCommand({
     id: `api.${method.toLowerCase()}`,
-    capabilities: ["management-http"],
-    catalog: {
-      effects: ["http"],
-      planes: ["management"],
-      mutates: method !== "GET",
-      output: "tabular",
-    },
+    plane: "management",
+    operation: API_HTTP_OPERATION,
+    mutates: method !== "GET",
+    output: "tabular",
     meta: {
       name: method,
       description: `${method} request to the management REST API.`,
@@ -158,10 +158,7 @@ function createApiMethodCommand(method: string) {
     },
     args: API_HTTP_ARGS,
     parse({ args, rawArgs }) {
-      return buildApiHttpArgs(args, rawArgs, method);
-    },
-    run(input, context) {
-      return apiHttpOperationPlan(input, context);
+      return resolveApiHttp(buildApiHttpArgs(args, rawArgs, method));
     },
     present(result, { sink }) {
       return apiHttpResultOutput(result, sink);
@@ -253,10 +250,10 @@ export function runApiRoutesCommand(sink: OutputSink, operationId?: string): voi
   writeCommandOutput(apiRoutesOutput(operationId), sink);
 }
 
-const apiSpecCommand = defineOperationCommand({
+const apiSpecCommand = defineOutputCommand({
   id: "api.spec",
   capabilities: ["raw-stdout"],
-  catalog: { effects: ["output"], output: "raw-api" },
+  output: "raw-api",
   meta: {
     name: "spec",
     description:
@@ -274,15 +271,15 @@ const apiSpecCommand = defineOperationCommand({
   parse({ args }) {
     return { format: optionalStringArg(args, "format") };
   },
-  run(input, { sink }) {
-    return outputPlan(apiSpecOutput(sink, input));
+  value(input, { sink }) {
+    return apiSpecOutput(sink, input);
   },
 });
 
-const apiRoutesCommand = defineOperationCommand({
+const apiRoutesCommand = defineOutputCommand({
   id: "api.routes",
   capabilities: [],
-  catalog: { effects: ["output"], output: "normalized" },
+  output: "normalized",
   meta: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
@@ -298,8 +295,8 @@ const apiRoutesCommand = defineOperationCommand({
   parse({ args }) {
     return optionalStringArg(args, "operation");
   },
-  run(operationId) {
-    return outputPlan(apiRoutesOutput(operationId));
+  value(operationId) {
+    return apiRoutesOutput(operationId);
   },
 });
 
@@ -332,16 +329,17 @@ export const apiCommand = defineOperationCommand<ApiInvokeInput, ApiHttpResult |
     ...apiMethodSubCommands,
   },
   parse({ args, rawArgs }) {
+    const delegated = isDelegatedApiCommand(rawArgs);
     return {
-      delegated: isDelegatedApiCommand(rawArgs),
-      args: buildApiHttpArgs(args, rawArgs),
+      delegated,
+      request: delegated ? undefined : resolveApiHttp(buildApiHttpArgs(args, rawArgs)),
     };
   },
   run(input, context) {
     if (input.delegated) {
       return noopPlan<ApiHttpResult | undefined>();
     }
-    return apiHttpOperationPlan(input.args, context);
+    return API_HTTP_OPERATION.plan(input.request as ResolvedApiHttp, context);
   },
   present(result, { sink }) {
     if (result === undefined) {

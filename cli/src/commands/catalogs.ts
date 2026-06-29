@@ -3,6 +3,7 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
 import { allPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
@@ -15,10 +16,12 @@ import {
   type ManagementCatalogCreateResult,
 } from "@/lib/management-operations.ts";
 
-const catalogsCreateCommand = defineOperationCommand({
+const catalogsCreateCommand = defineHttpCommand({
   id: "catalogs.create",
-  capabilities: ["management-http"],
-  catalog: { effects: ["http"], planes: ["management"], mutates: true, output: "raw-api" },
+  plane: "management",
+  operation: managementCatalogCreateOperation,
+  mutates: true,
+  output: "raw-api",
   meta: {
     name: "create",
     description: "Create a catalog. Only the 'altertable' engine is supported.",
@@ -47,9 +50,6 @@ const catalogsCreateCommand = defineOperationCommand({
       name,
       body: buildCreateCatalogBody({ name }),
     };
-  },
-  run(input, context) {
-    return managementCatalogCreateOperation.plan(input, context);
   },
   present(result: ManagementCatalogCreateResult) {
     const data = parseApiJson(result.response) as {
@@ -102,7 +102,7 @@ const catalogsListCommand = defineOperationCommand({
   },
 });
 
-export const catalogsCommand = defineOperationCommand({
+export const catalogsCommand = defineGroupCommand({
   meta: {
     name: "catalogs",
     description: "Manage catalogs (databases and connections) in the current environment.",

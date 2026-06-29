@@ -1,8 +1,11 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
-import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { localPlan, valuePlan } from "@/lib/operation-effect.ts";
+import {
+  defineGroupCommand,
+  defineLocalCommand,
+  defineValueCommand,
+} from "@/lib/operation-command-builders.ts";
 import { renderFixedTableSection } from "@/lib/table-format.ts";
 import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
@@ -21,13 +24,13 @@ function requireProfileName(name: unknown): string {
   return trimmed;
 }
 
-const profileListCommand = defineOperationCommand({
+const profileListCommand = defineValueCommand({
   id: "profile.list",
   capabilities: ["local-config"],
-  catalog: { effects: ["value"], output: "normalized" },
+  output: "normalized",
   meta: { name: "list", description: "List configured profiles" },
-  run() {
-    return valuePlan(listProfiles());
+  value() {
+    return listProfiles();
   },
   present(profiles) {
     const table = renderFixedTableSection(
@@ -56,10 +59,10 @@ const profileListCommand = defineOperationCommand({
   },
 });
 
-const profileShowCommand = defineOperationCommand({
+const profileShowCommand = defineValueCommand({
   id: "profile.show",
   capabilities: ["local-config"],
-  catalog: { effects: ["value"], output: "normalized" },
+  output: "normalized",
   meta: { name: "show", description: "Show profile configuration (secrets masked)" },
   args: {
     name: { type: "string", description: "Profile name (default: active profile)" },
@@ -71,9 +74,9 @@ const profileShowCommand = defineOperationCommand({
     }
     return profileName;
   },
-  run(profileName) {
+  value(profileName) {
     const profile = buildConfigureShowDataForProfile(profileName);
-    return valuePlan({ profileName, profile });
+    return { profileName, profile };
   },
   present(result) {
     return {
@@ -84,10 +87,10 @@ const profileShowCommand = defineOperationCommand({
   },
 });
 
-const profileUseCommand = defineOperationCommand({
+const profileUseCommand = defineLocalCommand({
   id: "profile.use",
-  capabilities: ["local-config", "local-file-write"],
-  catalog: { effects: ["local"], mutates: true, output: "normalized" },
+  mutates: true,
+  output: "normalized",
   meta: { name: "use", description: "Set the active profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -95,11 +98,9 @@ const profileUseCommand = defineOperationCommand({
   parse({ args }) {
     return requireProfileName(args.name);
   },
-  run(profileName) {
-    return localPlan(() => {
-      setActiveProfile(profileName);
-      return profileName;
-    });
+  local(profileName) {
+    setActiveProfile(profileName);
+    return profileName;
   },
   present(profileName) {
     return {
@@ -110,10 +111,10 @@ const profileUseCommand = defineOperationCommand({
   },
 });
 
-const profileDeleteCommand = defineOperationCommand({
+const profileDeleteCommand = defineLocalCommand({
   id: "profile.delete",
-  capabilities: ["local-config", "local-file-write"],
-  catalog: { effects: ["local"], mutates: true, output: "normalized" },
+  mutates: true,
+  output: "normalized",
   meta: { name: "delete", description: "Delete a profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
@@ -125,11 +126,9 @@ const profileDeleteCommand = defineOperationCommand({
     }
     return requireProfileName(args.name);
   },
-  run(profileName) {
-    return localPlan(() => {
-      deleteProfile(profileName);
-      return profileName;
-    });
+  local(profileName) {
+    deleteProfile(profileName);
+    return profileName;
   },
   present(profileName) {
     return {
@@ -140,7 +139,7 @@ const profileDeleteCommand = defineOperationCommand({
   },
 });
 
-export const profileCommand = defineOperationCommand({
+export const profileCommand = defineGroupCommand({
   id: "profile",
   capabilities: ["local-config"],
   meta: {
