@@ -23,6 +23,11 @@ export type ExecutionContext = {
   managementEnv?: string;
 };
 
+const PLANE_AUTH_RESOLVERS = {
+  lakehouse: getLakehouseAuthHeader,
+  management: getManagementAuthHeader,
+} satisfies Record<AuthPlane, () => string>;
+
 function optionalAuth(resolve: () => string): string | undefined {
   try {
     return resolve();
@@ -52,9 +57,5 @@ export function createExecutionContext(runtime: CliRuntime): ExecutionContext {
 }
 
 export function requirePlaneAuth(context: ExecutionContext, plane: AuthPlane): string {
-  const resolved = context.auth[plane];
-  if (resolved) {
-    return resolved;
-  }
-  return plane === "lakehouse" ? getLakehouseAuthHeader() : getManagementAuthHeader();
+  return context.auth[plane] ?? PLANE_AUTH_RESOLVERS[plane]();
 }

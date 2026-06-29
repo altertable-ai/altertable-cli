@@ -3,6 +3,8 @@ import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { requirePlaneAuth, type ExecutionContext } from "@/lib/execution-context.ts";
 
+type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
+
 export type OperationHttpRequest = {
   plane: AuthPlane;
   method: string;
@@ -16,11 +18,14 @@ export type OperationHttpRequest = {
   maxAttempts?: number;
 };
 
+const PLANE_URL_BUILDERS = {
+  lakehouse: (endpoint, context) => `${context.endpoints.lakehouse}${endpoint}`,
+  management: (endpoint, context) =>
+    `${context.endpoints.management}${encodeManagementEndpoint(endpoint)}`,
+} satisfies Record<AuthPlane, PlaneUrlBuilder>;
+
 function resolvePlaneUrl(request: OperationHttpRequest, context: ExecutionContext): string {
-  if (request.plane === "management") {
-    return `${context.endpoints.management}${encodeManagementEndpoint(request.endpoint)}`;
-  }
-  return `${context.endpoints.lakehouse}${request.endpoint}`;
+  return PLANE_URL_BUILDERS[request.plane](request.endpoint, context);
 }
 
 function toHttpSendOptions(
