@@ -159,6 +159,10 @@ Plane URLs default to HTTPS. Localhost HTTP (`http://localhost`, `http://127.0.0
 Or via environment variables:
 
 ```bash
+# Option 1: pre-encoded HTTP Basic token
+export ALTERTABLE_BASIC_AUTH_TOKEN="your_basic_auth_token"
+
+# Option 2: username/password
 export ALTERTABLE_LAKEHOUSE_USERNAME="your_username"
 export ALTERTABLE_LAKEHOUSE_PASSWORD="your_password"
 ```
