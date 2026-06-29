@@ -1,10 +1,5 @@
 import type { LakehouseColumn, LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
-import {
-  classifyStringDataType,
-  isTimestampValue,
-  isUuidValue,
-  type TerminalDataType,
-} from "@/lib/terminal-style.ts";
+import { classifyStringDataType, type TerminalDataType } from "@/lib/terminal-style.ts";
 
 export type ColumnTypeMap = Map<string, string | undefined>;
 
@@ -48,26 +43,6 @@ export function mapColumnSqlTypeToDataType(sqlType: string | undefined): Termina
   return "string";
 }
 
-export function inferDataTypeFromColumnName(columnName: string): TerminalDataType | null {
-  const lower = columnName.toLowerCase();
-  if (lower === "uuid") {
-    return "uuid";
-  }
-  if (lower.endsWith("_id") || lower === "id") {
-    return "uuid";
-  }
-  if (lower.endsWith("_at") || lower.endsWith("_time") || lower === "timestamp") {
-    return "timestamp";
-  }
-  if (lower.endsWith("_ms") || lower.endsWith("_count") || lower === "duration") {
-    return "number";
-  }
-  if (lower.startsWith("is_") || lower.startsWith("has_") || lower === "success") {
-    return "boolean";
-  }
-  return null;
-}
-
 export function resolveCellDataType(
   value: unknown,
   columnName: string | undefined,
@@ -83,21 +58,11 @@ export function resolveCellDataType(
     return "number";
   }
   if (typeof value === "string") {
-    if (isUuidValue(value)) {
-      return "uuid";
-    }
-    if (isTimestampValue(value)) {
-      return "timestamp";
-    }
     if (columnName !== undefined) {
       const sqlType = columnTypeMap.get(columnName);
       const fromSql = mapColumnSqlTypeToDataType(sqlType);
-      if (fromSql !== null && fromSql !== "string") {
+      if (fromSql !== null) {
         return fromSql;
-      }
-      const fromName = inferDataTypeFromColumnName(columnName);
-      if (fromName !== null) {
-        return fromName;
       }
     }
     return classifyStringDataType(value);

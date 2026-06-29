@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   getColumnTypeMap,
-  inferDataTypeFromColumnName,
   mapColumnSqlTypeToDataType,
   resolveCellDataType,
   selectDisplayColumnNames,
@@ -18,32 +17,40 @@ describe("mapColumnSqlTypeToDataType", () => {
   });
 });
 
-describe("inferDataTypeFromColumnName", () => {
-  test("infers types from common column naming patterns", () => {
-    expect(inferDataTypeFromColumnName("author_id")).toBe("uuid");
-    expect(inferDataTypeFromColumnName("created_at")).toBe("timestamp");
-    expect(inferDataTypeFromColumnName("duration_ms")).toBe("number");
-    expect(inferDataTypeFromColumnName("success")).toBe("boolean");
-    expect(inferDataTypeFromColumnName("event")).toBeNull();
-  });
-});
-
 describe("resolveCellDataType", () => {
-  test("prefers runtime shape over column hints for strings", () => {
+  test("uses declared SQL type for string values", () => {
     const typeMap = getColumnTypeMap([{ name: "event", type: "VARCHAR" }]);
     expect(resolveCellDataType("mcp_tool_call", "event", typeMap)).toBe("string");
+    expect(resolveCellDataType("123", "duration_ms", new Map([["duration_ms", "VARCHAR"]]))).toBe(
+      "string",
+    );
+    expect(resolveCellDataType("true", "success", new Map([["success", "VARCHAR"]]))).toBe(
+      "string",
+    );
     expect(
       resolveCellDataType(
         "019ee8e4-1d79-77d9-8693-1f67732b184d",
         "author_id",
         new Map([["author_id", "VARCHAR"]]),
       ),
-    ).toBe("uuid");
+    ).toBe("string");
+    expect(resolveCellDataType("123", "duration_ms", new Map([["duration_ms", "BIGINT"]]))).toBe(
+      "number",
+    );
   });
 
   test("uses SQL type for non-string runtime values", () => {
     const typeMap = getColumnTypeMap([{ name: "duration_ms", type: "BIGINT" }]);
     expect(resolveCellDataType(285, "duration_ms", typeMap)).toBe("number");
+  });
+
+  test("classifies untyped UUID and timestamp strings by exact value shape", () => {
+    expect(
+      resolveCellDataType("019ee8e4-1d79-77d9-8693-1f67732b184d", "author_id", new Map()),
+    ).toBe("uuid");
+    expect(resolveCellDataType("2026-06-21T06:35:24.409Z", "created_at", new Map())).toBe(
+      "timestamp",
+    );
   });
 });
 
