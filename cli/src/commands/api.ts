@@ -10,6 +10,7 @@ import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { optionalStringArg } from "@/lib/operation-codec.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import {
   findFirstPositionalToken,
@@ -109,14 +110,14 @@ function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], meth
   const fieldArgs = extractFieldArgs(rawArgs);
 
   return {
-    method: stringArg(args.method) ?? method,
-    endpoint: stringArg(args.endpoint),
-    body: stringArg(args.body),
-    input: stringArg(args.input),
+    method: optionalStringArg(args, "method") ?? method,
+    endpoint: optionalStringArg(args, "endpoint"),
+    body: optionalStringArg(args, "body"),
+    input: optionalStringArg(args, "input"),
     rawFields: rawFieldArgs.length > 0 ? rawFieldArgs : undefined,
     typedFields: fieldArgs.length > 0 ? fieldArgs : undefined,
-    env: stringArg(args.env),
-    format: stringArg(args.format) ?? readArgvFlagValue(rawArgs, "--format"),
+    env: optionalStringArg(args, "env"),
+    format: optionalStringArg(args, "format") ?? readArgvFlagValue(rawArgs, "--format"),
   };
 }
 
@@ -266,7 +267,7 @@ const apiSpecCommand = defineOperationCommand({
     },
   },
   parse({ args }) {
-    return { format: stringArg(args.format) };
+    return { format: optionalStringArg(args, "format") };
   },
   run(input, { sink }) {
     return operationPlan(outputEffect(apiSpecOutput(sink, input)));
@@ -290,7 +291,7 @@ const apiRoutesCommand = defineOperationCommand({
     },
   },
   parse({ args }) {
-    return stringArg(args.operation);
+    return optionalStringArg(args, "operation");
   },
   run(operationId) {
     return operationPlan(outputEffect(apiRoutesOutput(operationId)));
