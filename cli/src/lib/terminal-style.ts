@@ -1,4 +1,5 @@
 const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/g;
 const URL_PATTERN = /https?:\/\/[^\s)>\]]+/g;
 export const DEFAULT_TERMINAL_WIDTH = 80;
 const TERMINAL_ELLIPSIS = "…";
@@ -336,6 +337,18 @@ export function formatTerminalUrls(text: string): string {
     return text;
   }
   return text.replace(URL_PATTERN, (url) => terminalUrl(url));
+}
+
+export function formatTerminalMarkdownLinks(text: string): string {
+  return text.replace(MARKDOWN_LINK_PATTERN, (_match, label: string, url: string) => {
+    if (!shouldUseTerminalColor()) {
+      return `${label} (${url})`;
+    }
+    if (!shouldUseTerminalHyperlinks()) {
+      return `${terminalAccent(label)} ${terminalSubtle(`(${url})`)}`;
+    }
+    return terminalLink(terminalAccent(label), url);
+  });
 }
 
 export function terminalDataType(text: string, kind: TerminalDataType): string {
