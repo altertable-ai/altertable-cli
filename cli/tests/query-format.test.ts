@@ -16,33 +16,27 @@ import {
   truncateTextMiddle,
 } from "@/lib/query-format.ts";
 import { renderQueryCsv, renderQueryJson } from "@/lib/lakehouse-client.ts";
-import { getVisibleTextWidth, setTerminalColorMode } from "@/lib/terminal-style.ts";
+import { getVisibleTextWidth } from "@/lib/terminal-style.ts";
+import {
+  forceTerminalColorForTests,
+  restoreTerminalState,
+  snapshotTerminalState,
+  type TerminalTestState,
+} from "@tests/terminal-test-utils.ts";
 
-const originalStdoutIsTTY = process.stdout.isTTY;
-const originalStderrIsTTY = process.stderr.isTTY;
+let terminalState: TerminalTestState | undefined;
 
 function enableTerminalColorForTests(): void {
-  delete process.env.NO_COLOR;
-  delete process.env.TEST;
-  delete process.env.CI;
-  delete process.env.FORCE_COLOR;
-  delete process.env.ALTERTABLE_COLOR;
-  process.env.TERM = "xterm-256color";
-  setTerminalColorMode("always");
-  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-  Object.defineProperty(process.stderr, "isTTY", { value: true, configurable: true });
+  terminalState = snapshotTerminalState();
+  forceTerminalColorForTests();
 }
 
 function restoreTerminalColorForTests(): void {
-  setTerminalColorMode(undefined);
-  Object.defineProperty(process.stdout, "isTTY", {
-    value: originalStdoutIsTTY,
-    configurable: true,
-  });
-  Object.defineProperty(process.stderr, "isTTY", {
-    value: originalStderrIsTTY,
-    configurable: true,
-  });
+  if (terminalState === undefined) {
+    return;
+  }
+  restoreTerminalState(terminalState);
+  terminalState = undefined;
 }
 
 const SAMPLE_NDJSON = [

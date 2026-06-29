@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createCliRuntime, runWithCliRuntime, writeRawIfJsonElseHuman } from "@/lib/runtime.ts";
 import {
   CliError,
@@ -22,6 +22,23 @@ import {
   serializeCliError,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
+import {
+  forceNoTerminalColorForTests,
+  restoreTerminalState,
+  snapshotTerminalState,
+  type TerminalTestState,
+} from "@tests/terminal-test-utils.ts";
+
+let terminalState: TerminalTestState;
+
+beforeEach(() => {
+  terminalState = snapshotTerminalState();
+  forceNoTerminalColorForTests();
+});
+
+afterEach(() => {
+  restoreTerminalState(terminalState);
+});
 
 describe("errors", () => {
   test("renderCliError formats CliError", () => {

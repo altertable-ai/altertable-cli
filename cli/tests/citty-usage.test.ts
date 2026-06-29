@@ -9,6 +9,11 @@ import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/citty-us
 import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
 import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { formatCommandExamplesSection } from "@/lib/terminal-style.ts";
+import {
+  restoreTerminalState,
+  snapshotTerminalState,
+  type TerminalTestState,
+} from "@tests/terminal-test-utils.ts";
 
 const TERMINAL_CONTROL_PATTERN = new RegExp(
   `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
@@ -63,15 +68,16 @@ describe("renderAltertableUsage", () => {
 });
 
 describe("renderAltertableUsage active context", () => {
-  const originalIsTty = process.stdout.isTTY;
   let testHome = "";
+  let terminalState: TerminalTestState;
 
   beforeEach(() => {
+    terminalState = snapshotTerminalState();
     testHome = mkdtempSync(join(tmpdir(), "altertable-citty-usage-test-"));
   });
 
   afterEach(() => {
-    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTty, configurable: true });
+    restoreTerminalState(terminalState);
     runWithCliRuntime(createCliRuntime(getBootstrapCliContext()), () => {
       process.env.ALTERTABLE_CONFIG_HOME = testHome;
       process.env.ALTERTABLE_SECRET_BACKEND = "file";
@@ -95,12 +101,13 @@ describe("renderAltertableUsage active context", () => {
       });
       setCliRuntime(runtime);
       const usage = await renderAltertableUsage(buildMainCommand());
-      expect(usage).toContain("PROFILE");
+      const visibleUsage = visibleTerminalText(usage);
+      expect(visibleUsage).toContain("PROFILE");
       expect(usage).toContain("production");
       expect(usage).not.toContain("(altertable");
-      expect(visibleTerminalText(usage)).toMatch(/\n  PROFILE/);
-      const profileIndex = usage.indexOf("PROFILE");
-      const usageIndex = usage.indexOf("USAGE");
+      expect(visibleUsage).toMatch(/\n  PROFILE/);
+      const profileIndex = visibleUsage.indexOf("PROFILE");
+      const usageIndex = visibleUsage.indexOf("USAGE");
       expect(profileIndex).toBeGreaterThan(-1);
       expect(usageIndex).toBeGreaterThan(profileIndex);
     });
