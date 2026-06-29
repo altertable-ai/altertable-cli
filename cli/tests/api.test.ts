@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import type { CommandDef } from "citty";
+import type { ArgsDef, CommandDef } from "citty";
 import { runCommand } from "citty";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -138,6 +138,10 @@ describe("api", () => {
   });
 
   test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
+    const rootArgs = {
+      profile: { type: "string", description: "Use a named profile" },
+    } satisfies ArgsDef;
+
     expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
     expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([
       "api",
@@ -147,6 +151,13 @@ describe("api", () => {
     expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
     expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
       "--json",
+      "api",
+      "--",
+      "/whoami",
+    ]);
+    expect(normalizeApiInvocatorRawArgs(["--profile", "dev", "api", "/whoami"], rootArgs)).toEqual([
+      "--profile",
+      "dev",
       "api",
       "--",
       "/whoami",

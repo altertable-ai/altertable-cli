@@ -73,7 +73,6 @@ function valueFlagsFor(args: ArgsDef): ReadonlySet<string> {
 }
 
 const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
-const ROOT_VALUE_FLAGS = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
 
 function findFirstPositionalIndex(
   rawArgs: readonly string[],
@@ -107,8 +106,11 @@ function isApiCommandName(value: string): boolean {
 }
 
 /** Citty treats endpoint paths as subcommand names unless we separate them with `--`. */
-export function normalizeApiInvocatorRawArgs(rawArgs: readonly string[]): string[] {
-  const apiIndex = findFirstPositionalIndex(rawArgs, ROOT_VALUE_FLAGS);
+export function normalizeApiInvocatorRawArgs(
+  rawArgs: readonly string[],
+  rootArgs: ArgsDef = {},
+): string[] {
+  const apiIndex = findFirstPositionalIndex(rawArgs, valueFlagsFor(rootArgs));
   if (apiIndex === -1 || rawArgs[apiIndex] !== "api") {
     return [...rawArgs];
   }

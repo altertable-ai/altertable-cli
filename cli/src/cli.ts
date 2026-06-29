@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { runCommand, type CommandDef } from "citty";
+import { runCommand, type ArgsDef, type CommandDef } from "citty";
 import { VERSION } from "@/version.ts";
 import {
   getCliContext,
@@ -49,6 +49,31 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
   return parseGlobalFlags(argv);
 }
 
+const ROOT_ARGS = {
+  debug: { type: "boolean", alias: "d", description: "Enable debug output" },
+  json: { type: "boolean", description: "Machine-readable JSON output" },
+  agent: {
+    type: "boolean",
+    description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
+  },
+  "no-color": {
+    type: "boolean",
+    description: "Disable terminal colors and styling",
+  },
+  profile: {
+    type: "string",
+    description: "Use a named profile for this command only",
+  },
+  "connect-timeout": {
+    type: "string",
+    description: "HTTP connect timeout in seconds (default 5)",
+  },
+  "read-timeout": {
+    type: "string",
+    description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
+  },
+} satisfies ArgsDef;
+
 export function buildMainCommand(): CommandDef {
   let mainCommand: CommandDef;
 
@@ -80,30 +105,7 @@ export function buildMainCommand(): CommandDef {
         'altertable query --statement "SELECT 1"',
       ],
     },
-    args: {
-      debug: { type: "boolean", alias: "d", description: "Enable debug output" },
-      json: { type: "boolean", description: "Machine-readable JSON output" },
-      agent: {
-        type: "boolean",
-        description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
-      },
-      "no-color": {
-        type: "boolean",
-        description: "Disable terminal colors and styling",
-      },
-      profile: {
-        type: "string",
-        description: "Use a named profile for this command only",
-      },
-      "connect-timeout": {
-        type: "string",
-        description: "HTTP connect timeout in seconds (default 5)",
-      },
-      "read-timeout": {
-        type: "string",
-        description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
-      },
-    },
+    args: ROOT_ARGS,
     subCommands: topLevelCommands,
     async run({ args }) {
       setCliContext(buildCliContextFromArgs(args));
@@ -140,7 +142,7 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = normalizeApiInvocatorRawArgs(process.argv.slice(2));
+  const rawArgs = normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS);
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);
