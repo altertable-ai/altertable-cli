@@ -24,30 +24,6 @@ const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
 const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
-function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
-  for (const arg of rawArgs) {
-    if (arg === "--") {
-      return undefined;
-    }
-    if (arg.startsWith("-")) {
-      continue;
-    }
-    return arg;
-  }
-  return undefined;
-}
-
-function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
-  const subCommandName = firstPositionalRawArg(rawArgs);
-  if (!subCommandName) {
-    return false;
-  }
-  if (API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName)) {
-    return true;
-  }
-  return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
-}
-
 const API_HTTP_BASE_ARGS = {
   method: {
     type: "enum",
@@ -74,6 +50,122 @@ const API_HTTP_BASE_ARGS = {
   input: { type: "string", description: "Alias for --body (file path or - for stdin)" },
   env: { type: "string", description: "Replace {environment_id} in the path" },
 } satisfies ArgsDef;
+
+const ROOT_VALUE_FLAGS = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
+
+function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
+  for (const arg of rawArgs) {
+    if (arg === "--") {
+      return undefined;
+    }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    return arg;
+  }
+  return undefined;
+}
+
+function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
+  const subCommandName = firstPositionalRawArg(rawArgs);
+  if (!subCommandName) {
+    return false;
+  }
+  if (API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName)) {
+    return true;
+  }
+  return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
+}
+
+function camelCaseFlagName(flag: string): string {
+  return flag
+    .replace(/^-{1,2}/, "")
+    .replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
+}
+
+function isApiValueFlag(flag: string): boolean {
+  const name = camelCaseFlagName(flag);
+  for (const [key, definition] of Object.entries(API_HTTP_BASE_ARGS)) {
+    if (definition.type !== "string" && definition.type !== "enum") {
+      continue;
+    }
+    if (name === key || name === camelCaseFlagName(key)) {
+      return true;
+    }
+    const alias = "alias" in definition ? definition.alias : undefined;
+    const aliases = Array.isArray(alias) ? alias : alias ? [alias] : [];
+    if (aliases.some((entry) => name === entry || name === camelCaseFlagName(String(entry)))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function findFirstPositionalIndex(rawArgs: readonly string[]): number {
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const arg = rawArgs[index];
+    if (arg === undefined) {
+      continue;
+    }
+    if (arg === "--") {
+      return -1;
+    }
+    if (arg.startsWith("-")) {
+      if (!arg.includes("=") && isApiValueFlag(arg)) {
+        index += 1;
+      }
+      continue;
+    }
+    return index;
+  }
+  return -1;
+}
+
+function findTopLevelApiCommandIndex(rawArgs: readonly string[]): number {
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const arg = rawArgs[index];
+    if (arg === undefined) {
+      continue;
+    }
+    if (arg === "--") {
+      return -1;
+    }
+    if (arg.startsWith("-")) {
+      if (ROOT_VALUE_FLAGS.has(arg)) {
+        index += 1;
+      }
+      continue;
+    }
+    return arg === "api" ? index : -1;
+  }
+  return -1;
+}
+
+/** Citty treats the first positional as a subcommand name; insert `--` before endpoint paths. */
+export function normalizeApiInvocatorRawArgs(rawArgs: readonly string[]): string[] {
+  const apiIndex = findTopLevelApiCommandIndex(rawArgs);
+  if (apiIndex === -1) {
+    return [...rawArgs];
+  }
+
+  const afterApi = rawArgs.slice(apiIndex + 1);
+  if (afterApi.includes("--")) {
+    return [...rawArgs];
+  }
+
+  const endpointIndex = findFirstPositionalIndex(afterApi);
+  if (endpointIndex === -1) {
+    return [...rawArgs];
+  }
+
+  if (isDelegatedApiSubCommand(afterApi)) {
+    return [...rawArgs];
+  }
+
+  const normalized = [...rawArgs];
+  normalized.splice(apiIndex + 1 + endpointIndex, 0, "--");
+  return normalized;
+}
 
 const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
 

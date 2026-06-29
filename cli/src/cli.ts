@@ -21,7 +21,7 @@ import {
   uploadCommand,
   validateCommand,
 } from "@/commands/lakehouse.ts";
-import { apiCommand } from "@/commands/api.ts";
+import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import {
   CliError,
@@ -140,7 +140,7 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = process.argv.slice(2);
+  const rawArgs = normalizeApiInvocatorRawArgs(process.argv.slice(2));
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);

@@ -5,7 +5,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
+import {
+  apiCommand,
+  normalizeApiInvocatorRawArgs,
+  runApiRoutesCommand,
+  runApiSpecCommand,
+} from "@/commands/api.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
@@ -132,27 +137,86 @@ describe("api", () => {
     expect(subCommands.routes?.run).toBeDefined();
   });
 
-  test("api POST subcommand issues a single HTTP request", async () => {
-    const testHome = mkdtempSync(join(tmpdir(), "altertable-api-command-test-"));
-    const mockFile = join(testHome, "mocks.json");
-    const logFile = join(testHome, "http.log");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/service_accounts",
-          method: "POST",
-          body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
-        },
-      ]),
-    );
+  test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
+    expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
+    expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([
+      "api",
+      "GET",
+      "/whoami",
+    ]);
+    expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
+    expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
+      "--json",
+      "api",
+      "--",
+      "/whoami",
+    ]);
+    expect(
+      normalizeApiInvocatorRawArgs(["api", "-f", "label=CI Bot", "/service_accounts"]),
+    ).toEqual(["api", "-f", "label=CI Bot", "--", "/service_accounts"]);
+    expect(normalizeApiInvocatorRawArgs(["api", "--", "/whoami"])).toEqual([
+      "api",
+      "--",
+      "/whoami",
+    ]);
+  });
 
-    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
-    process.env.ALTERTABLE_HTTP_LOG = logFile;
-    process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
-    process.env.ALTERTABLE_API_KEY = "atm_test";
+  describe("api HTTP invoker", () => {
+    let testHome = "";
+    let mockFile = "";
+    let logFile = "";
 
-    try {
+    beforeEach(() => {
+      testHome = mkdtempSync(join(tmpdir(), "altertable-api-test-"));
+      mockFile = join(testHome, "mocks.json");
+      logFile = join(testHome, "http.log");
+      process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+      process.env.ALTERTABLE_HTTP_LOG = logFile;
+      process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+      process.env.ALTERTABLE_API_KEY = "atm_test";
+    });
+
+    afterEach(() => {
+      rmSync(testHome, { recursive: true, force: true });
+      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+      delete process.env.ALTERTABLE_HTTP_LOG;
+      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+      delete process.env.ALTERTABLE_API_KEY;
+    });
+
+    test("endpoint path without method issues a single HTTP request", async () => {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          {
+            urlPattern: "/whoami",
+            method: "GET",
+            body: '{"user":{"email":"dev@example.com"}}',
+          },
+        ]),
+      );
+
+      await runCommand(buildMainCommand(), {
+        rawArgs: normalizeApiInvocatorRawArgs(["api", "/whoami"]),
+      });
+
+      const logContent = readFileSync(logFile, "utf8");
+      expect(logContent).toContain("/rest/v1/whoami");
+      expect(logContent).toContain("METHOD=GET");
+    });
+
+    test("POST subcommand issues a single HTTP request", async () => {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          {
+            urlPattern: "/service_accounts",
+            method: "POST",
+            body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
+          },
+        ]),
+      );
+
       await runCommand(buildMainCommand(), {
         rawArgs: ["api", "POST", "/service_accounts", "-f", "label=CI Bot"],
       });
@@ -162,12 +226,6 @@ describe("api", () => {
       expect(payloadLines).toHaveLength(1);
       expect(logContent).toContain("/rest/v1/service_accounts");
       expect(logContent).not.toContain("/rest/v1/POST");
-    } finally {
-      rmSync(testHome, { recursive: true, force: true });
-      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
-      delete process.env.ALTERTABLE_HTTP_LOG;
-      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
-      delete process.env.ALTERTABLE_API_KEY;
-    }
+    });
   });
 });
