@@ -1,19 +1,24 @@
-import { parseQueryFormat, type QueryOutputFormat } from "@/lib/lakehouse-client.ts";
+import {
+  parseManagementOutputFormat,
+  type ManagementOutputFormat,
+} from "@/lib/lakehouse-client.ts";
 import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import { terminalMetadata } from "@/lib/terminal-style.ts";
 
 export type CommandOutputMode =
   | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
-  | { kind: "normalized"; data: unknown; humanText: string }
+  | { kind: "normalized"; data: unknown; humanText: string; metadataLines?: string[] }
   | { kind: "human"; text: string }
   | {
       kind: "tabular";
       body: string;
-      format?: QueryOutputFormat;
+      format?: ManagementOutputFormat;
       humanFormatter?: (data: unknown) => string;
     }
-  | { kind: "deleted"; message: string; id?: string };
+  | { kind: "deleted"; message: string; id?: string }
+  | { kind: "ack"; data: Record<string, unknown>; metadataMessage: string };
 
 export function writeCommandOutput(
   mode: CommandOutputMode,
@@ -48,6 +53,18 @@ export function writeCommandOutput(
       return;
     }
     sink.writeHuman(mode.humanText);
+    if (mode.metadataLines !== undefined && mode.metadataLines.length > 0) {
+      sink.writeMetadata(mode.metadataLines);
+    }
+    return;
+  }
+
+  if (mode.kind === "ack") {
+    if (json) {
+      sink.writeJson(mode.data);
+      return;
+    }
+    sink.writeMetadata([terminalMetadata(mode.metadataMessage)]);
     return;
   }
 
@@ -90,7 +107,7 @@ export function writeManagementOutput(
   const formatArg = options?.format;
   const parsedFormat =
     formatArg !== undefined && String(formatArg).length > 0
-      ? parseQueryFormat(String(formatArg))
+      ? parseManagementOutputFormat(String(formatArg))
       : undefined;
 
   writeCommandOutput(

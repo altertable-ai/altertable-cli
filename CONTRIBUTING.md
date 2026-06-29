@@ -33,7 +33,7 @@ Match existing conventions in `cli/src/`:
 ## Tests
 
 - Unit tests: `cd cli && bun test`
-- Shell tests (offline): `./tests/configure_test.sh`, `./tests/management_test.sh`, `./tests/whoami_test.sh`, `./tests/catalogs_test.sh`, `./tests/scripting_test.sh`, `./tests/profile_test.sh`
+- Shell tests (offline): `./tests/configure_test.sh`, `./tests/management_test.sh`, `./tests/context_test.sh`, `./tests/catalogs_test.sh`, `./tests/scripting_test.sh`, `./tests/profile_test.sh`
 - Integration tests (requires mock server): `./tests/integration_test.sh`
 
 ## Pull Requests

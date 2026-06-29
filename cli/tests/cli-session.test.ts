@@ -13,7 +13,7 @@ beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-cli-session-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
 });
 
 afterEach(() => {
@@ -33,7 +33,7 @@ describe("createCliSession", () => {
       controlPlaneUrl: "http://localhost:13000",
     });
 
-    const runtime = createCliRuntime({ debug: false, json: false });
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const session = runWithCliRuntime(runtime, () => createCliSession(runtime.context));
 
     expect(session.profile).toBe("default");
@@ -44,7 +44,7 @@ describe("createCliSession", () => {
   });
 
   test("omits auth headers when credentials are missing", () => {
-    const runtime = createCliRuntime({ debug: false, json: false });
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const session = runWithCliRuntime(runtime, () => createCliSession(runtime.context));
 
     expect(session.lakehouseAuthHeader).toBeUndefined();

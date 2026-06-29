@@ -31,7 +31,7 @@ beforeEach(() => {
   logFile = join(testHome, "http.log");
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_HTTP_LOG = logFile;
-  setCliContext({ debug: false, json: false });
+  setCliContext({ debug: false, json: false, agent: false });
 });
 
 afterEach(() => {
@@ -274,7 +274,7 @@ describe("TimeoutError", () => {
 
 describe("context timeout resolution", () => {
   test("resolveFetchTimeoutMs uses context read timeout override", () => {
-    setCliContext({ debug: false, json: false, readTimeoutMs: 30_000 });
+    setCliContext({ debug: false, json: false, agent: false, readTimeoutMs: 30_000 });
     expect(
       resolveFetchTimeoutMs({
         method: "GET",
@@ -285,7 +285,7 @@ describe("context timeout resolution", () => {
   });
 
   test("stream read timeout 0 uses connect-only abort when context unset", () => {
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
     expect(
       resolveReadTimeoutMs(
         {

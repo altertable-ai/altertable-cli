@@ -1,13 +1,24 @@
 import type { ArgsDef } from "citty";
-import { getOpenapiSpecJson, getOpenapiSpecYaml } from "@/lib/openapi-spec.ts";
+import {
+  getOpenapiSpecJson,
+  getOpenapiSpecYaml,
+  resolveOpenapiSpecFormat,
+} from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { runApiHttp } from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { writeCommandOutput } from "@/lib/command-output.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
-import { renderFixedTable } from "@/lib/table-format.ts";
+import { readArgvFlagValue } from "@/lib/timeout-args.ts";
+import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
+import {
+  formatTerminalLabelValue,
+  formatTerminalSection,
+  terminalAccent,
+} from "@/lib/terminal-style.ts";
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
@@ -37,16 +48,17 @@ function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
   return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
 }
 
-const API_HTTP_ARGS = withManagementFormatArg({
+const API_HTTP_BASE_ARGS = {
   method: {
-    type: "string",
+    type: "enum",
     alias: "X",
     description: "HTTP method override (default GET, or POST when fields/body are provided)",
+    options: [...HTTP_METHOD_NAMES],
   },
   endpoint: {
     type: "positional",
     description: "Path under /rest/v1, e.g. /whoami",
-    required: true,
+    required: false,
   },
   "raw-field": {
     type: "string",
@@ -61,7 +73,9 @@ const API_HTTP_ARGS = withManagementFormatArg({
   body: { type: "string", description: "JSON body or @file" },
   input: { type: "string", description: "Alias for --body (file path or - for stdin)" },
   env: { type: "string", description: "Replace {environment_id} in the path" },
-} satisfies ArgsDef);
+} satisfies ArgsDef;
+
+const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
 
 function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], method?: string) {
   const rawFieldArgs = extractRawFieldArgs(rawArgs);
@@ -75,7 +89,7 @@ function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], meth
     rawFields: rawFieldArgs.length > 0 ? rawFieldArgs : undefined,
     typedFields: fieldArgs.length > 0 ? fieldArgs : undefined,
     env: stringArg(args.env),
-    format: stringArg(args.format),
+    format: stringArg(args.format) ?? readArgvFlagValue(rawArgs, "--format"),
   };
 }
 
@@ -83,11 +97,27 @@ function stringArg(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly string[]> = {
+  GET: ["altertable api /whoami", "altertable api GET /environments/production/connections"],
+  POST: [
+    'altertable api POST /service_accounts -f label="CI Bot"',
+    "altertable api POST /environments/production/databases -f name=Analytics",
+  ],
+  PATCH: [
+    'altertable api PATCH /environments/production/connections/conn_1 --body \'{"name":"Renamed"}\'',
+  ],
+  DELETE: ["altertable api DELETE /service_accounts/sa_abc123"],
+  PUT: ["altertable api PUT /path --body @payload.json"],
+};
+
 function createApiMethodCommand(method: string) {
+  const methodExamples = HTTP_METHOD_EXAMPLES[method as (typeof HTTP_METHOD_NAMES)[number]];
+
   return defineAltertableCommand({
     meta: {
       name: method,
       description: `${method} request to the management REST API.`,
+      examples: methodExamples,
     },
     args: API_HTTP_ARGS,
     async run({ args, rawArgs, sink }) {
@@ -109,13 +139,17 @@ function formatOperationDetails(operationId: string): string {
   const pathParameters = extractPathParameters(operation.path);
   const parameterText = pathParameters.length > 0 ? pathParameters.join(", ") : "(none)";
 
-  return [
-    `Operation: ${operation.operationId}`,
-    `Method: ${operation.method}`,
-    `Path: ${operation.path}`,
-    `Parameters: ${parameterText}`,
-    `Summary: ${operation.summary}`,
-  ].join("\n");
+  const detailLines = [
+    formatTerminalLabelValue("Operation:", terminalAccent(operation.operationId), {
+      labelWidth: 12,
+    }),
+    formatTerminalLabelValue("Method:", operation.method, { labelWidth: 12 }),
+    formatTerminalLabelValue("Path:", operation.path, { labelWidth: 12 }),
+    formatTerminalLabelValue("Parameters:", parameterText, { labelWidth: 12 }),
+    formatTerminalLabelValue("Summary:", operation.summary, { labelWidth: 12 }),
+  ];
+
+  return formatTerminalSection(detailLines);
 }
 
 function operationDetailsJson(operationId: string): Record<string, unknown> {
@@ -130,49 +164,69 @@ function operationDetailsJson(operationId: string): Record<string, unknown> {
   };
 }
 
-export function runApiSpecCommand(sink: OutputSink): void {
-  if (sink.json) {
-    sink.writeRaw(getOpenapiSpecJson());
-  } else {
-    sink.writeHuman(getOpenapiSpecYaml());
+export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
+  const format = resolveOpenapiSpecFormat(
+    sink.json,
+    process.stdout.isTTY === true,
+    options?.format,
+  );
+
+  if (format === "json") {
+    writeCommandOutput({ kind: "raw_api", body: getOpenapiSpecJson() }, sink);
+    return;
   }
+
+  writeCommandOutput({ kind: "human", text: getOpenapiSpecYaml() }, sink);
 }
 
 export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
   if (operationId) {
-    if (sink.json) {
-      sink.writeJson(operationDetailsJson(operationId));
-    } else {
-      sink.writeHuman(formatOperationDetails(operationId));
-    }
+    writeCommandOutput(
+      {
+        kind: "normalized",
+        data: operationDetailsJson(operationId),
+        humanText: formatOperationDetails(operationId),
+      },
+      sink,
+    );
     return;
   }
 
-  if (sink.json) {
-    sink.writeJson(OPENAPI_OPERATIONS);
-    return;
-  }
-
-  const table = renderFixedTable(
-    OPENAPI_OPERATIONS,
-    [
-      { header: "METHOD", cell: (operation) => operation.method },
-      { header: "PATH", cell: (operation) => operation.path },
-      { header: "OPERATION", cell: (operation) => operation.operationId },
-      { header: "SUMMARY", cell: (operation) => operation.summary },
-    ],
-    "No operations found.",
+  const table = renderApiRoutesTableSection(
+    OPENAPI_OPERATIONS.map((operation) => ({
+      method: operation.method,
+      path: operation.path,
+      operationId: operation.operationId,
+      summary: operation.summary,
+    })),
   );
-  sink.writeHuman(table);
+  writeCommandOutput(
+    {
+      kind: "normalized",
+      data: OPENAPI_OPERATIONS,
+      humanText: table,
+    },
+    sink,
+  );
 }
 
 const apiSpecCommand = defineAltertableCommand({
   meta: {
     name: "spec",
-    description: "Print the bundled management OpenAPI specification.",
+    description:
+      "Print the bundled management OpenAPI specification (YAML in a terminal; JSON when piped or with --json).",
+    examples: ["altertable api spec", "altertable api spec --json"],
   },
-  run({ sink }) {
-    runApiSpecCommand(sink);
+  args: {
+    format: {
+      type: "enum",
+      options: ["json", "yaml"],
+      description:
+        "Output format (default: yaml in a terminal, json when piped or with global --json)",
+    },
+  },
+  run({ args, sink }) {
+    runApiSpecCommand(sink, { format: stringArg(args.format) });
   },
 });
 
@@ -180,6 +234,7 @@ const apiRoutesCommand = defineAltertableCommand({
   meta: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
+    examples: ["altertable api routes", "altertable api routes createDatabase"],
   },
   args: {
     operation: {
@@ -202,8 +257,14 @@ export const apiCommand = defineAltertableCommand({
   meta: {
     name: "api",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
+    examples: [
+      "altertable api /whoami",
+      "altertable api routes",
+      "altertable api GET /environments/production/connections",
+      'altertable api POST /service_accounts -f label="CI Bot"',
+    ],
   },
-  args: API_HTTP_ARGS,
+  args: API_HTTP_BASE_ARGS,
   subCommands: {
     spec: apiSpecCommand,
     routes: apiRoutesCommand,

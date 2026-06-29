@@ -18,6 +18,7 @@ export type CompletionFlag = {
   name: string;
   alias?: string;
   description?: string;
+  values?: string[];
 };
 
 export type CompletionContext = {
@@ -34,8 +35,9 @@ const MAX_SUBCOMMAND_DEPTH = 3;
 
 type ArgDef = {
   type?: string;
-  alias?: string;
+  alias?: string | string[];
   description?: string;
+  options?: string[];
 };
 
 function extractFlags(command: CommandDef): CompletionFlag[] {
@@ -44,14 +46,15 @@ function extractFlags(command: CommandDef): CompletionFlag[] {
 
   for (const [name, rawDef] of Object.entries(args)) {
     const def = rawDef as ArgDef | undefined;
-    if (!def?.type || (def.type !== "boolean" && def.type !== "string")) {
+    if (!def?.type || (def.type !== "boolean" && def.type !== "string" && def.type !== "enum")) {
       continue;
     }
 
     flags.push({
       name,
-      alias: def.alias,
+      alias: Array.isArray(def.alias) ? def.alias[0] : def.alias,
       description: def.description,
+      values: def.type === "enum" ? def.options : undefined,
     });
   }
 

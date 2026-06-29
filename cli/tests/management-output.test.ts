@@ -81,7 +81,7 @@ describe("renderManagementOutput", () => {
 
   test("writeManagementOutput defaults to table in human mode", () => {
     const stdout: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false });
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     runtime.output.writeHuman = (text) => {
       stdout.push(text);
     };
