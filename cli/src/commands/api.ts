@@ -22,7 +22,8 @@ import {
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
-const API_DELEGATED_SUBCOMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
+const API_META_COMMAND_NAMES = new Set(["spec", "routes"]);
+const HTTP_METHOD_NAME_SET = new Set<string>(HTTP_METHOD_NAMES);
 
 const API_HTTP_BASE_ARGS = {
   method: {
@@ -51,57 +52,33 @@ const API_HTTP_BASE_ARGS = {
   env: { type: "string", description: "Replace {environment_id} in the path" },
 } satisfies ArgsDef;
 
-const ROOT_VALUE_FLAGS = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
-
-function firstPositionalRawArg(rawArgs: readonly string[]): string | undefined {
-  for (const arg of rawArgs) {
-    if (arg === "--") {
-      return undefined;
-    }
-    if (arg.startsWith("-")) {
-      continue;
-    }
-    return arg;
-  }
-  return undefined;
-}
-
-function isDelegatedApiSubCommand(rawArgs: readonly string[]): boolean {
-  const subCommandName = firstPositionalRawArg(rawArgs);
-  if (!subCommandName) {
-    return false;
-  }
-  if (API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName)) {
-    return true;
-  }
-  return API_DELEGATED_SUBCOMMAND_NAMES.has(subCommandName.toUpperCase());
-}
-
-function camelCaseFlagName(flag: string): string {
-  return flag
-    .replace(/^-{1,2}/, "")
-    .replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
-}
-
-function isApiValueFlag(flag: string): boolean {
-  const name = camelCaseFlagName(flag);
-  for (const [key, definition] of Object.entries(API_HTTP_BASE_ARGS)) {
+function valueFlagsFor(args: ArgsDef): ReadonlySet<string> {
+  const flags = new Set<string>();
+  for (const [name, definition] of Object.entries(args)) {
     if (definition.type !== "string" && definition.type !== "enum") {
       continue;
     }
-    if (name === key || name === camelCaseFlagName(key)) {
-      return true;
-    }
-    const alias = "alias" in definition ? definition.alias : undefined;
-    const aliases = Array.isArray(alias) ? alias : alias ? [alias] : [];
-    if (aliases.some((entry) => name === entry || name === camelCaseFlagName(String(entry)))) {
-      return true;
+
+    flags.add(`--${name}`);
+    const aliases = Array.isArray(definition.alias)
+      ? definition.alias
+      : definition.alias
+        ? [definition.alias]
+        : [];
+    for (const alias of aliases) {
+      flags.add(`-${alias}`);
     }
   }
-  return false;
+  return flags;
 }
 
-function findFirstPositionalIndex(rawArgs: readonly string[]): number {
+const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
+const ROOT_VALUE_FLAGS = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
+
+function findFirstPositionalIndex(
+  rawArgs: readonly string[],
+  valueFlags: ReadonlySet<string>,
+): number {
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (arg === undefined) {
@@ -111,7 +88,7 @@ function findFirstPositionalIndex(rawArgs: readonly string[]): number {
       return -1;
     }
     if (arg.startsWith("-")) {
-      if (!arg.includes("=") && isApiValueFlag(arg)) {
+      if (!arg.includes("=") && valueFlags.has(arg)) {
         index += 1;
       }
       continue;
@@ -121,30 +98,18 @@ function findFirstPositionalIndex(rawArgs: readonly string[]): number {
   return -1;
 }
 
-function findTopLevelApiCommandIndex(rawArgs: readonly string[]): number {
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-    if (arg === "--") {
-      return -1;
-    }
-    if (arg.startsWith("-")) {
-      if (ROOT_VALUE_FLAGS.has(arg)) {
-        index += 1;
-      }
-      continue;
-    }
-    return arg === "api" ? index : -1;
-  }
-  return -1;
+function isHttpMethodName(value: string): boolean {
+  return HTTP_METHOD_NAME_SET.has(value.toUpperCase());
 }
 
-/** Citty treats the first positional as a subcommand name; insert `--` before endpoint paths. */
+function isApiCommandName(value: string): boolean {
+  return API_META_COMMAND_NAMES.has(value) || isHttpMethodName(value);
+}
+
+/** Citty treats endpoint paths as subcommand names unless we separate them with `--`. */
 export function normalizeApiInvocatorRawArgs(rawArgs: readonly string[]): string[] {
-  const apiIndex = findTopLevelApiCommandIndex(rawArgs);
-  if (apiIndex === -1) {
+  const apiIndex = findFirstPositionalIndex(rawArgs, ROOT_VALUE_FLAGS);
+  if (apiIndex === -1 || rawArgs[apiIndex] !== "api") {
     return [...rawArgs];
   }
 
@@ -153,12 +118,13 @@ export function normalizeApiInvocatorRawArgs(rawArgs: readonly string[]): string
     return [...rawArgs];
   }
 
-  const endpointIndex = findFirstPositionalIndex(afterApi);
+  const endpointIndex = findFirstPositionalIndex(afterApi, API_VALUE_FLAGS);
   if (endpointIndex === -1) {
     return [...rawArgs];
   }
 
-  if (isDelegatedApiSubCommand(afterApi)) {
+  const endpoint = afterApi[endpointIndex];
+  if (!endpoint || isApiCommandName(endpoint)) {
     return [...rawArgs];
   }
 
@@ -363,7 +329,9 @@ export const apiCommand = defineAltertableCommand({
     ...apiMethodSubCommands,
   },
   async run({ args, rawArgs, sink }) {
-    if (isDelegatedApiSubCommand(rawArgs)) {
+    const subCommandIndex = findFirstPositionalIndex(rawArgs, API_VALUE_FLAGS);
+    const subCommandName = subCommandIndex === -1 ? undefined : rawArgs[subCommandIndex];
+    if (subCommandName && isApiCommandName(subCommandName)) {
       return;
     }
     await runApiHttp(buildApiHttpArgs(args, rawArgs), sink);

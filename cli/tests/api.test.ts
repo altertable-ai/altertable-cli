@@ -154,6 +154,13 @@ describe("api", () => {
     expect(
       normalizeApiInvocatorRawArgs(["api", "-f", "label=CI Bot", "/service_accounts"]),
     ).toEqual(["api", "-f", "label=CI Bot", "--", "/service_accounts"]);
+    expect(normalizeApiInvocatorRawArgs(["api", "-X", "GET", "/service_accounts"])).toEqual([
+      "api",
+      "-X",
+      "GET",
+      "--",
+      "/service_accounts",
+    ]);
     expect(normalizeApiInvocatorRawArgs(["api", "--", "/whoami"])).toEqual([
       "api",
       "--",
