@@ -20,8 +20,8 @@ import { defineHttpCommand, defineOutputCommand } from "@/lib/operation-command-
 import { optionalStringArg } from "@/lib/operation-codec.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import {
-  findFirstPositionalToken,
   isDelegatedSubCommand,
+  normalizePassthroughCommandRawArgs,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
 import { noopPlan } from "@/lib/operation-effect.ts";
@@ -36,8 +36,7 @@ import {
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
-const API_META_COMMAND_NAMES = new Set(["spec", "routes"]);
-const HTTP_METHOD_NAME_SET = new Set<string>(HTTP_METHOD_NAMES);
+const API_COMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
 const API_HTTP_BASE_ARGS = {
   method: {
@@ -69,16 +68,12 @@ const API_HTTP_BASE_ARGS = {
 const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
 const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
 
-function isHttpMethodName(value: string): boolean {
-  return HTTP_METHOD_NAME_SET.has(value.toUpperCase());
-}
-
 function isApiCommandName(value: string): boolean {
-  return API_META_COMMAND_NAMES.has(value) || isHttpMethodName(value);
+  return API_COMMAND_NAMES.has(value) || API_COMMAND_NAMES.has(value.toUpperCase());
 }
 
 function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {
-  return isDelegatedSubCommand(rawArgs, API_META_COMMAND_NAMES, {
+  return isDelegatedSubCommand(rawArgs, isApiCommandName, {
     valueFlags: API_VALUE_FLAGS,
   });
 }
@@ -88,24 +83,12 @@ export function normalizeApiInvocatorRawArgs(
   rawArgs: readonly string[],
   rootArgs: ArgsDef = {},
 ): string[] {
-  const apiToken = findFirstPositionalToken(rawArgs, { valueFlags: valueFlagsFor(rootArgs) });
-  if (!apiToken || apiToken.value !== "api") {
-    return [...rawArgs];
-  }
-
-  const afterApi = rawArgs.slice(apiToken.index + 1);
-  if (afterApi.includes("--")) {
-    return [...rawArgs];
-  }
-
-  const endpointToken = findFirstPositionalToken(afterApi, { valueFlags: API_VALUE_FLAGS });
-  if (!endpointToken || isApiCommandName(endpointToken.value)) {
-    return [...rawArgs];
-  }
-
-  const normalized = [...rawArgs];
-  normalized.splice(apiToken.index + 1 + endpointToken.index, 0, "--");
-  return normalized;
+  return normalizePassthroughCommandRawArgs(rawArgs, {
+    commandName: "api",
+    rootArgs,
+    commandValueFlags: API_VALUE_FLAGS,
+    isReservedOperand: isApiCommandName,
+  });
 }
 
 function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], method?: string) {

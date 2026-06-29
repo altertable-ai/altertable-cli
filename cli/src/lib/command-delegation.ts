@@ -9,6 +9,13 @@ export type PositionalToken = {
   value: string;
 };
 
+export type PassthroughCommandOptions = {
+  commandName: string;
+  rootArgs?: ArgsDef;
+  commandValueFlags?: ReadonlySet<string>;
+  isReservedOperand: (value: string) => boolean;
+};
+
 export function valueFlagsFor(args: ArgsDef): ReadonlySet<string> {
   const flags = new Set<string>();
   for (const [name, definition] of Object.entries(args)) {
@@ -56,9 +63,37 @@ export function findFirstPositionalToken(
 
 export function isDelegatedSubCommand(
   rawArgs: readonly string[],
-  subCommandNames: ReadonlySet<string>,
+  isReservedOperand: (value: string) => boolean,
   options: PositionalScanOptions = {},
 ): boolean {
   const token = findFirstPositionalToken(rawArgs, options);
-  return token !== undefined && subCommandNames.has(token.value);
+  return token !== undefined && isReservedOperand(token.value);
+}
+
+export function normalizePassthroughCommandRawArgs(
+  rawArgs: readonly string[],
+  options: PassthroughCommandOptions,
+): string[] {
+  const commandToken = findFirstPositionalToken(rawArgs, {
+    valueFlags: valueFlagsFor(options.rootArgs ?? {}),
+  });
+  if (!commandToken || commandToken.value !== options.commandName) {
+    return [...rawArgs];
+  }
+
+  const commandArgs = rawArgs.slice(commandToken.index + 1);
+  if (commandArgs.includes("--")) {
+    return [...rawArgs];
+  }
+
+  const operandToken = findFirstPositionalToken(commandArgs, {
+    valueFlags: options.commandValueFlags,
+  });
+  if (!operandToken || options.isReservedOperand(operandToken.value)) {
+    return [...rawArgs];
+  }
+
+  const normalized = [...rawArgs];
+  normalized.splice(commandToken.index + 1 + operandToken.index, 0, "--");
+  return normalized;
 }
