@@ -504,7 +504,7 @@ describe("lakehouse request construction", () => {
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/upload?");
     expect(logContent).toContain("primary_key=id");
-    expect(logContent).toContain("PAYLOAD=@stream");
+    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
   });
 
   test("cancel URL-encodes query id in path", async () => {

@@ -4,11 +4,7 @@ import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
-import {
-  defineHttpOperation,
-  httpOperationPlan,
-  type HttpOperationDescriptor,
-} from "@/lib/http-operation.ts";
+import { defineHttpOperation, type HttpOperationDescriptor } from "@/lib/http-operation.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 
 export type ApiHttpArgs = {
@@ -139,7 +135,7 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
 }
 
 export function apiHttpOperationPlan(args: ApiHttpArgs, context: OperationContext) {
-  return httpOperationPlan(API_HTTP_OPERATION, resolveApiHttp(args), context);
+  return API_HTTP_OPERATION.plan(resolveApiHttp(args), context);
 }
 
 export function apiHttpResultOutput(

@@ -7,7 +7,6 @@ import {
   stringArg,
 } from "@/lib/operation-codec.ts";
 import { httpEffect, operationPlan, progressEffect, scopedEffect } from "@/lib/operation-effect.ts";
-import { httpOperationPlan, httpStreamOperationPlan } from "@/lib/http-operation.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import {
   PAGER_MODE_OPTIONS,
@@ -95,10 +94,10 @@ const queryRunCommand = defineOperationCommand({
   },
   run(input, context) {
     if (input.format === "json" || context.sink.json) {
-      return httpOperationPlan(lakehouseQueryOperation, input, context);
+      return lakehouseQueryOperation.plan(input, context);
     }
 
-    return httpStreamOperationPlan(lakehouseQueryStreamOperation, input, context);
+    return lakehouseQueryStreamOperation.plan(input, context);
   },
   async present(result, { sink }, input) {
     await writeQueryOutput(result, input.format, input.displayOptions, input.pagerOptions, sink);
@@ -120,7 +119,7 @@ const queryShowCommand = defineOperationCommand({
     return stringArg(args, "query-id");
   },
   run(queryId, context) {
-    return httpOperationPlan(lakehouseQueryShowOperation, queryId, context);
+    return lakehouseQueryShowOperation.plan(queryId, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -146,7 +145,7 @@ const queryCancelCommand = defineOperationCommand({
     };
   },
   run(input, context) {
-    return httpOperationPlan(lakehouseQueryCancelOperation, input, context);
+    return lakehouseQueryCancelOperation.plan(input, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -224,7 +223,7 @@ export const validateCommand = defineOperationCommand({
     };
   },
   run(input, context) {
-    return httpOperationPlan(lakehouseValidateOperation, input, context);
+    return lakehouseValidateOperation.plan(input, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -258,8 +257,8 @@ const appendRowsCommand = defineOperationCommand({
     const payload = parseAppendJsonContent(stringArg(args, "data"));
     return { catalog, schema, table, payload, sync: booleanArg(args, "sync") };
   },
-  run(input) {
-    const effect = httpEffect(lakehouseAppendOperation.request(input));
+  run(input, context) {
+    const effect = lakehouseAppendOperation.effect(input, context);
     return operationPlan(
       input.sync ? progressEffect("Waiting for append to complete…", effect) : effect,
     );
@@ -284,7 +283,7 @@ const appendTaskCommand = defineOperationCommand({
     return stringArg(args, "task-id");
   },
   run(taskId, context) {
-    return httpOperationPlan(lakehouseAppendTaskOperation, taskId, context);
+    return lakehouseAppendTaskOperation.plan(taskId, context);
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -425,7 +424,7 @@ export const autocompleteCommand = defineOperationCommand({
     };
   },
   run(input, context) {
-    return httpOperationPlan(lakehouseAutocompleteOperation, input, context);
+    return lakehouseAutocompleteOperation.plan(input, context);
   },
   present(response) {
     return {

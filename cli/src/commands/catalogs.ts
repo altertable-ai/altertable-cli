@@ -3,8 +3,7 @@ import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { allEffects, httpEffect, operationPlan } from "@/lib/operation-effect.ts";
-import { httpOperationPlan } from "@/lib/http-operation.ts";
+import { allEffects, operationPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 import {
@@ -50,7 +49,7 @@ const catalogsCreateCommand = defineOperationCommand({
     };
   },
   run(input, context) {
-    return httpOperationPlan(managementCatalogCreateOperation, input, context);
+    return managementCatalogCreateOperation.plan(input, context);
   },
   present(result: ManagementCatalogCreateResult) {
     const data = parseApiJson(result.response) as {
@@ -84,8 +83,8 @@ const catalogsListCommand = defineOperationCommand({
     return operationPlan(
       allEffects(
         [
-          httpEffect(managementCatalogDatabasesOperation.request(env, context)),
-          httpEffect(managementCatalogConnectionsOperation.request(env, context)),
+          managementCatalogDatabasesOperation.effect(env, context),
+          managementCatalogConnectionsOperation.effect(env, context),
         ],
         buildManagementCatalogRows,
       ),

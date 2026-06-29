@@ -18,6 +18,7 @@ import {
   scopedEffect,
   valueEffect,
 } from "@/lib/operation-effect.ts";
+import { defineHttpOperation, httpOperationEffect } from "@/lib/http-operation.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
@@ -108,6 +109,40 @@ describe("operation effects", () => {
     );
 
     expect(result).toEqual({ ok: true });
+  });
+
+  test("runs HTTP operation descriptors as composable effects", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "/one", method: "GET", body: '{"value":1}' },
+        { urlPattern: "/two", method: "GET", body: '{"value":2}' },
+      ]),
+    );
+
+    const readValueOperation = defineHttpOperation<string, number>({
+      id: "test.read-value",
+      request: (endpoint) => ({
+        plane: "management",
+        method: "GET",
+        endpoint,
+      }),
+      decode: (body) => (JSON.parse(body) as { value: number }).value,
+    });
+
+    const context = createOperationContext();
+    const result = await runOperationEffect(
+      allEffects(
+        [
+          httpOperationEffect(readValueOperation, "/one", context),
+          httpOperationEffect(readValueOperation, "/two", context),
+        ],
+        (values) => values.reduce<number>((sum, value) => sum + Number(value), 0),
+      ),
+      context,
+    );
+
+    expect(result).toBe(3);
   });
 
   test("runs stream effects and decodes the stream", async () => {

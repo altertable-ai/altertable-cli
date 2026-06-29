@@ -1,6 +1,5 @@
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { operationPlan, valueEffect } from "@/lib/operation-effect.ts";
-import { httpOperationPlan } from "@/lib/http-operation.ts";
 import { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
 import {
   activeContextToJson,
@@ -25,7 +24,7 @@ export const contextCommand = defineOperationCommand({
       return operationPlan(valueEffect(context));
     }
 
-    return httpOperationPlan(managementWhoamiOperation, context, operationContext);
+    return managementWhoamiOperation.plan(context, operationContext);
   },
   present(context) {
     return {
