@@ -16,9 +16,11 @@ export {
   buildLakehouseAppendRequest,
   buildLakehouseQueryPayload,
   createLakehouseUploadRequest,
+  createLakehouseUpsertRequest,
   type LakehouseAppendRequestInput,
   type LakehouseUploadRequestInput,
   type LakehouseUploadRequestScope,
+  type LakehouseUpsertRequestInput,
 } from "@/lib/lakehouse-transport.ts";
 
 export {

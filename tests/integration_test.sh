@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/utils.sh"
 printf 'id,name\n1,Alice\n2,Bob\n' > /tmp/at_test_upload.csv
 "${CLI}" upload \
   --catalog memory --schema main --table cli_test \
-  --format csv --mode overwrite \
+  --mode overwrite --format csv \
   --file /tmp/at_test_upload.csv > /dev/null
 rm /tmp/at_test_upload.csv
 pass "upload creates table from CSV"

@@ -9,6 +9,7 @@ import { ParseError } from "@/lib/errors.ts";
 import {
   buildLakehouseQueryPayload,
   createLakehouseUploadRequest,
+  createLakehouseUpsertRequest,
   csvEscapeCell,
   getQueryColumnNames,
   parseLakehouseQueryResponse,
@@ -409,7 +410,7 @@ describe("lakehouse request construction", () => {
     expect(logContent).toContain(`URL=https://example.com/tasks/${taskId}`);
   });
 
-  test("upload sends octet-stream and primary_key query param", async () => {
+  test("upload sends mode without format or primary_key query params", async () => {
     const uploadFile = join(testHome, "data.csv");
     writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
     writeFileSync(
@@ -427,10 +428,9 @@ describe("lakehouse request construction", () => {
       catalog: "memory",
       schema: "main",
       table: "users",
-      format: "csv",
-      mode: "upsert",
+      mode: "overwrite",
       filePath: uploadFile,
-      primaryKey: "id",
+      contentType: "text/csv",
     });
     try {
       await runOperationEffect(httpEffect(uploadScope.request), createOperationContext());
@@ -440,7 +440,44 @@ describe("lakehouse request construction", () => {
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/upload?");
+    expect(logContent).toContain("mode=overwrite");
+    expect(logContent).not.toContain("format=csv");
+    expect(logContent).not.toContain("primary_key=id");
+    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
+  });
+
+  test("upsert sends primary_key to /upsert", async () => {
+    const uploadFile = join(testHome, "data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/upsert",
+          method: "POST",
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+
+    const uploadScope = createLakehouseUpsertRequest({
+      catalog: "memory",
+      schema: "main",
+      table: "users",
+      primaryKey: "id",
+      filePath: uploadFile,
+      contentType: "text/csv",
+    });
+    try {
+      await runOperationEffect(httpEffect(uploadScope.request), createOperationContext());
+    } finally {
+      uploadScope.release();
+    }
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("URL=https://example.com/upsert?");
     expect(logContent).toContain("primary_key=id");
+    expect(logContent).not.toContain("mode=upsert");
     expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
   });
 

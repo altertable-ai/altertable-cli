@@ -153,3 +153,4 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 | GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration_test.sh` |
 | POST /append + GET /tasks   | `append`, `append task`             | `lakehouse.test.ts`              | `integration_test.sh` |
 | POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration_test.sh` |
+| POST /upsert                | `upsert`                            | `lakehouse.test.ts`              |                       |

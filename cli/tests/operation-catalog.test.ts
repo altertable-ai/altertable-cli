@@ -23,6 +23,13 @@ describe("operation catalog", () => {
     ]);
     expect(byId.get("lakehouse.upload")?.effects).toEqual(["scope", "http"]);
     expect(byId.get("lakehouse.upload")?.mutates).toBe(true);
+    expect(byId.get("lakehouse.upsert")?.capabilities).toEqual([
+      "lakehouse-http",
+      "local-file-read",
+      "progress",
+    ]);
+    expect(byId.get("lakehouse.upsert")?.effects).toEqual(["scope", "http"]);
+    expect(byId.get("lakehouse.upsert")?.mutates).toBe(true);
     expect(byId.get("completion.install")?.capabilities).toEqual(["local-file-write"]);
     expect(byId.get("configure")?.effects).toEqual(["local"]);
     expect(byId.get("configure")?.mutates).toBe(true);

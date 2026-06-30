@@ -14,7 +14,7 @@ import { configureCommand } from "@/commands/configure.ts";
 import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
-import { appendCommand, queryCommand, uploadCommand } from "@/commands/lakehouse.ts";
+import { appendCommand, queryCommand, uploadCommand, upsertCommand } from "@/commands/lakehouse.ts";
 import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import {
@@ -81,6 +81,7 @@ export function buildMainCommand(): CommandDef {
     query: queryCommand,
     append: appendCommand,
     upload: uploadCommand,
+    upsert: upsertCommand,
     api: apiCommand,
     completion: completionCommand,
   };
