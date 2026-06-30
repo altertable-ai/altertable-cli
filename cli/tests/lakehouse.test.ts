@@ -28,12 +28,8 @@ import {
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
-import {
-  createCliRuntime,
-  getCliRuntime,
-  refreshCliRuntimeContext,
-  setCliRuntime,
-} from "@/lib/runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliTestRuntime } from "@tests/cli-test-runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
@@ -73,6 +69,12 @@ function createOperationContext(): OperationContext {
     sink: runtime.output,
     execution: createExecutionContext(runtime),
   };
+}
+
+async function runCommandWithTestRuntime(rawArgs: string[]): Promise<void> {
+  await runWithCliRuntime(createCliTestRuntime(), () =>
+    runCommand(buildMainCommand(), { rawArgs }),
+  );
 }
 
 async function collectLakehouseQueryStream(
@@ -330,21 +332,8 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const previousRuntime = getCliRuntime();
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-    runtime.output.writeJson = () => {};
-    runtime.output.writeRaw = () => {};
-    runtime.output.writeHuman = () => {};
-    setCliRuntime(runtime);
-
-    try {
-      await runCommand(buildMainCommand(), { rawArgs: ["query", "show", queryId] });
-      await runCommand(buildMainCommand(), {
-        rawArgs: ["query", "cancel", queryId, "--session-id", "session-1"],
-      });
-    } finally {
-      setCliRuntime(previousRuntime);
-    }
+    await runCommandWithTestRuntime(["query", "show", queryId]);
+    await runCommandWithTestRuntime(["query", "cancel", queryId, "--session-id", "session-1"]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("METHOD=GET");
@@ -459,34 +448,21 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const previousRuntime = getCliRuntime();
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-    runtime.output.writeJson = () => {};
-    runtime.output.writeRaw = () => {};
-    runtime.output.writeHuman = () => {};
-    setCliRuntime(runtime);
-
-    try {
-      await runCommand(buildMainCommand(), {
-        rawArgs: [
-          "upload",
-          "--catalog",
-          "memory",
-          "--schema",
-          "main",
-          "--table",
-          "users",
-          "--format",
-          "csv",
-          "--mode",
-          "overwrite",
-          "--file",
-          uploadFile,
-        ],
-      });
-    } finally {
-      setCliRuntime(previousRuntime);
-    }
+    await runCommandWithTestRuntime([
+      "upload",
+      "--catalog",
+      "memory",
+      "--schema",
+      "main",
+      "--table",
+      "users",
+      "--format",
+      "csv",
+      "--mode",
+      "overwrite",
+      "--file",
+      uploadFile,
+    ]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/upload?");
@@ -499,23 +475,21 @@ describe("lakehouse request construction", () => {
     mkdirSync(directoryPath);
 
     try {
-      await runCommand(buildMainCommand(), {
-        rawArgs: [
-          "upload",
-          "--catalog",
-          "memory",
-          "--schema",
-          "main",
-          "--table",
-          "users",
-          "--format",
-          "csv",
-          "--mode",
-          "overwrite",
-          "--file",
-          join(testHome, "missing.csv"),
-        ],
-      });
+      await runCommandWithTestRuntime([
+        "upload",
+        "--catalog",
+        "memory",
+        "--schema",
+        "main",
+        "--table",
+        "users",
+        "--format",
+        "csv",
+        "--mode",
+        "overwrite",
+        "--file",
+        join(testHome, "missing.csv"),
+      ]);
       throw new Error("expected missing file failure");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -523,23 +497,21 @@ describe("lakehouse request construction", () => {
     }
 
     try {
-      await runCommand(buildMainCommand(), {
-        rawArgs: [
-          "upload",
-          "--catalog",
-          "memory",
-          "--schema",
-          "main",
-          "--table",
-          "users",
-          "--format",
-          "csv",
-          "--mode",
-          "overwrite",
-          "--file",
-          directoryPath,
-        ],
-      });
+      await runCommandWithTestRuntime([
+        "upload",
+        "--catalog",
+        "memory",
+        "--schema",
+        "main",
+        "--table",
+        "users",
+        "--format",
+        "csv",
+        "--mode",
+        "overwrite",
+        "--file",
+        directoryPath,
+      ]);
       throw new Error("expected directory failure");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
