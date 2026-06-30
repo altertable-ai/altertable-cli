@@ -10,7 +10,13 @@ import { terminalMetadata } from "@/lib/terminal-style.ts";
 
 export type CommandOutputMode =
   | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
-  | { kind: "normalized"; data: unknown; humanText: string; metadataLines?: string[] }
+  | {
+      kind: "normalized";
+      data: unknown;
+      humanText: string;
+      metadataLines?: string[];
+      pageHumanText?: boolean;
+    }
   | { kind: "human"; text: string }
   | {
       kind: "tabular";
@@ -53,7 +59,11 @@ export async function writeCommandOutput(
       sink.writeJson(mode.data);
       return;
     }
-    sink.writeHuman(mode.humanText);
+    if (mode.pageHumanText) {
+      await writePagedOutput(mode.humanText, resolvePagerOptions(), sink);
+    } else {
+      sink.writeHuman(mode.humanText);
+    }
     if (mode.metadataLines !== undefined && mode.metadataLines.length > 0) {
       sink.writeMetadata(mode.metadataLines);
     }

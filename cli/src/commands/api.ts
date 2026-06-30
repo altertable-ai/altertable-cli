@@ -229,6 +229,7 @@ function apiRoutesOutput(operationId?: string) {
     kind: "normalized" as const,
     data: OPENAPI_OPERATIONS,
     humanText: table,
+    pageHumanText: true,
   };
 }
 

@@ -94,6 +94,19 @@ describe("writeCommandOutput", () => {
     expect(stderr).toEqual(["", "0 catalogs"]);
   });
 
+  test("normalized can opt human output into pager handling", async () => {
+    const { stdout, runtime } = captureOutput(false);
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
+        kind: "normalized",
+        data: { routes: [] },
+        humanText: "wide route table",
+        pageHumanText: true,
+      });
+    });
+    expect(stdout).toEqual(["wide route table"]);
+  });
+
   test("ack emits json data in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
     await runWithCliRuntime(runtime, async () => {
