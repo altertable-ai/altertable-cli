@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configSet } from "@/lib/config.ts";
-import { resolvePagerOptions, shouldUsePager } from "@/lib/pager.ts";
+import { buildPagerEnv, resolvePagerOptions, shouldUsePager } from "@/lib/pager.ts";
 
 describe("resolvePagerOptions", () => {
   let testHome = "";
@@ -34,6 +34,20 @@ describe("resolvePagerOptions", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     expect(shouldUsePager("short", resolvePagerOptions())).toBe(true);
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
+  });
+});
+
+describe("buildPagerEnv", () => {
+  test("defaults less to UTF-8 so box drawing characters render correctly", () => {
+    expect(buildPagerEnv({ PATH: "/bin" })).toMatchObject({
+      LESS: "FRX",
+      LESSCHARSET: "utf-8",
+      PATH: "/bin",
+    });
+  });
+
+  test("preserves explicit LESSCHARSET overrides", () => {
+    expect(buildPagerEnv({ LESSCHARSET: "latin1" }).LESSCHARSET).toBe("latin1");
   });
 });
 

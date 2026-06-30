@@ -35,6 +35,10 @@ export function shouldUsePager(text: string, options: PagerOptions): boolean {
   return lineCount > rows || hasWideLine;
 }
 
+export function buildPagerEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...env, LESS: "FRX", LESSCHARSET: env.LESSCHARSET ?? "utf-8" };
+}
+
 export async function writePagedOutput(
   text: string,
   options: PagerOptions,
@@ -48,7 +52,7 @@ export async function writePagedOutput(
   const result = spawnSync("less", ["-SR"], {
     input: text,
     stdio: ["pipe", "inherit", "inherit"],
-    env: { ...process.env, LESS: "FRX" },
+    env: buildPagerEnv(),
   });
 
   if (result.error) {
