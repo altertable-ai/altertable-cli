@@ -106,9 +106,9 @@ export function getOutputSink(): OutputSink {
   return getCliRuntime().output;
 }
 
-export function writeRawIfJsonElseHuman(
+export async function writeRawIfJsonElseHuman(
   rawBody: string,
   humanFormatter?: (parsed: unknown) => string,
-): void {
-  writeLakehouseCommandOutput(rawBody, { humanFormatter });
+): Promise<void> {
+  await writeLakehouseCommandOutput(rawBody, { humanFormatter });
 }

@@ -79,14 +79,14 @@ describe("renderManagementOutput", () => {
     expect(JSON.parse(output)).toEqual(JSON.parse(listBody));
   });
 
-  test("writeManagementOutput defaults to table in human mode", () => {
+  test("writeManagementOutput defaults to table in human mode", async () => {
     const stdout: string[] = [];
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     runtime.output.writeHuman = (text) => {
       stdout.push(text);
     };
-    runWithCliRuntime(runtime, () => {
-      writeManagementOutput(listBody);
+    await runWithCliRuntime(runtime, async () => {
+      await writeManagementOutput(listBody);
     });
     expect(stdout[0]).toContain("id");
     expect(stdout[0]).toContain("Analytics");

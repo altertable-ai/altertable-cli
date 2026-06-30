@@ -32,18 +32,18 @@ function captureOutput(json: boolean): {
 }
 
 describe("writeCommandOutput", () => {
-  test("raw_api emits verbatim body in json mode", () => {
+  test("raw_api emits verbatim body in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({ kind: "raw_api", body: '{"ok":true}' });
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({ kind: "raw_api", body: '{"ok":true}' });
     });
     expect(stdout).toEqual(['{"ok":true}']);
   });
 
-  test("normalized emits envelope in json mode", () => {
+  test("normalized emits envelope in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
         kind: "normalized",
         data: { catalogs: [{ name: "db" }] },
         humanText: "table output",
@@ -52,38 +52,38 @@ describe("writeCommandOutput", () => {
     expect(stdout).toEqual([JSON.stringify({ catalogs: [{ name: "db" }] }, null, 2)]);
   });
 
-  test("human emits text envelope in json mode", () => {
+  test("human emits text envelope in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({ kind: "human", text: "configure show text" });
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({ kind: "human", text: "configure show text" });
     });
     expect(stdout).toEqual([JSON.stringify({ text: "configure show text" }, null, 2)]);
   });
 
-  test("deleted emits json success object", () => {
+  test("deleted emits json success object", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeDeleteSuccess("Deleted item.", "item_1");
+    await runWithCliRuntime(runtime, async () => {
+      await writeDeleteSuccess("Deleted item.", "item_1");
     });
     expect(stdout).toEqual([JSON.stringify({ deleted: true, id: "item_1" }, null, 2)]);
   });
 
-  test("tabular defaults to table in human mode", () => {
+  test("tabular defaults to table in human mode", async () => {
     const listBody = JSON.stringify({
       databases: [{ id: "db_1", name: "Analytics" }],
     });
     const { stdout, runtime } = captureOutput(false);
-    runWithCliRuntime(runtime, () => {
-      writeManagementOutput(listBody);
+    await runWithCliRuntime(runtime, async () => {
+      await writeManagementOutput(listBody);
     });
     expect(stdout[0]).toContain("id");
     expect(stdout[0]).toContain("Analytics");
   });
 
-  test("normalized writes metadata lines in human mode", () => {
+  test("normalized writes metadata lines in human mode", async () => {
     const { stdout, stderr, runtime } = captureOutput(false);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
         kind: "normalized",
         data: { catalogs: [], summary: "0 catalogs" },
         humanText: "table output",
@@ -94,10 +94,10 @@ describe("writeCommandOutput", () => {
     expect(stderr).toEqual(["", "0 catalogs"]);
   });
 
-  test("ack emits json data in json mode", () => {
+  test("ack emits json data in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
         kind: "ack",
         data: { active_profile: "staging" },
         metadataMessage: "Active profile set to staging.",
@@ -106,12 +106,12 @@ describe("writeCommandOutput", () => {
     expect(stdout).toEqual([JSON.stringify({ active_profile: "staging" }, null, 2)]);
   });
 
-  test("ack writes metadata in human mode", () => {
+  test("ack writes metadata in human mode", async () => {
     const previousNoColor = process.env.NO_COLOR;
     process.env.NO_COLOR = "1";
     const { stderr, runtime } = captureOutput(false);
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
         kind: "ack",
         data: { active_profile: "staging" },
         metadataMessage: "Active profile set to staging.",
@@ -127,28 +127,28 @@ describe("writeCommandOutput", () => {
 });
 
 describe("writeJsonOrRaw", () => {
-  test("writes raw API body in json mode", () => {
+  test("writes raw API body in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeJsonOrRaw('{"principal":{"name":"Jane"}}', (data) => String(data));
+    await runWithCliRuntime(runtime, async () => {
+      await writeJsonOrRaw('{"principal":{"name":"Jane"}}', (data) => String(data));
     });
     expect(stdout).toEqual(['{"principal":{"name":"Jane"}}']);
   });
 });
 
 describe("writeLakehouseOutput", () => {
-  test("writes raw API body in json mode", () => {
+  test("writes raw API body in json mode", async () => {
     const { stdout, runtime } = captureOutput(true);
-    runWithCliRuntime(runtime, () => {
-      writeLakehouseOutput('{"ok":true}');
+    await runWithCliRuntime(runtime, async () => {
+      await writeLakehouseOutput('{"ok":true}');
     });
     expect(stdout).toEqual(['{"ok":true}']);
   });
 
-  test("calls human formatter when not in json mode", () => {
+  test("calls human formatter when not in json mode", async () => {
     const { stdout, runtime } = captureOutput(false);
-    runWithCliRuntime(runtime, () => {
-      writeLakehouseOutput('{"ok":true}', { humanFormatter: () => "human" });
+    await runWithCliRuntime(runtime, async () => {
+      await writeLakehouseOutput('{"ok":true}', { humanFormatter: () => "human" });
     });
     expect(stdout).toEqual(["human"]);
   });
