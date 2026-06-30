@@ -16,7 +16,14 @@ import {
 const COLUMN_GAP = "  ";
 const FLEX_SHRINK_MIN_WIDTH = 4;
 
-export type TableColumnStyle = "foreground" | "subtle" | "muted" | "accent" | "string" | "strong";
+export type TableColumnStyle =
+  | "foreground"
+  | "subtle"
+  | "muted"
+  | "accent"
+  | "string"
+  | "strong"
+  | "httpMethod";
 
 export type TableColumn<T> = {
   header: string;
@@ -29,6 +36,7 @@ export type TableColumn<T> = {
 export type FixedTableRenderOptions<T> = {
   terminalWidth?: number;
   groupBy?: (row: T) => string;
+  horizontalScroll?: boolean;
 };
 
 export type ApiRouteRow = {
@@ -57,6 +65,9 @@ function applyCellStyle(text: string, style: TableColumnStyle = "foreground"): s
   }
   if (style === "strong") {
     return terminalStrong(text);
+  }
+  if (style === "httpMethod") {
+    return padVisibleText(terminalHttpMethod(text.trimEnd()), getVisibleTextWidth(text));
   }
   return text;
 }
@@ -120,6 +131,9 @@ function computeColumnWidths<T>(
     const maxWidth = columns[columnIndex]?.maxWidth;
     return maxWidth === undefined ? width : Math.min(width, maxWidth);
   });
+  if (options.horizontalScroll) {
+    return cappedWidths;
+  }
   const terminalWidth = options.terminalWidth ?? getTerminalWidth();
   if (tablePlainWidth(cappedWidths, columns.length) <= terminalWidth) {
     return cappedWidths;
@@ -193,86 +207,42 @@ type ApiRouteRenderOptions = {
   terminalWidth?: number;
 };
 
-function apiRoutePathRoot(path: string): string {
-  const firstSegment = path.split("/").filter(Boolean)[0];
-  return firstSegment ?? "";
-}
-
-function renderApiRouteRow(
-  row: ApiRouteRow,
-  methodWidth: number,
-  summaryIndent: number,
-  terminalWidth: number,
-): string[] {
-  const methodPart = row.method.padEnd(methodWidth);
-  const styledMethod = padVisibleText(terminalHttpMethod(row.method), methodWidth);
-  const pathWithOperation = `${row.path}${COLUMN_GAP}${row.operationId}`;
-  const inlinePlain = `${methodPart}${COLUMN_GAP}${pathWithOperation}`;
-
-  if (getVisibleTextWidth(inlinePlain) <= terminalWidth) {
-    return [
-      styledMethod + COLUMN_GAP + row.path + COLUMN_GAP + terminalSubtle(row.operationId),
-      `${" ".repeat(summaryIndent)}${terminalMuted(row.summary)}`,
-    ];
-  }
-
-  const pathOnlyPlain = `${methodPart}${COLUMN_GAP}${row.path}`;
-  if (getVisibleTextWidth(pathOnlyPlain) <= terminalWidth) {
-    return [
-      styledMethod + COLUMN_GAP + row.path,
-      `${" ".repeat(summaryIndent)}${terminalSubtle(row.operationId)}`,
-      `${" ".repeat(summaryIndent)}${terminalMuted(row.summary)}`,
-    ];
-  }
-
-  const availablePathWidth = terminalWidth - methodWidth - COLUMN_GAP.length;
-  const truncatedPath = truncateCell(row.path, availablePathWidth);
-  return [
-    styledMethod + COLUMN_GAP + truncatedPath,
-    `${" ".repeat(summaryIndent)}${terminalSubtle(row.operationId)}`,
-    `${" ".repeat(summaryIndent)}${terminalMuted(row.summary)}`,
-  ];
-}
-
 export function renderApiRoutesTable(
   rows: ApiRouteRow[],
   emptyMessage = "No operations found.",
   options: ApiRouteRenderOptions = {},
 ): string {
-  if (rows.length === 0) {
-    return terminalSubtle(emptyMessage);
-  }
-
-  const terminalWidth = options.terminalWidth ?? getTerminalWidth();
-  const methodWidth = Math.max(
-    getVisibleTextWidth("METHOD"),
-    ...rows.map((row) => getVisibleTextWidth(row.method)),
+  return renderFixedTable(
+    rows,
+    [
+      {
+        header: "METHOD",
+        cell: (row) => row.method,
+        style: "httpMethod",
+      },
+      {
+        header: "PATH",
+        cell: (row) => row.path,
+        style: "foreground",
+      },
+      {
+        header: "OPERATION",
+        cell: (row) => row.operationId,
+        style: "subtle",
+      },
+      {
+        header: "SUMMARY",
+        cell: (row) => row.summary,
+        style: "muted",
+      },
+    ],
+    emptyMessage,
+    {
+      ...options,
+      horizontalScroll: true,
+      groupBy: (row) => row.path.split("/").filter(Boolean)[0] ?? "",
+    },
   );
-  const summaryIndent = methodWidth + COLUMN_GAP.length;
-
-  const headerLine =
-    terminalTableHeader("METHOD".padEnd(methodWidth)) + COLUMN_GAP + terminalTableHeader("PATH");
-
-  const lines: string[] = [headerLine];
-
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    const row = rows[rowIndex];
-    if (row === undefined) {
-      continue;
-    }
-    if (rowIndex > 0) {
-      const previousRow = rows[rowIndex - 1];
-      if (
-        previousRow !== undefined &&
-        apiRoutePathRoot(previousRow.path) !== apiRoutePathRoot(row.path)
-      ) {
-        lines.push("");
-      }
-    }
-    lines.push(...renderApiRouteRow(row, methodWidth, summaryIndent, terminalWidth));
-  }
-
-  return lines.join("\n");
 }
 
 export function renderApiRoutesTableSection(

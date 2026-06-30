@@ -201,8 +201,11 @@ function apiSpecOutput(sink: OutputSink, options?: { format?: string }) {
   return { kind: "human" as const, text: getOpenapiSpecYaml() };
 }
 
-export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
-  writeCommandOutput(apiSpecOutput(sink, options), sink);
+export async function runApiSpecCommand(
+  sink: OutputSink,
+  options?: { format?: string },
+): Promise<void> {
+  await writeCommandOutput(apiSpecOutput(sink, options), sink);
 }
 
 function apiRoutesOutput(operationId?: string) {
@@ -226,11 +229,12 @@ function apiRoutesOutput(operationId?: string) {
     kind: "normalized" as const,
     data: OPENAPI_OPERATIONS,
     humanText: table,
+    pageHumanText: true,
   };
 }
 
-export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
-  writeCommandOutput(apiRoutesOutput(operationId), sink);
+export async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {
+  await writeCommandOutput(apiRoutesOutput(operationId), sink);
 }
 
 const apiSpecCommand = defineOutputCommand({

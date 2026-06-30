@@ -110,9 +110,9 @@ describe("transport error exit codes", () => {
 
   test("writeRawIfJsonElseHuman throws ParseError on malformed JSON", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    expect(() =>
+    expect(
       runWithCliRuntime(runtime, () => writeRawIfJsonElseHuman("not json", () => "")),
-    ).toThrow(ParseError);
+    ).rejects.toThrow(ParseError);
   });
 });
 

@@ -101,8 +101,11 @@ export function renderQueryJson(
   return JSON.stringify(result, null, 2);
 }
 
-export function writeLakehouseOutput(body: string, options?: LakehouseOutputOptions): void {
-  writeLakehouseCommandOutput(body, options);
+export async function writeLakehouseOutput(
+  body: string,
+  options?: LakehouseOutputOptions,
+): Promise<void> {
+  await writeLakehouseCommandOutput(body, options);
 }
 
 export function renderQueryOutputText(

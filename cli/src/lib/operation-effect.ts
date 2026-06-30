@@ -193,7 +193,7 @@ type OperationEffectHandlers = {
 const OPERATION_EFFECT_HANDLERS = {
   value: async (effect) => effect.value,
   output: async (effect, context) => {
-    writeCommandOutput(effect.output, context.sink);
+    await writeCommandOutput(effect.output, context.sink);
   },
   local: async (effect, context) => effect.run(context),
   http: async (effect, context) => {

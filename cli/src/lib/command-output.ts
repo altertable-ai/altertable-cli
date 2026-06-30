@@ -4,12 +4,19 @@ import {
 } from "@/lib/lakehouse-client.ts";
 import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
+import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 
 export type CommandOutputMode =
   | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
-  | { kind: "normalized"; data: unknown; humanText: string; metadataLines?: string[] }
+  | {
+      kind: "normalized";
+      data: unknown;
+      humanText: string;
+      metadataLines?: string[];
+      pageHumanText?: boolean;
+    }
   | { kind: "human"; text: string }
   | {
       kind: "tabular";
@@ -20,10 +27,10 @@ export type CommandOutputMode =
   | { kind: "deleted"; message: string; id?: string }
   | { kind: "ack"; data: Record<string, unknown>; metadataMessage: string };
 
-export function writeCommandOutput(
+export async function writeCommandOutput(
   mode: CommandOutputMode,
   sink: OutputSink = getOutputSink(),
-): void {
+): Promise<void> {
   const json = sink.json;
 
   if (mode.kind === "deleted") {
@@ -52,7 +59,11 @@ export function writeCommandOutput(
       sink.writeJson(mode.data);
       return;
     }
-    sink.writeHuman(mode.humanText);
+    if (mode.pageHumanText) {
+      await writePagedOutput(mode.humanText, resolvePagerOptions(), sink);
+    } else {
+      sink.writeHuman(mode.humanText);
+    }
     if (mode.metadataLines !== undefined && mode.metadataLines.length > 0) {
       sink.writeMetadata(mode.metadataLines);
     }
@@ -91,26 +102,31 @@ export function writeCommandOutput(
       return;
     }
     const format = mode.format ?? "table";
-    sink.writeHuman(renderManagementOutput(mode.body, format));
+    const output = renderManagementOutput(mode.body, format);
+    if (format === "table") {
+      await writePagedOutput(output, resolvePagerOptions(), sink);
+      return;
+    }
+    sink.writeHuman(output);
     return;
   }
 }
 
-export function writeManagementOutput(
+export async function writeManagementOutput(
   body: string,
   options?: {
     format?: string;
     humanFormatter?: (data: unknown) => string;
   },
   sink: OutputSink = getOutputSink(),
-): void {
+): Promise<void> {
   const formatArg = options?.format;
   const parsedFormat =
     formatArg !== undefined && String(formatArg).length > 0
       ? parseManagementOutputFormat(String(formatArg))
       : undefined;
 
-  writeCommandOutput(
+  await writeCommandOutput(
     {
       kind: "tabular",
       body,
@@ -121,12 +137,12 @@ export function writeManagementOutput(
   );
 }
 
-export function writeJsonOrRaw(
+export async function writeJsonOrRaw(
   body: string,
   formatter?: (data: unknown) => string,
   sink: OutputSink = getOutputSink(),
-): void {
-  writeCommandOutput(
+): Promise<void> {
+  await writeCommandOutput(
     {
       kind: "tabular",
       body,
@@ -141,8 +157,11 @@ export type LakehouseOutputOptions = {
   sink?: OutputSink;
 };
 
-export function writeLakehouseCommandOutput(body: string, options?: LakehouseOutputOptions): void {
-  writeCommandOutput(
+export async function writeLakehouseCommandOutput(
+  body: string,
+  options?: LakehouseOutputOptions,
+): Promise<void> {
+  await writeCommandOutput(
     {
       kind: "raw_api",
       body,
@@ -152,10 +171,10 @@ export function writeLakehouseCommandOutput(body: string, options?: LakehouseOut
   );
 }
 
-export function writeDeleteSuccess(
+export async function writeDeleteSuccess(
   message: string,
   id?: string,
   sink: OutputSink = getOutputSink(),
-): void {
-  writeCommandOutput({ kind: "deleted", message, id }, sink);
+): Promise<void> {
+  await writeCommandOutput({ kind: "deleted", message, id }, sink);
 }
