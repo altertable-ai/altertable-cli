@@ -134,7 +134,7 @@ export function localPlan<TResult>(
   return operationPlan(localEffect(run));
 }
 
-export function allPlan<TResult>(
+function allPlan<TResult>(
   effects: readonly OperationEffect[],
   combine: (results: unknown[], context: OperationContext) => TResult | Promise<TResult>,
 ): OperationPlan<TResult> {
