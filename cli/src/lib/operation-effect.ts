@@ -134,13 +134,6 @@ export function localPlan<TResult>(
   return operationPlan(localEffect(run));
 }
 
-function allPlan<TResult>(
-  effects: readonly OperationEffect[],
-  combine: (results: unknown[], context: OperationContext) => TResult | Promise<TResult>,
-): OperationPlan<TResult> {
-  return operationPlan(allEffects(effects, combine));
-}
-
 export function progressPlan<TResult>(
   message: string,
   effect: OperationEffect<TResult>,
