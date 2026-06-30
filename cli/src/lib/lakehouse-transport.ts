@@ -103,7 +103,7 @@ function createLakehouseFileRequest(
 ): LakehouseUploadRequestScope {
   const file = Bun.file(input.filePath);
   const fileSizeBytes = file.size;
-  let body: Blob | ReadableStream = file;
+  let body: Blob | ReadableStream = input.contentType ? file : file.stream();
   let uploadProgress = createUploadProgressReporter(fileSizeBytes);
 
   if (shouldShowProgress() && fileSizeBytes > 0) {

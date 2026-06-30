@@ -446,6 +446,45 @@ describe("lakehouse request construction", () => {
     expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
   });
 
+  test("upload uses explicit content type only when format is provided", () => {
+    const uploadFile = join(testHome, "data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+
+    const uploadScope = createLakehouseUploadRequest({
+      catalog: "memory",
+      schema: "main",
+      table: "users",
+      mode: "overwrite",
+      filePath: uploadFile,
+      contentType: "text/csv",
+    });
+    try {
+      expect(uploadScope.request.contentType).toBe("text/csv");
+      expect(uploadScope.request.body).toBeInstanceOf(Blob);
+    } finally {
+      uploadScope.release();
+    }
+  });
+
+  test("upload without format streams the file without a content type hint", () => {
+    const uploadFile = join(testHome, "data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+
+    const uploadScope = createLakehouseUploadRequest({
+      catalog: "memory",
+      schema: "main",
+      table: "users",
+      mode: "overwrite",
+      filePath: uploadFile,
+    });
+    try {
+      expect(uploadScope.request.contentType).toBeUndefined();
+      expect(uploadScope.request.body).toBeInstanceOf(ReadableStream);
+    } finally {
+      uploadScope.release();
+    }
+  });
+
   test("upsert sends primary_key to /upsert", async () => {
     const uploadFile = join(testHome, "data.csv");
     writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
