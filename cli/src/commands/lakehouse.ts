@@ -1,4 +1,5 @@
 import type { ArgsDef } from "citty";
+import { statSync } from "node:fs";
 import { CliError } from "@/lib/errors.ts";
 import { booleanArg, enumArg, optionalStringArg, stringArg } from "@/lib/operation-codec.ts";
 import { httpEffect, progressPlan, scopedPlan } from "@/lib/operation-effect.ts";
@@ -27,6 +28,21 @@ import {
 } from "@/lib/lakehouse-operations.ts";
 
 const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
+
+function getUploadFileSizeBytes(filePath: string): number {
+  try {
+    const fileStat = statSync(filePath);
+    if (!fileStat.isFile()) {
+      throw new CliError(`File not found: ${filePath}`);
+    }
+    return fileStat.size;
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw new CliError(`File not found: ${filePath}`);
+  }
+}
 
 const queryRunArgs = {
   statement: { type: "string", description: "SQL statement to run", required: true },
@@ -291,12 +307,7 @@ export const uploadCommand = defineOperationCommand({
     const mode = enumArg(args, "mode", UPLOAD_MODE_OPTIONS);
     const filePath = stringArg(args, "file");
     validateUploadPrimaryKey(mode, args["primary-key"]);
-
-    try {
-      await Bun.file(filePath).arrayBuffer();
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
+    const fileSizeBytes = getUploadFileSizeBytes(filePath);
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     return {
@@ -306,6 +317,7 @@ export const uploadCommand = defineOperationCommand({
       format: stringArg(args, "format"),
       mode,
       filePath,
+      fileSizeBytes,
       primaryKey: optionalStringArg(args, "primary-key"),
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
@@ -319,6 +331,7 @@ export const uploadCommand = defineOperationCommand({
         format: input.format,
         mode: input.mode,
         filePath: input.filePath,
+        fileSizeBytes: input.fileSizeBytes,
         primaryKey: input.primaryKey,
         httpOptions: input.httpOptions,
       });

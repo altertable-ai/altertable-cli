@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { runCommand } from "citty";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
@@ -430,6 +430,7 @@ describe("lakehouse request construction", () => {
       format: "csv",
       mode: "upsert",
       filePath: uploadFile,
+      fileSizeBytes: 15,
       primaryKey: "id",
     });
     try {
@@ -442,6 +443,108 @@ describe("lakehouse request construction", () => {
     expect(logContent).toContain("URL=https://example.com/upload?");
     expect(logContent).toContain("primary_key=id");
     expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
+  });
+
+  test("upload command validates file metadata without buffering the payload", async () => {
+    const uploadFile = join(testHome, "command-data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/upload",
+          method: "POST",
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+
+    const previousRuntime = getCliRuntime();
+    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+    runtime.output.writeJson = () => {};
+    runtime.output.writeRaw = () => {};
+    runtime.output.writeHuman = () => {};
+    setCliRuntime(runtime);
+
+    try {
+      await runCommand(buildMainCommand(), {
+        rawArgs: [
+          "upload",
+          "--catalog",
+          "memory",
+          "--schema",
+          "main",
+          "--table",
+          "users",
+          "--format",
+          "csv",
+          "--mode",
+          "overwrite",
+          "--file",
+          uploadFile,
+        ],
+      });
+    } finally {
+      setCliRuntime(previousRuntime);
+    }
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("URL=https://example.com/upload?");
+    expect(logContent).toContain("PAYLOAD=@blob");
+    expect(logContent).not.toContain("id,name");
+  });
+
+  test("upload command rejects missing files and directories", async () => {
+    const directoryPath = join(testHome, "upload-directory");
+    mkdirSync(directoryPath);
+
+    try {
+      await runCommand(buildMainCommand(), {
+        rawArgs: [
+          "upload",
+          "--catalog",
+          "memory",
+          "--schema",
+          "main",
+          "--table",
+          "users",
+          "--format",
+          "csv",
+          "--mode",
+          "overwrite",
+          "--file",
+          join(testHome, "missing.csv"),
+        ],
+      });
+      throw new Error("expected missing file failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("File not found");
+    }
+
+    try {
+      await runCommand(buildMainCommand(), {
+        rawArgs: [
+          "upload",
+          "--catalog",
+          "memory",
+          "--schema",
+          "main",
+          "--table",
+          "users",
+          "--format",
+          "csv",
+          "--mode",
+          "overwrite",
+          "--file",
+          directoryPath,
+        ],
+      });
+      throw new Error("expected directory failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("File not found");
+    }
   });
 
   test("cancel URL-encodes query id in path", async () => {

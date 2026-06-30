@@ -21,6 +21,7 @@ export type LakehouseUploadRequestInput = {
   format: string;
   mode: string;
   filePath: string;
+  fileSizeBytes: number;
   primaryKey?: string;
   httpOptions?: Partial<HttpSendOptions>;
 };
@@ -79,14 +80,17 @@ export function createLakehouseUploadRequest(
   }
 
   const file = Bun.file(input.filePath);
-  const fileSizeBytes = file.size;
   let body: Blob | ReadableStream = file;
-  let uploadProgress = createUploadProgressReporter(fileSizeBytes);
+  let uploadProgress = createUploadProgressReporter(input.fileSizeBytes);
 
-  if (shouldShowProgress() && fileSizeBytes > 0) {
-    body = wrapStreamWithByteProgress(file.stream(), fileSizeBytes, (sentBytes, totalBytes) => {
-      uploadProgress.report(sentBytes, totalBytes);
-    });
+  if (shouldShowProgress() && input.fileSizeBytes > 0) {
+    body = wrapStreamWithByteProgress(
+      file.stream(),
+      input.fileSizeBytes,
+      (sentBytes, totalBytes) => {
+        uploadProgress.report(sentBytes, totalBytes);
+      },
+    );
   } else {
     uploadProgress = createUploadProgressReporter(0);
   }
