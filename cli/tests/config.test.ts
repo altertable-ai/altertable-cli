@@ -7,8 +7,8 @@ import {
   configGet,
   configSet,
   configUnset,
-  getQueryDefaultLayout,
   getQueryDefaultMaxColumnWidth,
+  getQueryDefaultLayout,
   getQueryDefaultPager,
   kvGet,
   kvSet,
@@ -29,7 +29,9 @@ import {
   configureRunClear,
   configureRunSet,
   configureRunShow,
+  buildConfigureShowDataForProfile,
 } from "@/lib/configure.ts";
+import { writeCommandOutput } from "@/lib/command-output.ts";
 import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
@@ -100,14 +102,14 @@ describe("config", () => {
   });
 
   test("reads query display defaults from config", () => {
-    configSet("query_max_col_width", "48");
-    configSet("query_layout", "expanded");
+    configSet("query_max_width", "48");
+    configSet("query_layout", "line");
     expect(getQueryDefaultMaxColumnWidth()).toBe(48);
-    expect(getQueryDefaultLayout()).toBe("expanded");
+    expect(getQueryDefaultLayout()).toBe("line");
   });
 
   test("ignores invalid query config values", () => {
-    configSet("query_max_col_width", "4");
+    configSet("query_max_width", "4");
     configSet("query_layout", "invalid");
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
@@ -143,7 +145,8 @@ describe("configure show", () => {
     secretSet("lakehouse/password", "secret");
     const output = configureRunShow();
     expect(output).toContain("alice");
-    expect(output).toContain("password:     set");
+    expect(output).toContain("password:");
+    expect(output).toContain("set");
     expect(output).not.toContain("secret");
   });
 
@@ -157,10 +160,13 @@ describe("configure show", () => {
     await configureRunSet({ apiKey: "atm_test", env: "development" });
 
     const output = configureRunShow();
-    expect(output).toContain("Authentication: management API key");
-    expect(output).toContain("environment:  development");
-    expect(output).toContain("Authentication: lakehouse username/password");
-    expect(output).toContain("user:         alice");
+    expect(output).toContain("Authentication:");
+    expect(output).toContain("management API key");
+    expect(output).toContain("environment:");
+    expect(output).toContain("development");
+    expect(output).toContain("lakehouse username/password");
+    expect(output).toContain("user:");
+    expect(output).toContain("alice");
     expect(output).not.toContain("lakehouse-secret");
     expect(output).not.toContain("atm_test");
   });
@@ -168,30 +174,31 @@ describe("configure show", () => {
   test("shows hint when only management credentials are configured", async () => {
     await configureRunSet({ apiKey: "atm_test", env: "development" });
     const output = configureRunShow();
-    expect(output).toContain("Hint: run 'altertable configure --user");
+    expect(output).toContain("altertable configure lakehouse");
     expect(output).toContain("lakehouse query");
   });
 
   test("shows hint when only lakehouse credentials are configured", async () => {
     await configureRunSet({ user: "alice", password: "lakehouse-secret" });
     const output = configureRunShow();
-    expect(output).toContain("Hint: run 'altertable configure --api-key");
-    expect(output).toContain("whoami");
+    expect(output).toContain("altertable configure management");
+    expect(output).toContain("context");
   });
 
   test("shows two-step setup hint when no credentials are configured", () => {
     configureClearAll();
     const output = configureRunShow();
     expect(output).toContain("No credentials configured");
-    expect(output).toContain("Hint: run 'altertable configure --api-key");
-    expect(output).toContain("then 'altertable configure --user");
+    expect(output).toContain("altertable configure management");
+    expect(output).toContain("altertable configure lakehouse");
   });
 
   test("shows environment override when ALTERTABLE_ENV differs from stored", async () => {
     await configureRunSet({ apiKey: "atm_test", env: "production" });
     process.env.ALTERTABLE_ENV = "staging";
     const output = configureRunShow();
-    expect(output).toContain("Environment override: ALTERTABLE_ENV=staging (stored: production)");
+    expect(output).toContain("Environment override:");
+    expect(output).toContain("ALTERTABLE_ENV=staging (stored: production)");
     expect(output).not.toContain("atm_test");
   });
 
@@ -199,9 +206,31 @@ describe("configure show", () => {
     await configureRunSet({ apiKey: "atm_test", env: "production" });
     process.env.ALTERTABLE_API_KEY = "atm_override_secret";
     const output = configureRunShow();
-    expect(output).toContain("API key override: ALTERTABLE_API_KEY is set via environment");
+    expect(output).toContain("API key override:");
+    expect(output).toContain("ALTERTABLE_API_KEY is set via environment");
     expect(output).not.toContain("atm_override_secret");
     expect(output).not.toContain("atm_test");
+  });
+
+  test("emits structured configuration envelope in json mode", async () => {
+    await configureRunSet({ apiKey: "atm_test", env: "production" });
+    const stdout: string[] = [];
+    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+    runtime.output.writeJson = (data) => {
+      stdout.push(JSON.stringify(data, null, 2));
+    };
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
+        kind: "normalized",
+        data: { configuration: buildConfigureShowDataForProfile() },
+        humanText: configureRunShow(),
+      });
+    });
+    const parsed = JSON.parse(stdout[0] ?? "{}") as {
+      configuration?: { credentials?: { management?: { api_key?: string } } };
+    };
+    expect(parsed.configuration?.credentials?.management?.api_key).toBe("set");
+    expect(stdout[0]).not.toContain("atm_test");
   });
 
   test("preserves management credentials when updating lakehouse credentials", async () => {
@@ -273,7 +302,7 @@ describe("configure clear", () => {
     secretSet("lakehouse/password", "lake-prod", "prod");
 
     configureRunClear();
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
 
     expect(secretGet("api-key", "staging")).toBe("");
     expect(secretGet("api-key", "prod")).toBe("");
@@ -317,7 +346,7 @@ describe("url policy", () => {
 describe("configure argv secrets", () => {
   test("warns when password is passed on argv", async () => {
     const stderr: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false });
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     runtime.output.writeMetadata = (lines) => {
       stderr.push(...lines);
     };

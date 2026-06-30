@@ -1,11 +1,11 @@
 import type { ArgsDef } from "citty";
-import { getCliContext } from "@/context.ts";
+import { isJsonOutput } from "@/context.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
-import { type QueryOutputFormat } from "@/lib/lakehouse-client.ts";
+import { type ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 import { renderTabularOutput, type TabularResult } from "@/lib/tabular-result.ts";
 
-export type ManagementOutputFormat = QueryOutputFormat;
+export type { ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -16,7 +16,7 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     return [];
   }
 
-  const shouldRedact = !getCliContext().json;
+  const shouldRedact = !isJsonOutput();
 
   const arrayValues = Object.values(data).filter(Array.isArray) as unknown[][];
   if (arrayValues.length === 1) {
@@ -63,10 +63,13 @@ function redactSensitiveRowValue(key: string, value: unknown): unknown {
   return redacted[key];
 }
 
+export const MANAGEMENT_FORMAT_OPTIONS = ["json", "table", "csv", "markdown"] as const;
+
 export const MANAGEMENT_FORMAT_ARG = {
   format: {
-    type: "string" as const,
+    type: "enum" as const,
     description: "Output format: json, table, csv, or markdown",
+    options: [...MANAGEMENT_FORMAT_OPTIONS],
   },
 };
 

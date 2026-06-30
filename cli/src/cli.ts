@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-import { runCommand, showUsage, type CommandDef } from "citty";
-import packageJson from "../package.json";
+import { runCommand, type ArgsDef, type CommandDef } from "citty";
 import { VERSION } from "@/version.ts";
 import {
   getCliContext,
   getBootstrapCliContext,
+  isJsonOutput,
   setCliContext,
   type CliContext,
 } from "@/context.ts";
@@ -12,16 +12,10 @@ import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
 import { configureCommand } from "@/commands/configure.ts";
 import { profileCommand } from "@/commands/profile.ts";
-import { whoamiCommand } from "@/commands/whoami.ts";
+import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
-import {
-  appendCommand,
-  autocompleteCommand,
-  queryCommand,
-  uploadCommand,
-  validateCommand,
-} from "@/commands/lakehouse.ts";
-import { apiCommand } from "@/commands/api.ts";
+import { appendCommand, queryCommand, uploadCommand } from "@/commands/lakehouse.ts";
+import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import {
   CliError,
@@ -30,10 +24,16 @@ import {
   isCittyCliError,
   renderCliError,
   renderCliErrorJson,
+  shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
 import { defineRootCommand } from "@/lib/command-context.ts";
-import { resolveSubCommandForUsage } from "@/lib/citty-usage.ts";
+import {
+  resolveSubCommandForUsage,
+  showAltertableUsage,
+  showCommandExamplesForArgs,
+} from "@/lib/citty-usage.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
+import { terminalError, applyTerminalColorFromContext } from "@/lib/terminal-style.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -43,6 +43,31 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
   return parseGlobalFlags(argv);
 }
 
+const ROOT_ARGS = {
+  debug: { type: "boolean", alias: "d", description: "Enable debug output" },
+  json: { type: "boolean", description: "Machine-readable JSON output" },
+  agent: {
+    type: "boolean",
+    description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
+  },
+  "no-color": {
+    type: "boolean",
+    description: "Disable terminal colors and styling",
+  },
+  profile: {
+    type: "string",
+    description: "Use a named profile for this command only",
+  },
+  "connect-timeout": {
+    type: "string",
+    description: "HTTP connect timeout in seconds (default 5)",
+  },
+  "read-timeout": {
+    type: "string",
+    description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
+  },
+} satisfies ArgsDef;
+
 export function buildMainCommand(): CommandDef {
   let mainCommand: CommandDef;
 
@@ -51,13 +76,11 @@ export function buildMainCommand(): CommandDef {
   const topLevelCommands: Record<string, CommandDef> = {
     configure: configureCommand,
     profile: profileCommand,
-    whoami: whoamiCommand,
+    context: contextCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
-    validate: validateCommand,
     append: appendCommand,
     upload: uploadCommand,
-    autocomplete: autocompleteCommand,
     api: apiCommand,
     completion: completionCommand,
   };
@@ -65,25 +88,16 @@ export function buildMainCommand(): CommandDef {
   mainCommand = defineRootCommand({
     meta: {
       name: "altertable",
-      version: VERSION,
-      description: packageJson.description,
+      description: `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
+      examples: [
+        "altertable configure",
+        "altertable context",
+        "altertable api routes",
+        "altertable api GET /environments/production/databases",
+        'altertable query --statement "SELECT 1"',
+      ],
     },
-    args: {
-      debug: { type: "boolean", alias: "d", description: "Enable debug output" },
-      json: { type: "boolean", description: "Machine-readable JSON output" },
-      profile: {
-        type: "string",
-        description: "Use a named profile for this command only",
-      },
-      "connect-timeout": {
-        type: "string",
-        description: "HTTP connect timeout in seconds (default 5)",
-      },
-      "read-timeout": {
-        type: "string",
-        description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
-      },
-    },
+    args: ROOT_ARGS,
     subCommands: topLevelCommands,
     async run({ args }) {
       setCliContext(buildCliContextFromArgs(args));
@@ -96,18 +110,19 @@ export function buildMainCommand(): CommandDef {
 const main = buildMainCommand();
 
 const initialContext = getBootstrapCliContext();
+applyTerminalColorFromContext(initialContext);
 setCliRuntime(createCliRuntime(initialContext));
 refreshCliRuntimeContext(initialContext);
 
 function handleCliError(error: unknown): never {
   const context = getCliContext();
-  if (context.json) {
+  if (isJsonOutput(context)) {
     console.error(renderCliErrorJson(error));
   } else {
     console.error(renderCliError(error));
 
     if (error instanceof CliError && error.details) {
-      console.error(`[ERROR] ${error.details}`);
+      console.error(`${terminalError("ERROR")} ${error.details}`);
     }
   }
 
@@ -119,15 +134,17 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = process.argv.slice(2);
+  const rawArgs = normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS);
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
-  setCliContext(buildEarlyCliContext(rawArgs));
+  const earlyContext = buildEarlyCliContext(rawArgs);
+  applyTerminalColorFromContext(earlyContext);
+  setCliContext(earlyContext);
 
   try {
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
-      await showUsage(command, parent);
+      await showAltertableUsage(command, parent);
       process.exit(EXIT_SUCCESS);
     }
 
@@ -138,9 +155,15 @@ async function bootstrap(): Promise<void> {
 
     await runCommand(main, { rawArgs });
   } catch (error) {
+    const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
+
     if (isCittyCliError(error)) {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
-      await showUsage(command, parent);
+      if (showExamplesOnHumanOutput) {
+        await showAltertableUsage(command, parent);
+      }
+    } else if (showExamplesOnHumanOutput && shouldShowCommandExamplesOnError(error)) {
+      await showCommandExamplesForArgs(main, rawArgs);
     }
     handleCliError(error);
   }

@@ -1,19 +1,24 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import type { CommandDef } from "citty";
+import type { ArgsDef, CommandDef } from "citty";
 import { runCommand } from "citty";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import { apiCommand, runApiRoutesCommand, runApiSpecCommand } from "@/commands/api.ts";
+import {
+  apiCommand,
+  normalizeApiInvocatorRawArgs,
+  runApiRoutesCommand,
+  runApiSpecCommand,
+} from "@/commands/api.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 
 function createCaptureSink(json: boolean) {
   const stdout: string[] = [];
-  const runtime = createCliRuntime({ debug: false, json });
+  const runtime = createCliRuntime({ debug: false, json, agent: false });
   runtime.output.writeRaw = (body) => {
     stdout.push(body);
   };
@@ -26,39 +31,73 @@ function createCaptureSink(json: boolean) {
   return { sink: runtime.output, stdout };
 }
 
-async function runApiSpec(json: boolean): Promise<string> {
+async function runApiSpec(json: boolean, format?: string): Promise<string> {
   const { sink, stdout } = createCaptureSink(json);
-  runApiSpecCommand(sink);
+  await runApiSpecCommand(sink, { format });
   return stdout.join("");
 }
 
 async function runApiRoutes(json: boolean, operation?: string): Promise<string> {
   const { sink, stdout } = createCaptureSink(json);
-  runApiRoutesCommand(sink, operation);
+  await runApiRoutesCommand(sink, operation);
   return stdout.join("");
 }
 
 describe("api", () => {
   beforeEach(() => {
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
   });
 
   afterEach(() => {
-    setCliContext({ debug: false, json: false });
+    setCliContext({ debug: false, json: false, agent: false });
   });
 
   test("api spec prints YAML containing Altertable Management API", async () => {
-    const output = await runApiSpec(false);
+    const output = await runApiSpec(false, "yaml");
     expect(output).toContain("Altertable Management API");
     expect(output).toContain("openapi: 3.1.0");
+    expect(output).not.toContain("AUTO-GENERATED");
   });
 
   test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    setCliContext({ debug: false, json: true });
+    setCliContext({ debug: false, json: true, agent: false });
     const output = await runApiSpec(true);
     const document = JSON.parse(output) as { openapi?: string; info?: { title?: string } };
     expect(document.openapi).toBe("3.1.0");
     expect(document.info?.title).toBe("Altertable Management API");
+  });
+
+  test("api spec subcommand runs without ENDPOINT validation errors", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    runtime.output.writeHuman = (text) => {
+      stdout.push(text);
+    };
+    runtime.output.writeRaw = (body) => {
+      stdout.push(body);
+    };
+    runtime.output.writeStderr = (line) => {
+      stderr.push(line);
+    };
+    runtime.output.writeMetadata = (lines) => {
+      stderr.push(...lines);
+    };
+
+    const previousRuntime = getCliRuntime();
+    setCliRuntime(runtime);
+
+    try {
+      await runCommand(buildMainCommand(), { rawArgs: ["api", "spec", "--format", "yaml"] });
+    } finally {
+      setCliRuntime(previousRuntime);
+    }
+
+    const output = stdout.join("");
+    const errorOutput = stderr.join("");
+    expect(errorOutput).not.toContain("ENDPOINT");
+    expect(output).toContain("openapi: 3.1.0");
+    expect(output).not.toContain("AUTO-GENERATED");
   });
 
   test("OPENAPI_OPERATIONS lists createDatabase", () => {
@@ -69,9 +108,10 @@ describe("api", () => {
 
   test("api routes inspects one operation in human mode", async () => {
     const output = await runApiRoutes(false, "createDatabase");
-    expect(output).toContain("Operation: createDatabase");
-    expect(output).toContain("Path: /environments/{environment_id}/databases");
-    expect(output).toContain("Parameters: environment_id");
+    expect(output).toContain("createDatabase");
+    expect(output).toContain("Path:");
+    expect(output).toContain("/environments/{environment_id}/databases");
+    expect(output).toContain("environment_id");
   });
 
   test("api routes operation detail includes path parameters in JSON mode", async () => {
@@ -97,27 +137,104 @@ describe("api", () => {
     expect(subCommands.routes?.run).toBeDefined();
   });
 
-  test("api POST subcommand issues a single HTTP request", async () => {
-    const testHome = mkdtempSync(join(tmpdir(), "altertable-api-command-test-"));
-    const mockFile = join(testHome, "mocks.json");
-    const logFile = join(testHome, "http.log");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/service_accounts",
-          method: "POST",
-          body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
-        },
-      ]),
-    );
+  test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
+    const rootArgs = {
+      profile: { type: "string", description: "Use a named profile" },
+    } satisfies ArgsDef;
 
-    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
-    process.env.ALTERTABLE_HTTP_LOG = logFile;
-    process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
-    process.env.ALTERTABLE_API_KEY = "atm_test";
+    expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
+    expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([
+      "api",
+      "GET",
+      "/whoami",
+    ]);
+    expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
+    expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
+      "--json",
+      "api",
+      "--",
+      "/whoami",
+    ]);
+    expect(normalizeApiInvocatorRawArgs(["--profile", "dev", "api", "/whoami"], rootArgs)).toEqual([
+      "--profile",
+      "dev",
+      "api",
+      "--",
+      "/whoami",
+    ]);
+    expect(
+      normalizeApiInvocatorRawArgs(["api", "-f", "label=CI Bot", "/service_accounts"]),
+    ).toEqual(["api", "-f", "label=CI Bot", "--", "/service_accounts"]);
+    expect(normalizeApiInvocatorRawArgs(["api", "-X", "GET", "/service_accounts"])).toEqual([
+      "api",
+      "-X",
+      "GET",
+      "--",
+      "/service_accounts",
+    ]);
+    expect(normalizeApiInvocatorRawArgs(["api", "--", "/whoami"])).toEqual([
+      "api",
+      "--",
+      "/whoami",
+    ]);
+  });
 
-    try {
+  describe("api HTTP invoker", () => {
+    let testHome = "";
+    let mockFile = "";
+    let logFile = "";
+
+    beforeEach(() => {
+      testHome = mkdtempSync(join(tmpdir(), "altertable-api-test-"));
+      mockFile = join(testHome, "mocks.json");
+      logFile = join(testHome, "http.log");
+      process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+      process.env.ALTERTABLE_HTTP_LOG = logFile;
+      process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+      process.env.ALTERTABLE_API_KEY = "atm_test";
+    });
+
+    afterEach(() => {
+      rmSync(testHome, { recursive: true, force: true });
+      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+      delete process.env.ALTERTABLE_HTTP_LOG;
+      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+      delete process.env.ALTERTABLE_API_KEY;
+    });
+
+    test("endpoint path without method issues a single HTTP request", async () => {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          {
+            urlPattern: "/whoami",
+            method: "GET",
+            body: '{"user":{"email":"dev@example.com"}}',
+          },
+        ]),
+      );
+
+      await runCommand(buildMainCommand(), {
+        rawArgs: normalizeApiInvocatorRawArgs(["api", "/whoami"]),
+      });
+
+      const logContent = readFileSync(logFile, "utf8");
+      expect(logContent).toContain("/rest/v1/whoami");
+      expect(logContent).toContain("METHOD=GET");
+    });
+
+    test("POST subcommand issues a single HTTP request", async () => {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          {
+            urlPattern: "/service_accounts",
+            method: "POST",
+            body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
+          },
+        ]),
+      );
+
       await runCommand(buildMainCommand(), {
         rawArgs: ["api", "POST", "/service_accounts", "-f", "label=CI Bot"],
       });
@@ -127,12 +244,6 @@ describe("api", () => {
       expect(payloadLines).toHaveLength(1);
       expect(logContent).toContain("/rest/v1/service_accounts");
       expect(logContent).not.toContain("/rest/v1/POST");
-    } finally {
-      rmSync(testHome, { recursive: true, force: true });
-      delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
-      delete process.env.ALTERTABLE_HTTP_LOG;
-      delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
-      delete process.env.ALTERTABLE_API_KEY;
-    }
+    });
   });
 });

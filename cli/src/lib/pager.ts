@@ -1,40 +1,42 @@
 import { spawnSync } from "node:child_process";
 import { getQueryDefaultPager } from "@/lib/config.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import { getVisibleTextWidth } from "@/lib/terminal-style.ts";
+
+export type PagerMode = "auto" | "always" | "never";
 
 export type PagerOptions = {
-  force?: boolean;
-  disable?: boolean;
+  mode: PagerMode;
 };
 
-export function resolvePagerOptions(cliFlags: PagerOptions): PagerOptions {
-  if (cliFlags.force || cliFlags.disable) {
-    return cliFlags;
+export function resolvePagerOptions(cliMode?: PagerMode): PagerOptions {
+  if (cliMode !== undefined) {
+    return { mode: cliMode };
   }
 
   const defaultPager = getQueryDefaultPager();
-  if (defaultPager === "always") {
-    return { force: true };
-  }
-  if (defaultPager === "never") {
-    return { disable: true };
-  }
-  return {};
+  return { mode: defaultPager ?? "auto" };
 }
 
 export function shouldUsePager(text: string, options: PagerOptions): boolean {
-  if (options.disable) {
+  if (options.mode === "never") {
     return false;
   }
   if (!process.stdout.isTTY) {
     return false;
   }
-  if (options.force) {
+  if (options.mode === "always") {
     return true;
   }
   const lineCount = text.split("\n").length;
   const rows = process.stdout.rows ?? 24;
-  return lineCount > rows;
+  const columns = process.stdout.columns ?? 80;
+  const hasWideLine = text.split("\n").some((line) => getVisibleTextWidth(line) > columns);
+  return lineCount > rows || hasWideLine;
+}
+
+export function buildPagerEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...env, LESS: "FRX", LESSCHARSET: env.LESSCHARSET ?? "utf-8" };
 }
 
 export async function writePagedOutput(
@@ -50,7 +52,7 @@ export async function writePagedOutput(
   const result = spawnSync("less", ["-SR"], {
     input: text,
     stdio: ["pipe", "inherit", "inherit"],
-    env: { ...process.env, LESS: "FRX" },
+    env: buildPagerEnv(),
   });
 
   if (result.error) {

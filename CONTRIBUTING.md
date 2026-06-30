@@ -30,10 +30,31 @@ Match existing conventions in `cli/src/`:
 - Explicit variable names
 - Minimal scope — focused diffs only
 
+## Command Architecture
+
+Commands should keep platform concepts split and composed. The intended flow is:
+
+```text
+parse args -> build operation plan -> run effects -> decode result -> present output
+```
+
+Use these boundaries when adding or changing commands:
+
+- `cli/src/commands/**` owns command shape, argument parsing, operation ids, capability metadata, and presentation choice.
+- `cli/src/lib/operation-codec.ts` owns small reusable argument codecs. Prefer these helpers over ad hoc `String(...)` coercion.
+- `cli/src/lib/operation-effect.ts` owns executable operation plans and the effect handler registry.
+- `cli/src/lib/http-operation.ts` owns named HTTP operation descriptors. Prefer descriptors over command-local request objects.
+- `cli/src/lib/operation-transport.ts` owns plane-aware HTTP transport. Do not build management/lakehouse URLs in commands.
+- Request builders should return data structures. They should not perform transport as a side effect.
+- Presentation should return `CommandOutputMode` or write through the command output sink. Avoid mixing transport, parsing, and terminal output in the same function.
+- Register every command surface with a stable operation id, capabilities, effects, planes, mutability, and output shape through `defineOperationCommand`.
+
+Avoid adding compatibility wrappers that both build and execute requests. If a shared path is needed, share the request builder, effect builder, parser, or presenter instead.
+
 ## Tests
 
 - Unit tests: `cd cli && bun test`
-- Shell tests (offline): `./tests/configure_test.sh`, `./tests/management_test.sh`, `./tests/whoami_test.sh`, `./tests/catalogs_test.sh`, `./tests/scripting_test.sh`, `./tests/profile_test.sh`
+- Shell tests (offline): `./tests/configure_test.sh`, `./tests/management_test.sh`, `./tests/context_test.sh`, `./tests/catalogs_test.sh`, `./tests/scripting_test.sh`, `./tests/profile_test.sh`
 - Integration tests (requires mock server): `./tests/integration_test.sh`
 
 ## Pull Requests

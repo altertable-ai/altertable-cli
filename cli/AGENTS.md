@@ -35,7 +35,7 @@ Shell tests from repo root:
 ```bash
 ./tests/configure_test.sh
 ./tests/management_test.sh
-./tests/whoami_test.sh
+./tests/context_test.sh
 ./tests/catalogs_test.sh
 ./tests/scripting_test.sh
 ./tests/profile_test.sh
@@ -91,20 +91,25 @@ Shell tests from repo root:
 
 **Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/configure.ts`, `lib/query-format.ts`, `lib/api-http.ts`.
 
-| Module                                | Role                                                    |
-| ------------------------------------- | ------------------------------------------------------- |
-| `commands/lakehouse.ts`               | Data-plane commands (query, upload, append, …)          |
-| `commands/api.ts`                     | Management HTTP invoker (`api GET /path`), spec, routes |
-| `lib/api-http.ts`                     | HTTP invoker logic for `api`                            |
-| `lib/api-body.ts`                     | `--body`, `@file`, `-f key=value` body builders         |
-| `commands/configure.ts`, `profile.ts` | Credential/config UX                                    |
-| `lib/lakehouse-client.ts`             | Lakehouse HTTP + query rendering                        |
-| `lib/http.ts`                         | Shared HTTP transport, logging, mock file support       |
-| `lib/management-transport.ts`         | Management API HTTP transport                           |
-| `lib/management-formatters.ts`        | Human formatters for `whoami` and `catalogs`            |
-| `lib/catalog-rows.ts`                 | Catalog list row builder for `catalogs list`            |
-| `lib/errors.ts`                       | Exit codes, `CliError`, JSON error envelope             |
-| `lib/completion-spec.ts`              | Walks Citty tree for shell completion                   |
+| Module                                | Role                                                         |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `commands/lakehouse.ts`               | Data-plane commands (query, upload, append, …)               |
+| `commands/api.ts`                     | Management HTTP invoker (`api GET /path`), spec, routes      |
+| `lib/api-http.ts`                     | HTTP invoker logic for `api`                                 |
+| `lib/api-body.ts`                     | `--body`, `@file`, `-f key=value` body builders              |
+| `lib/configure.ts`                    | Credential store (`configureRunSet`, show, clear)            |
+| `lib/configure-credential-status.ts`  | Credential presence (stored + env) for wizard intro and show |
+| `lib/configure-wizard.ts`             | Interactive configure wizard                                 |
+| `lib/configure-prompts.ts`            | TTY prompt primitives for configure wizard                   |
+| `lib/configure-verify.ts`             | Post-configure credential verification                       |
+| `commands/configure.ts`, `profile.ts` | Credential/config command wiring                             |
+| `lib/lakehouse-client.ts`             | Lakehouse HTTP + query rendering                             |
+| `lib/http.ts`                         | Shared HTTP transport, logging, mock file support            |
+| `lib/management-transport.ts`         | Management API HTTP transport                                |
+| `lib/management-formatters.ts`        | Human formatters for identity and `catalogs`                 |
+| `lib/catalog-rows.ts`                 | Catalog list row builder for `catalogs list`                 |
+| `lib/errors.ts`                       | Exit codes, `CliError`, JSON error envelope                  |
+| `lib/completion-spec.ts`              | Walks Citty tree for shell completion                        |
 
 ## Command tree
 
@@ -112,9 +117,9 @@ Source of truth: `src/cli.ts` + `commands/api.ts`. Verify with `bin/altertable -
 
 ```
 altertable
-├── configure, profile, whoami, catalogs
+├── configure (management, lakehouse), profile, context, catalogs
 ├── query (run, show, cancel)
-├── validate, append (run, task), upload, autocomplete
+├── append (run, task), upload
 ├── api
 │   ├── spec
 │   ├── routes
@@ -122,7 +127,7 @@ altertable
 └── completion
 ```
 
-`query` accepts `altertable query run --statement "…"` or the Citty default alias `altertable query --statement "…"` (same as `query run`).
+`query` exposes `run` as its Citty default leaf. Prefer the public form `altertable query --statement "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape.
 
 ## Cookbook
 
@@ -136,7 +141,7 @@ altertable
 6. Add unit test in `cli/tests/`; shell test in `tests/` if integration-worthy
 7. Flags on command `args` are picked up by `completion-spec.ts` — run completion tests after structural changes
 
-Minimal pattern (from `whoami.ts`):
+Minimal pattern (from `context.ts`):
 
 ```typescript
 import { defineAltertableCommand } from "@/lib/command-context.ts";
@@ -192,7 +197,7 @@ Example mock HTTP test pattern: `cli/tests/lakehouse.test.ts` sets `ALTERTABLE_M
 
 - Exit codes 0–10 stable (`errors.ts`)
 - `--json`: success stdout, error stderr JSON envelope
-- Dual-plane configure rules (one plane per invocation)
+- Dual-plane configure: one authentication mechanism per flag-based invocation; the interactive wizard may configure both planes in one session
 - HTTP log redaction in tests (`assert_http_log_auth_redacted` in `tests/utils.sh`)
 - `bin/altertable` launcher unchanged
 - No raw `console.log` in commands except `completion.ts`

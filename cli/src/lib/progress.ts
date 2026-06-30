@@ -1,9 +1,17 @@
-import { getCliContext } from "@/context.ts";
+import { isJsonOutput } from "@/context.ts";
+import {
+  terminalAccent,
+  terminalError,
+  terminalMuted,
+  terminalSuccess,
+} from "@/lib/terminal-style.ts";
 
 export type ProgressHandle = {
   done: (message?: string) => void;
   fail: (message?: string) => void;
 };
+
+export type ProgressStatus = "active" | "success" | "error";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SPINNER_INTERVAL_MS = 80;
@@ -14,7 +22,7 @@ const noopHandle: ProgressHandle = {
 };
 
 export function shouldShowProgress(): boolean {
-  if (getCliContext().json) {
+  if (isJsonOutput()) {
     return false;
   }
   if (process.stderr.isTTY !== true) {
@@ -25,11 +33,21 @@ export function shouldShowProgress(): boolean {
 
 export function formatUploadProgress(sentBytes: number, totalBytes: number): string {
   if (totalBytes <= 0) {
-    return `Uploading ${sentBytes} bytes`;
+    return terminalMuted(`Uploading ${sentBytes} bytes`);
   }
 
   const percent = Math.min(100, Math.round((sentBytes / totalBytes) * 100));
-  return `Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`;
+  return terminalMuted(`Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`);
+}
+
+export function formatProgressStatus(status: ProgressStatus, message: string): string {
+  if (status === "success") {
+    return `${terminalSuccess("✓")} ${message}`;
+  }
+  if (status === "error") {
+    return `${terminalError("✗")} ${message}`;
+  }
+  return terminalMuted(message);
 }
 
 export type UploadProgressReporter = {
@@ -76,9 +94,9 @@ export function startProgress(message: string): ProgressHandle {
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
   function writeFrame() {
-    const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0];
+    const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? "⠋";
     frameIndex += 1;
-    process.stderr.write(`\r${frame} ${label}`);
+    process.stderr.write(`\r${terminalAccent(frame)} ${formatProgressStatus("active", label)}`);
   }
 
   writeFrame();
@@ -92,7 +110,9 @@ export function startProgress(message: string): ProgressHandle {
     process.stderr.write(`\r${" ".repeat(label.length + 4)}\r`);
     if (finalMessage !== undefined && finalMessage.length > 0) {
       process.stderr.write(`${finalMessage}\n`);
+      return;
     }
+    process.stderr.write("\n");
   }
 
   return {

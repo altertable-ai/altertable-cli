@@ -4,8 +4,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
-import { runApiHttp } from "@/lib/api-http.ts";
+import { apiHttpOperationPlan } from "@/lib/api-http.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
 import { encodeManagementEndpoint } from "@/lib/management-transport.ts";
+import { runOperationPlan } from "@/lib/operation-effect.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 const PLACEHOLDER_VALUES: Record<string, string> = {
@@ -34,7 +37,7 @@ beforeEach(() => {
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
   process.env.ALTERTABLE_API_KEY = "atm_test";
-  setCliContext({ debug: false, json: true });
+  setCliContext({ debug: false, json: true, agent: false });
   refreshCliRuntimeContext(getCliRuntime().context);
 });
 
@@ -50,7 +53,7 @@ describe("openapi HTTP conformance", () => {
     expect(OPENAPI_OPERATIONS.length).toBe(21);
   });
 
-  test("every operation is reachable via runApiHttp", async () => {
+  test("every operation is reachable via apiHttpOperationPlan", async () => {
     const mocks = OPENAPI_OPERATIONS.map((operation) => {
       const endpoint = substituteOpenapiPath(operation.path);
       const encodedPath = encodeManagementEndpoint(endpoint);
@@ -62,6 +65,15 @@ describe("openapi HTTP conformance", () => {
     });
     writeFileSync(mockFile, JSON.stringify(mocks), "utf8");
 
+    const runtime = getCliRuntime();
+    const context: OperationContext = {
+      args: {},
+      rawArgs: [],
+      runtime,
+      sink: runtime.output,
+      execution: createExecutionContext(runtime),
+    };
+
     for (const operation of OPENAPI_OPERATIONS) {
       const endpoint = substituteOpenapiPath(operation.path);
       const bodyFields =
@@ -69,11 +81,17 @@ describe("openapi HTTP conformance", () => {
           ? { fields: ["label=default"] }
           : {};
 
-      await runApiHttp({
-        method: operation.method,
-        endpoint,
-        ...bodyFields,
-      });
+      await runOperationPlan(
+        apiHttpOperationPlan(
+          {
+            method: operation.method,
+            endpoint,
+            ...bodyFields,
+          },
+          context,
+        ),
+        context,
+      );
     }
   });
 });

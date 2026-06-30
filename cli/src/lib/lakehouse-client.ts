@@ -1,4 +1,4 @@
-import { getCliContext } from "@/context.ts";
+import { isJsonOutput } from "@/context.ts";
 import { writeLakehouseCommandOutput, type LakehouseOutputOptions } from "@/lib/command-output.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import { CliError } from "@/lib/errors.ts";
@@ -10,21 +10,15 @@ import {
   renderQueryMarkdown,
   type QueryDisplayOptions,
 } from "@/lib/query-format.ts";
-import { writePagedOutput, type PagerOptions } from "@/lib/pager.ts";
+import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/pager.ts";
 
 export {
-  lakehouseAppend,
-  lakehouseAutocomplete,
-  lakehouseCancel,
-  lakehouseGetQuery,
-  lakehouseGetTask,
-  lakehouseQuery,
-  lakehouseQueryAll,
-  lakehouseQueryStream,
-  lakehouseUpload,
-  lakehouseValidate,
-  type LakehouseAppendOptions,
-  type LakehouseAutocompleteOptions,
+  buildLakehouseAppendRequest,
+  buildLakehouseQueryPayload,
+  createLakehouseUploadRequest,
+  type LakehouseAppendRequestInput,
+  type LakehouseUploadRequestInput,
+  type LakehouseUploadRequestScope,
 } from "@/lib/lakehouse-transport.ts";
 
 export {
@@ -39,15 +33,29 @@ export {
 export { getQueryColumnNames } from "@/lib/query-format.ts";
 export type { QueryDisplayOptions } from "@/lib/query-format.ts";
 
-export type QueryOutputFormat = "json" | "table" | "csv" | "markdown";
+export type QueryResultFormat = "human" | "json" | "csv" | "markdown";
+export type ManagementOutputFormat = "json" | "table" | "csv" | "markdown";
 
-const QUERY_OUTPUT_FORMATS = new Set<QueryOutputFormat>(["json", "table", "csv", "markdown"]);
+const QUERY_RESULT_FORMATS = new Set<QueryResultFormat>(["human", "json", "csv", "markdown"]);
+const MANAGEMENT_OUTPUT_FORMATS = new Set<ManagementOutputFormat>([
+  "json",
+  "table",
+  "csv",
+  "markdown",
+]);
 
-export function parseQueryFormat(format: string): QueryOutputFormat {
-  if (!QUERY_OUTPUT_FORMATS.has(format as QueryOutputFormat)) {
+export function parseQueryResultFormat(format: string): QueryResultFormat {
+  if (!QUERY_RESULT_FORMATS.has(format as QueryResultFormat)) {
+    throw new CliError(`Unsupported format: ${format}. Use human, json, csv, or markdown.`);
+  }
+  return format as QueryResultFormat;
+}
+
+export function parseManagementOutputFormat(format: string): ManagementOutputFormat {
+  if (!MANAGEMENT_OUTPUT_FORMATS.has(format as ManagementOutputFormat)) {
     throw new CliError(`Unsupported format: ${format}. Use json, table, csv, or markdown.`);
   }
-  return format as QueryOutputFormat;
+  return format as ManagementOutputFormat;
 }
 
 export function renderQueryTable(
@@ -93,29 +101,19 @@ export function renderQueryJson(
   return JSON.stringify(result, null, 2);
 }
 
-export function formatAutocompleteHumanOutput(parsed: unknown): string {
-  const body = parsed as {
-    suggestions?: Array<{ suggestion?: string }>;
-  };
-  if (!Array.isArray(body.suggestions)) {
-    return JSON.stringify(parsed);
-  }
-  return body.suggestions
-    .map((entry) => entry.suggestion ?? "")
-    .filter((suggestion) => suggestion.length > 0)
-    .join("\n");
-}
-
-export function writeLakehouseOutput(body: string, options?: LakehouseOutputOptions): void {
-  writeLakehouseCommandOutput(body, options);
+export async function writeLakehouseOutput(
+  body: string,
+  options?: LakehouseOutputOptions,
+): Promise<void> {
+  await writeLakehouseCommandOutput(body, options);
 }
 
 export function renderQueryOutputText(
   result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
-  format: QueryOutputFormat,
+  format: QueryResultFormat,
   displayOptions?: QueryDisplayOptions,
 ): string {
-  if (getCliContext().json || format === "json") {
+  if (isJsonOutput() || format === "json") {
     return renderQueryJson(result);
   }
   if (format === "csv") {
@@ -128,18 +126,40 @@ export function renderQueryOutputText(
   return renderQueryHumanOutput(result, displayOptions ?? defaultDisplayOptions());
 }
 
+export function renderManagementTabularOutput(
+  result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
+  format: ManagementOutputFormat,
+): string {
+  if (format === "json") {
+    return renderQueryJson(result);
+  }
+  if (format === "csv") {
+    return renderQueryCsv(result);
+  }
+  if (format === "markdown") {
+    const columnNames = getQueryColumnNames(result);
+    return renderQueryMarkdown(result, columnNames, defaultDisplayOptions());
+  }
+  return renderQueryHumanOutput(result, { ...defaultDisplayOptions(), layout: "table" });
+}
+
 export async function writeQueryOutput(
   result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
-  format: QueryOutputFormat,
+  format: QueryResultFormat,
   displayOptions?: QueryDisplayOptions,
   pagerOptions?: PagerOptions,
   sink: OutputSink = getOutputSink(),
 ): Promise<void> {
   const outputText = renderQueryOutputText(result, format, displayOptions);
-  const usePager = format === "table" && !sink.json;
+  const usePager = format === "human" && !sink.json;
 
   if (usePager) {
-    await writePagedOutput(outputText, pagerOptions ?? {}, sink);
+    await writePagedOutput(outputText, pagerOptions ?? resolvePagerOptions(), sink);
+    return;
+  }
+
+  if (format === "json" || sink.json) {
+    sink.writeJson(JSON.parse(outputText));
     return;
   }
 

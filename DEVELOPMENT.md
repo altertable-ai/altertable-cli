@@ -35,7 +35,18 @@ bun run pack:check             # ensures dist/ is the only packed file
 
 ## Compile native binaries
 
-Release and CI compile standalone executables (no Bun runtime required on the target machine):
+Release and CI compile standalone executables (no Bun runtime required on the target machine).
+
+The root `Makefile` is the easiest path. `make` (default target) detects the host OS/architecture and compiles the matching binary to `dist/altertable-<os>-<arch>`:
+
+```bash
+make                           # native binary for this host, e.g. dist/altertable-darwin-arm64
+make cross                     # cross-compile all four released targets
+make clean                     # remove dist/ and cli/dist/
+make help                      # list targets
+```
+
+To invoke Bun directly instead:
 
 ```bash
 cd cli
@@ -100,12 +111,12 @@ See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented
 
 ## Tests
 
-Offline tests (configure, management, whoami, catalogs):
+Offline tests (configure, management, context, catalogs):
 
 ```bash
 ./tests/configure_test.sh
 ./tests/management_test.sh
-./tests/whoami_test.sh
+./tests/context_test.sh
 ./tests/catalogs_test.sh
 ./tests/scripting_test.sh
 ./tests/profile_test.sh
@@ -135,12 +146,10 @@ cd cli && bun test
 
 When bumping the `specs/` submodule, extend the mapped tests before merge.
 
-| Spec requirement | CLI surface | Unit tests | Shell/integration |
-|------------------|-------------|------------|-------------------|
-| POST /query (streamed) | `query run` via `lakehouseQueryAll` | `lakehouse.test.ts` stream tests | `integration_test.sh` |
-| POST /query (buffered json) | `query run --format json` | `lakehouse.test.ts` | `integration_test.sh` |
-| GET/DELETE /query/{id} | `query show`, `query cancel` | `lakehouse.test.ts` | `integration_test.sh` |
-| POST /validate | `validate` | `lakehouse.test.ts` | `integration_test.sh` |
-| POST /append + GET /tasks | `append`, `append task` | `lakehouse.test.ts` | `integration_test.sh` |
-| POST /upload | `upload` | `lakehouse.test.ts` | `integration_test.sh` |
-| POST /autocomplete | `autocomplete` | `lakehouse.test.ts` | — |
+| Spec requirement            | CLI surface                         | Unit tests                       | Shell/integration     |
+| --------------------------- | ----------------------------------- | -------------------------------- | --------------------- |
+| POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration_test.sh` |
+| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration_test.sh` |
+| GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration_test.sh` |
+| POST /append + GET /tasks   | `append`, `append task`             | `lakehouse.test.ts`              | `integration_test.sh` |
+| POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration_test.sh` |

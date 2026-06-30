@@ -62,4 +62,32 @@ describe("auth", () => {
     expect(getLakehouseAuthHeader()).toBe(`Authorization: Basic ${lakehouseToken}`);
     expect(getManagementAuthHeader()).toBe("Authorization: Bearer atm_test");
   });
+
+  test("resolves lakehouse username/password from environment variables", () => {
+    process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "env-user";
+    process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "env-pass";
+
+    const lakehouseToken = Buffer.from("env-user:env-pass").toString("base64");
+    expect(getLakehouseAuthHeader()).toBe(`Authorization: Basic ${lakehouseToken}`);
+  });
+
+  test("prefers environment lakehouse credentials over stored credentials", () => {
+    configSet("user", "alice");
+    secretSet("lakehouse/password", "lakehouse-secret");
+    process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "env-user";
+    process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "env-pass";
+
+    const lakehouseToken = Buffer.from("env-user:env-pass").toString("base64");
+    expect(getLakehouseAuthHeader()).toBe(`Authorization: Basic ${lakehouseToken}`);
+  });
+
+  test("prefers environment Basic token over username/password credentials", () => {
+    process.env.ALTERTABLE_BASIC_AUTH_TOKEN = "env-basic-token";
+    process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "env-user";
+    process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "env-pass";
+    configSet("user", "alice");
+    secretSet("lakehouse/password", "lakehouse-secret");
+
+    expect(getLakehouseAuthHeader()).toBe("Authorization: Basic env-basic-token");
+  });
 });

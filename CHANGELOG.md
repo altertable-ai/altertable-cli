@@ -13,9 +13,7 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 
 #### Lakehouse (data plane)
 
-- `query` — run SQL with adaptive table/expanded layout, column selection, max column width, pager, and output formats (`table`, `csv`, `json`, `markdown`)
-- `validate` — dry-run SQL validation
-- `autocomplete` — statement completion hints
+- `query` — run SQL with human layout (`--layout auto|table|line`), serialized output (`--format human|json|csv|markdown`), column selection, max width, and pager controls
 - `append` — insert rows (async or `--sync`)
 - `upload` — bulk file ingest with streaming upload support
 - `query show` and `query cancel` — inspect and cancel running queries
@@ -23,7 +21,7 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 
 #### Management (control plane)
 
-- `whoami` — show authenticated user and environment
+- `context` — show active profile, environment, and authenticated identity
 - `catalogs` — list and create catalogs
 - `api` — HTTP invoker for the management REST API (`api <METHOD> /path`, bare paths default to `GET`, parameters infer `POST`, `-X/--method` overrides the method, `-f/--raw-field` for string parameters, `-F/--field` for typed parameters)
 - `api routes` — list operations from the bundled OpenAPI spec; `api routes <operationId>` shows one route with path parameters
@@ -32,14 +30,15 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 #### Configuration and authentication
 
 - Dual-plane auth: management API key (Bearer) and lakehouse credentials (HTTP Basic)
-- `configure` — store credentials, endpoint overrides, and display defaults
+- `configure` — interactive wizard or flag-based credential setup, with optional verification
 - Named profiles with `profile use`, `profile list`, `profile show`, and `profile delete`
 - Environment variable overrides for credentials and endpoints
 
 #### Developer experience
 
 - Shell completion for bash, zsh, and fish (commands, subcommands, and leaf-command flags)
-- Global `--json` with stable exit codes and structured error envelopes for scripting
+- Global `--json` and `--agent` presets for structured output and scripting
+- Stable exit codes and structured error envelopes
 - `--debug` with verbose HTTP logging
-- Configurable connect and read timeouts (`--connect-timeout`, `--read-timeout`, per-command `--timeout`)
+- Configurable connect and read timeouts (`--connect-timeout`, `--read-timeout`, per-command `--read-timeout`)
 - Self-contained release binaries for macOS (arm64, x64) and Linux (x64, arm64), plus a Bun JS bundle

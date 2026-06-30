@@ -1,10 +1,7 @@
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import {
   configDir,
   configFile,
-  configGet,
   configSet,
   configUnset,
   credentialsFile,
@@ -19,9 +16,21 @@ import {
   profilesDir,
 } from "@/lib/profile.ts";
 import { getCliContext, setCliContext } from "@/context.ts";
-import { secretDelete, secretExists, secretSet, secretStoreDisplay } from "@/lib/secrets.ts";
+import { secretDelete, secretSet, secretStoreDisplay } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import {
+  buildConfigureShowData,
+  configureCredentialStatus,
+  formatConfigureAuthenticationLines,
+  formatConfigureEnvOverrideLines,
+  formatConfigureSetupHints,
+} from "@/lib/configure-credential-status.ts";
+import {
+  formatTerminalLabelValue,
+  formatTerminalSection,
+  terminalMetadata,
+} from "@/lib/terminal-style.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";
@@ -40,9 +49,12 @@ export type ConfigureOptions = {
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
+  verify?: boolean;
+  /** Secrets collected via the interactive wizard (not CLI flags). */
+  interactive?: boolean;
 };
 
-async function withProfileContext<T>(
+export async function withConfigureProfileContext<T>(
   profileName: string | undefined,
   run: () => Promise<T> | T,
 ): Promise<T> {
@@ -77,113 +89,11 @@ export function configureClearAll(): void {
   configUnset("management_api_base");
 }
 
-async function readStdinLine(): Promise<string> {
-  return await new Promise((resolve) => {
-    let buffer = "";
-    function onData(chunk: Buffer): void {
-      buffer += chunk.toString("utf8");
-      if (buffer.includes("\n")) {
-        input.off("data", onData);
-        resolve(buffer.split("\n")[0] ?? "");
-      }
-    }
-    input.on("data", onData);
-    input.resume();
-  });
-}
-
-async function readInteractiveLine(prompt: string): Promise<string> {
-  if (!input.isTTY) {
-    process.stderr.write(prompt);
-    return (await readStdinLine()).trim();
-  }
-  const readline = createInterface({ input, output });
-  const answer = (await readline.question(prompt)).trim();
-  readline.close();
-  return answer;
-}
-
-async function readHiddenPassword(prompt: string): Promise<string> {
-  if (!input.isTTY) {
-    return await readStdinLine();
-  }
-
-  output.write(prompt);
-  input.setRawMode?.(true);
-  input.resume();
-  return await new Promise((resolve) => {
-    let password = "";
-    function onData(char: Buffer): void {
-      const value = char.toString("utf8");
-      if (value === "\n" || value === "\r" || value === "\u0004") {
-        input.setRawMode?.(false);
-        input.pause();
-        input.removeListener("data", onData);
-        output.write("\n");
-        resolve(password);
-        return;
-      }
-      if (value === "\u0003") {
-        throw new CliError("Interrupted.");
-      }
-      if (value === "\u007f" || value === "\b") {
-        password = password.slice(0, -1);
-        return;
-      }
-      password += value;
-    }
-    input.on("data", onData);
-  });
-}
-
-async function configureRunInteractive(sink: OutputSink): Promise<void> {
-  const currentUser = configGet("user");
-
-  if (!input.isTTY) {
-    const lines = (await Bun.stdin.text())
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-    const user = lines[0] ?? currentUser;
-    const password = lines[1] ?? "";
-    if (!user) {
-      throw new CliError("Username is required.");
-    }
-    if (!password) {
-      throw new CliError("Password is required.");
-    }
-    configureClearLakehouseCredentials();
-    configSet("user", user);
-    secretSet("lakehouse/password", password);
-    sink.writeMetadata([`Saved lakehouse credentials for user ${user}.`]);
-    return;
-  }
-
-  const promptUser = currentUser ? `Lakehouse username [${currentUser}]: ` : "Lakehouse username: ";
-  let user = await readInteractiveLine(promptUser);
-  if (!user) {
-    user = currentUser;
-  }
-
-  const password = await readHiddenPassword("Lakehouse password (input hidden): ");
-  if (!user) {
-    throw new CliError("Username is required.");
-  }
-  if (!password) {
-    throw new CliError("Password is required.");
-  }
-
-  configureClearLakehouseCredentials();
-  configSet("user", user);
-  secretSet("lakehouse/password", password);
-  sink.writeMetadata([`Saved lakehouse credentials for user ${user}.`]);
-}
-
 export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),
 ): Promise<void> {
-  return withProfileContext(options.profile, async () => {
+  return withConfigureProfileContext(options.profile, async () => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -193,10 +103,11 @@ export async function configureRunSet(
     const controlPlaneUrl = options.controlPlaneUrl ?? "";
     const allowInsecureHttp = options.allowInsecureHttp ?? false;
 
-    const passwordFromArgv = Boolean(options.password) && !options.passwordStdin;
-    const apiKeyFromArgv = Boolean(options.apiKey) && !options.apiKeyStdin;
+    const passwordFromArgv =
+      Boolean(options.password) && !options.passwordStdin && !options.interactive;
+    const apiKeyFromArgv = Boolean(options.apiKey) && !options.apiKeyStdin && !options.interactive;
     if (passwordFromArgv || apiKeyFromArgv) {
-      sink.writeMetadata([ARGV_SECRET_WARNING]);
+      sink.writeMetadata([terminalMetadata(ARGV_SECRET_WARNING)]);
     }
 
     const hasAnyInput =
@@ -211,8 +122,9 @@ export async function configureRunSet(
       controlPlaneUrl;
 
     if (!hasAnyInput) {
-      await configureRunInteractive(sink);
-      return;
+      throw new CliError(
+        "Nothing to configure. Use --user/--password, --basic-token, or --api-key --env <name>.",
+      );
     }
 
     if (options.passwordStdin) {
@@ -284,11 +196,11 @@ export async function configureRunSet(
     }
 
     if (hasApiKey) {
-      sink.writeMetadata([`Saved management API key for environment ${env}.`]);
+      sink.writeMetadata([terminalMetadata(`Saved management API key for environment ${env}.`)]);
     } else if (hasToken) {
-      sink.writeMetadata(["Saved lakehouse Basic token."]);
+      sink.writeMetadata([terminalMetadata("Saved lakehouse Basic token.")]);
     } else if (hasLakehouse) {
-      sink.writeMetadata([`Saved lakehouse credentials for user ${user}.`]);
+      sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
     }
   });
 }
@@ -297,74 +209,45 @@ export function configureRunShowForProfile(profileName: string): string {
   return configureRunShowInternal(profileName);
 }
 
+export function buildConfigureShowDataForProfile(profileOverride?: string) {
+  return withProfileContextSync(profileOverride ?? getCliContext().profile, () =>
+    buildConfigureShowData(profileOverride),
+  );
+}
+
 function configureRunShowInternal(profileOverride?: string): string {
   const activeProfile = getActiveProfileName();
   const displayProfile = profileOverride ?? getCliContext().profile ?? activeProfile;
+  const labelWidth = 17;
+  const indent = "  ";
 
   const lines = [
-    "Altertable CLI configuration",
-    `  Config dir:    ${configDir()}`,
-    `  Active profile: ${displayProfile}`,
-    `  Secret store:  ${secretStoreDisplay()}`,
+    formatTerminalLabelValue("Config dir:", configDir(), { indent, labelWidth }),
+    formatTerminalLabelValue("Active profile:", displayProfile, { indent, labelWidth }),
+    formatTerminalLabelValue("Secret store:", secretStoreDisplay(), { indent, labelWidth }),
   ];
 
   return withProfileContextSync(profileOverride ?? getCliContext().profile, () => {
     lines.push(
-      `  Data plane:    ${resolveApiBase()}`,
-      `  Control plane: ${resolveManagementApiBase()}`,
+      formatTerminalLabelValue("Data plane:", resolveApiBase(), {
+        indent,
+        labelWidth,
+        linkifyUrls: true,
+      }),
+      formatTerminalLabelValue("Control plane:", resolveManagementApiBase(), {
+        indent,
+        labelWidth,
+        linkifyUrls: true,
+      }),
       "",
     );
 
-    let hasManagement = false;
-    let hasLakehouse = false;
+    const credentialStatus = configureCredentialStatus();
+    lines.push(...formatConfigureAuthenticationLines({ indent, labelWidth }));
+    lines.push(...formatConfigureSetupHints(credentialStatus));
+    lines.push(...formatConfigureEnvOverrideLines(indent, labelWidth));
 
-    if (secretExists("api-key")) {
-      hasManagement = true;
-      lines.push(
-        "  Authentication: management API key",
-        `    environment:  ${configGet("api_key_env")}`,
-        "    api key:      set",
-      );
-    }
-
-    if (secretExists("lakehouse/basic-token")) {
-      hasLakehouse = true;
-      lines.push("  Authentication: lakehouse Basic token", "    basic token:  set");
-    } else if (secretExists("lakehouse/password")) {
-      hasLakehouse = true;
-      lines.push(
-        "  Authentication: lakehouse username/password",
-        `    user:         ${configGet("user")}`,
-        "    password:     set",
-      );
-    }
-
-    if (!hasManagement && !hasLakehouse) {
-      lines.push("  No credentials configured. Run: altertable configure");
-      lines.push(
-        "  Hint: run 'altertable configure --api-key atm_xxx --env <name>' for management commands, then 'altertable configure --user <u> --password <p>' for lakehouse queries.",
-      );
-    } else if (hasManagement && !hasLakehouse) {
-      lines.push(
-        "  Hint: run 'altertable configure --user <u> --password <p>' for lakehouse query, upload, and append commands.",
-      );
-    } else if (hasLakehouse && !hasManagement) {
-      lines.push(
-        "  Hint: run 'altertable configure --api-key atm_xxx --env <name>' for whoami, catalogs, and other management commands.",
-      );
-    }
-
-    const storedApiKeyEnv = configGet("api_key_env");
-    const envOverride = process.env.ALTERTABLE_ENV;
-    if (envOverride && envOverride !== storedApiKeyEnv) {
-      const storedLabel = storedApiKeyEnv || "none";
-      lines.push(`  Environment override: ALTERTABLE_ENV=${envOverride} (stored: ${storedLabel})`);
-    }
-    if (process.env.ALTERTABLE_API_KEY) {
-      lines.push("  API key override: ALTERTABLE_API_KEY is set via environment");
-    }
-
-    return lines.join("\n");
+    return formatTerminalSection(lines);
   });
 }
 
@@ -405,5 +288,5 @@ export function configureRunClear(sink: OutputSink = getOutputSink()): void {
     // already removed
   }
   getCliRuntime().session = undefined;
-  sink.writeMetadata(["Cleared all altertable configuration."]);
+  sink.writeMetadata([terminalMetadata("Cleared all altertable configuration.")]);
 }

@@ -4,12 +4,22 @@ import { getCliRuntime, isCliRuntimeReady, refreshCliRuntimeContext } from "@/li
 export type CliContext = {
   debug: boolean;
   json: boolean;
+  agent: boolean;
+  noColor?: boolean;
   profile?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
 };
 
-const PRE_RUNTIME_DEFAULT_CONTEXT: CliContext = { debug: false, json: false };
+const PRE_RUNTIME_DEFAULT_CONTEXT: CliContext = { debug: false, json: false, agent: false };
+
+export function isJsonOutput(context: CliContext = getCliContext()): boolean {
+  return context.json || context.agent;
+}
+
+export function isAgentMode(context: CliContext = getCliContext()): boolean {
+  return context.agent;
+}
 
 let preRuntimeContext: CliContext = PRE_RUNTIME_DEFAULT_CONTEXT;
 

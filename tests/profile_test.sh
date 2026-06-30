@@ -26,13 +26,13 @@ pass "profile list shows configured profiles"
 
 "${CLI}" profile use staging >/dev/null 2>&1
 setup_mock_http "${WHOAMI_STAGING}"
-OUT="$("${CLI}" whoami 2>/dev/null)"
+OUT="$("${CLI}" context 2>/dev/null)"
 teardown_mock_http
 echo "${OUT}" | grep -Fq 'Staging' || fail "profile use staging: expected Staging user, got '${OUT}'"
-pass "profile use staging switches whoami identity"
+pass "profile use staging switches context identity"
 
 setup_mock_http "${WHOAMI_PROD}"
-OUT="$("${CLI}" --profile production whoami 2>/dev/null)"
+OUT="$("${CLI}" --profile production context 2>/dev/null)"
 teardown_mock_http
 echo "${OUT}" | grep -Fq 'Production' || fail "--profile production: expected Production user, got '${OUT}'"
 pass "--profile flag overrides active profile for one command"

@@ -33,6 +33,7 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@clack/prompts": "1.6.0",
     "citty": "0.2.2"
   },
   "devDependencies": {

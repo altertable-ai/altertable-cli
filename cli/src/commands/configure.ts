@@ -1,11 +1,168 @@
-import { configureRunClear, configureRunSet, configureRunShow } from "@/lib/configure.ts";
+import {
+  configureRunClear,
+  configureRunSet,
+  configureRunShow,
+  buildConfigureShowDataForProfile,
+  type ConfigureOptions,
+} from "@/lib/configure.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
+import {
+  configuredPlanesFromOptions,
+  configureRunVerifyIfRequested,
+  type ConfigureWizardScope,
+  hasConfigureCredentialFlags,
+  runConfigureWizard,
+} from "@/lib/configure-wizard.ts";
+import type { OutputSink } from "@/lib/runtime.ts";
 
-export const configureCommand = defineAltertableCommand({
+type ConfigureCommandArgs = {
+  user?: string;
+  password?: string;
+  "basic-token"?: string;
+  "api-key"?: string;
+  env?: string;
+  "password-stdin"?: boolean;
+  "api-key-stdin"?: boolean;
+  show?: boolean;
+  clear?: boolean;
+  profile?: string;
+  "data-plane-url"?: string;
+  "control-plane-url"?: string;
+  "allow-insecure-http"?: boolean;
+  verify?: boolean;
+  "no-verify"?: boolean;
+};
+
+const configurePlaneArgs = {
+  profile: {
+    type: "string",
+    description: "Profile to configure (default: active profile)",
+  },
+  verify: { type: "boolean", description: "Verify credentials after saving" },
+  "no-verify": { type: "boolean", description: "Skip verification" },
+  "allow-insecure-http": {
+    type: "boolean",
+    description: "Allow http:// URLs other than localhost (not recommended)",
+  },
+} as const;
+
+function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
+  return {
+    user: args.user,
+    password: args.password,
+    basicToken: args["basic-token"],
+    apiKey: args["api-key"],
+    env: args.env,
+    passwordStdin: args["password-stdin"],
+    apiKeyStdin: args["api-key-stdin"],
+    dataPlaneUrl: args["data-plane-url"],
+    controlPlaneUrl: args["control-plane-url"],
+    profile: args.profile ? String(args.profile) : undefined,
+    allowInsecureHttp: args["allow-insecure-http"],
+    verify: args.verify,
+  };
+}
+
+async function runConfigureFromFlags(options: ConfigureOptions, sink: OutputSink): Promise<void> {
+  await configureRunSet(options, sink);
+
+  const configuredPlanes = configuredPlanesFromOptions(options);
+  await configureRunVerifyIfRequested({
+    verify: options.verify,
+    configuredPlanes,
+    sink,
+  });
+}
+
+async function runConfigureWizardFromArgs(
+  scope: ConfigureWizardScope,
+  args: ConfigureCommandArgs,
+  sink: OutputSink,
+): Promise<void> {
+  const options = buildConfigureOptions(args);
+  await runConfigureWizard({
+    scope,
+    profile: options.profile,
+    verify: args.verify,
+    noVerify: args["no-verify"],
+    allowInsecureHttp: options.allowInsecureHttp,
+    sink,
+  });
+}
+
+async function runConfigureDispatch(args: ConfigureCommandArgs, sink: OutputSink): Promise<void> {
+  if (args.show) {
+    const configuration = buildConfigureShowDataForProfile();
+    await writeCommandOutput(
+      {
+        kind: "normalized",
+        data: { configuration },
+        humanText: configureRunShow(),
+      },
+      sink,
+    );
+    return;
+  }
+  if (args.clear) {
+    configureRunClear(sink);
+    return;
+  }
+
+  const options = buildConfigureOptions(args);
+
+  if (hasConfigureCredentialFlags(options)) {
+    await runConfigureFromFlags(options, sink);
+    return;
+  }
+
+  await runConfigureWizardFromArgs("both", args, sink);
+}
+
+function createConfigurePlaneCommand(
+  scope: Exclude<ConfigureWizardScope, "both">,
+  description: string,
+) {
+  return defineLocalCommand({
+    id: `configure.${scope}`,
+    mutates: true,
+    localConfig: true,
+    output: "none",
+    meta: { name: scope, description },
+    args: configurePlaneArgs,
+    parse({ args }) {
+      return args;
+    },
+    async local(args, { sink }) {
+      await runConfigureWizardFromArgs(scope, args, sink);
+    },
+  });
+}
+
+const configureManagementCommand = createConfigurePlaneCommand(
+  "management",
+  "Interactively configure management API credentials.",
+);
+
+const configureLakehouseCommand = createConfigurePlaneCommand(
+  "lakehouse",
+  "Interactively configure lakehouse credentials.",
+);
+
+export const configureCommand = defineLocalCommand({
+  id: "configure",
+  mutates: true,
+  localConfig: true,
+  output: "none",
   meta: {
     name: "configure",
     description: "Configure and securely store credentials and settings.",
+    examples: [
+      "altertable configure",
+      "altertable configure --show",
+      "altertable configure --api-key atm_xxxx --env production",
+      "altertable configure management",
+    ],
   },
   args: {
     user: { type: "string", description: "Lakehouse username (global)" },
@@ -41,32 +198,24 @@ export const configureCommand = defineAltertableCommand({
       type: "boolean",
       description: "Allow http:// URLs other than localhost (not recommended)",
     },
+    verify: {
+      type: "boolean",
+      description: "Verify credentials after saving (flag-based configure; opt-in)",
+    },
+    "no-verify": {
+      type: "boolean",
+      description:
+        "Skip verification in the interactive wizard (ignored with flag-based configure)",
+    },
   },
-  async run({ args, sink }) {
-    if (args.show) {
-      writeCommandOutput({ kind: "human", text: configureRunShow() }, sink);
-      return;
-    }
-    if (args.clear) {
-      configureRunClear(sink);
-      return;
-    }
-
-    await configureRunSet(
-      {
-        user: args.user,
-        password: args.password,
-        basicToken: args["basic-token"],
-        apiKey: args["api-key"],
-        env: args.env,
-        passwordStdin: args["password-stdin"],
-        apiKeyStdin: args["api-key-stdin"],
-        dataPlaneUrl: args["data-plane-url"],
-        controlPlaneUrl: args["control-plane-url"],
-        profile: args.profile ? String(args.profile) : undefined,
-        allowInsecureHttp: args["allow-insecure-http"],
-      },
-      sink,
-    );
+  subCommands: {
+    management: configureManagementCommand,
+    lakehouse: configureLakehouseCommand,
+  },
+  parse({ args }) {
+    return args;
+  },
+  async local(args, { sink }) {
+    await runConfigureDispatch(args, sink);
   },
 });

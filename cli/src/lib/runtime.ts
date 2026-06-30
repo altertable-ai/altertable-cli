@@ -1,15 +1,15 @@
 import type { CliContext } from "@/context.ts";
-import { getBootstrapCliContext } from "@/context.ts";
+import { getBootstrapCliContext, isJsonOutput } from "@/context.ts";
 import { existsSync } from "node:fs";
 import { writeLakehouseCommandOutput } from "@/lib/command-output.ts";
 import { createCliSession, type CliSession } from "@/lib/cli-session.ts";
 import { configFile } from "@/lib/config.ts";
 import { profilesDir } from "@/lib/profile.ts";
+import { applyTerminalColorFromContext } from "@/lib/terminal-style.ts";
 
 export type OutputSink = {
   json: boolean;
   debug: boolean;
-  writeStdout(line: string): void;
   writeStderr(line: string): void;
   writeJson(data: unknown): void;
   writeRaw(body: string): void;
@@ -31,11 +31,8 @@ export function isCliRuntimeReady(): boolean {
 
 function createDefaultOutputSink(context: CliContext): OutputSink {
   return {
-    json: context.json,
+    json: isJsonOutput(context),
     debug: context.debug,
-    writeStdout(line: string): void {
-      console.log(line);
-    },
     writeStderr(line: string): void {
       console.error(line);
     },
@@ -78,16 +75,25 @@ export function runWithCliRuntime<T>(runtime: CliRuntime, fn: () => T): T {
   const previous = cliRuntime;
   cliRuntime = runtime;
   try {
-    return fn();
-  } finally {
+    const result = fn();
+    if (result instanceof Promise) {
+      return result.finally(() => {
+        cliRuntime = previous;
+      }) as T;
+    }
     cliRuntime = previous;
+    return result;
+  } catch (error) {
+    cliRuntime = previous;
+    throw error;
   }
 }
 
 export function refreshCliRuntimeContext(context: CliContext): void {
+  applyTerminalColorFromContext(context);
   const runtime = getCliRuntime();
   runtime.context = context;
-  runtime.output.json = context.json;
+  runtime.output.json = isJsonOutput(context);
   runtime.output.debug = context.debug;
   if (existsSync(configFile()) || existsSync(profilesDir())) {
     runtime.session = createCliSession(context);
@@ -100,9 +106,9 @@ export function getOutputSink(): OutputSink {
   return getCliRuntime().output;
 }
 
-export function writeRawIfJsonElseHuman(
+export async function writeRawIfJsonElseHuman(
   rawBody: string,
   humanFormatter?: (parsed: unknown) => string,
-): void {
-  writeLakehouseCommandOutput(rawBody, { humanFormatter });
+): Promise<void> {
+  await writeLakehouseCommandOutput(rawBody, { humanFormatter });
 }
