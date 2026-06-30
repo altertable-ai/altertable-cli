@@ -1,9 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { runCommand } from "citty";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildMainCommand } from "@/cli.ts";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
@@ -29,12 +27,8 @@ import {
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
-import {
-  createCliRuntime,
-  getCliRuntime,
-  refreshCliRuntimeContext,
-  setCliRuntime,
-} from "@/lib/runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
@@ -331,21 +325,8 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const previousRuntime = getCliRuntime();
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-    runtime.output.writeJson = () => {};
-    runtime.output.writeRaw = () => {};
-    runtime.output.writeHuman = () => {};
-    setCliRuntime(runtime);
-
-    try {
-      await runCommand(buildMainCommand(), { rawArgs: ["query", "show", queryId] });
-      await runCommand(buildMainCommand(), {
-        rawArgs: ["query", "cancel", queryId, "--session-id", "session-1"],
-      });
-    } finally {
-      setCliRuntime(previousRuntime);
-    }
+    await runCommandWithTestRuntime(["query", "show", queryId]);
+    await runCommandWithTestRuntime(["query", "cancel", queryId, "--session-id", "session-1"]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("METHOD=GET");
@@ -430,6 +411,7 @@ describe("lakehouse request construction", () => {
       table: "users",
       mode: "overwrite",
       filePath: uploadFile,
+      fileSizeBytes: 15,
       contentType: "text/csv",
     });
     try {
@@ -456,6 +438,7 @@ describe("lakehouse request construction", () => {
       table: "users",
       mode: "overwrite",
       filePath: uploadFile,
+      fileSizeBytes: 15,
       contentType: "text/csv",
     });
     try {
@@ -476,6 +459,7 @@ describe("lakehouse request construction", () => {
       table: "users",
       mode: "overwrite",
       filePath: uploadFile,
+      fileSizeBytes: 15,
     });
     try {
       expect(uploadScope.request.contentType).toBeUndefined();
@@ -505,6 +489,7 @@ describe("lakehouse request construction", () => {
       table: "users",
       primaryKey: "id",
       filePath: uploadFile,
+      fileSizeBytes: 15,
       contentType: "text/csv",
     });
     try {
@@ -518,6 +503,91 @@ describe("lakehouse request construction", () => {
     expect(logContent).toContain("primary_key=id");
     expect(logContent).not.toContain("mode=upsert");
     expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
+  });
+
+  test("upload command validates file metadata without buffering the payload", async () => {
+    const uploadFile = join(testHome, "command-data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/upload",
+          method: "POST",
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+
+    await runCommandWithTestRuntime([
+      "upload",
+      "--catalog",
+      "memory",
+      "--schema",
+      "main",
+      "--table",
+      "users",
+      "--format",
+      "csv",
+      "--mode",
+      "overwrite",
+      "--file",
+      uploadFile,
+    ]);
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("URL=https://example.com/upload?");
+    expect(logContent).toContain("PAYLOAD=@blob");
+    expect(logContent).not.toContain("id,name");
+  });
+
+  test("upload command rejects missing files and directories", async () => {
+    const directoryPath = join(testHome, "upload-directory");
+    mkdirSync(directoryPath);
+
+    try {
+      await runCommandWithTestRuntime([
+        "upload",
+        "--catalog",
+        "memory",
+        "--schema",
+        "main",
+        "--table",
+        "users",
+        "--format",
+        "csv",
+        "--mode",
+        "overwrite",
+        "--file",
+        join(testHome, "missing.csv"),
+      ]);
+      throw new Error("expected missing file failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("File not found");
+    }
+
+    try {
+      await runCommandWithTestRuntime([
+        "upload",
+        "--catalog",
+        "memory",
+        "--schema",
+        "main",
+        "--table",
+        "users",
+        "--format",
+        "csv",
+        "--mode",
+        "overwrite",
+        "--file",
+        directoryPath,
+      ]);
+      throw new Error("expected directory failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("File not found");
+    }
   });
 
   test("cancel URL-encodes query id in path", async () => {

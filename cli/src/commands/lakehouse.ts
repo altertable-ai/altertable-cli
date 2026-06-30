@@ -1,4 +1,5 @@
 import type { ArgsDef } from "citty";
+import { statSync } from "node:fs";
 import { CliError } from "@/lib/errors.ts";
 import { booleanArg, enumArg, optionalStringArg, stringArg } from "@/lib/operation-codec.ts";
 import { httpEffect, progressPlan, scopedPlan } from "@/lib/operation-effect.ts";
@@ -31,6 +32,21 @@ import {
 
 const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;
 const UPLOAD_MODE_OPTIONS = ["create", "append", "overwrite"] as const;
+
+function getUploadFileSizeBytes(filePath: string): number {
+  try {
+    const fileStat = statSync(filePath);
+    if (!fileStat.isFile()) {
+      throw new CliError(`File not found: ${filePath}`);
+    }
+    return fileStat.size;
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw new CliError(`File not found: ${filePath}`);
+  }
+}
 
 const queryRunArgs = {
   statement: { type: "string", description: "SQL statement to run", required: true },
@@ -294,12 +310,7 @@ export const uploadCommand = defineOperationCommand({
   async parse({ args }) {
     const mode = enumArg(args, "mode", UPLOAD_MODE_OPTIONS);
     const filePath = stringArg(args, "file");
-
-    try {
-      await Bun.file(filePath).arrayBuffer();
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
+    const fileSizeBytes = getUploadFileSizeBytes(filePath);
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     return {
@@ -308,6 +319,7 @@ export const uploadCommand = defineOperationCommand({
       table: stringArg(args, "table"),
       mode,
       filePath,
+      fileSizeBytes,
       contentType: parseLakehouseFileContentType(optionalStringArg(args, "format")),
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
@@ -320,6 +332,7 @@ export const uploadCommand = defineOperationCommand({
         table: input.table,
         mode: input.mode,
         filePath: input.filePath,
+        fileSizeBytes: input.fileSizeBytes,
         contentType: input.contentType,
         httpOptions: input.httpOptions,
       });
@@ -372,12 +385,7 @@ export const upsertCommand = defineOperationCommand({
   },
   async parse({ args }) {
     const filePath = stringArg(args, "file");
-
-    try {
-      await Bun.file(filePath).arrayBuffer();
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
+    const fileSizeBytes = getUploadFileSizeBytes(filePath);
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     return {
@@ -386,6 +394,7 @@ export const upsertCommand = defineOperationCommand({
       table: stringArg(args, "table"),
       primaryKey: stringArg(args, "primary-key"),
       filePath,
+      fileSizeBytes,
       contentType: parseLakehouseFileContentType(optionalStringArg(args, "format")),
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
@@ -398,6 +407,7 @@ export const upsertCommand = defineOperationCommand({
         table: input.table,
         primaryKey: input.primaryKey,
         filePath: input.filePath,
+        fileSizeBytes: input.fileSizeBytes,
         contentType: input.contentType,
         httpOptions: input.httpOptions,
       });
