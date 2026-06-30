@@ -64,6 +64,11 @@ const queryRunArgs = {
   },
 } satisfies ArgsDef;
 
+const queryGroupArgs = {
+  ...queryRunArgs,
+  statement: { ...queryRunArgs.statement, required: false },
+} satisfies ArgsDef;
+
 const appendRunArgs = {
   catalog: { type: "string", description: "Catalog name", required: true },
   schema: { type: "string", description: "Schema name", required: true },
@@ -168,7 +173,7 @@ export const queryCommand = defineGroupCommand({
     ],
   },
   default: "run",
-  args: queryRunArgs,
+  args: queryGroupArgs,
   subCommands: {
     run: queryRunCommand,
     show: queryShowCommand,

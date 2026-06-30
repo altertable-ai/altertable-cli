@@ -1,7 +1,9 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { runCommand } from "citty";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { buildMainCommand } from "@/cli.ts";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
@@ -26,7 +28,12 @@ import {
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import {
+  createCliRuntime,
+  getCliRuntime,
+  refreshCliRuntimeContext,
+  setCliRuntime,
+} from "@/lib/runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
@@ -305,6 +312,47 @@ describe("query renderers", () => {
 });
 
 describe("lakehouse request construction", () => {
+  test("query subcommands dispatch without requiring --statement", async () => {
+    const queryId = "11111111-2222-3333-4444-555555555555";
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: `/query/${queryId}`,
+          method: "GET",
+          body: '{"uuid":"11111111-2222-3333-4444-555555555555"}',
+        },
+        {
+          urlPattern: `/query/${queryId}`,
+          method: "DELETE",
+          body: '{"cancelled":true}',
+        },
+      ]),
+    );
+
+    const previousRuntime = getCliRuntime();
+    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+    runtime.output.writeJson = () => {};
+    runtime.output.writeRaw = () => {};
+    runtime.output.writeHuman = () => {};
+    setCliRuntime(runtime);
+
+    try {
+      await runCommand(buildMainCommand(), { rawArgs: ["query", "show", queryId] });
+      await runCommand(buildMainCommand(), {
+        rawArgs: ["query", "cancel", queryId, "--session-id", "session-1"],
+      });
+    } finally {
+      setCliRuntime(previousRuntime);
+    }
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("METHOD=GET");
+    expect(logContent).toContain(`URL=https://example.com/query/${queryId}`);
+    expect(logContent).toContain("METHOD=DELETE");
+    expect(logContent).toContain(`URL=https://example.com/query/${queryId}?session_id=session-1`);
+  });
+
   test("append --sync sends sync=true query param", async () => {
     writeFileSync(
       mockFile,
