@@ -127,7 +127,7 @@ altertable
 └── completion
 ```
 
-`query` accepts `altertable query run --statement "…"` or the Citty default alias `altertable query --statement "…"` (same as `query run`).
+`query` exposes `run` as its Citty default leaf. Prefer the public form `altertable query --statement "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape.
 
 ## Cookbook
 

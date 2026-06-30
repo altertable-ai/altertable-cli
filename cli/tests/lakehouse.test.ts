@@ -1,7 +1,9 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { runCommand } from "citty";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { buildMainCommand } from "@/cli.ts";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
@@ -26,7 +28,12 @@ import {
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import {
+  createCliRuntime,
+  getCliRuntime,
+  refreshCliRuntimeContext,
+  runWithCliRuntime,
+} from "@/lib/runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
@@ -87,6 +94,67 @@ afterEach(() => {
   delete process.env.ALTERTABLE_API_BASE;
   delete process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
   delete process.env.ALTERTABLE_LAKEHOUSE_PASSWORD;
+});
+
+async function runCliCommand(rawArgs: string[]): Promise<{ stdout: string[]; stderr: string[] }> {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  runtime.output.writeHuman = (text) => {
+    stdout.push(text);
+  };
+  runtime.output.writeJson = (data) => {
+    stdout.push(JSON.stringify(data));
+  };
+  runtime.output.writeRaw = (body) => {
+    stdout.push(body);
+  };
+  runtime.output.writeStderr = (line) => {
+    stderr.push(line);
+  };
+  runtime.output.writeMetadata = (lines) => {
+    stderr.push(...lines);
+  };
+
+  await runWithCliRuntime(runtime, () => runCommand(buildMainCommand(), { rawArgs }));
+  return { stdout, stderr };
+}
+
+describe("query command default leaf", () => {
+  beforeEach(() => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/query",
+          method: "POST",
+          body: SAMPLE_NDJSON,
+        },
+      ]),
+    );
+  });
+
+  test("runs a query without spelling the run subcommand", async () => {
+    const { stdout } = await runCliCommand([
+      "query",
+      "--statement",
+      "SELECT 1",
+      "--format",
+      "json",
+    ]);
+
+    const output = JSON.parse(stdout.join(""));
+    expect(output.metadata.statement).toBe("SELECT 1");
+    expect(output.columns).toEqual(["id", "name"]);
+  });
+
+  test("keeps debug usable before and after the default query command", async () => {
+    await runCliCommand(["--debug", "query", "--statement", "SELECT 1", "--format", "json"]);
+    await runCliCommand(["query", "--debug", "--statement", "SELECT 1", "--format", "json"]);
+
+    const requestLog = readFileSync(logFile, "utf8");
+    expect(requestLog.match(/URL=https:\/\/example\.com\/query/g)).toHaveLength(2);
+  });
 });
 
 describe("parseLakehouseQueryResponse", () => {

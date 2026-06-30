@@ -86,7 +86,7 @@ const queryRunCommand = defineOperationCommand<QueryRunInput, LakehouseQueryResu
     name: "run",
     description: "Run a SQL statement.",
     examples: [
-      'altertable query run --statement "SELECT * FROM users LIMIT 10"',
+      'altertable query --statement "SELECT * FROM users LIMIT 10"',
       'altertable query --statement "SELECT 1" --format json',
     ],
   },

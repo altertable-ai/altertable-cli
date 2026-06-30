@@ -148,8 +148,8 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 
 | Spec requirement            | CLI surface                         | Unit tests                       | Shell/integration     |
 | --------------------------- | ----------------------------------- | -------------------------------- | --------------------- |
-| POST /query (streamed)      | `query run` via `lakehouseQueryAll` | `lakehouse.test.ts` stream tests | `integration_test.sh` |
-| POST /query (buffered json) | `query run --format json`           | `lakehouse.test.ts`              | `integration_test.sh` |
+| POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration_test.sh` |
+| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration_test.sh` |
 | GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration_test.sh` |
 | POST /append + GET /tasks   | `append`, `append task`             | `lakehouse.test.ts`              | `integration_test.sh` |
 | POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration_test.sh` |
