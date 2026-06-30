@@ -102,7 +102,7 @@ The CLI talks to two independent APIs with separate auth schemes:
 | Plane                    | Purpose                                 | Auth           |
 | ------------------------ | --------------------------------------- | -------------- |
 | **Management (control)** | `context`, `catalogs`                   | Bearer API key |
-| **Lakehouse (data)**     | `query`, `upload`, `append`             | HTTP Basic     |
+| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append`   | HTTP Basic     |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
@@ -283,7 +283,8 @@ query_pager=auto        # auto | always | never
 altertable append --catalog my_cat --schema public --table users --data '{"id": 1}'
 altertable append --catalog my_cat --schema public --table users --data '{"id": 2}' --sync
 
-altertable upload --catalog my_cat --schema public --table users --format csv --mode overwrite --file data.csv
+altertable upload --catalog my_cat --schema public --table users --mode overwrite --format csv --file data.csv
+altertable upsert --catalog my_cat --schema public --table users --primary-key id --format csv --file data.csv
 ```
 
 **Inspect async operations**
@@ -382,12 +383,13 @@ These flags apply to every command and must be placed before the subcommand:
 | `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
 | `--read-timeout <s>`    | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams)   |
 
-Per-request read timeout on `query` and `upload`:
+Per-request read timeout on `query`, `upload`, and `upsert`:
 
 ```bash
 altertable query --statement "SELECT ..." --read-timeout 180
 altertable --read-timeout 120 query --statement "SELECT ..."
-altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --format csv --mode overwrite --file large.csv
+altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --mode overwrite --format csv --file large.csv
+altertable --connect-timeout 10 upsert --catalog my_cat --schema public --table users --primary-key id --format csv --file large.csv
 ```
 
 Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited once connected.

@@ -337,7 +337,7 @@ export function formatConfigureSetupHints(status: ConfigureCredentialStatus): st
   if (status.hasManagement && !status.hasLakehouse) {
     return [
       terminalHighlightCommands(
-        `${indent}Hint: run 'altertable configure lakehouse' or 'altertable configure --user <u> --password <p>' for lakehouse query, upload, and append commands.`,
+        `${indent}Hint: run 'altertable configure lakehouse' or 'altertable configure --user <u> --password <p>' for lakehouse query, upload, upsert, and append commands.`,
       ),
     ];
   }
