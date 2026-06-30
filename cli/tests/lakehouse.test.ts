@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
 import { setCliContext } from "@/context.ts";
+import { normalizeDefaultSubcommandRawArgs } from "@/lib/default-subcommands.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
   buildLakehouseQueryPayload,
@@ -116,7 +117,10 @@ async function runCliCommand(rawArgs: string[]): Promise<{ stdout: string[]; std
     stderr.push(...lines);
   };
 
-  await runWithCliRuntime(runtime, () => runCommand(buildMainCommand(), { rawArgs }));
+  const command = buildMainCommand();
+  await runWithCliRuntime(runtime, () =>
+    runCommand(command, { rawArgs: normalizeDefaultSubcommandRawArgs(rawArgs, command) }),
+  );
   return { stdout, stderr };
 }
 
