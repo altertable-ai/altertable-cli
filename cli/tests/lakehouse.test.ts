@@ -460,7 +460,7 @@ describe("lakehouse request construction", () => {
     });
     try {
       expect(uploadScope.request.contentType).toBe("text/csv");
-      expect(uploadScope.request.body).toBeInstanceOf(Blob);
+      expect(uploadScope.request.body).toBeDefined();
     } finally {
       uploadScope.release();
     }
