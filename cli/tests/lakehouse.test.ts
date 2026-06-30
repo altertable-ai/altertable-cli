@@ -1,9 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { runCommand } from "citty";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildMainCommand } from "@/cli.ts";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
@@ -28,8 +26,8 @@ import {
   runOperationPlan,
 } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
-import { getCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
-import { createCliTestRuntime } from "@tests/cli-test-runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
@@ -69,12 +67,6 @@ function createOperationContext(): OperationContext {
     sink: runtime.output,
     execution: createExecutionContext(runtime),
   };
-}
-
-async function runCommandWithTestRuntime(rawArgs: string[]): Promise<void> {
-  await runWithCliRuntime(createCliTestRuntime(), () =>
-    runCommand(buildMainCommand(), { rawArgs }),
-  );
 }
 
 async function collectLakehouseQueryStream(

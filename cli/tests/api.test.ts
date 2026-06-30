@@ -15,6 +15,7 @@ import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
+import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 
 function createCaptureSink(json: boolean) {
   const stdout: string[] = [];
@@ -214,9 +215,7 @@ describe("api", () => {
         ]),
       );
 
-      await runCommand(buildMainCommand(), {
-        rawArgs: normalizeApiInvocatorRawArgs(["api", "/whoami"]),
-      });
+      await runCommandWithTestRuntime(normalizeApiInvocatorRawArgs(["api", "/whoami"]));
 
       const logContent = readFileSync(logFile, "utf8");
       expect(logContent).toContain("/rest/v1/whoami");
@@ -235,9 +234,7 @@ describe("api", () => {
         ]),
       );
 
-      await runCommand(buildMainCommand(), {
-        rawArgs: ["api", "POST", "/service_accounts", "-f", "label=CI Bot"],
-      });
+      await runCommandWithTestRuntime(["api", "POST", "/service_accounts", "-f", "label=CI Bot"]);
 
       const logContent = readFileSync(logFile, "utf8");
       const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];
