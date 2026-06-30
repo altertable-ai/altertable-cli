@@ -4,7 +4,7 @@ import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
-import { allPlan } from "@/lib/operation-effect.ts";
+import { localPlan, runOperationEffect } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 import {
@@ -72,7 +72,7 @@ const catalogsCreateCommand = defineHttpCommand({
 const catalogsListCommand = defineOperationCommand({
   id: "catalogs.list",
   capabilities: ["management-http"],
-  catalog: { effects: ["all", "http"], planes: ["management"], output: "normalized" },
+  catalog: { effects: ["local", "http"], planes: ["management"], output: "normalized" },
   meta: {
     name: "list",
     description: "List catalogs in the current environment.",
@@ -80,13 +80,17 @@ const catalogsListCommand = defineOperationCommand({
   },
   run(_input, context) {
     const env = requireManagementEnv();
-    return allPlan(
-      [
+    return localPlan(async () => {
+      const databasesResponse = await runOperationEffect(
         managementCatalogDatabasesOperation.effect(env, context),
+        context,
+      );
+      const connectionsResponse = await runOperationEffect(
         managementCatalogConnectionsOperation.effect(env, context),
-      ],
-      buildManagementCatalogRows,
-    );
+        context,
+      );
+      return buildManagementCatalogRows([databasesResponse, connectionsResponse]);
+    });
   },
   present(rows) {
     const summary = formatCatalogsSummary(rows);

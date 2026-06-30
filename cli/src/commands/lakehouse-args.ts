@@ -175,8 +175,19 @@ export function parseAppendJsonContent(dataArg: string): string {
   }
 }
 
-export function validateUploadPrimaryKey(mode: string, primaryKey: unknown): void {
-  if (mode === "upsert" && !primaryKey) {
-    throw new CliError("--primary-key is required when --mode is upsert.");
+export function parseLakehouseFileContentType(format: string | undefined): string | undefined {
+  if (!format) {
+    return undefined;
+  }
+
+  switch (format.toLowerCase()) {
+    case "csv":
+      return "text/csv";
+    case "json":
+      return "application/json";
+    case "parquet":
+      return "application/vnd.apache.parquet";
+    default:
+      throw new CliError("--format must be one of: csv, json, parquet.");
   }
 }

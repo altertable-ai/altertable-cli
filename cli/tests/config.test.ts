@@ -219,8 +219,8 @@ describe("configure show", () => {
     runtime.output.writeJson = (data) => {
       stdout.push(JSON.stringify(data, null, 2));
     };
-    runWithCliRuntime(runtime, () => {
-      writeCommandOutput({
+    await runWithCliRuntime(runtime, async () => {
+      await writeCommandOutput({
         kind: "normalized",
         data: { configuration: buildConfigureShowDataForProfile() },
         humanText: configureRunShow(),

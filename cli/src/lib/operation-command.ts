@@ -68,7 +68,7 @@ async function writePresentedOutput<TResult, TInput>(
 ): Promise<void> {
   const output = present ? await present(result, context, input) : undefined;
   if (output) {
-    writeCommandOutput(output, context.sink);
+    await writeCommandOutput(output, context.sink);
   }
 }
 

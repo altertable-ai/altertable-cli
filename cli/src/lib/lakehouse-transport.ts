@@ -18,11 +18,21 @@ export type LakehouseUploadRequestInput = {
   catalog: string;
   schema: string;
   table: string;
-  format: string;
   mode: string;
   filePath: string;
   fileSizeBytes: number;
-  primaryKey?: string;
+  contentType?: string;
+  httpOptions?: Partial<HttpSendOptions>;
+};
+
+export type LakehouseUpsertRequestInput = {
+  catalog: string;
+  schema: string;
+  table: string;
+  primaryKey: string;
+  filePath: string;
+  fileSizeBytes: number;
+  contentType?: string;
   httpOptions?: Partial<HttpSendOptions>;
 };
 
@@ -72,15 +82,29 @@ export function createLakehouseUploadRequest(
     catalog: input.catalog,
     schema: input.schema,
     table: input.table,
-    format: input.format,
     mode: input.mode,
   });
-  if (input.primaryKey) {
-    params.set("primary_key", input.primaryKey);
-  }
+  return createLakehouseFileRequest(input, `/upload?${params.toString()}`);
+}
 
+export function createLakehouseUpsertRequest(
+  input: LakehouseUpsertRequestInput,
+): LakehouseUploadRequestScope {
+  const params = new URLSearchParams({
+    catalog: input.catalog,
+    schema: input.schema,
+    table: input.table,
+    primary_key: input.primaryKey,
+  });
+  return createLakehouseFileRequest(input, `/upsert?${params.toString()}`);
+}
+
+function createLakehouseFileRequest(
+  input: LakehouseUploadRequestInput | LakehouseUpsertRequestInput,
+  endpoint: string,
+): LakehouseUploadRequestScope {
   const file = Bun.file(input.filePath);
-  let body: Blob | ReadableStream = file;
+  let body: Blob | ReadableStream = input.contentType ? file : file.stream();
   let uploadProgress = createUploadProgressReporter(input.fileSizeBytes);
 
   if (shouldShowProgress() && input.fileSizeBytes > 0) {
@@ -99,9 +123,9 @@ export function createLakehouseUploadRequest(
     request: {
       plane: "lakehouse",
       method: "POST",
-      endpoint: `/upload?${params.toString()}`,
+      endpoint,
       body,
-      contentType: "application/octet-stream",
+      contentType: input.contentType,
       ...input.httpOptions,
     },
     release: () => uploadProgress.clear(),

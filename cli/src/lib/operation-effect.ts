@@ -134,13 +134,6 @@ export function localPlan<TResult>(
   return operationPlan(localEffect(run));
 }
 
-export function allPlan<TResult>(
-  effects: readonly OperationEffect[],
-  combine: (results: unknown[], context: OperationContext) => TResult | Promise<TResult>,
-): OperationPlan<TResult> {
-  return operationPlan(allEffects(effects, combine));
-}
-
 export function progressPlan<TResult>(
   message: string,
   effect: OperationEffect<TResult>,
@@ -193,7 +186,7 @@ type OperationEffectHandlers = {
 const OPERATION_EFFECT_HANDLERS = {
   value: async (effect) => effect.value,
   output: async (effect, context) => {
-    writeCommandOutput(effect.output, context.sink);
+    await writeCommandOutput(effect.output, context.sink);
   },
   local: async (effect, context) => effect.run(context),
   http: async (effect, context) => {

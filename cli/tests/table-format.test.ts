@@ -77,6 +77,20 @@ describe("renderFixedTable", () => {
     expect(output).toContain("1234");
   });
 
+  test("keeps natural widths when horizontal scrolling is enabled", () => {
+    const output = renderFixedTable(
+      [{ label: "abcdefghijklmnopqrstuvwxyz", code: "1234" }],
+      [
+        { header: "LABEL", cell: (row) => row.label, flex: true },
+        { header: "CODE", cell: (row) => row.code },
+      ],
+      "No rows.",
+      { terminalWidth: 20, horizontalScroll: true },
+    );
+    expect(output).toContain("abcdefghijklmnopqrstuvwxyz");
+    expect(output).not.toContain("…");
+  });
+
   test("wraps table output without a section title", () => {
     const output = renderFixedTableSection(
       [{ name: "default" }],
@@ -103,7 +117,7 @@ describe("renderFixedTable", () => {
 });
 
 describe("renderApiRoutesTable", () => {
-  test("renders method, path, summary, and operation with summary on its own line", () => {
+  test("renders method, path, operation, and summary columns", () => {
     const output = renderApiRoutesTable([
       {
         method: "POST",
@@ -115,14 +129,12 @@ describe("renderApiRoutesTable", () => {
 
     expect(output).toContain("METHOD");
     expect(output).toContain("PATH");
-    expect(output).not.toContain("OPERATION");
+    expect(output).toContain("OPERATION");
+    expect(output).toContain("SUMMARY");
     expect(output).toContain("POST");
     expect(output).toContain("/environments");
     expect(output).toContain("createEnvironment");
     expect(output).toContain("Create an environment");
-    expect(output.indexOf("Create an environment")).toBeGreaterThan(
-      output.indexOf("/environments"),
-    );
   });
 
   test("colorizes HTTP methods when terminal color is enabled", () => {
@@ -140,7 +152,7 @@ describe("renderApiRoutesTable", () => {
     expect(output).toContain("\u001b[31mDELETE\u001b[39m");
   });
 
-  test("stacks operation below path when the row does not fit the terminal width", () => {
+  test("keeps long routes on one horizontally scrollable row", () => {
     const output = renderApiRoutesTable(
       [
         {
@@ -155,13 +167,15 @@ describe("renderApiRoutesTable", () => {
     );
 
     const lines = output.split("\n");
-    expect(lines[1]).toContain("/service_accounts/");
-    expect(lines[1]).not.toContain("createServiceAccountCredential");
-    expect(lines[2]?.trimStart()).toMatch(/^createServiceAccountCredential/);
-    expect(lines[3]).toContain("Create a credential for a service account");
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain(
+      "/service_accounts/{service_account_id}/environments/{environment_id}/credentials",
+    );
+    expect(lines[1]).toContain("createServiceAccountCredential");
+    expect(lines[1]).toContain("Create a credential for a service account");
   });
 
-  test("truncates long paths on very narrow terminals", () => {
+  test("does not truncate long paths on very narrow terminals", () => {
     const output = renderApiRoutesTable(
       [
         {
@@ -175,7 +189,10 @@ describe("renderApiRoutesTable", () => {
       { terminalWidth: 40 },
     );
 
-    expect(output).toContain("…");
+    expect(output).not.toContain("…");
+    expect(output).toContain(
+      "/service_accounts/{service_account_id}/environments/{environment_id}/credentials/{id}",
+    );
     expect(output).toContain("revokeServiceAccountCredential");
   });
 

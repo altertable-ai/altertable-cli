@@ -15,11 +15,13 @@ A pure specs repository: requirements, fixtures, constants, and test plans. No r
 │   └── SPEC.md                    # HTTP transport requirements (shared by all SDKs)
 ├── lakehouse/
 │   └── SPEC.md                    # Lakehouse API client spec
-└── product-analytics/
-    ├── SPEC.md                     # Product Analytics SDK spec
-    ├── CONSTANTS.md                # Shared constants (storage keys, timing, event names)
-    ├── TEST_PLAN.md                # Test plan for all SDK tiers
-    └── fixtures/                   # JSON fixtures for unit and integration tests
+├── product-analytics/
+│   ├── SPEC.md                     # Product Analytics SDK spec
+│   ├── CONSTANTS.md                # Shared constants (storage keys, timing, event names)
+│   ├── TEST_PLAN.md                # Test plan for all SDK tiers
+│   └── fixtures/                   # JSON fixtures for unit and integration tests
+└── rest/
+    └── SPEC.md                    # Management REST API spec (opt-in: CLI + Terraform only)
 ```
 
 ## Contribution rules

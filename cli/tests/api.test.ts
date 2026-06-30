@@ -34,13 +34,13 @@ function createCaptureSink(json: boolean) {
 
 async function runApiSpec(json: boolean, format?: string): Promise<string> {
   const { sink, stdout } = createCaptureSink(json);
-  runApiSpecCommand(sink, { format });
+  await runApiSpecCommand(sink, { format });
   return stdout.join("");
 }
 
 async function runApiRoutes(json: boolean, operation?: string): Promise<string> {
   const { sink, stdout } = createCaptureSink(json);
-  runApiRoutesCommand(sink, operation);
+  await runApiRoutesCommand(sink, operation);
   return stdout.join("");
 }
 

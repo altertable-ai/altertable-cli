@@ -6,7 +6,10 @@ Primary OpenAPI specification reference: `https://api.altertable.ai/openapi/lake
 
 ## Required Outcomes
 
-1. Full endpoint coverage: `append` (including optional synchronous completion and task polling), `GET /tasks/{task_id}`, `query` (streamed and accumulated), `GET`/`DELETE /query/{query_id}`, `upload`, `validate`, and `autocomplete`.
+1. Full endpoint coverage: `append` (including optional synchronous completion
+   and task polling), `GET /tasks/{task_id}`, `query` (streamed and
+   accumulated), `GET`/`DELETE /query/{query_id}`, `upload`, `upsert`,
+   `validate`, and `autocomplete`.
 2. Package is publishable to the target language's primary registry.
 3. Typed models and typed errors are first-class.
 4. `/query` exposes both streamed (with metadata, columns, and row iterator) and accumulated (with all rows) versions.
@@ -30,8 +33,7 @@ Follow these phases in order.
 1. Generate or define request/response models from OpenAPI.
 2. Preserve enums and nullable semantics:
    - `ComputeSize`: `XS | S | M | L | XL`
-   - `UploadFormat`: `csv | json | parquet`
-   - `UploadMode`: `create | append | upsert | overwrite`
+   - `UploadMode`: `create | append | overwrite`
    - `AppendErrorCode`: `invalid-data | incompatible-schema`
    - `TaskStatus`: `pending | completed`
    - `SessionKind` (for `QueryLog.client_interface`): `ArrowFlightSQL | HttpQuery | HttpCancel | HttpValidate | HttpExplain | HttpAutocomplete | Postgres`
@@ -93,18 +95,30 @@ Implement typed methods for all operations:
 4. `upload`
 
    - `POST /upload`
-   - required query params: `catalog`, `schema`, `table`, `format`, `mode`
-   - conditional param: `primary_key` is required when `mode=upsert`
-   - body: `application/octet-stream` bytes or stream
+   - required query params: `catalog`, `schema`, `table`, `mode`
+   - `mode` is an `UploadMode` (`create`, `append`, or `overwrite`)
+   - body: raw file bytes or stream; set `Content-Type` when the format is
+     known (CSV, JSON, or Parquet). When omitted, the server infers format from
+     magic bytes.
 
-5. `getQuery` (or `get_query`)
+5. `upsert`
+
+   - `POST /upsert`
+   - required query params: `catalog`, `schema`, `table`, `primary_key`
+   - `primary_key` is the column name used to match existing rows before
+     updating them
+   - body: raw file bytes or stream; set `Content-Type` when the format is
+     known (CSV, JSON, or Parquet). When omitted, the server infers format from
+     magic bytes.
+
+6. `getQuery` (or `get_query`)
 
    - `GET /query/{query_id}`
    - path param: `query_id` (UUID)
    - typed response: `QueryLogResponse`
    - returns query log information including stats, progress, duration, error
 
-6. `cancelQuery` (or `cancel_query`)
+7. `cancelQuery` (or `cancel_query`)
 
    - `DELETE /query/{query_id}`
    - path param: `query_id` (UUID)
@@ -112,13 +126,13 @@ Implement typed methods for all operations:
    - typed response: `CancelQueryResponse`
    - cancels a running query
 
-7. `validate`
+8. `validate`
 
    - `POST /validate`
    - JSON body: `ValidateRequest` (must include `statement`)
    - typed response: `ValidateResponse`
 
-8. `autocomplete`
+9. `autocomplete`
 
    - `POST /autocomplete`
    - JSON body: `AutocompleteRequest` (must include `statement`)
@@ -155,11 +169,10 @@ The client must support all of the following credential input patterns:
 
 1. **Direct credentials** — `username` + `password` accepted in the client constructor/config; the SDK encodes them into the Basic token internally.
 2. **Pre-encoded token** — accept a raw pre-encoded `Basic` token string directly for callers who already hold the encoded value.
-3. **Environment variable discovery** — auto-discover from the environment (names disambiguate lakehouse credentials from management API keys in the same shell):
-   - `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` (encode on the fly), or
+3. **Environment variable discovery** — auto-discover from the environment:
+   - `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD`
+     (encode on the fly), or
    - `ALTERTABLE_BASIC_AUTH_TOKEN` (use directly as the pre-encoded value)
-
-Precedence (highest first): `ALTERTABLE_BASIC_AUTH_TOKEN` → `ALTERTABLE_LAKEHOUSE_USERNAME` + `ALTERTABLE_LAKEHOUSE_PASSWORD` → stored basic token (`configure --basic-token`) → stored username + password (`configure --user` / `--password`).
 
 Implementation requirements:
 
@@ -238,7 +251,11 @@ Implement layered tests:
    - one `queryAll` call verifying all rows are accumulated
    - one `getQuery` call verifying the query log response
    - one `cancelQuery` call verifying the cancellation response
-   - one `upload` call (CSV or JSON payload)
+   - one `upload` call using `mode=create`, `append`, or `overwrite` (CSV, JSON
+     or Parquet payload with an appropriate `Content-Type`, or rely on
+     server-side format inference)
+   - one `upsert` call with `primary_key` (CSV, JSON or Parquet payload with an
+     appropriate `Content-Type`, or rely on server-side format inference)
    - one `validate` call
    - one `append` call
    - one `getTask` call when the mock exposes a task id (or append returns `task_id`), verifying `TaskResponse`
@@ -248,7 +265,9 @@ CI should always run lint + typecheck + unit + integration tests (mock-backed). 
 
 ### Packaging requirements
 
-1. Include examples for all operations (`append`, `getTask`, `query`, `queryAll`, `getQuery`, `cancelQuery`, `upload`, `validate`, `autocomplete`) in the README.
+1. Include examples for all operations (`append`, `getTask`, `query`,
+   `queryAll`, `getQuery`, `cancelQuery`, `upload`, `upsert`, `validate`,
+   `autocomplete`) in the README.
 2. Verify docs match runtime behavior.
 
 ## Endpoint Reference (Minimal)
@@ -275,9 +294,20 @@ CI should always run lint + typecheck + unit + integration tests (mock-backed). 
 
 ### `POST /upload`
 
-- Query: `catalog`, `schema`, `table`, `format`, `mode`, optional `primary_key`
-- Constraint: `primary_key` required for `mode=upsert`
+- Query: `catalog`, `schema`, `table`, `mode`
+- Mode: `create` | `append` | `overwrite`
 - Body: binary file content
+- Format: not a query parameter. The server infers CSV, JSON, or Parquet from
+  the `Content-Type` header when present, otherwise from magic bytes in the
+  payload.
+
+### `POST /upsert`
+
+- Query: `catalog`, `schema`, `table`, `primary_key`
+- Body: binary file content
+- Format: not a query parameter. The server infers CSV, JSON, or Parquet from
+  the `Content-Type` header when present, otherwise from magic bytes in the
+  payload.
 
 ### `GET /query/{query_id}`
 
@@ -309,7 +339,9 @@ CI should always run lint + typecheck + unit + integration tests (mock-backed). 
 
 Only mark implementation complete when all are true:
 
-- [ ] All operations in Phase 4 implemented and documented (`append`, `getTask`, `query` streamed and accumulated, `getQuery`, `cancelQuery`, `upload`, `validate`, `autocomplete`)
+- [ ] All operations in Phase 4 implemented and documented (`append`,
+      `getTask`, `query` streamed and accumulated, `getQuery`, `cancelQuery`,
+      `upload`, `upsert`, `validate`, `autocomplete`)
 - [ ] Streamed `query` returns metadata, columns, and row iterator; accumulated `queryAll` returns metadata, columns, and all rows
 - [ ] Typed errors are comprehensive and actionable
 - [ ] Auth supports direct/env/provider patterns

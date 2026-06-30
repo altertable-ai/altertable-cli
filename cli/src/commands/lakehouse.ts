@@ -8,15 +8,18 @@ import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-b
 import {
   PAGER_MODE_OPTIONS,
   parseAppendJsonContent,
+  parseLakehouseFileContentType,
   parseQueryOutputOptions,
   parseRequestReadTimeoutMs,
   QUERY_LAYOUT_OPTIONS,
   QUERY_RESULT_FORMAT_OPTIONS,
-  validateUploadPrimaryKey,
 } from "@/commands/lakehouse-args.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
-import { createLakehouseUploadRequest } from "@/lib/lakehouse-transport.ts";
+import {
+  createLakehouseUploadRequest,
+  createLakehouseUpsertRequest,
+} from "@/lib/lakehouse-transport.ts";
 import {
   type LakehouseQueryOperationInput,
   lakehouseAppendOperation,
@@ -27,7 +30,8 @@ import {
   lakehouseQueryStreamOperation,
 } from "@/lib/lakehouse-operations.ts";
 
-const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
+const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;
+const UPLOAD_MODE_OPTIONS = ["create", "append", "overwrite"] as const;
 
 function getUploadFileSizeBytes(filePath: string): number {
   try {
@@ -277,25 +281,25 @@ export const uploadCommand = defineOperationCommand({
   },
   meta: {
     name: "upload",
-    description: "Upload a file to create or update a table.",
+    description: "Upload a file to create, append to, or overwrite a table.",
     examples: [
-      "altertable upload --catalog db --schema public --table users --format csv --mode overwrite --file users.csv",
+      "altertable upload --catalog db --schema public --table users --mode overwrite --format csv --file users.csv",
     ],
   },
   args: {
     catalog: { type: "string", required: true },
     schema: { type: "string", required: true },
     table: { type: "string", required: true },
-    format: { type: "string", description: "File format, e.g. csv", required: true },
     mode: {
       type: "enum",
-      description: "overwrite or upsert",
+      description: "create, append, or overwrite",
       required: true,
       options: [...UPLOAD_MODE_OPTIONS],
     },
-    "primary-key": {
-      type: "string",
-      description: "Required when --mode is upsert (comma-separated)",
+    format: {
+      type: "enum",
+      description: "Optional file format hint for the Content-Type header",
+      options: [...LAKEHOUSE_FILE_FORMAT_OPTIONS],
     },
     file: { type: "string", description: "Local file to upload", required: true },
     "read-timeout": {
@@ -306,7 +310,6 @@ export const uploadCommand = defineOperationCommand({
   async parse({ args }) {
     const mode = enumArg(args, "mode", UPLOAD_MODE_OPTIONS);
     const filePath = stringArg(args, "file");
-    validateUploadPrimaryKey(mode, args["primary-key"]);
     const fileSizeBytes = getUploadFileSizeBytes(filePath);
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
@@ -314,11 +317,10 @@ export const uploadCommand = defineOperationCommand({
       catalog: stringArg(args, "catalog"),
       schema: stringArg(args, "schema"),
       table: stringArg(args, "table"),
-      format: stringArg(args, "format"),
       mode,
       filePath,
       fileSizeBytes,
-      primaryKey: optionalStringArg(args, "primary-key"),
+      contentType: parseLakehouseFileContentType(optionalStringArg(args, "format")),
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
   },
@@ -328,11 +330,85 @@ export const uploadCommand = defineOperationCommand({
         catalog: input.catalog,
         schema: input.schema,
         table: input.table,
-        format: input.format,
         mode: input.mode,
         filePath: input.filePath,
         fileSizeBytes: input.fileSizeBytes,
+        contentType: input.contentType,
+        httpOptions: input.httpOptions,
+      });
+      return {
+        effect: httpEffect(scope.request),
+        release: scope.release,
+      };
+    });
+  },
+  present(response) {
+    return { kind: "raw_api", body: response };
+  },
+});
+
+export const upsertCommand = defineOperationCommand({
+  id: "lakehouse.upsert",
+  capabilities: ["lakehouse-http", "local-file-read", "progress"],
+  catalog: {
+    effects: ["scope", "http"],
+    planes: ["lakehouse"],
+    mutates: true,
+    output: "raw-api",
+  },
+  meta: {
+    name: "upsert",
+    description: "Upload a file and match existing rows by primary key.",
+    examples: [
+      "altertable upsert --catalog db --schema public --table users --primary-key id --format csv --file users.csv",
+    ],
+  },
+  args: {
+    catalog: { type: "string", required: true },
+    schema: { type: "string", required: true },
+    table: { type: "string", required: true },
+    "primary-key": {
+      type: "string",
+      description: "Column name used to match existing rows",
+      required: true,
+    },
+    format: {
+      type: "enum",
+      description: "Optional file format hint for the Content-Type header",
+      options: [...LAKEHOUSE_FILE_FORMAT_OPTIONS],
+    },
+    file: { type: "string", description: "Local file to upload", required: true },
+    "read-timeout": {
+      type: "string",
+      description: "Read timeout in seconds for this request (overrides global --read-timeout)",
+    },
+  },
+  async parse({ args }) {
+    const filePath = stringArg(args, "file");
+    const fileSizeBytes = getUploadFileSizeBytes(filePath);
+
+    const readTimeoutMs = parseRequestReadTimeoutMs(args);
+    return {
+      catalog: stringArg(args, "catalog"),
+      schema: stringArg(args, "schema"),
+      table: stringArg(args, "table"),
+      primaryKey: stringArg(args, "primary-key"),
+      filePath,
+      fileSizeBytes,
+      contentType: parseLakehouseFileContentType(optionalStringArg(args, "format")),
+      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
+    };
+  },
+  run(input) {
+    return scopedPlan(() => {
+      const scope = createLakehouseUpsertRequest({
+        catalog: input.catalog,
+        schema: input.schema,
+        table: input.table,
         primaryKey: input.primaryKey,
+        filePath: input.filePath,
+        fileSizeBytes: input.fileSizeBytes,
+        contentType: input.contentType,
         httpOptions: input.httpOptions,
       });
       return {

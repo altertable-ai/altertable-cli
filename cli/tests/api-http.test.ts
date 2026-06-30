@@ -65,7 +65,7 @@ async function runApiOperation(args: ApiHttpArgs): Promise<void> {
   const result = await runOperationPlan(apiHttpOperationPlan(args, context), context);
   const output = apiHttpResultOutput(result, context.sink);
   if (output) {
-    writeCommandOutput(output, context.sink);
+    await writeCommandOutput(output, context.sink);
   }
 }
 

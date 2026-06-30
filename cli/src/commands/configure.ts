@@ -94,7 +94,7 @@ async function runConfigureWizardFromArgs(
 async function runConfigureDispatch(args: ConfigureCommandArgs, sink: OutputSink): Promise<void> {
   if (args.show) {
     const configuration = buildConfigureShowDataForProfile();
-    writeCommandOutput(
+    await writeCommandOutput(
       {
         kind: "normalized",
         data: { configuration },
