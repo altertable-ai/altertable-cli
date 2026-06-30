@@ -5,12 +5,26 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { runApiHttp } from "@/lib/api-http.ts";
+import {
+  API_HTTP_OPERATION,
+  apiHttpResultOutput,
+  resolveApiHttp,
+  type ApiHttpResult,
+  type ResolvedApiHttp,
+} from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineHttpCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
+import { optionalStringArg } from "@/lib/operation-codec.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
+import {
+  isDelegatedSubCommand,
+  normalizePassthroughCommandRawArgs,
+  valueFlagsFor,
+} from "@/lib/command-delegation.ts";
+import { noopPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
@@ -22,8 +36,7 @@ import {
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
-const API_META_COMMAND_NAMES = new Set(["spec", "routes"]);
-const HTTP_METHOD_NAME_SET = new Set<string>(HTTP_METHOD_NAMES);
+const API_COMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
 const API_HTTP_BASE_ARGS = {
   method: {
@@ -52,57 +65,17 @@ const API_HTTP_BASE_ARGS = {
   env: { type: "string", description: "Replace {environment_id} in the path" },
 } satisfies ArgsDef;
 
-function valueFlagsFor(args: ArgsDef): ReadonlySet<string> {
-  const flags = new Set<string>();
-  for (const [name, definition] of Object.entries(args)) {
-    if (definition.type !== "string" && definition.type !== "enum") {
-      continue;
-    }
-
-    flags.add(`--${name}`);
-    const aliases = Array.isArray(definition.alias)
-      ? definition.alias
-      : definition.alias
-        ? [definition.alias]
-        : [];
-    for (const alias of aliases) {
-      flags.add(`-${alias}`);
-    }
-  }
-  return flags;
-}
-
 const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
-
-function findFirstPositionalIndex(
-  rawArgs: readonly string[],
-  valueFlags: ReadonlySet<string>,
-): number {
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-    if (arg === "--") {
-      return -1;
-    }
-    if (arg.startsWith("-")) {
-      if (!arg.includes("=") && valueFlags.has(arg)) {
-        index += 1;
-      }
-      continue;
-    }
-    return index;
-  }
-  return -1;
-}
-
-function isHttpMethodName(value: string): boolean {
-  return HTTP_METHOD_NAME_SET.has(value.toUpperCase());
-}
+const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
 
 function isApiCommandName(value: string): boolean {
-  return API_META_COMMAND_NAMES.has(value) || isHttpMethodName(value);
+  return API_COMMAND_NAMES.has(value) || API_COMMAND_NAMES.has(value.toUpperCase());
+}
+
+function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {
+  return isDelegatedSubCommand(rawArgs, isApiCommandName, {
+    valueFlags: API_VALUE_FLAGS,
+  });
 }
 
 /** Citty treats endpoint paths as subcommand names unless we separate them with `--`. */
@@ -110,52 +83,34 @@ export function normalizeApiInvocatorRawArgs(
   rawArgs: readonly string[],
   rootArgs: ArgsDef = {},
 ): string[] {
-  const apiIndex = findFirstPositionalIndex(rawArgs, valueFlagsFor(rootArgs));
-  if (apiIndex === -1 || rawArgs[apiIndex] !== "api") {
-    return [...rawArgs];
-  }
-
-  const afterApi = rawArgs.slice(apiIndex + 1);
-  if (afterApi.includes("--")) {
-    return [...rawArgs];
-  }
-
-  const endpointIndex = findFirstPositionalIndex(afterApi, API_VALUE_FLAGS);
-  if (endpointIndex === -1) {
-    return [...rawArgs];
-  }
-
-  const endpoint = afterApi[endpointIndex];
-  if (!endpoint || isApiCommandName(endpoint)) {
-    return [...rawArgs];
-  }
-
-  const normalized = [...rawArgs];
-  normalized.splice(apiIndex + 1 + endpointIndex, 0, "--");
-  return normalized;
+  return normalizePassthroughCommandRawArgs(rawArgs, {
+    commandName: "api",
+    rootArgs,
+    commandValueFlags: API_VALUE_FLAGS,
+    isReservedOperand: isApiCommandName,
+  });
 }
-
-const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
 
 function buildApiHttpArgs(args: Record<string, unknown>, rawArgs: string[], method?: string) {
   const rawFieldArgs = extractRawFieldArgs(rawArgs);
   const fieldArgs = extractFieldArgs(rawArgs);
 
   return {
-    method: stringArg(args.method) ?? method,
-    endpoint: stringArg(args.endpoint),
-    body: stringArg(args.body),
-    input: stringArg(args.input),
+    method: optionalStringArg(args, "method") ?? method,
+    endpoint: optionalStringArg(args, "endpoint"),
+    body: optionalStringArg(args, "body"),
+    input: optionalStringArg(args, "input"),
     rawFields: rawFieldArgs.length > 0 ? rawFieldArgs : undefined,
     typedFields: fieldArgs.length > 0 ? fieldArgs : undefined,
-    env: stringArg(args.env),
-    format: stringArg(args.format) ?? readArgvFlagValue(rawArgs, "--format"),
+    env: optionalStringArg(args, "env"),
+    format: optionalStringArg(args, "format") ?? readArgvFlagValue(rawArgs, "--format"),
   };
 }
 
-function stringArg(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
+type ApiInvokeInput = {
+  delegated: boolean;
+  request?: ResolvedApiHttp;
+};
 
 const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly string[]> = {
   GET: ["altertable api /whoami", "altertable api GET /environments/production/connections"],
@@ -173,15 +128,23 @@ const HTTP_METHOD_EXAMPLES: Record<(typeof HTTP_METHOD_NAMES)[number], readonly 
 function createApiMethodCommand(method: string) {
   const methodExamples = HTTP_METHOD_EXAMPLES[method as (typeof HTTP_METHOD_NAMES)[number]];
 
-  return defineAltertableCommand({
+  return defineHttpCommand({
+    id: `api.${method.toLowerCase()}`,
+    plane: "management",
+    operation: API_HTTP_OPERATION,
+    mutates: method !== "GET",
+    output: "tabular",
     meta: {
       name: method,
       description: `${method} request to the management REST API.`,
       examples: methodExamples,
     },
     args: API_HTTP_ARGS,
-    async run({ args, rawArgs, sink }) {
-      await runApiHttp(buildApiHttpArgs(args, rawArgs, method), sink);
+    parse({ args, rawArgs }) {
+      return resolveApiHttp(buildApiHttpArgs(args, rawArgs, method));
+    },
+    present(result, { sink }) {
+      return apiHttpResultOutput(result, sink);
     },
   });
 }
@@ -224,7 +187,7 @@ function operationDetailsJson(operationId: string): Record<string, unknown> {
   };
 }
 
-export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
+function apiSpecOutput(sink: OutputSink, options?: { format?: string }) {
   const format = resolveOpenapiSpecFormat(
     sink.json,
     process.stdout.isTTY === true,
@@ -232,24 +195,23 @@ export function runApiSpecCommand(sink: OutputSink, options?: { format?: string 
   );
 
   if (format === "json") {
-    writeCommandOutput({ kind: "raw_api", body: getOpenapiSpecJson() }, sink);
-    return;
+    return { kind: "raw_api" as const, body: getOpenapiSpecJson() };
   }
 
-  writeCommandOutput({ kind: "human", text: getOpenapiSpecYaml() }, sink);
+  return { kind: "human" as const, text: getOpenapiSpecYaml() };
 }
 
-export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
+export function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): void {
+  writeCommandOutput(apiSpecOutput(sink, options), sink);
+}
+
+function apiRoutesOutput(operationId?: string) {
   if (operationId) {
-    writeCommandOutput(
-      {
-        kind: "normalized",
-        data: operationDetailsJson(operationId),
-        humanText: formatOperationDetails(operationId),
-      },
-      sink,
-    );
-    return;
+    return {
+      kind: "normalized" as const,
+      data: operationDetailsJson(operationId),
+      humanText: formatOperationDetails(operationId),
+    };
   }
 
   const table = renderApiRoutesTableSection(
@@ -260,17 +222,21 @@ export function runApiRoutesCommand(sink: OutputSink, operationId?: string): voi
       summary: operation.summary,
     })),
   );
-  writeCommandOutput(
-    {
-      kind: "normalized",
-      data: OPENAPI_OPERATIONS,
-      humanText: table,
-    },
-    sink,
-  );
+  return {
+    kind: "normalized" as const,
+    data: OPENAPI_OPERATIONS,
+    humanText: table,
+  };
 }
 
-const apiSpecCommand = defineAltertableCommand({
+export function runApiRoutesCommand(sink: OutputSink, operationId?: string): void {
+  writeCommandOutput(apiRoutesOutput(operationId), sink);
+}
+
+const apiSpecCommand = defineOutputCommand({
+  id: "api.spec",
+  capabilities: ["raw-stdout"],
+  output: "raw-api",
   meta: {
     name: "spec",
     description:
@@ -285,12 +251,18 @@ const apiSpecCommand = defineAltertableCommand({
         "Output format (default: yaml in a terminal, json when piped or with global --json)",
     },
   },
-  run({ args, sink }) {
-    runApiSpecCommand(sink, { format: stringArg(args.format) });
+  parse({ args }) {
+    return { format: optionalStringArg(args, "format") };
+  },
+  render(input, { sink }) {
+    return apiSpecOutput(sink, input);
   },
 });
 
-const apiRoutesCommand = defineAltertableCommand({
+const apiRoutesCommand = defineOutputCommand({
+  id: "api.routes",
+  capabilities: [],
+  output: "normalized",
   meta: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
@@ -303,9 +275,11 @@ const apiRoutesCommand = defineAltertableCommand({
       required: false,
     },
   },
-  run({ args, sink }) {
-    const operationId = args.operation ? String(args.operation) : undefined;
-    runApiRoutesCommand(sink, operationId);
+  parse({ args }) {
+    return optionalStringArg(args, "operation");
+  },
+  render(operationId) {
+    return apiRoutesOutput(operationId);
   },
 });
 
@@ -313,7 +287,14 @@ const apiMethodSubCommands = Object.fromEntries(
   HTTP_METHOD_NAMES.map((method) => [method, createApiMethodCommand(method)]),
 );
 
-export const apiCommand = defineAltertableCommand({
+export const apiCommand = defineOperationCommand<ApiInvokeInput, ApiHttpResult | undefined>({
+  id: "api.invoke",
+  capabilities: ["management-http"],
+  catalog: {
+    effects: ["http"],
+    planes: ["management"],
+    output: "tabular",
+  },
   meta: {
     name: "api",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
@@ -330,12 +311,23 @@ export const apiCommand = defineAltertableCommand({
     routes: apiRoutesCommand,
     ...apiMethodSubCommands,
   },
-  async run({ args, rawArgs, sink }) {
-    const subCommandIndex = findFirstPositionalIndex(rawArgs, API_VALUE_FLAGS);
-    const subCommandName = subCommandIndex === -1 ? undefined : rawArgs[subCommandIndex];
-    if (subCommandName && isApiCommandName(subCommandName)) {
+  parse({ args, rawArgs }) {
+    const delegated = isDelegatedApiCommand(rawArgs);
+    return {
+      delegated,
+      request: delegated ? undefined : resolveApiHttp(buildApiHttpArgs(args, rawArgs)),
+    };
+  },
+  run(input, context) {
+    if (input.delegated) {
+      return noopPlan<ApiHttpResult | undefined>();
+    }
+    return API_HTTP_OPERATION.plan(input.request as ResolvedApiHttp, context);
+  },
+  present(result, { sink }) {
+    if (result === undefined) {
       return;
     }
-    await runApiHttp(buildApiHttpArgs(args, rawArgs), sink);
+    return apiHttpResultOutput(result, sink);
   },
 });

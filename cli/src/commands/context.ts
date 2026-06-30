@@ -1,37 +1,36 @@
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { valuePlan } from "@/lib/operation-effect.ts";
 import { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
-import { type WhoamiResponse } from "@/lib/management-formatters.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
 import {
   activeContextToJson,
   buildActiveContext,
   formatActiveContextDetails,
-  withAuthenticatedIdentity,
 } from "@/lib/active-context.ts";
+import { managementWhoamiOperation } from "@/lib/management-operations.ts";
 
-export const contextCommand = defineAltertableCommand({
+export const contextCommand = defineOperationCommand({
+  id: "context.show",
+  capabilities: ["management-http"],
+  catalog: { effects: ["value", "http"], planes: ["management"], output: "normalized" },
   meta: {
     name: "context",
     description: "Show the active profile, environment, and authenticated identity.",
     examples: ["altertable context", "altertable --json context"],
   },
-  async run({ sink }) {
-    let context = buildActiveContext();
+  run(_input, operationContext) {
+    const context = buildActiveContext();
 
-    if (configureCredentialStatus().hasManagement) {
-      const response = await managementRequest("GET", "/whoami");
-      context = withAuthenticatedIdentity(context, parseApiJson(response) as WhoamiResponse);
+    if (!configureCredentialStatus().hasManagement) {
+      return valuePlan(context);
     }
 
-    writeCommandOutput(
-      {
-        kind: "normalized",
-        data: activeContextToJson(context),
-        humanText: formatActiveContextDetails(context),
-      },
-      sink,
-    );
+    return managementWhoamiOperation.plan(context, operationContext);
+  },
+  present(context) {
+    return {
+      kind: "normalized",
+      data: activeContextToJson(context),
+      humanText: formatActiveContextDetails(context),
+    };
   },
 });

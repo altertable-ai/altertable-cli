@@ -1,11 +1,14 @@
 import { getCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { lakehouseQuery } from "@/lib/lakehouse-transport.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
+import { defineHttpOperation, type HttpOperationDescriptor } from "@/lib/http-operation.ts";
+import { lakehouseVerifyOperation } from "@/lib/lakehouse-operations.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
+import { runOperationPlan } from "@/lib/operation-effect.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
-import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { getActiveProfileName } from "@/lib/profile.ts";
 
 export { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
@@ -24,6 +27,16 @@ export type ConfigureVerifyResult = {
   errors: ConfigureVerifyError[];
 };
 
+const managementVerifyOperation = defineHttpOperation<void, string>({
+  id: "management.verify",
+  request: () => ({
+    plane: "management",
+    method: "GET",
+    endpoint: "/whoami",
+  }),
+  decode: (body) => parseWhoamiPrincipalName(body),
+});
+
 function parseWhoamiPrincipalName(body: string): string {
   try {
     const data = JSON.parse(body) as WhoamiResponse;
@@ -40,29 +53,43 @@ function getErrorMessage(error: unknown): string {
   return "Verification failed.";
 }
 
-function getVerifyProgressLabel(plane: ConfigureAuthPlane): string {
-  if (plane === "management") {
-    return "Verifying management API key";
-  }
-  return "Verifying lakehouse credentials";
+type ConfigureVerifier = {
+  progressLabel: string;
+  failureLabel: string;
+  operation: HttpOperationDescriptor<void, string>;
+  successMessage: (result: string) => string;
+};
+
+const CONFIGURE_VERIFY_PLANES = {
+  management: {
+    progressLabel: "Verifying management API key",
+    failureLabel: "Management API key verification failed.",
+    operation: managementVerifyOperation,
+    successMessage: (principalLine) => `Management API key verified (${principalLine}).`,
+  },
+  lakehouse: {
+    progressLabel: "Verifying lakehouse credentials",
+    failureLabel: "Lakehouse credentials verification failed.",
+    operation: lakehouseVerifyOperation,
+    successMessage: () => "Lakehouse credentials verified.",
+  },
+} satisfies Record<ConfigureAuthPlane, ConfigureVerifier>;
+
+function createConfigureVerifyOperationContext(): OperationContext {
+  const runtime = getCliRuntime();
+  return {
+    args: {},
+    rawArgs: [],
+    runtime,
+    sink: runtime.output,
+    execution: createExecutionContext(runtime),
+  };
 }
 
-function getVerifyFailureLabel(plane: ConfigureAuthPlane): string {
-  if (plane === "management") {
-    return "Management API key verification failed.";
-  }
-  return "Lakehouse credentials verification failed.";
-}
-
-async function verifyPlane(plane: ConfigureAuthPlane): Promise<string> {
-  if (plane === "management") {
-    const body = await managementRequest("GET", "/whoami");
-    const principalLine = parseWhoamiPrincipalName(body);
-    return `Management API key verified (${principalLine}).`;
-  }
-
-  await lakehouseQuery("SELECT 1");
-  return "Lakehouse credentials verified.";
+async function verifyPlane(plane: ConfigureAuthPlane, context: OperationContext): Promise<string> {
+  const verifier = CONFIGURE_VERIFY_PLANES[plane];
+  const result = await runOperationPlan(verifier.operation.plan(undefined, context), context);
+  return verifier.successMessage(result);
 }
 
 export async function configureVerify(
@@ -78,13 +105,14 @@ export async function configureVerify(
   };
 
   for (const plane of planes) {
-    const progress = startProgress(getVerifyProgressLabel(plane));
+    const verifier = CONFIGURE_VERIFY_PLANES[plane];
+    const progress = startProgress(verifier.progressLabel);
     try {
-      const successMessage = await verifyPlane(plane);
+      const successMessage = await verifyPlane(plane, createConfigureVerifyOperationContext());
       progress.done(formatProgressStatus("success", successMessage));
       result.verified[plane] = true;
     } catch (error) {
-      progress.fail(formatProgressStatus("error", getVerifyFailureLabel(plane)));
+      progress.fail(formatProgressStatus("error", verifier.failureLabel));
       result.errors.push({ plane, message: getErrorMessage(error) });
     }
   }

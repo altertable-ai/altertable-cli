@@ -2,7 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineOperationCommand } from "@/lib/operation-command.ts";
+import { defineLocalCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
+import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   formatTerminalMarkdownLinks,
@@ -33,6 +35,10 @@ type InstallResult = {
   rcPath?: string;
   rcUpdated: boolean;
   startupAction: "updated" | "skipped" | "not-needed";
+};
+type CompletionInstallInput = {
+  explicitShell?: SupportedShell;
+  updateRc: boolean;
 };
 
 const SUPPORTED_SHELLS = ["bash", "zsh", "fish"] as const;
@@ -233,13 +239,16 @@ function createShellCompletionCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
 ): CommandDef {
-  return defineAltertableCommand({
+  return defineOutputCommand({
+    id: `completion.${shell}`,
+    capabilities: ["raw-stdout"],
+    output: "raw-api",
     meta: {
       name: shell,
       description: `Generate ${shell} completion script.`,
     },
-    async run() {
-      console.log(formatCompletionScript(shell, getRootCommand()));
+    render() {
+      return { kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) };
     },
   });
 }
@@ -248,7 +257,10 @@ function createInstallShellCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
 ): CommandDef {
-  return defineAltertableCommand({
+  return defineLocalCommand({
+    id: `completion.install.${shell}`,
+    mutates: true,
+    output: "human",
     meta: {
       name: shell,
       description: `Install ${shell} completion.`,
@@ -259,12 +271,16 @@ function createInstallShellCommand(
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    async run({ args, rawArgs, sink }) {
-      const script = formatCompletionScript(shell, getRootCommand());
-      const result = await installCompletion(shell, script, {
+    parse({ args, rawArgs }) {
+      return {
         updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
-      });
-
+      };
+    },
+    local(input) {
+      const script = formatCompletionScript(shell, getRootCommand());
+      return installCompletion(shell, script, input);
+    },
+    present(result, { sink }) {
       if (sink.json) {
         sink.writeJson(result);
         return;
@@ -275,7 +291,10 @@ function createInstallShellCommand(
 }
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): CommandDef {
-  const installCommand = defineAltertableCommand({
+  const installCommand = defineOperationCommand<CompletionInstallInput, InstallResult | undefined>({
+    id: "completion.install",
+    capabilities: ["local-file-write"],
+    catalog: { effects: ["local", "value"], mutates: true, output: "human" },
     meta: {
       name: "install",
       description: "Install shell completion for the current shell.",
@@ -296,18 +315,30 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    async run({ args, rawArgs, sink }) {
+    parse({ args, rawArgs }) {
       const explicitShell = rawArgs.slice(rawArgs.indexOf("install") + 1).find(isSupportedShell);
-      if (explicitShell) {
-        return;
+      return {
+        explicitShell,
+        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
+      };
+    },
+    run(input) {
+      if (input.explicitShell) {
+        return noopPlan<InstallResult | undefined>();
       }
 
-      const shell = resolveShell(undefined);
-      const script = formatCompletionScript(shell, getRootCommand());
-      const result = await installCompletion(shell, script, {
-        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
+      return localPlan(() => {
+        const shell = resolveShell(undefined);
+        const script = formatCompletionScript(shell, getRootCommand());
+        return installCompletion(shell, script, {
+          updateRc: input.updateRc,
+        });
       });
-
+    },
+    present(result, { sink }) {
+      if (result === undefined) {
+        return;
+      }
       if (sink.json) {
         sink.writeJson(result);
         return;
@@ -316,7 +347,10 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     },
   });
 
-  return defineAltertableCommand({
+  return defineOperationCommand({
+    id: "completion",
+    capabilities: ["raw-stdout"],
+    catalog: { effects: ["output", "value"], output: "raw-api" },
     meta: {
       name: "completion",
       description: "Generate or install shell completion scripts.",
@@ -332,12 +366,15 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
       install: installCommand,
       zsh: createShellCompletionCommand("zsh", getRootCommand),
     },
-    async run({ rawArgs }) {
+    parse({ rawArgs }) {
+      return rawArgs;
+    },
+    run(rawArgs) {
       if (rawArgs.some((arg) => arg === "install" || isSupportedShell(arg))) {
-        return;
+        return noopPlan();
       }
       const shell = resolveShell(undefined);
-      console.log(formatCompletionScript(shell, getRootCommand()));
+      return outputPlan({ kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) });
     },
   });
 }

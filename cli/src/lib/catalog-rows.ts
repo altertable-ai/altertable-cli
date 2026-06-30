@@ -1,7 +1,5 @@
 import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { requireManagementEnv } from "@/lib/auth.ts";
 import { type CatalogRow, formatCatalogsTable } from "@/lib/management-formatters.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
 
 type DatabaseSummary = {
   name?: string;
@@ -17,17 +15,10 @@ type ConnectionSummary = {
   catalog?: string;
 };
 
-export async function buildCatalogRows(env?: string): Promise<CatalogRow[]> {
-  const environment = env ?? requireManagementEnv();
-  const databasesResponse = await managementRequest(
-    "GET",
-    `/environments/${environment}/databases`,
-  );
-  const connectionsResponse = await managementRequest(
-    "GET",
-    `/environments/${environment}/connections`,
-  );
-
+export function buildCatalogRowsFromResponses(
+  databasesResponse: string,
+  connectionsResponse: string,
+): CatalogRow[] {
   const databases = parseApiJson(databasesResponse) as { databases?: DatabaseSummary[] };
   const connections = parseApiJson(connectionsResponse) as { connections?: ConnectionSummary[] };
 
