@@ -30,6 +30,8 @@ describe("operation catalog", () => {
     ]);
     expect(byId.get("lakehouse.upsert")?.effects).toEqual(["scope", "http"]);
     expect(byId.get("lakehouse.upsert")?.mutates).toBe(true);
+    expect(byId.get("catalogs.list")?.effects).toEqual(["local", "http"]);
+    expect(byId.get("catalogs.list")?.planes).toEqual(["management"]);
     expect(byId.get("completion.install")?.capabilities).toEqual(["local-file-write"]);
     expect(byId.get("configure")?.effects).toEqual(["local"]);
     expect(byId.get("configure")?.mutates).toBe(true);
