@@ -27,7 +27,6 @@ import {
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
 import { defineRootCommand } from "@/lib/command-context.ts";
-import { normalizeDefaultSubcommandRawArgs } from "@/lib/default-subcommands.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
@@ -154,7 +153,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
-    await runCommand(main, { rawArgs: normalizeDefaultSubcommandRawArgs(rawArgs, main) });
+    await runCommand(main, { rawArgs });
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
 
