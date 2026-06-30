@@ -30,6 +30,7 @@ type HttpCommandSpec<TInput, TResult> = OperationCommandBase<TInput, TResult> & 
 
 type LocalCommandSpec<TInput, TResult> = OperationCommandBase<TInput, TResult> & {
   mutates?: boolean;
+  localConfig?: boolean;
   readFile?: boolean;
   writeFile?: boolean;
   local: (input: TInput, context: OperationContext) => TResult | Promise<TResult>;
@@ -41,7 +42,7 @@ type ValueCommandSpec<TInput, TResult> = OperationCommandBase<TInput, TResult> &
 
 type OutputCommandSpec<TInput> = Omit<OperationCommandBase<TInput, void>, "present"> & {
   output: Exclude<CommandOutputShape, "none">;
-  value: (
+  render: (
     input: TInput,
     context: OperationContext,
   ) => CommandOutputMode | Promise<CommandOutputMode>;
@@ -78,7 +79,7 @@ export function defineLocalCommand<TInput = void, TResult = void>(
   spec: LocalCommandSpec<TInput, TResult>,
 ): CommandDef {
   const capabilities = [...(spec.capabilities ?? [])];
-  if (!capabilities.includes("local-config")) {
+  if (spec.localConfig && !capabilities.includes("local-config")) {
     capabilities.push("local-config");
   }
   if (spec.readFile && !capabilities.includes("local-file-read")) {
@@ -128,7 +129,7 @@ export function defineOutputCommand<TInput = void>(spec: OutputCommandSpec<TInpu
       ...spec.catalog,
     },
     async run(input, context) {
-      return outputPlan(await spec.value(input, context));
+      return outputPlan(await spec.render(input, context));
     },
   });
 }

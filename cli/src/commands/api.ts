@@ -254,7 +254,7 @@ const apiSpecCommand = defineOutputCommand({
   parse({ args }) {
     return { format: optionalStringArg(args, "format") };
   },
-  value(input, { sink }) {
+  render(input, { sink }) {
     return apiSpecOutput(sink, input);
   },
 });
@@ -278,7 +278,7 @@ const apiRoutesCommand = defineOutputCommand({
   parse({ args }) {
     return optionalStringArg(args, "operation");
   },
-  value(operationId) {
+  render(operationId) {
     return apiRoutesOutput(operationId);
   },
 });

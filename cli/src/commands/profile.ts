@@ -90,6 +90,7 @@ const profileShowCommand = defineValueCommand({
 const profileUseCommand = defineLocalCommand({
   id: "profile.use",
   mutates: true,
+  localConfig: true,
   output: "normalized",
   meta: { name: "use", description: "Set the active profile" },
   args: {
@@ -114,6 +115,7 @@ const profileUseCommand = defineLocalCommand({
 const profileDeleteCommand = defineLocalCommand({
   id: "profile.delete",
   mutates: true,
+  localConfig: true,
   output: "normalized",
   meta: { name: "delete", description: "Delete a profile" },
   args: {

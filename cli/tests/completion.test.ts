@@ -267,7 +267,7 @@ describe("completion command", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const output = await runCompletion(buildMainCommand, "bash");
     const topLevelCount = flattenTopLevelNames(spec).length;
-    expect(topLevelCount).toBeGreaterThan(10);
+    expect(topLevelCount).toBe(9);
     expect(output).toContain("completion");
     expect(output).toContain("GET");
   });

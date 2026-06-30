@@ -102,7 +102,7 @@ The CLI talks to two independent APIs with separate auth schemes:
 | Plane                    | Purpose                                 | Auth           |
 | ------------------------ | --------------------------------------- | -------------- |
 | **Management (control)** | `context`, `catalogs`                   | Bearer API key |
-| **Lakehouse (data)**     | `query`, `upload`, `append`, `validate` | HTTP Basic     |
+| **Lakehouse (data)**     | `query`, `upload`, `append`             | HTTP Basic     |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
@@ -277,12 +277,9 @@ query_max_width=32      # integer >= 8
 query_pager=auto        # auto | always | never
 ```
 
-**Validate, append, upload**
+**Append and upload**
 
 ```bash
-altertable validate --statement "SELECT 1"
-altertable autocomplete --statement "SELECT * FROM "
-
 altertable append --catalog my_cat --schema public --table users --data '{"id": 1}'
 altertable append --catalog my_cat --schema public --table users --data '{"id": 2}' --sync
 
@@ -385,11 +382,10 @@ These flags apply to every command and must be placed before the subcommand:
 | `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
 | `--read-timeout <s>`    | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams)   |
 
-Per-request read timeout on `query`, `validate`, and `upload`:
+Per-request read timeout on `query` and `upload`:
 
 ```bash
 altertable query --statement "SELECT ..." --read-timeout 180
-altertable validate --statement "SELECT ..." --read-timeout 30
 altertable --read-timeout 120 query --statement "SELECT ..."
 altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --format csv --mode overwrite --file large.csv
 ```
@@ -406,7 +402,7 @@ Use `--json` or `--agent` for machine-readable output. On failure the error is a
 
 With `--json`, success stdout follows one of three contracts:
 
-1. **Raw API** — verbatim API response body (`validate`, most `api *` commands).
+1. **Raw API** — verbatim API response body (most `api *` commands).
 2. **Normalized query** — `{ metadata, columns, rows }` from `query --format json`, `query --json`, or `altertable --agent query` (stable scripting contract).
 3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, environment, principal, … }` from `context --json`.
 

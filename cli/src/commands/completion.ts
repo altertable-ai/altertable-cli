@@ -247,7 +247,7 @@ function createShellCompletionCommand(
       name: shell,
       description: `Generate ${shell} completion script.`,
     },
-    value() {
+    render() {
       return { kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) };
     },
   });
@@ -293,7 +293,7 @@ function createInstallShellCommand(
 export function createCompletionCommand(getRootCommand: GetRootCommand): CommandDef {
   const installCommand = defineOperationCommand<CompletionInstallInput, InstallResult | undefined>({
     id: "completion.install",
-    capabilities: ["local-file-write", "local-config"],
+    capabilities: ["local-file-write"],
     catalog: { effects: ["local", "value"], mutates: true, output: "human" },
     meta: {
       name: "install",

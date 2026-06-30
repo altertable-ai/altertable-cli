@@ -8,7 +8,6 @@ import {
   buildLakehouseQueryPayload,
   createLakehouseUploadRequest,
   csvEscapeCell,
-  formatAutocompleteHumanOutput,
   getQueryColumnNames,
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
@@ -31,9 +30,7 @@ import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
-  lakehouseAutocompleteOperation,
   lakehouseQueryCancelOperation,
-  lakehouseValidateOperation,
 } from "@/lib/lakehouse-operations.ts";
 
 const SAMPLE_NDJSON = [
@@ -307,16 +304,6 @@ describe("query renderers", () => {
   });
 });
 
-describe("formatAutocompleteHumanOutput", () => {
-  test("prints one suggestion per line", () => {
-    const output = formatAutocompleteHumanOutput({
-      suggestions: [{ suggestion: "users" }, { suggestion: "orders" }],
-      statement: "SELECT * FROM ",
-    });
-    expect(output).toBe("users\norders");
-  });
-});
-
 describe("lakehouse request construction", () => {
   test("append --sync sends sync=true query param", async () => {
     writeFileSync(
@@ -372,101 +359,6 @@ describe("lakehouse request construction", () => {
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(`URL=https://example.com/tasks/${taskId}`);
-  });
-
-  test("autocomplete request includes optional context fields", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/autocomplete",
-          method: "POST",
-          body: '{"suggestions":[]}',
-        },
-      ]),
-    );
-
-    const context = createOperationContext();
-    await runOperationPlan(
-      lakehouseAutocompleteOperation.plan(
-        {
-          statement: "SELECT * FROM ",
-          catalog: "memory",
-          schema: "main",
-          sessionId: "session-1",
-          maxSuggestions: 5,
-        },
-        context,
-      ),
-      context,
-    );
-
-    const logContent = readFileSync(logFile, "utf8");
-    const payloadLine = logContent
-      .split("\n")
-      .find((line) => line.startsWith("PAYLOAD="))
-      ?.slice("PAYLOAD=".length);
-    expect(payloadLine).toBeDefined();
-
-    const payload = JSON.parse(payloadLine ?? "{}") as Record<string, unknown>;
-    expect(payload.statement).toBe("SELECT * FROM ");
-    expect(payload.catalog).toBe("memory");
-    expect(payload.schema).toBe("main");
-    expect(payload.session_id).toBe("session-1");
-    expect(payload.max_suggestions).toBe(5);
-  });
-
-  test("autocomplete request omits optional fields when not provided", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/autocomplete",
-          method: "POST",
-          body: '{"suggestions":[]}',
-        },
-      ]),
-    );
-
-    const context = createOperationContext();
-    await runOperationPlan(
-      lakehouseAutocompleteOperation.plan({ statement: "SELECT 1" }, context),
-      context,
-    );
-
-    const logContent = readFileSync(logFile, "utf8");
-    const payloadLine = logContent
-      .split("\n")
-      .find((line) => line.startsWith("PAYLOAD="))
-      ?.slice("PAYLOAD=".length);
-    const payload = JSON.parse(payloadLine ?? "{}") as Record<string, unknown>;
-    expect(payload).toEqual({ statement: "SELECT 1" });
-  });
-
-  test("validate POSTs statement JSON body", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/validate",
-          method: "POST",
-          body: '{"valid":true}',
-        },
-      ]),
-    );
-
-    const context = createOperationContext();
-    await runOperationPlan(
-      lakehouseValidateOperation.plan({ statement: "SELECT 1" }, context),
-      context,
-    );
-
-    const logContent = readFileSync(logFile, "utf8");
-    const payloadLine = logContent
-      .split("\n")
-      .find((line) => line.startsWith("PAYLOAD="))
-      ?.slice("PAYLOAD=".length);
-    expect(JSON.parse(payloadLine ?? "{}")).toEqual({ statement: "SELECT 1" });
   });
 
   test("upload sends octet-stream and primary_key query param", async () => {

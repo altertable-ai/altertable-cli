@@ -21,7 +21,7 @@ export type OperationContext = {
   rawArgs: string[];
   runtime: CommandRunContext["runtime"];
   sink: OutputSink;
-  execution: ExecutionContext;
+  readonly execution: ExecutionContext;
 };
 
 export type OperationPresenter<TResult, TInput> = (
@@ -47,12 +47,16 @@ export type OperationSpec<TInput = void, TResult = void> = {
 };
 
 function createOperationContext(context: CommandRunContext): OperationContext {
+  let execution: ExecutionContext | undefined;
   return {
     args: context.args as Record<string, unknown>,
     rawArgs: context.rawArgs,
     runtime: context.runtime,
     sink: context.sink,
-    execution: createExecutionContext(context.runtime),
+    get execution() {
+      execution ??= createExecutionContext(context.runtime);
+      return execution;
+    },
   };
 }
 

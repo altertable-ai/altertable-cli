@@ -126,6 +126,7 @@ function createConfigurePlaneCommand(
   return defineLocalCommand({
     id: `configure.${scope}`,
     mutates: true,
+    localConfig: true,
     output: "none",
     meta: { name: scope, description },
     args: configurePlaneArgs,
@@ -151,6 +152,7 @@ const configureLakehouseCommand = createConfigurePlaneCommand(
 export const configureCommand = defineLocalCommand({
   id: "configure",
   mutates: true,
+  localConfig: true,
   output: "none",
   meta: {
     name: "configure",

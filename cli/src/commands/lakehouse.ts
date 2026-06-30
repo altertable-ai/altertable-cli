@@ -1,12 +1,6 @@
 import type { ArgsDef } from "citty";
 import { CliError } from "@/lib/errors.ts";
-import {
-  booleanArg,
-  enumArg,
-  optionalIntegerArg,
-  optionalStringArg,
-  stringArg,
-} from "@/lib/operation-codec.ts";
+import { booleanArg, enumArg, optionalStringArg, stringArg } from "@/lib/operation-codec.ts";
 import { httpEffect, progressPlan, scopedPlan } from "@/lib/operation-effect.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
@@ -19,19 +13,17 @@ import {
   QUERY_RESULT_FORMAT_OPTIONS,
   validateUploadPrimaryKey,
 } from "@/commands/lakehouse-args.ts";
-import { formatAutocompleteHumanOutput, writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
 import { createLakehouseUploadRequest } from "@/lib/lakehouse-transport.ts";
 import {
   type LakehouseQueryOperationInput,
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,
-  lakehouseAutocompleteOperation,
   lakehouseQueryCancelOperation,
   lakehouseQueryOperation,
   lakehouseQueryShowOperation,
   lakehouseQueryStreamOperation,
-  lakehouseValidateOperation,
 } from "@/lib/lakehouse-operations.ts";
 
 const UPLOAD_MODE_OPTIONS = ["overwrite", "upsert"] as const;
@@ -184,35 +176,6 @@ export const queryCommand = defineGroupCommand({
   },
 });
 
-export const validateCommand = defineHttpCommand({
-  id: "lakehouse.validate",
-  plane: "lakehouse",
-  operation: lakehouseValidateOperation,
-  output: "raw-api",
-  meta: {
-    name: "validate",
-    description: "Validate a SQL statement without executing it.",
-    examples: ['altertable validate --statement "SELECT 1"'],
-  },
-  args: {
-    statement: { type: "string", description: "SQL to validate", required: true },
-    "read-timeout": {
-      type: "string",
-      description: "Read timeout in seconds for this request (overrides global --read-timeout)",
-    },
-  },
-  parse({ args }) {
-    const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    return {
-      statement: stringArg(args, "statement"),
-      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
-    };
-  },
-  present(response) {
-    return { kind: "raw_api", body: response };
-  },
-});
-
 const appendRowsCommand = defineOperationCommand({
   id: "lakehouse.append.run",
   capabilities: ["lakehouse-http", "progress"],
@@ -362,40 +325,5 @@ export const uploadCommand = defineOperationCommand({
   },
   present(response) {
     return { kind: "raw_api", body: response };
-  },
-});
-
-export const autocompleteCommand = defineHttpCommand({
-  id: "lakehouse.autocomplete",
-  plane: "lakehouse",
-  operation: lakehouseAutocompleteOperation,
-  output: "raw-api",
-  meta: {
-    name: "autocomplete",
-    description: "Get SQL autocomplete suggestions.",
-    examples: ['altertable autocomplete --statement "SELECT * FROM "'],
-  },
-  args: {
-    statement: { type: "string", description: "Partial SQL statement", required: true },
-    catalog: { type: "string", description: "Optional catalog context" },
-    schema: { type: "string", description: "Optional schema context" },
-    "session-id": { type: "string", description: "Optional session id" },
-    "max-suggestions": { type: "string", description: "Maximum number of suggestions" },
-  },
-  parse({ args }) {
-    return {
-      statement: stringArg(args, "statement"),
-      catalog: optionalStringArg(args, "catalog"),
-      schema: optionalStringArg(args, "schema"),
-      sessionId: optionalStringArg(args, "session-id"),
-      maxSuggestions: optionalIntegerArg(args, "max-suggestions"),
-    };
-  },
-  present(response) {
-    return {
-      kind: "raw_api",
-      body: response,
-      humanFormatter: formatAutocompleteHumanOutput,
-    };
   },
 });

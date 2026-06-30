@@ -20,25 +20,12 @@ export type LakehouseCancelOperationInput = {
   sessionId: string;
 };
 
-export type LakehouseValidateOperationInput = {
-  statement: string;
-  httpOptions?: { readTimeoutMs?: number };
-};
-
 export type LakehouseAppendOperationInput = {
   catalog: string;
   schema: string;
   table: string;
   payload: string;
   sync: boolean;
-};
-
-export type LakehouseAutocompleteOperationInput = {
-  statement: string;
-  catalog?: string;
-  schema?: string;
-  sessionId?: string;
-  maxSuggestions?: number;
 };
 
 function buildLakehouseQueryPayload(
@@ -131,21 +118,6 @@ export const lakehouseQueryCancelOperation = defineHttpOperation<
   },
 });
 
-export const lakehouseValidateOperation = defineHttpOperation<
-  LakehouseValidateOperationInput,
-  string
->({
-  id: "lakehouse.validate",
-  request: (input) => ({
-    plane: "lakehouse",
-    method: "POST",
-    endpoint: "/validate",
-    body: JSON.stringify({ statement: input.statement }),
-    contentType: "application/json",
-    ...input.httpOptions,
-  }),
-});
-
 export const lakehouseVerifyOperation = defineHttpOperation<void, string>({
   id: "lakehouse.verify",
   request: () => ({
@@ -177,33 +149,4 @@ export const lakehouseAppendTaskOperation = defineHttpOperation<string, string>(
     endpoint: `/tasks/${urlencode(taskId)}`,
     retry: true,
   }),
-});
-
-export const lakehouseAutocompleteOperation = defineHttpOperation<
-  LakehouseAutocompleteOperationInput,
-  string
->({
-  id: "lakehouse.autocomplete",
-  request: (input) => {
-    const payload: Record<string, string | number> = { statement: input.statement };
-    if (input.catalog) {
-      payload.catalog = input.catalog;
-    }
-    if (input.schema) {
-      payload.schema = input.schema;
-    }
-    if (input.sessionId) {
-      payload.session_id = input.sessionId;
-    }
-    if (input.maxSuggestions !== undefined) {
-      payload.max_suggestions = input.maxSuggestions;
-    }
-    return {
-      plane: "lakehouse",
-      method: "POST",
-      endpoint: "/autocomplete",
-      body: JSON.stringify(payload),
-      contentType: "application/json",
-    };
-  },
 });
