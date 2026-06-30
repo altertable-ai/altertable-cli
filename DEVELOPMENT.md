@@ -12,6 +12,7 @@ bun run lint                   # oxlint with type-aware rules (typescript-go)
 bun run lint:fix               # oxlint --fix
 bun run format                 # oxfmt
 bun run format:check           # CI formatting check
+bun run knip                   # required dead-code/unused-export check
 bun run generate               # regenerate OpenAPI types
 bun run build                  # bundle to cli/dist/cli.js
 bun run pack:check             # build + dry-run pack (verify publish contents)

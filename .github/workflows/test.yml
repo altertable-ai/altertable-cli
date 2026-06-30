@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test TypeScript CLI
+    name: Test CLI
     runs-on: ubuntu-latest
     services:
       altertable:
@@ -77,25 +77,25 @@ jobs:
           bin/altertable --version
           bin/altertable --help
 
-      - name: Run Configure Tests
+      - name: Run configure tests
         run: ./tests/configure_test.sh
 
-      - name: Run Management Tests
+      - name: Run management tests
         run: ./tests/management_test.sh
 
-      - name: Run Context Tests
+      - name: Run context tests
         run: ./tests/context_test.sh
 
-      - name: Run Catalogs Tests
+      - name: Run catalogs tests
         run: ./tests/catalogs_test.sh
 
-      - name: Run Scripting Tests
+      - name: Run scripting tests
         run: ./tests/scripting_test.sh
 
-      - name: Run Profile Tests
+      - name: Run profile tests
         run: ./tests/profile_test.sh
 
-      - name: Run Integration Tests
+      - name: Run integration tests
         run: ./tests/integration_test.sh
 
   compile:
