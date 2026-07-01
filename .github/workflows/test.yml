@@ -53,10 +53,10 @@ jobs:
         run: bun run knip
         working-directory: cli
 
-      - name: Verify OpenAPI types are up to date
+      - name: Verify OpenAPI generated files are up to date
         run: |
           bun run generate
-          git diff --exit-code src/generated/openapi-types.ts
+          git diff --exit-code src/generated/openapi-types.ts src/generated/openapi-operations.ts
         working-directory: cli
 
       - name: Unit tests

@@ -15,6 +15,7 @@ import { createExecutionContext } from "@/lib/execution-context.ts";
 import { runOperationPlan } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { ParseError } from "@/lib/errors.ts";
 
 let testHome = "";
 let mockFile = "";
@@ -115,6 +116,37 @@ describe("api-body", () => {
     const filePath = join(testHome, "payload.json");
     writeFileSync(filePath, '{"name":"from-file"}', "utf8");
     expect(readJsonBody(`@${filePath}`)).toBe('{"name":"from-file"}');
+  });
+
+  test("readJsonBody rejects invalid JSON from @file payloads", () => {
+    const filePath = join(testHome, "invalid-payload.json");
+    writeFileSync(filePath, "{not-json", "utf8");
+
+    expect(() => readJsonBody(`@${filePath}`)).toThrow(ParseError);
+  });
+
+  test("resolveApiBody rejects invalid JSON from --input @file payloads", () => {
+    const filePath = join(testHome, "invalid-input.json");
+    writeFileSync(filePath, "{not-json", "utf8");
+
+    expect(() =>
+      resolveApiBody({
+        method: "POST",
+        input: `@${filePath}`,
+      }),
+    ).toThrow(ParseError);
+  });
+
+  test("resolveApiBody returns valid --input @file payloads unchanged", () => {
+    const filePath = join(testHome, "valid-input.json");
+    writeFileSync(filePath, '{"name":"from-input-file"}', "utf8");
+
+    const body = resolveApiBody({
+      method: "POST",
+      input: `@${filePath}`,
+    });
+
+    expect(body).toBe('{"name":"from-input-file"}');
   });
 });
 

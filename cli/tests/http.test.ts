@@ -25,6 +25,10 @@ let testHome = "";
 let mockFile = "";
 let logFile = "";
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-http-test-"));
   mockFile = join(testHome, "mocks.json");
@@ -348,6 +352,101 @@ describe("httpSendStream mocks", () => {
     }
 
     expect(combined).toBe('{"statement":"SELECT 1"}\n["id"]\n[1]');
+  });
+});
+
+describe("httpSendStream live timeouts", () => {
+  test("readTimeoutMs 0 does not abort body after connect timeout once response is returned", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+    const encoder = new TextEncoder();
+
+    globalThis.fetch = Object.assign(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const signal = init?.signal;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            async start(controller) {
+              await delay(20);
+              if (signal?.aborted) {
+                controller.error(new Error("stream was aborted"));
+                return;
+              }
+              controller.enqueue(encoder.encode("ok"));
+              controller.close();
+            },
+          }),
+          { status: 200 },
+        );
+      },
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      const stream = await httpSendStream({
+        method: "POST",
+        url: "https://example.com/query",
+        authHeader: "Authorization: Bearer test",
+        body: "{}",
+        connectTimeoutMs: 5,
+        readTimeoutMs: 0,
+      });
+
+      const reader = stream.getReader();
+      const { done, value } = await reader.read();
+
+      expect(done).toBe(false);
+      expect(new TextDecoder().decode(value)).toBe("ok");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("positive readTimeoutMs aborts when stream body takes too long", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+    let abortObserved = false;
+
+    globalThis.fetch = Object.assign(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const signal = init?.signal;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              signal?.addEventListener("abort", () => {
+                abortObserved = true;
+                controller.error(new DOMException("stream timed out", "AbortError"));
+              });
+            },
+          }),
+          { status: 200 },
+        );
+      },
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      const stream = await httpSendStream({
+        method: "POST",
+        url: "https://example.com/query",
+        authHeader: "Authorization: Bearer test",
+        body: "{}",
+        connectTimeoutMs: 50,
+        readTimeoutMs: 5,
+      });
+
+      const reader = stream.getReader();
+      try {
+        await reader.read();
+        expect.unreachable("stream read should have timed out");
+      } catch (error) {
+        expect(error).toBeInstanceOf(DOMException);
+        expect((error as DOMException).message).toBe("stream timed out");
+      }
+      expect(abortObserved).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 

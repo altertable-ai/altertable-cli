@@ -20,6 +20,21 @@ printf 'id,name\n1,Alice\n2,Bob\n' > /tmp/at_test_upload.csv
 rm /tmp/at_test_upload.csv
 pass "upload creates table from CSV"
 
+# ── upsert ───────────────────────────────────────────────────────────────────
+
+printf 'id,name\n2,Bobby\n' > /tmp/at_test_upsert.csv
+"${CLI}" upsert \
+  --catalog memory --schema main --table cli_test \
+  --primary-key id --format csv \
+  --file /tmp/at_test_upsert.csv > /dev/null
+rm /tmp/at_test_upsert.csv
+pass "upsert updates table from CSV by primary key"
+
+RESP=$("${CLI}" --json query --statement "SELECT * FROM cli_test WHERE id = 2")
+UPDATED=$(echo "${RESP}" | jq -r '.rows[0][1]')
+[[ "${UPDATED}" == "Bobby" ]] || fail "upsert: expected row id=2 name 'Bobby', got '${UPDATED}'"
+pass "query reflects upserted row"
+
 # ── query ─────────────────────────────────────────────────────────────────────
 
 RESP=$("${CLI}" query --statement "SELECT * FROM cli_test ORDER BY id")

@@ -103,6 +103,37 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function streamWithTimeoutCleanup(
+  stream: ReadableStream<Uint8Array>,
+  clearTimeoutAfterRead: () => void,
+): ReadableStream<Uint8Array> {
+  let reader: ReturnType<typeof stream.getReader> | undefined;
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const activeReader = stream.getReader();
+      reader = activeReader;
+      try {
+        while (true) {
+          const { done, value } = await activeReader.read();
+          if (done) {
+            clearTimeoutAfterRead();
+            controller.close();
+            break;
+          }
+          controller.enqueue(value);
+        }
+      } catch (error) {
+        clearTimeoutAfterRead();
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      clearTimeoutAfterRead();
+      return reader?.cancel(reason);
+    },
+  });
+}
+
 function findMatchingMock(
   mocks: MockHttpEntry[],
   options: HttpSendOptions,
@@ -379,8 +410,17 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   const headers = buildRequestHeaders(options);
   const connectTimeoutMs = resolveConnectTimeoutMs(options);
   const readTimeoutMs = resolveReadTimeoutMs(options, STREAM_READ_TIMEOUT_MS);
-  const timeoutMs = readTimeoutMs > 0 ? connectTimeoutMs + readTimeoutMs : connectTimeoutMs;
-  const signal = AbortSignal.timeout(timeoutMs);
+  const abortController = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+    abortController.abort();
+  }, connectTimeoutMs);
+  const clearActiveTimeout = () => {
+    if (timeout === undefined) {
+      return;
+    }
+    clearTimeout(timeout);
+    timeout = undefined;
+  };
 
   logHttpRequest(options);
   logDebug(`Request: ${options.method} ${options.url}`);
@@ -391,10 +431,12 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
       method: options.method,
       headers,
       body: options.body,
-      signal,
+      signal: abortController.signal,
       dispatcher: getSharedDispatcher(),
     } as RequestInit);
+    clearActiveTimeout();
   } catch (error) {
+    clearActiveTimeout();
     if (isAbortError(error)) {
       throw new TimeoutError();
     }
@@ -405,7 +447,13 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     if (!response.body) {
       throw new NetworkError("Response body is missing.");
     }
-    return response.body;
+    if (readTimeoutMs <= 0) {
+      return response.body;
+    }
+    timeout = setTimeout(() => {
+      abortController.abort();
+    }, readTimeoutMs);
+    return streamWithTimeoutCleanup(response.body, clearActiveTimeout);
   }
 
   const responseBody = await response.text();
