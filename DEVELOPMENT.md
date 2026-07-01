@@ -7,7 +7,7 @@ cd cli
 bun install
 bun run dev -- --help          # same as bin/altertable
 bun test
-bun run test:coverage          # coverage report + 80% threshold
+bun run test:coverage          # coverage report
 bun run typecheck
 bun run lint                   # oxlint with type-aware rules (typescript-go)
 bun run lint:fix               # oxlint --fix
