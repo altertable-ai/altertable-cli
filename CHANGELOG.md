@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/altertable-ai/altertable-cli/compare/altertable-cli-v1.0.0...altertable-cli-v1.1.0) (2026-07-01)
+
+
+### Features
+
+* add one-shot shell completion installer ([#9](https://github.com/altertable-ai/altertable-cli/issues/9)) ([3984fe8](https://github.com/altertable-ai/altertable-cli/commit/3984fe86807c3de4f70d2350d1296138c233c368))
+* **cli:** support lakehouse upsert endpoint ([#5](https://github.com/altertable-ai/altertable-cli/issues/5)) ([d6ec3b8](https://github.com/altertable-ai/altertable-cli/commit/d6ec3b8630233b6f6dc9c99c0a6e1e0bb12719aa))
+* improve human and agent experience ([#8](https://github.com/altertable-ai/altertable-cli/issues/8)) ([135414f](https://github.com/altertable-ai/altertable-cli/commit/135414fabfde46c03d2b3d04be3b2e9838a2ab8d))
+
+
+### Bug Fixes
+
+* **api:** normalize api args to ensure the HTTP verb is optional ([#11](https://github.com/altertable-ai/altertable-cli/issues/11)) ([78b32df](https://github.com/altertable-ai/altertable-cli/commit/78b32df88de1848c6898e9347222272a193b1c92))
+* **api:** prevent wide API tables from soft-wrapping ([#13](https://github.com/altertable-ai/altertable-cli/issues/13)) ([56fbeb6](https://github.com/altertable-ai/altertable-cli/commit/56fbeb6ff3de90f46e94395d3a500db88371bedb))
+* **ci:** verify executable step path ([#1](https://github.com/altertable-ai/altertable-cli/issues/1)) ([4044001](https://github.com/altertable-ai/altertable-cli/commit/40440010a4eef01178e1c34ad931ae7ccb4a0f05))
+* tighten body validation and stream timeout handling ([#16](https://github.com/altertable-ai/altertable-cli/issues/16)) ([4c4ce08](https://github.com/altertable-ai/altertable-cli/commit/4c4ce080981af4499eefbfae4ce8d767440fb089))
+* validate lakehouse upload files before streaming the payload ([#15](https://github.com/altertable-ai/altertable-cli/issues/15)) ([0e49b6e](https://github.com/altertable-ai/altertable-cli/commit/0e49b6eb019659293d6e2bfd44de016b31087425))
+
 ## [1.0.0] - 2026-06-26
 
 First public release of the Altertable CLI — a TypeScript/Bun command-line tool for the Altertable data platform: lakehouse data plane and management REST API.
