@@ -33,6 +33,7 @@ import {
   showAltertableUsage,
   showCommandExamplesForArgs,
 } from "@/lib/citty-usage.ts";
+import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { terminalError, applyTerminalColorFromContext } from "@/lib/terminal-style.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
@@ -69,6 +70,12 @@ const ROOT_ARGS = {
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
   },
 } satisfies ArgsDef;
+
+const ROOT_VALUE_FLAGS = valueFlagsFor(ROOT_ARGS);
+
+export function resolveTopLevelCommandName(rawArgs: readonly string[]): string | undefined {
+  return findFirstPositionalToken(rawArgs, { valueFlags: ROOT_VALUE_FLAGS })?.value;
+}
 
 export function buildMainCommand(): CommandDef {
   let mainCommand: CommandDef;
@@ -158,7 +165,10 @@ async function bootstrap(): Promise<void> {
     }
 
     await runCommand(main, { rawArgs });
-    await maybeShowUpdateNotice({ context: getCliContext(), rawArgs });
+    await maybeShowUpdateNotice({
+      context: getCliContext(),
+      commandName: resolveTopLevelCommandName(rawArgs),
+    });
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
 

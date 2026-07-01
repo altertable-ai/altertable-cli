@@ -6,20 +6,86 @@ import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
+import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { configDir, configGet, configSet } from "@/lib/config.ts";
+import { urlencode } from "@/lib/encode.ts";
 import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 
-export const UPDATE_SOURCES = ["npm", "github"] as const;
-export const UPDATE_CHECK_INTERVALS = ["daily", "weekly", "never"] as const;
-export const INSTALL_MANAGERS = ["bun", "npm", "pnpm", "yarn"] as const;
+const DAILY_MS = 24 * 60 * 60 * 1000;
+const UPDATER_SOURCES = {
+  npm: {
+    registryUrl: "https://registry.npmjs.org",
+    packageBaseUrl: "https://www.npmjs.com/package",
+  },
+  github: {
+    apiBaseUrl: "https://api.github.com/repos",
+    webBaseUrl: "https://github.com",
+  },
+} as const;
 
-export type UpdateSource = (typeof UPDATE_SOURCES)[number];
-export type UpdateCheckInterval = (typeof UPDATE_CHECK_INTERVALS)[number];
-export type InstallManager = (typeof INSTALL_MANAGERS)[number];
+const UPDATE_INTERVALS_MS = {
+  daily: DAILY_MS,
+  weekly: 7 * DAILY_MS,
+  never: Number.POSITIVE_INFINITY,
+} as const;
+
+const INSTALL_COMMANDS = {
+  bun: { command: "bun", argsBeforePackage: ["install", "-g"] },
+  npm: { command: "npm", argsBeforePackage: ["install", "-g"] },
+  pnpm: { command: "pnpm", argsBeforePackage: ["add", "-g"] },
+  yarn: { command: "yarn", argsBeforePackage: ["global", "add"] },
+} as const;
+
+const UPDATER_DEFAULTS = {
+  source: "npm",
+  checkInterval: "daily",
+  installManager: "npm",
+} as const satisfies {
+  source: keyof typeof UPDATER_SOURCES;
+  checkInterval: keyof typeof UPDATE_INTERVALS_MS;
+  installManager: keyof typeof INSTALL_COMMANDS;
+};
+
+export const UPDATER_CONFIG = {
+  packageName: CLI_PACKAGE_METADATA.name,
+  githubRepo: CLI_PACKAGE_METADATA.repositorySlug,
+  stateFileName: "update-state.json",
+  configKeys: {
+    checkInterval: "update_check_interval",
+  },
+  defaults: UPDATER_DEFAULTS,
+  env: {
+    source: "ALTERTABLE_UPDATE_SOURCE",
+    registryUrl: "ALTERTABLE_UPDATE_REGISTRY_URL",
+    githubRepo: "ALTERTABLE_UPDATE_GITHUB_REPO",
+    installer: "ALTERTABLE_UPDATE_INSTALLER",
+    noUpdateCheck: "ALTERTABLE_NO_UPDATE_CHECK",
+    updateCheck: "ALTERTABLE_UPDATE_CHECK",
+    bunInstall: "BUN_INSTALL",
+    ci: "CI",
+    test: "TEST",
+  },
+  sources: UPDATER_SOURCES,
+  timeoutsMs: {
+    automatic: 900,
+    manual: 10_000,
+  },
+  intervalsMs: UPDATE_INTERVALS_MS,
+  automaticCheckSkipCommands: ["completion", "update"],
+  installCommands: INSTALL_COMMANDS,
+} as const;
+
+export type UpdateSource = keyof typeof UPDATER_CONFIG.sources;
+export type UpdateCheckInterval = keyof typeof UPDATER_CONFIG.intervalsMs;
+export type InstallManager = keyof typeof UPDATER_CONFIG.installCommands;
+
+export const UPDATE_SOURCES = objectKeys(UPDATER_CONFIG.sources);
+export const UPDATE_CHECK_INTERVALS = objectKeys(UPDATER_CONFIG.intervalsMs);
+export const INSTALL_MANAGERS = objectKeys(UPDATER_CONFIG.installCommands);
 
 export type ReleaseInfo = {
   version: string;
@@ -67,95 +133,13 @@ type FetchLatestOptions = {
 
 type AutomaticNoticeOptions = FetchLatestOptions & {
   context: CliContext;
-  rawArgs: readonly string[];
+  commandName?: string;
   sink?: OutputSink;
   now?: Date;
   stderrIsTTY?: boolean;
 };
 
-const DAILY_MS = 24 * 60 * 60 * 1000;
-const WEEKLY_MS = 7 * DAILY_MS;
-
-export const UPDATER_CONFIG = {
-  packageName: "@altertable/cli",
-  githubRepo: "altertable-ai/altertable-cli",
-  stateFileName: "update-state.json",
-  configKeys: {
-    checkInterval: "update_check_interval",
-  },
-  defaults: {
-    source: "npm",
-    checkInterval: "daily",
-    installManager: "npm",
-  },
-  env: {
-    source: "ALTERTABLE_UPDATE_SOURCE",
-    registryUrl: "ALTERTABLE_UPDATE_REGISTRY_URL",
-    githubRepo: "ALTERTABLE_UPDATE_GITHUB_REPO",
-    installer: "ALTERTABLE_UPDATE_INSTALLER",
-    noUpdateCheck: "ALTERTABLE_NO_UPDATE_CHECK",
-    updateCheck: "ALTERTABLE_UPDATE_CHECK",
-    bunInstall: "BUN_INSTALL",
-    ci: "CI",
-    test: "TEST",
-  },
-  urls: {
-    npmRegistry: "https://registry.npmjs.org",
-    npmPackageBase: "https://www.npmjs.com/package",
-    githubApiBase: "https://api.github.com/repos",
-    githubWebBase: "https://github.com",
-  },
-  timeoutsMs: {
-    automatic: 900,
-    manual: 10_000,
-  },
-  intervalsMs: {
-    daily: DAILY_MS,
-    weekly: WEEKLY_MS,
-  },
-  automaticChecks: {
-    globalValueFlags: ["--profile", "--connect-timeout", "--read-timeout"],
-    skipCommands: ["completion", "update"],
-  },
-  installCommands: {
-    bun: { command: "bun", argsBeforePackage: ["install", "-g"] },
-    npm: { command: "npm", argsBeforePackage: ["install", "-g"] },
-    pnpm: { command: "pnpm", argsBeforePackage: ["add", "-g"] },
-    yarn: { command: "yarn", argsBeforePackage: ["global", "add"] },
-  },
-} as const satisfies {
-  packageName: string;
-  githubRepo: string;
-  stateFileName: string;
-  configKeys: { checkInterval: string };
-  defaults: {
-    source: UpdateSource;
-    checkInterval: UpdateCheckInterval;
-    installManager: InstallManager;
-  };
-  env: Record<string, string>;
-  urls: Record<string, string>;
-  timeoutsMs: { automatic: number; manual: number };
-  intervalsMs: Record<Exclude<UpdateCheckInterval, "never">, number>;
-  automaticChecks: {
-    globalValueFlags: readonly string[];
-    skipCommands: readonly string[];
-  };
-  installCommands: Record<
-    InstallManager,
-    {
-      command: string;
-      argsBeforePackage: readonly string[];
-    }
-  >;
-};
-
-const GLOBAL_VALUE_FLAGS: ReadonlySet<string> = new Set(
-  UPDATER_CONFIG.automaticChecks.globalValueFlags,
-);
-const AUTO_SKIP_COMMANDS: ReadonlySet<string> = new Set(
-  UPDATER_CONFIG.automaticChecks.skipCommands,
-);
+const AUTO_SKIP_COMMANDS: ReadonlySet<string> = new Set(UPDATER_CONFIG.automaticCheckSkipCommands);
 
 function parseVersion(version: string): ParsedVersion | undefined {
   const match = version
@@ -171,6 +155,12 @@ function parseVersion(version: string): ParsedVersion | undefined {
     patch: Number.parseInt(match[3] ?? "0", 10),
     prerelease: match[4] ? match[4].split(".") : [],
   };
+}
+
+function objectKeys<TValue extends Record<string, unknown>>(
+  value: TValue,
+): Array<Extract<keyof TValue, string>> {
+  return Object.keys(value) as Array<Extract<keyof TValue, string>>;
 }
 
 function comparePrereleaseIdentifier(left: string, right: string): number {
@@ -309,28 +299,39 @@ function isAllowedValue<TValue extends string>(
   return value !== undefined && values.includes(value as TValue);
 }
 
-function encodedNpmPackageName(): string {
-  return UPDATER_CONFIG.packageName.replace("/", "%2F");
-}
-
 function npmRegistryUrl(): string {
-  const registry = process.env[UPDATER_CONFIG.env.registryUrl] ?? UPDATER_CONFIG.urls.npmRegistry;
-  return `${registry.replace(/\/$/, "")}/${encodedNpmPackageName()}/latest`;
+  const registry =
+    process.env[UPDATER_CONFIG.env.registryUrl] ?? UPDATER_CONFIG.sources.npm.registryUrl;
+  const url = new URL(registry);
+  appendEncodedUrlPath(url, UPDATER_CONFIG.packageName, "latest");
+  return url.toString();
 }
 
 function githubLatestReleaseUrl(): string {
   const repo = process.env[UPDATER_CONFIG.env.githubRepo] ?? UPDATER_CONFIG.githubRepo;
-  return `${UPDATER_CONFIG.urls.githubApiBase}/${repo}/releases/latest`;
+  const url = new URL(UPDATER_CONFIG.sources.github.apiBaseUrl);
+  appendEncodedUrlPath(url, ...repo.split("/"), "releases", "latest");
+  return url.toString();
 }
 
 function githubReleasesFallbackUrl(): string {
-  return `${UPDATER_CONFIG.urls.githubWebBase}/${UPDATER_CONFIG.githubRepo}/releases`;
+  const url = new URL(UPDATER_CONFIG.sources.github.webBaseUrl);
+  appendEncodedUrlPath(url, ...UPDATER_CONFIG.githubRepo.split("/"), "releases");
+  return url.toString();
 }
 
 export function packageReleaseUrl(version: string): string {
-  return `${UPDATER_CONFIG.urls.npmPackageBase}/${UPDATER_CONFIG.packageName}/v/${normalizeVersion(
-    version,
-  )}`;
+  const url = new URL(UPDATER_CONFIG.sources.npm.packageBaseUrl);
+  appendEncodedUrlPath(url, UPDATER_CONFIG.packageName, "v", normalizeVersion(version));
+  return url.toString();
+}
+
+function appendEncodedUrlPath(url: URL, ...rawSegments: string[]): void {
+  const baseSegments = url.pathname.split("/").filter((segment) => segment.length > 0);
+  url.pathname = [...baseSegments, ...rawSegments.map(urlencode)]
+    .filter((segment) => segment.length > 0)
+    .join("/")
+    .replace(/^/, "/");
 }
 
 async function fetchJson(
@@ -473,37 +474,13 @@ function envDisablesAutomaticChecks(): boolean {
   return updateCheck === "0" || updateCheck === "false" || updateCheck === "never";
 }
 
-function firstTopLevelCommand(rawArgs: readonly string[]): string | undefined {
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-    if (arg === "--") {
-      return undefined;
-    }
-    if (arg.startsWith("-")) {
-      const flag = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
-      if (!arg.includes("=") && GLOBAL_VALUE_FLAGS.has(flag)) {
-        index += 1;
-      }
-      continue;
-    }
-    return arg;
-  }
-  return undefined;
-}
-
 function intervalMs(interval: UpdateCheckInterval): number {
-  if (interval === "never") {
-    return Number.POSITIVE_INFINITY;
-  }
   return UPDATER_CONFIG.intervalsMs[interval];
 }
 
 export function shouldRunAutomaticUpdateCheck(options: {
   context: CliContext;
-  rawArgs: readonly string[];
+  commandName?: string;
   state?: UpdateState;
   now?: Date;
   stderrIsTTY?: boolean;
@@ -523,7 +500,7 @@ export function shouldRunAutomaticUpdateCheck(options: {
     return false;
   }
 
-  const command = firstTopLevelCommand(options.rawArgs);
+  const command = options.commandName;
   if (!command || AUTO_SKIP_COMMANDS.has(command)) {
     return false;
   }
