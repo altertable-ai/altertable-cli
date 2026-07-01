@@ -13,9 +13,13 @@ import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 
-export type UpdateSource = "npm" | "github";
-export type UpdateCheckInterval = "daily" | "weekly" | "never";
-export type InstallManager = "bun" | "npm" | "pnpm" | "yarn";
+export const UPDATE_SOURCES = ["npm", "github"] as const;
+export const UPDATE_CHECK_INTERVALS = ["daily", "weekly", "never"] as const;
+export const INSTALL_MANAGERS = ["bun", "npm", "pnpm", "yarn"] as const;
+
+export type UpdateSource = (typeof UPDATE_SOURCES)[number];
+export type UpdateCheckInterval = (typeof UPDATE_CHECK_INTERVALS)[number];
+export type InstallManager = (typeof INSTALL_MANAGERS)[number];
 
 export type ReleaseInfo = {
   version: string;
@@ -69,18 +73,89 @@ type AutomaticNoticeOptions = FetchLatestOptions & {
   stderrIsTTY?: boolean;
 };
 
-const PACKAGE_NAME = "@altertable/cli";
-const ENCODED_PACKAGE_NAME = "@altertable%2Fcli";
-const DEFAULT_GITHUB_REPO = "altertable-ai/altertable-cli";
-const DEFAULT_UPDATE_SOURCE: UpdateSource = "npm";
-const DEFAULT_UPDATE_INTERVAL: UpdateCheckInterval = "daily";
-const UPDATE_CHECK_INTERVAL_KEY = "update_check_interval";
 const DAILY_MS = 24 * 60 * 60 * 1000;
 const WEEKLY_MS = 7 * DAILY_MS;
-const AUTOMATIC_CHECK_TIMEOUT_MS = 900;
-const MANUAL_CHECK_TIMEOUT_MS = 10_000;
-const GLOBAL_VALUE_FLAGS = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
-const AUTO_SKIP_COMMANDS = new Set(["completion", "update"]);
+
+export const UPDATER_CONFIG = {
+  packageName: "@altertable/cli",
+  githubRepo: "altertable-ai/altertable-cli",
+  stateFileName: "update-state.json",
+  configKeys: {
+    checkInterval: "update_check_interval",
+  },
+  defaults: {
+    source: "npm",
+    checkInterval: "daily",
+    installManager: "npm",
+  },
+  env: {
+    source: "ALTERTABLE_UPDATE_SOURCE",
+    registryUrl: "ALTERTABLE_UPDATE_REGISTRY_URL",
+    githubRepo: "ALTERTABLE_UPDATE_GITHUB_REPO",
+    installer: "ALTERTABLE_UPDATE_INSTALLER",
+    noUpdateCheck: "ALTERTABLE_NO_UPDATE_CHECK",
+    updateCheck: "ALTERTABLE_UPDATE_CHECK",
+    bunInstall: "BUN_INSTALL",
+    ci: "CI",
+    test: "TEST",
+  },
+  urls: {
+    npmRegistry: "https://registry.npmjs.org",
+    npmPackageBase: "https://www.npmjs.com/package",
+    githubApiBase: "https://api.github.com/repos",
+    githubWebBase: "https://github.com",
+  },
+  timeoutsMs: {
+    automatic: 900,
+    manual: 10_000,
+  },
+  intervalsMs: {
+    daily: DAILY_MS,
+    weekly: WEEKLY_MS,
+  },
+  automaticChecks: {
+    globalValueFlags: ["--profile", "--connect-timeout", "--read-timeout"],
+    skipCommands: ["completion", "update"],
+  },
+  installCommands: {
+    bun: { command: "bun", argsBeforePackage: ["install", "-g"] },
+    npm: { command: "npm", argsBeforePackage: ["install", "-g"] },
+    pnpm: { command: "pnpm", argsBeforePackage: ["add", "-g"] },
+    yarn: { command: "yarn", argsBeforePackage: ["global", "add"] },
+  },
+} as const satisfies {
+  packageName: string;
+  githubRepo: string;
+  stateFileName: string;
+  configKeys: { checkInterval: string };
+  defaults: {
+    source: UpdateSource;
+    checkInterval: UpdateCheckInterval;
+    installManager: InstallManager;
+  };
+  env: Record<string, string>;
+  urls: Record<string, string>;
+  timeoutsMs: { automatic: number; manual: number };
+  intervalsMs: Record<Exclude<UpdateCheckInterval, "never">, number>;
+  automaticChecks: {
+    globalValueFlags: readonly string[];
+    skipCommands: readonly string[];
+  };
+  installCommands: Record<
+    InstallManager,
+    {
+      command: string;
+      argsBeforePackage: readonly string[];
+    }
+  >;
+};
+
+const GLOBAL_VALUE_FLAGS: ReadonlySet<string> = new Set(
+  UPDATER_CONFIG.automaticChecks.globalValueFlags,
+);
+const AUTO_SKIP_COMMANDS: ReadonlySet<string> = new Set(
+  UPDATER_CONFIG.automaticChecks.skipCommands,
+);
 
 function parseVersion(version: string): ParsedVersion | undefined {
   const match = version
@@ -161,7 +236,7 @@ export function compareVersions(leftVersion: string, rightVersion: string): numb
 }
 
 function updaterStateFile(): string {
-  return join(configDir(), "update-state.json");
+  return join(configDir(), UPDATER_CONFIG.stateFileName);
 }
 
 function writeJsonFileAtomic(filePath: string, data: unknown): void {
@@ -197,40 +272,65 @@ export function clearUpdateState(): void {
 }
 
 export function parseUpdateCheckInterval(value: string): UpdateCheckInterval | undefined {
-  if (value === "daily" || value === "weekly" || value === "never") {
+  if (isAllowedValue(UPDATE_CHECK_INTERVALS, value)) {
     return value;
   }
   return undefined;
 }
 
 export function getUpdateCheckInterval(): UpdateCheckInterval {
-  const fromConfig = parseUpdateCheckInterval(configGet(UPDATE_CHECK_INTERVAL_KEY));
-  return fromConfig ?? DEFAULT_UPDATE_INTERVAL;
+  const fromConfig = parseUpdateCheckInterval(configGet(UPDATER_CONFIG.configKeys.checkInterval));
+  return fromConfig ?? UPDATER_CONFIG.defaults.checkInterval;
 }
 
 export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
-  configSet(UPDATE_CHECK_INTERVAL_KEY, interval);
+  configSet(UPDATER_CONFIG.configKeys.checkInterval, interval);
 }
 
 function parseUpdateSource(value: string | undefined): UpdateSource | undefined {
-  if (value === "npm" || value === "github") {
+  if (isAllowedValue(UPDATE_SOURCES, value)) {
     return value;
   }
   return undefined;
 }
 
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {
-  return source ?? parseUpdateSource(process.env.ALTERTABLE_UPDATE_SOURCE) ?? DEFAULT_UPDATE_SOURCE;
+  return (
+    source ??
+    parseUpdateSource(process.env[UPDATER_CONFIG.env.source]) ??
+    UPDATER_CONFIG.defaults.source
+  );
+}
+
+function isAllowedValue<TValue extends string>(
+  values: readonly TValue[],
+  value: string | undefined,
+): value is TValue {
+  return value !== undefined && values.includes(value as TValue);
+}
+
+function encodedNpmPackageName(): string {
+  return UPDATER_CONFIG.packageName.replace("/", "%2F");
 }
 
 function npmRegistryUrl(): string {
-  const registry = process.env.ALTERTABLE_UPDATE_REGISTRY_URL ?? "https://registry.npmjs.org";
-  return `${registry.replace(/\/$/, "")}/${ENCODED_PACKAGE_NAME}/latest`;
+  const registry = process.env[UPDATER_CONFIG.env.registryUrl] ?? UPDATER_CONFIG.urls.npmRegistry;
+  return `${registry.replace(/\/$/, "")}/${encodedNpmPackageName()}/latest`;
 }
 
 function githubLatestReleaseUrl(): string {
-  const repo = process.env.ALTERTABLE_UPDATE_GITHUB_REPO ?? DEFAULT_GITHUB_REPO;
-  return `https://api.github.com/repos/${repo}/releases/latest`;
+  const repo = process.env[UPDATER_CONFIG.env.githubRepo] ?? UPDATER_CONFIG.githubRepo;
+  return `${UPDATER_CONFIG.urls.githubApiBase}/${repo}/releases/latest`;
+}
+
+function githubReleasesFallbackUrl(): string {
+  return `${UPDATER_CONFIG.urls.githubWebBase}/${UPDATER_CONFIG.githubRepo}/releases`;
+}
+
+export function packageReleaseUrl(version: string): string {
+  return `${UPDATER_CONFIG.urls.npmPackageBase}/${UPDATER_CONFIG.packageName}/v/${normalizeVersion(
+    version,
+  )}`;
 }
 
 async function fetchJson(
@@ -272,7 +372,7 @@ function readStringProperty(data: unknown, key: string): string {
 
 export async function fetchLatestRelease(options: FetchLatestOptions = {}): Promise<ReleaseInfo> {
   const source = resolveUpdateSource(options.source);
-  const timeoutMs = options.timeoutMs ?? MANUAL_CHECK_TIMEOUT_MS;
+  const timeoutMs = options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.manual;
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (source === "github") {
@@ -284,9 +384,7 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
     return {
       version,
       source,
-      releaseUrl:
-        readStringProperty(data, "html_url") ||
-        "https://github.com/altertable-ai/altertable-cli/releases",
+      releaseUrl: readStringProperty(data, "html_url") || githubReleasesFallbackUrl(),
     };
   }
 
@@ -298,13 +396,13 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
   return {
     version,
     source,
-    releaseUrl: `https://www.npmjs.com/package/${PACKAGE_NAME}/v/${version}`,
+    releaseUrl: packageReleaseUrl(version),
   };
 }
 
 export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): InstallManager {
-  const override = env.ALTERTABLE_UPDATE_INSTALLER;
-  if (override === "bun" || override === "npm" || override === "pnpm" || override === "yarn") {
+  const override = env[UPDATER_CONFIG.env.installer];
+  if (isAllowedValue(INSTALL_MANAGERS, override)) {
     return override;
   }
 
@@ -321,29 +419,24 @@ export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): Inst
   if (userAgent.startsWith("npm/")) {
     return "npm";
   }
-  if (env.BUN_INSTALL) {
+  if (env[UPDATER_CONFIG.env.bunInstall]) {
     return "bun";
   }
-  return "npm";
+  return UPDATER_CONFIG.defaults.installManager;
 }
 
 export function createInstallPlan(
   version: string,
   manager: InstallManager = detectInstallManager(),
 ): InstallPlan {
-  const packageSpecifier = `${PACKAGE_NAME}@${normalizeVersion(version)}`;
-  const plans: Record<InstallManager, { command: string; args: string[] }> = {
-    bun: { command: "bun", args: ["install", "-g", packageSpecifier] },
-    npm: { command: "npm", args: ["install", "-g", packageSpecifier] },
-    pnpm: { command: "pnpm", args: ["add", "-g", packageSpecifier] },
-    yarn: { command: "yarn", args: ["global", "add", packageSpecifier] },
-  };
-  const plan = plans[manager];
+  const packageSpecifier = `${UPDATER_CONFIG.packageName}@${normalizeVersion(version)}`;
+  const plan = UPDATER_CONFIG.installCommands[manager];
+  const args = [...plan.argsBeforePackage, packageSpecifier];
   return {
     manager,
     command: plan.command,
-    args: plan.args,
-    display: [plan.command, ...plan.args].join(" "),
+    args,
+    display: [plan.command, ...args].join(" "),
   };
 }
 
@@ -371,12 +464,12 @@ export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<
 }
 
 function envDisablesAutomaticChecks(): boolean {
-  const noUpdate = process.env.ALTERTABLE_NO_UPDATE_CHECK;
+  const noUpdate = process.env[UPDATER_CONFIG.env.noUpdateCheck];
   if (noUpdate === "1" || noUpdate === "true") {
     return true;
   }
 
-  const updateCheck = process.env.ALTERTABLE_UPDATE_CHECK;
+  const updateCheck = process.env[UPDATER_CONFIG.env.updateCheck];
   return updateCheck === "0" || updateCheck === "false" || updateCheck === "never";
 }
 
@@ -402,7 +495,10 @@ function firstTopLevelCommand(rawArgs: readonly string[]): string | undefined {
 }
 
 function intervalMs(interval: UpdateCheckInterval): number {
-  return interval === "weekly" ? WEEKLY_MS : DAILY_MS;
+  if (interval === "never") {
+    return Number.POSITIVE_INFINITY;
+  }
+  return UPDATER_CONFIG.intervalsMs[interval];
 }
 
 export function shouldRunAutomaticUpdateCheck(options: {
@@ -419,7 +515,11 @@ export function shouldRunAutomaticUpdateCheck(options: {
   if (stderrIsTTY !== true) {
     return false;
   }
-  if (process.env.CI || process.env.TEST || envDisablesAutomaticChecks()) {
+  if (
+    process.env[UPDATER_CONFIG.env.ci] ||
+    process.env[UPDATER_CONFIG.env.test] ||
+    envDisablesAutomaticChecks()
+  ) {
     return false;
   }
 
@@ -456,7 +556,7 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
     const result = await checkForUpdate({
       source: options.source,
       fetchImpl: options.fetchImpl,
-      timeoutMs: options.timeoutMs ?? AUTOMATIC_CHECK_TIMEOUT_MS,
+      timeoutMs: options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.automatic,
     });
     if (!result.update_available) {
       return;

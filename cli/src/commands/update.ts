@@ -13,9 +13,13 @@ import {
   formatUpdateStatus,
   getUpdateCheckInterval,
   normalizeVersion,
+  packageReleaseUrl,
   readUpdateState,
   runInstallPlan,
   setUpdateCheckInterval,
+  UPDATE_CHECK_INTERVALS,
+  UPDATE_SOURCES,
+  UPDATER_CONFIG,
   type UpdateCheckInterval,
   type UpdateCheckResult,
   type UpdateSource,
@@ -39,7 +43,7 @@ function buildTargetResult(targetVersion: string, source: UpdateSource): UpdateC
     latest_version: version,
     update_available: compareVersions(version, VERSION) > 0,
     source,
-    release_url: `https://www.npmjs.com/package/@altertable/cli/v/${version}`,
+    release_url: packageReleaseUrl(version),
     checked_at: new Date().toISOString(),
     install_command: installPlan.display,
   };
@@ -81,7 +85,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
     return;
   }
 
-  const source = args.source ?? "npm";
+  const source = args.source ?? UPDATER_CONFIG.defaults.source;
   const targetVersion = asCliArgString(args["target-version"]);
   const result = targetVersion
     ? buildTargetResult(targetVersion, source)
@@ -146,8 +150,8 @@ export const updateCommand = defineAltertableCommand({
     },
     source: {
       type: "enum",
-      options: ["npm", "github"],
-      description: "Release metadata source (default: npm).",
+      options: [...UPDATE_SOURCES],
+      description: `Release metadata source (default: ${UPDATER_CONFIG.defaults.source}).`,
     },
     "target-version": {
       type: "string",
@@ -163,7 +167,7 @@ export const updateCommand = defineAltertableCommand({
     },
     "check-interval": {
       type: "enum",
-      options: ["daily", "weekly", "never"],
+      options: [...UPDATE_CHECK_INTERVALS],
       description: "Configure automatic update notices.",
     },
   },

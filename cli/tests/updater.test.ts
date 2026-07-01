@@ -7,12 +7,15 @@ import { buildMainCommand } from "@/cli.ts";
 import {
   checkForUpdate,
   compareVersions,
+  createInstallPlan,
   detectInstallManager,
   fetchLatestRelease,
   getUpdateCheckInterval,
+  packageReleaseUrl,
   readUpdateState,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
+  UPDATER_CONFIG,
 } from "@/lib/updater.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
@@ -48,6 +51,15 @@ describe("version comparison", () => {
 });
 
 describe("release discovery", () => {
+  test("builds package URLs and install specs from updater config", () => {
+    expect(packageReleaseUrl("v1.2.3")).toBe(
+      `${UPDATER_CONFIG.urls.npmPackageBase}/${UPDATER_CONFIG.packageName}/v/1.2.3`,
+    );
+    expect(createInstallPlan("1.2.3", "npm").display).toBe(
+      `npm install -g ${UPDATER_CONFIG.packageName}@1.2.3`,
+    );
+  });
+
   test("reads npm latest metadata", async () => {
     const release = await fetchLatestRelease({
       source: "npm",
