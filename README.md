@@ -12,6 +12,7 @@ Query and manage your Altertable data platform from the terminal.
   - [npm](#npm)
   - [Prebuilt binaries](#prebuilt-binaries)
   - [From source](#from-source)
+  - [Updates](#updates)
 - [Authentication](#authentication)
   - [Management API key](#management-api-key)
   - [Lakehouse credentials](#lakehouse-credentials)
@@ -92,6 +93,27 @@ chmod +x bin/altertable
 export PATH="$PWD/bin:$PATH"
 altertable --version
 ```
+
+### Updates
+
+Check for a newer CLI and install it:
+
+```bash
+altertable update
+altertable update --install
+```
+
+The CLI also performs a silent daily update check after successful human-facing commands. Notices are written to stderr only, never to stdout, and are disabled for `--json`, `--agent`, CI, and non-TTY output.
+
+Control automatic notices:
+
+```bash
+altertable update --status
+altertable update --check-interval weekly
+altertable update --check-interval never
+```
+
+Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable automatic checks from the environment. The installer uses npm by default and detects Bun, pnpm, or Yarn when available; set `ALTERTABLE_UPDATE_INSTALLER=bun|npm|pnpm|yarn` to override.
 
 ---
 
@@ -202,7 +224,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 
 | Scope                              | Keys                                                               |
 | ---------------------------------- | ------------------------------------------------------------------ |
-| Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager` |
+| Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
 | Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`           |
 
 ### Credential precedence
