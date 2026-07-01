@@ -7,6 +7,7 @@ cd cli
 bun install
 bun run dev -- --help          # same as bin/altertable
 bun test
+bun run test:coverage          # coverage report + 80% threshold
 bun run typecheck
 bun run lint                   # oxlint with type-aware rules (typescript-go)
 bun run lint:fix               # oxlint --fix
@@ -103,7 +104,7 @@ Localhost HTTP works without `--allow-insecure-http`. For LAN or other non-local
 From repo root, one script mirrors CI (minus native binary compile):
 
 ```bash
-./scripts/verify.sh --quick        # typecheck, lint, format, knip, unit tests, openapi drift
+./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, openapi drift
 ./scripts/verify.sh                # + build, pack:check, shell offline tests
 ./scripts/verify.sh --integration  # + integration_test.sh (requires mock at :15000)
 ```
@@ -141,6 +142,7 @@ Unit tests:
 
 ```bash
 cd cli && bun test
+cd cli && bun run test:coverage
 ```
 
 ## CLI spec conformance (lakehouse)
