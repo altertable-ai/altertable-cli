@@ -41,6 +41,15 @@ import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 let testHome = "";
 const packageJsonPath = resolve(import.meta.dir, "../package.json");
+const UPDATE_TEST_VERSION = "1.2.3";
+const LINUX_X64_ASSET = "altertable-linux-x64";
+const LINUX_X64_DOWNLOAD_URL = `https://download.example/${LINUX_X64_ASSET}`;
+const CHECKSUMS_DOWNLOAD_URL = "https://download.example/checksums.txt";
+
+type CapturedCommandOutput = {
+  stdout: string[];
+  stderr: string[];
+};
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-updater-test-"));
@@ -71,6 +80,61 @@ function fetchInputUrl(input: string | URL | Request): string {
 
 function sha256(bytes: string | Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function githubReleaseMetadata(version = UPDATE_TEST_VERSION): Record<string, unknown> {
+  return {
+    tag_name: `v${version}`,
+    html_url: `https://github.com/altertable-ai/altertable-cli/releases/tag/v${version}`,
+    assets: [
+      {
+        name: LINUX_X64_ASSET,
+        browser_download_url: LINUX_X64_DOWNLOAD_URL,
+      },
+      {
+        name: UPDATER_CONFIG.checksumsAssetName,
+        browser_download_url: CHECKSUMS_DOWNLOAD_URL,
+      },
+    ],
+  };
+}
+
+function githubBinaryFetch(options: {
+  binary: string;
+  checksum: string;
+  version?: string;
+}): typeof fetch {
+  const version = options.version ?? UPDATE_TEST_VERSION;
+  return (async (url: string | URL | Request) => {
+    const requestedUrl = fetchInputUrl(url);
+    if (requestedUrl.includes(`/releases/tags/v${version}`)) {
+      return new Response(JSON.stringify(githubReleaseMetadata(version)), { status: 200 });
+    }
+    if (requestedUrl === LINUX_X64_DOWNLOAD_URL) {
+      return new Response(options.binary, { status: 200 });
+    }
+    if (requestedUrl === CHECKSUMS_DOWNLOAD_URL) {
+      return new Response(`${options.checksum}  ${LINUX_X64_ASSET}\n`, { status: 200 });
+    }
+    return new Response("not found", { status: 404 });
+  }) as typeof fetch;
+}
+
+async function runUpdateCommand(rawArgs: string[]): Promise<CapturedCommandOutput> {
+  const output: CapturedCommandOutput = { stdout: [], stderr: [] };
+  const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  runtime.output.writeHuman = (text) => {
+    output.stdout.push(text);
+  };
+  runtime.output.writeMetadata = (lines) => {
+    output.stderr.push(...lines);
+  };
+
+  await runWithCliRuntime(runtime, async () => {
+    await runCommand(buildMainCommand(), { rawArgs });
+  });
+
+  return output;
 }
 
 async function readPackageJson(): Promise<Record<string, unknown>> {
@@ -114,24 +178,24 @@ describe("version comparison", () => {
 
 describe("release discovery", () => {
   test("builds package URLs and install specs from updater config", () => {
-    expect(packageReleaseUrl("v1.2.3")).toBe(
+    expect(packageReleaseUrl(`v${UPDATE_TEST_VERSION}`)).toBe(
       `${UPDATER_CONFIG.sources.npm.packageBaseUrl}/${encodeURIComponent(
         UPDATER_CONFIG.packageName,
-      )}/v/1.2.3`,
+      )}/v/${UPDATE_TEST_VERSION}`,
     );
-    expect(createInstallPlan("1.2.3", "npm").display).toBe(
-      `npm install -g ${UPDATER_CONFIG.packageName}@1.2.3`,
+    expect(createInstallPlan(UPDATE_TEST_VERSION, "npm").display).toBe(
+      `npm install -g ${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`,
     );
   });
 
   test("builds source-aware release URLs for explicit target versions", () => {
-    expect(releaseUrlForSource("npm", "v1.2.3")).toBe(
+    expect(releaseUrlForSource("npm", `v${UPDATE_TEST_VERSION}`)).toBe(
       `${UPDATER_CONFIG.sources.npm.packageBaseUrl}/${encodeURIComponent(
         UPDATER_CONFIG.packageName,
-      )}/v/1.2.3`,
+      )}/v/${UPDATE_TEST_VERSION}`,
     );
-    expect(releaseUrlForSource("github", "v1.2.3")).toBe(
-      `${UPDATER_CONFIG.sources.github.webBaseUrl}/${UPDATER_CONFIG.githubRepo}/releases/tag/v1.2.3`,
+    expect(releaseUrlForSource("github", `v${UPDATE_TEST_VERSION}`)).toBe(
+      `${UPDATER_CONFIG.sources.github.webBaseUrl}/${UPDATER_CONFIG.githubRepo}/releases/tag/v${UPDATE_TEST_VERSION}`,
     );
   });
 
@@ -139,7 +203,7 @@ describe("release discovery", () => {
     const requestedUrls: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
       requestedUrls.push(fetchInputUrl(url));
-      return new Response(JSON.stringify({ version: "1.2.3" }), { status: 200 });
+      return new Response(JSON.stringify({ version: UPDATE_TEST_VERSION }), { status: 200 });
     }) as typeof fetch;
 
     process.env.ALTERTABLE_UPDATE_REGISTRY_URL = "https://registry.example.test/custom/";
@@ -156,7 +220,9 @@ describe("release discovery", () => {
     const requestedUrls: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
       requestedUrls.push(fetchInputUrl(url));
-      return new Response(JSON.stringify({ tag_name: "v1.2.3" }), { status: 200 });
+      return new Response(JSON.stringify({ tag_name: `v${UPDATE_TEST_VERSION}` }), {
+        status: 200,
+      });
     }) as typeof fetch;
 
     process.env.ALTERTABLE_UPDATE_GITHUB_REPO = "example/custom-cli";
@@ -173,28 +239,25 @@ describe("release discovery", () => {
   test("reads npm latest metadata", async () => {
     const release = await fetchLatestRelease({
       source: "npm",
-      fetchImpl: jsonFetch({ version: "1.2.3" }),
+      fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
     });
 
     expect(release).toEqual({
-      version: "1.2.3",
+      version: UPDATE_TEST_VERSION,
       source: "npm",
-      releaseUrl: "https://www.npmjs.com/package/%40altertable%2Fcli/v/1.2.3",
+      releaseUrl: `https://www.npmjs.com/package/%40altertable%2Fcli/v/${UPDATE_TEST_VERSION}`,
     });
   });
 
   test("reads GitHub latest release metadata", async () => {
     const release = await fetchLatestRelease({
       source: "github",
-      fetchImpl: jsonFetch({
-        tag_name: "v1.2.3",
-        html_url: "https://github.com/altertable-ai/altertable-cli/releases/tag/v1.2.3",
-      }),
+      fetchImpl: jsonFetch(githubReleaseMetadata()),
     });
 
-    expect(release.version).toBe("1.2.3");
+    expect(release.version).toBe(UPDATE_TEST_VERSION);
     expect(release.source).toBe("github");
-    expect(release.releaseUrl).toContain("releases/tag/v1.2.3");
+    expect(release.releaseUrl).toContain(`releases/tag/v${UPDATE_TEST_VERSION}`);
   });
 
   test("explains missing npm release metadata", async () => {
@@ -237,11 +300,11 @@ describe("release discovery", () => {
   test("checkForUpdate writes cached state", async () => {
     const result = await checkForUpdate({
       source: "npm",
-      fetchImpl: jsonFetch({ version: "1.2.3" }),
+      fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
     });
 
     expect(result.update_available).toBe(true);
-    expect(readUpdateState().latest_version).toBe("1.2.3");
+    expect(readUpdateState().latest_version).toBe(UPDATE_TEST_VERSION);
   });
 });
 
@@ -281,17 +344,17 @@ describe("binary self-update", () => {
 
   test("recommends install commands from installation origin", () => {
     expect(
-      recommendedInstallCommand("1.2.3", {
+      recommendedInstallCommand(UPDATE_TEST_VERSION, {
         kind: "native-binary",
         executablePath: "/usr/local/bin/altertable",
       }),
     ).toBe("altertable update --install");
     expect(
-      recommendedInstallCommand("1.2.3", {
+      recommendedInstallCommand(UPDATE_TEST_VERSION, {
         kind: "package-manager",
         executablePath: "/usr/local/lib/node_modules/@altertable/cli/dist/cli.js",
       }),
-    ).toContain(`${UPDATER_CONFIG.packageName}@1.2.3`);
+    ).toContain(`${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`);
   });
 
   test("parses and verifies SHA-256 checksums", () => {
@@ -310,80 +373,34 @@ describe("binary self-update", () => {
     const requestedUrls: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
       requestedUrls.push(fetchInputUrl(url));
-      return new Response(
-        JSON.stringify({
-          tag_name: "v1.2.3",
-          html_url: "https://github.com/altertable-ai/altertable-cli/releases/tag/v1.2.3",
-          assets: [
-            {
-              name: "altertable-linux-x64",
-              browser_download_url: "https://download.example/altertable-linux-x64",
-            },
-            {
-              name: "checksums.txt",
-              browser_download_url: "https://download.example/checksums.txt",
-            },
-          ],
-        }),
-        { status: 200 },
-      );
+      return new Response(JSON.stringify(githubReleaseMetadata()), { status: 200 });
     }) as typeof fetch;
 
     const release = await fetchGitHubBinaryRelease({
-      version: "1.2.3",
+      version: UPDATE_TEST_VERSION,
       platform: "linux-x64",
       fetchImpl,
     });
 
-    expect(requestedUrls[0]).toContain("/releases/tags/v1.2.3");
+    expect(requestedUrls[0]).toContain(`/releases/tags/v${UPDATE_TEST_VERSION}`);
     expect(release.assetName).toBe(releaseAssetName("linux-x64"));
-    expect(release.assetDownloadUrl).toBe("https://download.example/altertable-linux-x64");
+    expect(release.assetDownloadUrl).toBe(LINUX_X64_DOWNLOAD_URL);
   });
 
   test("installs a GitHub binary after checksum verification and verifies version", async () => {
     const targetPath = join(testHome, "altertable");
-    const newBinary = "#!/bin/sh\necho 1.2.3\n";
+    const newBinary = `#!/bin/sh\necho ${UPDATE_TEST_VERSION}\n`;
     const hash = sha256(newBinary);
     writeFileSync(targetPath, "#!/bin/sh\necho 1.0.0\n", { mode: 0o755 });
 
-    const fetchImpl = (async (url: string | URL | Request) => {
-      const requestedUrl = fetchInputUrl(url);
-      if (requestedUrl.includes("/releases/tags/v1.2.3")) {
-        return new Response(
-          JSON.stringify({
-            tag_name: "v1.2.3",
-            html_url: "https://github.com/altertable-ai/altertable-cli/releases/tag/v1.2.3",
-            assets: [
-              {
-                name: "altertable-linux-x64",
-                browser_download_url: "https://download.example/altertable-linux-x64",
-              },
-              {
-                name: "checksums.txt",
-                browser_download_url: "https://download.example/checksums.txt",
-              },
-            ],
-          }),
-          { status: 200 },
-        );
-      }
-      if (requestedUrl.endsWith("/altertable-linux-x64")) {
-        return new Response(newBinary, { status: 200 });
-      }
-      if (requestedUrl.endsWith("/checksums.txt")) {
-        return new Response(`${hash}  altertable-linux-x64\n`, { status: 200 });
-      }
-      return new Response("not found", { status: 404 });
-    }) as typeof fetch;
-
-    const result = await installGitHubBinaryRelease("1.2.3", {
+    const result = await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
       targetPath,
       platform: "linux-x64",
-      fetchImpl,
+      fetchImpl: githubBinaryFetch({ binary: newBinary, checksum: hash }),
     });
 
     expect(result.method).toBe("github-binary");
-    expect(result.verified_version).toBe("1.2.3");
+    expect(result.verified_version).toBe(UPDATE_TEST_VERSION);
     expect(readFileSync(targetPath, "utf8")).toBe(newBinary);
   });
 
@@ -392,37 +409,14 @@ describe("binary self-update", () => {
     const originalBinary = "#!/bin/sh\necho 1.0.0\n";
     writeFileSync(targetPath, originalBinary, { mode: 0o755 });
 
-    const fetchImpl = (async (url: string | URL | Request) => {
-      const requestedUrl = fetchInputUrl(url);
-      if (requestedUrl.includes("/releases/tags/v1.2.3")) {
-        return new Response(
-          JSON.stringify({
-            tag_name: "v1.2.3",
-            assets: [
-              {
-                name: "altertable-linux-x64",
-                browser_download_url: "https://download.example/altertable-linux-x64",
-              },
-              {
-                name: "checksums.txt",
-                browser_download_url: "https://download.example/checksums.txt",
-              },
-            ],
-          }),
-          { status: 200 },
-        );
-      }
-      if (requestedUrl.endsWith("/altertable-linux-x64")) {
-        return new Response("#!/bin/sh\necho 1.2.3\n", { status: 200 });
-      }
-      return new Response(`${"0".repeat(64)}  altertable-linux-x64\n`, { status: 200 });
-    }) as typeof fetch;
-
     try {
-      await installGitHubBinaryRelease("1.2.3", {
+      await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
         targetPath,
         platform: "linux-x64",
-        fetchImpl,
+        fetchImpl: githubBinaryFetch({
+          binary: `#!/bin/sh\necho ${UPDATE_TEST_VERSION}\n`,
+          checksum: "0".repeat(64),
+        }),
       });
       throw new Error("Expected checksum verification to fail.");
     } catch (error) {
@@ -434,7 +428,7 @@ describe("binary self-update", () => {
 
   test("auto install rejects source checkouts but explicit package-manager can run", async () => {
     try {
-      await installCliUpdate("1.2.3", {
+      await installCliUpdate(UPDATE_TEST_VERSION, {
         verify: false,
         installation: {
           kind: "source",
@@ -453,7 +447,7 @@ describe("binary self-update", () => {
 
     process.env.ALTERTABLE_UPDATE_INSTALLER = "npm";
     const commands: string[] = [];
-    const result = await installCliUpdate("1.2.3", {
+    const result = await installCliUpdate(UPDATE_TEST_VERSION, {
       method: "package-manager",
       verify: false,
       stdio: "pipe",
@@ -468,7 +462,7 @@ describe("binary self-update", () => {
       }) as unknown as typeof import("node:child_process").spawnSync,
     });
 
-    expect(commands[0]).toBe(`npm install -g ${UPDATER_CONFIG.packageName}@1.2.3`);
+    expect(commands[0]).toBe(`npm install -g ${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`);
     expect(result.method).toBe("package-manager");
   });
 });
@@ -568,74 +562,64 @@ describe("automatic update checks", () => {
       }) as unknown as typeof fetch,
     });
   });
+
+  test("writes automatic notices to metadata output", async () => {
+    const stderr: string[] = [];
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    runtime.output.writeMetadata = (lines) => {
+      stderr.push(...lines);
+    };
+
+    await runWithCliRuntime(runtime, async () => {
+      await maybeShowUpdateNotice({
+        context: { debug: false, json: false, agent: false },
+        commandName: "context",
+        stderrIsTTY: true,
+        fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
+      });
+    });
+
+    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+    expect(stderr.join("\n")).toContain("altertable update --install");
+  });
 });
 
 describe("update command", () => {
   test("reports explicit target version without network", async () => {
-    const stdout: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeHuman = (text) => {
-      stdout.push(text);
-    };
+    const output = await runUpdateCommand(["update", "--target-version", UPDATE_TEST_VERSION]);
 
-    await runWithCliRuntime(runtime, async () => {
-      await runCommand(buildMainCommand(), { rawArgs: ["update", "--target-version", "1.2.3"] });
-    });
-
-    expect(stdout[0]).toContain("altertable 1.2.3 is available");
+    expect(output.stdout[0]).toContain(`altertable ${UPDATE_TEST_VERSION} is available`);
   });
 
   test("configures automatic check interval", async () => {
-    const stdout: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeHuman = (text) => {
-      stdout.push(text);
-    };
+    const output = await runUpdateCommand(["update", "--check-interval", "weekly"]);
 
-    await runWithCliRuntime(runtime, async () => {
-      await runCommand(buildMainCommand(), {
-        rawArgs: ["update", "--check-interval", "weekly"],
-      });
-    });
-
-    expect(stdout[0]).toContain("Auto update checks: weekly");
+    expect(output.stdout[0]).toContain("Auto update checks: weekly");
     expect(getUpdateCheckInterval()).toBe("weekly");
   });
 
   test("accepts every configured update source option", async () => {
     for (const source of UPDATE_SOURCES) {
-      const stdout: string[] = [];
-      const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-      runtime.output.writeHuman = (text) => {
-        stdout.push(text);
-      };
+      const output = await runUpdateCommand([
+        "update",
+        "--source",
+        source,
+        "--target-version",
+        UPDATE_TEST_VERSION,
+      ]);
 
-      await runWithCliRuntime(runtime, async () => {
-        await runCommand(buildMainCommand(), {
-          rawArgs: ["update", "--source", source, "--target-version", "1.2.3"],
-        });
-      });
-
-      expect(stdout[0]).toContain("altertable 1.2.3 is available");
-      expect(stdout[0]).toContain(`Release: ${releaseUrlForSource(source, "1.2.3")}`);
+      expect(output.stdout[0]).toContain(`altertable ${UPDATE_TEST_VERSION} is available`);
+      expect(output.stdout[0]).toContain(
+        `Release: ${releaseUrlForSource(source, UPDATE_TEST_VERSION)}`,
+      );
     }
   });
 
   test("accepts every configured automatic check interval option", async () => {
     for (const interval of UPDATE_CHECK_INTERVALS) {
-      const stdout: string[] = [];
-      const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-      runtime.output.writeHuman = (text) => {
-        stdout.push(text);
-      };
+      const output = await runUpdateCommand(["update", "--check-interval", interval]);
 
-      await runWithCliRuntime(runtime, async () => {
-        await runCommand(buildMainCommand(), {
-          rawArgs: ["update", "--check-interval", interval],
-        });
-      });
-
-      expect(stdout[0]).toContain(`Auto update checks: ${interval}`);
+      expect(output.stdout[0]).toContain(`Auto update checks: ${interval}`);
       expect(getUpdateCheckInterval()).toBe(interval);
     }
   });
