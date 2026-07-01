@@ -20,7 +20,7 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 
 ```bash
 git submodule update --init --recursive   # first checkout only
-./scripts/verify.sh --quick               # focused CLI changes
+./scripts/verify.sh --quick               # focused CLI changes, including coverage
 ./scripts/verify.sh                         # full gate before PR (mirrors CI minus native compile)
 ./scripts/verify.sh --integration         # lakehouse HTTP paths (mock at :15000)
 ```

@@ -15,7 +15,7 @@ Executor-oriented notes for working in the TypeScript CLI subtree.
 Preferred — from repo root:
 
 ```bash
-./scripts/verify.sh --quick    # CLI checks only (typecheck, lint, format, knip, unit tests, openapi drift)
+./scripts/verify.sh --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
 ./scripts/verify.sh            # full gate (mirrors CI minus native compile)
 ./scripts/verify.sh --integration   # + integration_test.sh (mock at :15000)
 ```
@@ -27,6 +27,7 @@ bun run typecheck
 bun run lint
 bun run format:check
 bun test
+bun run test:coverage
 bun run knip
 ```
 

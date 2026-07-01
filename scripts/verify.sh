@@ -51,7 +51,7 @@ run_step "lint" bun run lint
 run_step "format:check" bun run format:check
 run_step "generate (openapi)" bun run generate
 run_step "openapi drift check" git diff --exit-code src/generated/openapi-types.ts src/generated/openapi-operations.ts
-run_step "unit tests" bun test
+run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip
 
 if [[ "${QUICK}" == true ]]; then

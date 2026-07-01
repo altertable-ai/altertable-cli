@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/cli.ts", "tests/**/*.test.ts", "scripts/**/*.ts"],
+  "entry": ["tests/**/*.test.ts", "scripts/**/*.ts"],
   "project": ["src/**/*.ts", "tests/**/*.test.ts", "scripts/**/*.ts"],
   "ignore": ["src/generated/**"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["undici"],
-  "ignoreBinaries": ["less", "security"]
+  "ignoreBinaries": ["less"]
 }
