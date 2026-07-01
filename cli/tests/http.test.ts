@@ -17,6 +17,7 @@ import {
   resolveFetchTimeoutMs,
   resolveReadTimeoutMs,
 } from "@/lib/http.ts";
+import { delay } from "@tests/test-utils.ts";
 
 const fakeBearerKey = "atm_fake_test_key_for_redaction";
 const fakeBasicToken = "fake_basic_token_value";
@@ -24,10 +25,6 @@ const fakeBasicToken = "fake_basic_token_value";
 let testHome = "";
 let mockFile = "";
 let logFile = "";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-http-test-"));
