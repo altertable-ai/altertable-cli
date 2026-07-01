@@ -11,23 +11,30 @@ export function readJsonBody(bodyArg?: string): string | undefined {
   if (!bodyArg) {
     return undefined;
   }
+  let body: string;
   if (bodyArg === "-") {
-    return readFileSync(0, "utf8");
-  }
-  if (bodyArg.startsWith("@")) {
+    body = readFileSync(0, "utf8");
+  } else if (bodyArg.startsWith("@")) {
     const filePath = bodyArg.slice(1);
     try {
-      return readFileSync(filePath, "utf8");
+      body = readFileSync(filePath, "utf8");
     } catch {
       throw new CliError(`File not found: ${filePath}`);
     }
+  } else {
+    body = bodyArg;
   }
+
+  return validateJsonBody(body);
+}
+
+function validateJsonBody(body: string): string {
   try {
-    JSON.parse(bodyArg);
+    JSON.parse(body);
   } catch (error) {
     throw new ParseError("Invalid JSON body.", { cause: error });
   }
-  return bodyArg;
+  return body;
 }
 
 function extractFlagValues(rawArgs: string[], flags: string[]): string[] {

@@ -45,7 +45,7 @@ check_mock_server() {
 
 cd "${REPO_ROOT}/cli"
 
-run_step "bun install" bun install
+run_step "install deps" bun install --frozen-lockfile
 run_step "typecheck" bun run typecheck
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
