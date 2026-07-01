@@ -197,6 +197,43 @@ describe("release discovery", () => {
     expect(release.releaseUrl).toContain("releases/tag/v1.2.3");
   });
 
+  test("explains missing npm release metadata", async () => {
+    try {
+      await fetchLatestRelease({
+        source: "npm",
+        fetchImpl: (async () =>
+          new Response("missing", { status: 404 })) as unknown as typeof fetch,
+      });
+      throw new Error("Expected missing npm metadata to fail.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(
+        `No published npm release found for ${UPDATER_CONFIG.packageName}.`,
+      );
+      expect((error as { details?: string }).details).toContain(
+        "Try GitHub releases instead: altertable update --source github",
+      );
+      expect((error as { details?: string }).details).toContain(
+        "If you are running from a source checkout, update it with git pull.",
+      );
+    }
+  });
+
+  test("explains missing GitHub release metadata", async () => {
+    try {
+      await fetchLatestRelease({
+        source: "github",
+        fetchImpl: (async () =>
+          new Response("missing", { status: 404 })) as unknown as typeof fetch,
+      });
+      throw new Error("Expected missing GitHub metadata to fail.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("No GitHub release metadata found for latest.");
+      expect((error as { details?: string }).details).toContain("Open releases:");
+    }
+  });
+
   test("checkForUpdate writes cached state", async () => {
     const result = await checkForUpdate({
       source: "npm",

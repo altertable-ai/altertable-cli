@@ -456,6 +456,50 @@ async function fetchJson(
   }
 }
 
+function updateMetadataNotFoundError(
+  source: UpdateSource,
+  error: HttpError,
+  version?: string,
+): CliError {
+  if (source === "github") {
+    const label = version ? `v${normalizeVersion(version)}` : "latest";
+    return new CliError(`No GitHub release metadata found for ${label}.`, {
+      cause: error,
+      details: [
+        `Checked: ${error.url}`,
+        `Open releases: ${githubReleasesFallbackUrl()}`,
+        "If you are running from a source checkout, update it with git pull.",
+      ].join("\n"),
+    });
+  }
+
+  return new CliError(`No published npm release found for ${UPDATER_CONFIG.packageName}.`, {
+    cause: error,
+    details: [
+      `Checked: ${error.url}`,
+      "Try GitHub releases instead: altertable update --source github",
+      "If you are running from a source checkout, update it with git pull.",
+    ].join("\n"),
+  });
+}
+
+async function fetchUpdateJson(
+  source: UpdateSource,
+  url: string,
+  timeoutMs: number,
+  fetchImpl: typeof fetch,
+  version?: string,
+): Promise<unknown> {
+  try {
+    return await fetchJson(url, timeoutMs, fetchImpl);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      throw updateMetadataNotFoundError(source, error, version);
+    }
+    throw error;
+  }
+}
+
 async function fetchText(url: string, timeoutMs: number, fetchImpl: typeof fetch): Promise<string> {
   const response = await fetchResponse(url, timeoutMs, fetchImpl);
   return await response.text();
@@ -529,7 +573,13 @@ export async function fetchGitHubBinaryRelease(
   const assetName = releaseAssetName(platform);
   const timeoutMs = options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.manual;
   const fetchImpl = options.fetchImpl ?? fetch;
-  const data = await fetchJson(githubReleaseMetadataUrl(options.version), timeoutMs, fetchImpl);
+  const data = await fetchUpdateJson(
+    "github",
+    githubReleaseMetadataUrl(options.version),
+    timeoutMs,
+    fetchImpl,
+    options.version,
+  );
   const version = normalizeVersion(readStringProperty(data, "tag_name"));
   if (!version) {
     throw new CliError("GitHub release metadata did not include a tag_name.");
@@ -575,7 +625,7 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (source === "github") {
-    const data = await fetchJson(githubLatestReleaseUrl(), timeoutMs, fetchImpl);
+    const data = await fetchUpdateJson(source, githubLatestReleaseUrl(), timeoutMs, fetchImpl);
     const version = normalizeVersion(readStringProperty(data, "tag_name"));
     if (!version) {
       throw new CliError("GitHub release metadata did not include a tag_name.");
@@ -587,7 +637,7 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
     };
   }
 
-  const data = await fetchJson(npmRegistryUrl(), timeoutMs, fetchImpl);
+  const data = await fetchUpdateJson(source, npmRegistryUrl(), timeoutMs, fetchImpl);
   const version = normalizeVersion(readStringProperty(data, "version"));
   if (!version) {
     throw new CliError("npm package metadata did not include a version.");
