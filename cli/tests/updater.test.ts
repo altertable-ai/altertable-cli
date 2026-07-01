@@ -1,26 +1,41 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { runCommand } from "citty";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import {
   checkForUpdate,
   compareVersions,
   createInstallPlan,
+  detectCurrentInstallation,
   detectInstallManager,
+  detectReleasePlatform,
+  fetchGitHubBinaryRelease,
   fetchLatestRelease,
   getUpdateCheckInterval,
+  installCliUpdate,
+  installGitHubBinaryRelease,
+  isNativeCompiledInstall,
+  maybeShowUpdateNotice,
   packageReleaseUrl,
+  parseChecksums,
   readUpdateState,
+  recommendedInstallCommand,
+  releaseAssetName,
+  releaseUrlForSource,
+  resolveCurrentExecutablePath,
   resolveUpdateSource,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
   UPDATE_CHECK_INTERVALS,
+  UPDATE_INSTALL_METHODS,
   UPDATE_SOURCES,
   UPDATER_CONFIG,
+  verifySha256,
 } from "@/lib/updater.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
@@ -40,6 +55,7 @@ afterEach(() => {
   delete process.env.ALTERTABLE_NO_UPDATE_CHECK;
   delete process.env.ALTERTABLE_UPDATE_CHECK;
   delete process.env.ALTERTABLE_UPDATE_INSTALLER;
+  delete process.env.ALTERTABLE_UPDATE_INSTALL_METHOD;
   delete process.env.CI;
   delete process.env.TEST;
 });
@@ -51,6 +67,10 @@ function jsonFetch(data: unknown): typeof fetch {
 
 function fetchInputUrl(input: string | URL | Request): string {
   return input instanceof Request ? input.url : input.toString();
+}
+
+function sha256(bytes: string | Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
 async function readPackageJson(): Promise<Record<string, unknown>> {
@@ -101,6 +121,17 @@ describe("release discovery", () => {
     );
     expect(createInstallPlan("1.2.3", "npm").display).toBe(
       `npm install -g ${UPDATER_CONFIG.packageName}@1.2.3`,
+    );
+  });
+
+  test("builds source-aware release URLs for explicit target versions", () => {
+    expect(releaseUrlForSource("npm", "v1.2.3")).toBe(
+      `${UPDATER_CONFIG.sources.npm.packageBaseUrl}/${encodeURIComponent(
+        UPDATER_CONFIG.packageName,
+      )}/v/1.2.3`,
+    );
+    expect(releaseUrlForSource("github", "v1.2.3")).toBe(
+      `${UPDATER_CONFIG.sources.github.webBaseUrl}/${UPDATER_CONFIG.githubRepo}/releases/tag/v1.2.3`,
     );
   });
 
@@ -174,6 +205,234 @@ describe("release discovery", () => {
 
     expect(result.update_available).toBe(true);
     expect(readUpdateState().latest_version).toBe("1.2.3");
+  });
+});
+
+describe("binary self-update", () => {
+  test("detects supported release platforms", () => {
+    expect(detectReleasePlatform("darwin", "arm64")).toBe("darwin-arm64");
+    expect(detectReleasePlatform("darwin", "x64")).toBe("darwin-x64");
+    expect(detectReleasePlatform("linux", "arm64")).toBe("linux-arm64");
+    expect(detectReleasePlatform("linux", "x64")).toBe("linux-x64");
+    expect(() => detectReleasePlatform("win32", "x64")).toThrow("Unsupported self-update platform");
+  });
+
+  test("detects installation origin", () => {
+    expect(
+      detectCurrentInstallation({
+        execPath: "/opt/homebrew/bin/bun",
+        argv: ["bun", "/repo/cli/src/cli.ts"],
+      }).kind,
+    ).toBe("source");
+    expect(
+      detectCurrentInstallation({
+        execPath: "/usr/local/bin/bun",
+        argv: ["bun", "/usr/local/lib/node_modules/@altertable/cli/dist/cli.js"],
+      }).kind,
+    ).toBe("package-manager");
+    expect(
+      detectCurrentInstallation({
+        execPath: "/usr/local/bin/altertable",
+        argv: ["/usr/local/bin/altertable"],
+      }).kind,
+    ).toBe("native-binary");
+    expect(
+      isNativeCompiledInstall("/usr/local/bin/altertable", ["/usr/local/bin/altertable"]),
+    ).toBe(true);
+    expect(resolveCurrentExecutablePath()).toBeTruthy();
+  });
+
+  test("recommends install commands from installation origin", () => {
+    expect(
+      recommendedInstallCommand("1.2.3", {
+        kind: "native-binary",
+        executablePath: "/usr/local/bin/altertable",
+      }),
+    ).toBe("altertable update --install");
+    expect(
+      recommendedInstallCommand("1.2.3", {
+        kind: "package-manager",
+        executablePath: "/usr/local/lib/node_modules/@altertable/cli/dist/cli.js",
+      }),
+    ).toContain(`${UPDATER_CONFIG.packageName}@1.2.3`);
+  });
+
+  test("parses and verifies SHA-256 checksums", () => {
+    const filePath = join(testHome, "asset");
+    writeFileSync(filePath, "release-binary");
+    const hash = sha256("release-binary");
+
+    expect(parseChecksums(`${hash}  altertable-linux-x64\n`).get("altertable-linux-x64")).toBe(
+      hash,
+    );
+    expect(verifySha256(filePath, hash)).toBe(true);
+    expect(verifySha256(filePath, "0".repeat(64))).toBe(false);
+  });
+
+  test("reads GitHub binary release assets", async () => {
+    const requestedUrls: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request) => {
+      requestedUrls.push(fetchInputUrl(url));
+      return new Response(
+        JSON.stringify({
+          tag_name: "v1.2.3",
+          html_url: "https://github.com/altertable-ai/altertable-cli/releases/tag/v1.2.3",
+          assets: [
+            {
+              name: "altertable-linux-x64",
+              browser_download_url: "https://download.example/altertable-linux-x64",
+            },
+            {
+              name: "checksums.txt",
+              browser_download_url: "https://download.example/checksums.txt",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    const release = await fetchGitHubBinaryRelease({
+      version: "1.2.3",
+      platform: "linux-x64",
+      fetchImpl,
+    });
+
+    expect(requestedUrls[0]).toContain("/releases/tags/v1.2.3");
+    expect(release.assetName).toBe(releaseAssetName("linux-x64"));
+    expect(release.assetDownloadUrl).toBe("https://download.example/altertable-linux-x64");
+  });
+
+  test("installs a GitHub binary after checksum verification and verifies version", async () => {
+    const targetPath = join(testHome, "altertable");
+    const newBinary = "#!/bin/sh\necho 1.2.3\n";
+    const hash = sha256(newBinary);
+    writeFileSync(targetPath, "#!/bin/sh\necho 1.0.0\n", { mode: 0o755 });
+
+    const fetchImpl = (async (url: string | URL | Request) => {
+      const requestedUrl = fetchInputUrl(url);
+      if (requestedUrl.includes("/releases/tags/v1.2.3")) {
+        return new Response(
+          JSON.stringify({
+            tag_name: "v1.2.3",
+            html_url: "https://github.com/altertable-ai/altertable-cli/releases/tag/v1.2.3",
+            assets: [
+              {
+                name: "altertable-linux-x64",
+                browser_download_url: "https://download.example/altertable-linux-x64",
+              },
+              {
+                name: "checksums.txt",
+                browser_download_url: "https://download.example/checksums.txt",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestedUrl.endsWith("/altertable-linux-x64")) {
+        return new Response(newBinary, { status: 200 });
+      }
+      if (requestedUrl.endsWith("/checksums.txt")) {
+        return new Response(`${hash}  altertable-linux-x64\n`, { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    const result = await installGitHubBinaryRelease("1.2.3", {
+      targetPath,
+      platform: "linux-x64",
+      fetchImpl,
+    });
+
+    expect(result.method).toBe("github-binary");
+    expect(result.verified_version).toBe("1.2.3");
+    expect(readFileSync(targetPath, "utf8")).toBe(newBinary);
+  });
+
+  test("rejects GitHub binary install on checksum mismatch without replacing target", async () => {
+    const targetPath = join(testHome, "altertable");
+    const originalBinary = "#!/bin/sh\necho 1.0.0\n";
+    writeFileSync(targetPath, originalBinary, { mode: 0o755 });
+
+    const fetchImpl = (async (url: string | URL | Request) => {
+      const requestedUrl = fetchInputUrl(url);
+      if (requestedUrl.includes("/releases/tags/v1.2.3")) {
+        return new Response(
+          JSON.stringify({
+            tag_name: "v1.2.3",
+            assets: [
+              {
+                name: "altertable-linux-x64",
+                browser_download_url: "https://download.example/altertable-linux-x64",
+              },
+              {
+                name: "checksums.txt",
+                browser_download_url: "https://download.example/checksums.txt",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (requestedUrl.endsWith("/altertable-linux-x64")) {
+        return new Response("#!/bin/sh\necho 1.2.3\n", { status: 200 });
+      }
+      return new Response(`${"0".repeat(64)}  altertable-linux-x64\n`, { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await installGitHubBinaryRelease("1.2.3", {
+        targetPath,
+        platform: "linux-x64",
+        fetchImpl,
+      });
+      throw new Error("Expected checksum verification to fail.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("Checksum verification failed");
+    }
+    expect(readFileSync(targetPath, "utf8")).toBe(originalBinary);
+  });
+
+  test("auto install rejects source checkouts but explicit package-manager can run", async () => {
+    try {
+      await installCliUpdate("1.2.3", {
+        verify: false,
+        installation: {
+          kind: "source",
+          executablePath: "/repo/cli/src/cli.ts",
+          reason: "test",
+        },
+        spawnImpl: (() => {
+          throw new Error("should not spawn");
+        }) as unknown as typeof import("node:child_process").spawnSync,
+      });
+      throw new Error("Expected automatic install to reject source checkouts.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("Automatic CLI install is not supported");
+    }
+
+    process.env.ALTERTABLE_UPDATE_INSTALLER = "npm";
+    const commands: string[] = [];
+    const result = await installCliUpdate("1.2.3", {
+      method: "package-manager",
+      verify: false,
+      stdio: "pipe",
+      installation: {
+        kind: "source",
+        executablePath: "/repo/cli/src/cli.ts",
+        reason: "test",
+      },
+      spawnImpl: ((command: string, args: string[]) => {
+        commands.push([command, ...args].join(" "));
+        return { status: 0, signal: null, stdout: "", stderr: "", pid: 1, output: [] };
+      }) as unknown as typeof import("node:child_process").spawnSync,
+    });
+
+    expect(commands[0]).toBe(`npm install -g ${UPDATER_CONFIG.packageName}@1.2.3`);
+    expect(result.method).toBe("package-manager");
   });
 });
 
@@ -259,6 +518,19 @@ describe("automatic update checks", () => {
       UPDATER_CONFIG.defaults.installManager,
     );
   });
+
+  test("does not reject when failure state persistence is unavailable", async () => {
+    mkdirSync(join(testHome, UPDATER_CONFIG.stateFileName));
+
+    await maybeShowUpdateNotice({
+      context: { debug: false, json: false, agent: false },
+      commandName: "context",
+      stderrIsTTY: true,
+      fetchImpl: (async () => {
+        throw new Error("network unavailable");
+      }) as unknown as typeof fetch,
+    });
+  });
 });
 
 describe("update command", () => {
@@ -308,6 +580,7 @@ describe("update command", () => {
       });
 
       expect(stdout[0]).toContain("altertable 1.2.3 is available");
+      expect(stdout[0]).toContain(`Release: ${releaseUrlForSource(source, "1.2.3")}`);
     }
   });
 
@@ -328,6 +601,12 @@ describe("update command", () => {
       expect(stdout[0]).toContain(`Auto update checks: ${interval}`);
       expect(getUpdateCheckInterval()).toBe(interval);
     }
+  });
+
+  test("exposes every configured install method option", () => {
+    expect(UPDATE_INSTALL_METHODS).toContain("auto");
+    expect(UPDATE_INSTALL_METHODS).toContain("package-manager");
+    expect(UPDATE_INSTALL_METHODS).toContain("github-binary");
   });
 
   test("falls back to configured source default for invalid environment override", () => {

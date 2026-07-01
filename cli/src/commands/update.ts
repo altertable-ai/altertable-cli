@@ -8,20 +8,22 @@ import {
   checkForUpdate,
   clearUpdateState,
   compareVersions,
-  createInstallPlan,
   formatUpdateResult,
   formatUpdateStatus,
   getUpdateCheckInterval,
+  installCliUpdate,
   normalizeVersion,
-  packageReleaseUrl,
   readUpdateState,
-  runInstallPlan,
+  recommendedInstallCommand,
+  releaseUrlForSource,
   setUpdateCheckInterval,
   UPDATE_CHECK_INTERVALS,
+  UPDATE_INSTALL_METHODS,
   UPDATE_SOURCES,
   UPDATER_CONFIG,
   type UpdateCheckInterval,
   type UpdateCheckResult,
+  type UpdateInstallMethod,
   type UpdateSource,
 } from "@/lib/updater.ts";
 
@@ -30,6 +32,8 @@ type UpdateCommandArgs = {
   force?: boolean;
   source?: UpdateSource;
   "target-version"?: string;
+  "install-method"?: UpdateInstallMethod;
+  "target-path"?: string;
   status?: boolean;
   "clear-cache"?: boolean;
   "check-interval"?: UpdateCheckInterval;
@@ -37,15 +41,14 @@ type UpdateCommandArgs = {
 
 function buildTargetResult(targetVersion: string, source: UpdateSource): UpdateCheckResult {
   const version = normalizeVersion(targetVersion);
-  const installPlan = createInstallPlan(version);
   return {
     current_version: VERSION,
     latest_version: version,
     update_available: compareVersions(version, VERSION) > 0,
     source,
-    release_url: packageReleaseUrl(version),
+    release_url: releaseUrlForSource(source, version),
     checked_at: new Date().toISOString(),
-    install_command: installPlan.display,
+    install_command: recommendedInstallCommand(version),
   };
 }
 
@@ -111,18 +114,21 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
     );
   }
 
-  const plan = createInstallPlan(result.latest_version);
-  sink.writeMetadata([`Running ${plan.display}`]);
-  runInstallPlan(plan);
+  const method = args["install-method"] ?? UPDATER_CONFIG.defaults.installMethod;
+  const methodLabel = method === "auto" ? "automatic installer" : method;
+  sink.writeMetadata([`Running ${methodLabel} for altertable ${result.latest_version}`]);
+  const installed = await installCliUpdate(result.latest_version, {
+    method,
+    targetPath: asCliArgString(args["target-path"]),
+    stdio: sink.json ? "pipe" : "inherit",
+  });
   await writeCommandOutput(
     {
       kind: "ack",
       data: {
-        installed_version: result.latest_version,
-        manager: plan.manager,
-        command: plan.display,
+        ...installed,
       },
-      metadataMessage: `altertable ${result.latest_version} installed.`,
+      metadataMessage: `altertable ${installed.verified_version} installed.`,
     },
     sink,
   );
@@ -156,6 +162,15 @@ export const updateCommand = defineAltertableCommand({
     "target-version": {
       type: "string",
       description: "Install or inspect an explicit version instead of checking latest.",
+    },
+    "install-method": {
+      type: "enum",
+      options: [...UPDATE_INSTALL_METHODS],
+      description: `Installer strategy for --install (default: ${UPDATER_CONFIG.defaults.installMethod}).`,
+    },
+    "target-path": {
+      type: "string",
+      description: "Override the binary path for github-binary installs.",
     },
     status: {
       type: "boolean",
