@@ -643,91 +643,16 @@ function pathEndsWith(filePath: string, suffix: string): boolean {
   return filePath.replace(/\\/g, "/").endsWith(suffix);
 }
 
-function pathEndsWithAny(filePath: string, suffixes: readonly string[]): boolean {
-  return suffixes.some((suffix) => pathEndsWith(filePath, suffix));
-}
-
-function valueEndsWithAny(value: string, suffixes: readonly string[]): boolean {
+function anyEndsWith(value: string, suffixes: readonly string[]): boolean {
   return suffixes.some((suffix) => value.endsWith(suffix));
 }
 
-function valueMatchesAny(value: string, values: readonly string[]): boolean {
-  return values.includes(value);
+function anyEquals(value: string, values: readonly string[]): boolean {
+  return values.some((candidate) => candidate === value);
 }
 
-function detectSourceInstall(
-  execPath: string,
-  scriptPath: string,
-  scriptName: string,
-): CurrentInstallation | undefined {
-  const detection = UPDATER_CONFIG.installationDetection;
-  if (
-    pathEndsWithAny(scriptPath, detection.sourceScriptSuffixes) ||
-    valueEndsWithAny(scriptName, detection.sourceScriptExtensions)
-  ) {
-    return {
-      kind: INSTALLATION_KIND.source,
-      executablePath: scriptPath || execPath,
-      reason: "running from TypeScript source",
-    };
-  }
-  return undefined;
-}
-
-function detectPackageManagerInstall(
-  execPath: string,
-  scriptPath: string,
-  scriptName: string,
-): CurrentInstallation | undefined {
-  const detection = UPDATER_CONFIG.installationDetection;
-  if (
-    pathEndsWithAny(scriptPath, detection.packageScriptSuffixes) ||
-    valueMatchesAny(scriptName, detection.packageScriptNames) ||
-    valueEndsWithAny(scriptName, detection.packageScriptExtensions)
-  ) {
-    return {
-      kind: INSTALLATION_KIND.packageManager,
-      executablePath: scriptPath || execPath,
-      reason: "running a JavaScript package entrypoint",
-    };
-  }
-  return undefined;
-}
-
-function detectNativeBinaryInstall(
-  execPath: string,
-  execName: string,
-): CurrentInstallation | undefined {
-  if (
-    execName === UPDATER_CONFIG.executableName ||
-    execName.startsWith(`${UPDATER_CONFIG.binaryAssetPrefix}-`)
-  ) {
-    return {
-      kind: INSTALLATION_KIND.nativeBinary,
-      executablePath: execPath,
-      reason: "running a native release binary",
-    };
-  }
-  return undefined;
-}
-
-function detectBunSourceInstall(
-  execPath: string,
-  scriptPath: string,
-  execName: string,
-): CurrentInstallation | undefined {
-  const detection = UPDATER_CONFIG.installationDetection;
-  if (
-    valueMatchesAny(execName, detection.bunExecutableNames) ||
-    execName.startsWith(detection.bunExecutablePrefix)
-  ) {
-    return {
-      kind: INSTALLATION_KIND.source,
-      executablePath: scriptPath || execPath,
-      reason: "running under Bun",
-    };
-  }
-  return undefined;
+function pathEndsWithAny(filePath: string, suffixes: readonly string[]): boolean {
+  return suffixes.some((suffix) => pathEndsWith(filePath, suffix));
 }
 
 export function detectCurrentInstallation(
@@ -741,14 +666,51 @@ export function detectCurrentInstallation(
   const scriptPath = argv[1] ?? "";
   const execName = basename(execPath);
   const scriptName = basename(scriptPath);
+  const detection = UPDATER_CONFIG.installationDetection;
 
-  const installation =
-    detectSourceInstall(execPath, scriptPath, scriptName) ??
-    detectPackageManagerInstall(execPath, scriptPath, scriptName) ??
-    detectNativeBinaryInstall(execPath, execName) ??
-    detectBunSourceInstall(execPath, scriptPath, execName);
-  if (installation) {
-    return installation;
+  if (
+    pathEndsWithAny(scriptPath, detection.sourceScriptSuffixes) ||
+    anyEndsWith(scriptName, detection.sourceScriptExtensions)
+  ) {
+    return {
+      kind: INSTALLATION_KIND.source,
+      executablePath: scriptPath || execPath,
+      reason: "running from TypeScript source",
+    };
+  }
+
+  if (
+    pathEndsWithAny(scriptPath, detection.packageScriptSuffixes) ||
+    anyEquals(scriptName, detection.packageScriptNames) ||
+    anyEndsWith(scriptName, detection.packageScriptExtensions)
+  ) {
+    return {
+      kind: INSTALLATION_KIND.packageManager,
+      executablePath: scriptPath || execPath,
+      reason: "running a JavaScript package entrypoint",
+    };
+  }
+
+  if (
+    execName === UPDATER_CONFIG.executableName ||
+    execName.startsWith(`${UPDATER_CONFIG.binaryAssetPrefix}-`)
+  ) {
+    return {
+      kind: INSTALLATION_KIND.nativeBinary,
+      executablePath: execPath,
+      reason: "running a native release binary",
+    };
+  }
+
+  if (
+    anyEquals(execName, detection.bunExecutableNames) ||
+    execName.startsWith(detection.bunExecutablePrefix)
+  ) {
+    return {
+      kind: INSTALLATION_KIND.source,
+      executablePath: scriptPath || execPath,
+      reason: "running under Bun",
+    };
   }
 
   return {
@@ -776,7 +738,7 @@ function resolveInstallMethodForInstallation(
   requestedMethod: UpdateInstallMethod,
   installation: CurrentInstallation,
 ): ResolvedUpdateInstallMethod {
-  if (requestedMethod !== UPDATER_CONFIG.defaults.installMethod) {
+  if (requestedMethod !== UPDATE_INSTALL_METHOD.auto) {
     return requestedMethod;
   }
   if (installation.kind === INSTALLATION_KIND.nativeBinary) {
@@ -1007,10 +969,10 @@ export function recommendedInstallCommand(
       installation,
     );
     if (method === UPDATE_INSTALL_METHOD.githubBinary) {
-      return "altertable update --install";
+      return UPDATER_CONFIG.commands.selfUpdate;
     }
   } catch {
-    return "altertable update --install --install-method package-manager";
+    return UPDATER_CONFIG.commands.packageManagerUpdate;
   }
   return createInstallPlan(version).display;
 }
@@ -1118,7 +1080,7 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
       terminalMetadata(
         `Update available: altertable ${result.latest_version} (current ${result.current_version}).`,
       ),
-      terminalMetadata(`Run ${result.install_command} or altertable update --install.`),
+      terminalMetadata(`Run ${result.install_command} or ${UPDATER_CONFIG.commands.selfUpdate}.`),
     ]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown update check error.";
