@@ -28,6 +28,7 @@
     "format:check": "oxfmt --check",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
+    "coverage:html": "bun run test:coverage && genhtml coverage/lcov.info --output-directory coverage/html",
     "generate": "bun run scripts/generate-openapi-types.ts && bun run scripts/generate-openapi-index.ts",
     "build": "bun build src/cli.ts --outdir dist --target bun",
     "pack:check": "bun run build && bun pm pack --dry-run",
