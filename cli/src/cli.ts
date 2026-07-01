@@ -17,6 +17,7 @@ import { catalogsCommand } from "@/commands/catalogs.ts";
 import { appendCommand, queryCommand, uploadCommand, upsertCommand } from "@/commands/lakehouse.ts";
 import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
+import { updateCommand } from "@/commands/update.ts";
 import {
   CliError,
   EXIT_SUCCESS,
@@ -32,8 +33,10 @@ import {
   showAltertableUsage,
   showCommandExamplesForArgs,
 } from "@/lib/citty-usage.ts";
+import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { terminalError, applyTerminalColorFromContext } from "@/lib/terminal-style.ts";
+import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -68,6 +71,12 @@ const ROOT_ARGS = {
   },
 } satisfies ArgsDef;
 
+const ROOT_VALUE_FLAGS = valueFlagsFor(ROOT_ARGS);
+
+export function resolveTopLevelCommandName(rawArgs: readonly string[]): string | undefined {
+  return findFirstPositionalToken(rawArgs, { valueFlags: ROOT_VALUE_FLAGS })?.value;
+}
+
 export function buildMainCommand(): CommandDef {
   let mainCommand: CommandDef;
 
@@ -83,6 +92,7 @@ export function buildMainCommand(): CommandDef {
     upload: uploadCommand,
     upsert: upsertCommand,
     api: apiCommand,
+    update: updateCommand,
     completion: completionCommand,
   };
 
@@ -155,6 +165,10 @@ async function bootstrap(): Promise<void> {
     }
 
     await runCommand(main, { rawArgs });
+    await maybeShowUpdateNotice({
+      context: getCliContext(),
+      commandName: resolveTopLevelCommandName(rawArgs),
+    });
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
 

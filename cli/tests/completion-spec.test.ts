@@ -70,6 +70,7 @@ describe("buildCompletionSpec", () => {
     const api = findNode(spec, "api");
 
     expect(findNode(spec, "query")).toBeDefined();
+    expect(findNode(spec, "update")).toBeDefined();
     expect(spec.flags.some((flag) => flag.name === "agent")).toBe(true);
     expect(catalogs).toBeDefined();
     expect(api).toBeDefined();

@@ -82,6 +82,18 @@ CI (`.github/workflows/test.yml`) runs the same `bun run build`, `bun run pack:c
 
 The `@altertable/cli` package is published to npm on each release. Install globally with `npm install -g @altertable/cli` (requires Bun 1.1+ at runtime).
 
+### Update installer
+
+`altertable update --install` is origin-aware because the CLI can run as either a native
+release binary, a globally installed JavaScript package, or a source checkout. Each origin
+needs a different safe update path:
+
+- compiled release binaries use GitHub release assets, verify `checksums.txt`, and replace the binary with a backup/rename flow;
+- npm-style JavaScript installs run the detected package manager globally and verify `altertable --version`;
+- Bun/source checkouts are rejected for `--install-method auto` so development trees are updated with git, not overwritten by release assets.
+
+Keep updater tests hermetic. Use fake `fetch` implementations and temp executable scripts so tests do not depend on network access, release availability, or the developer's installed CLI.
+
 ## Credential storage
 
 - **Non-secret config**: `~/.config/altertable/config`
