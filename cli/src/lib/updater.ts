@@ -15,13 +15,13 @@ import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { terminalMetadata } from "@/lib/terminal-style.ts";
 import {
-  INSTALL_MANAGERS,
-  INSTALLATION_KIND,
-  UPDATE_CHECK_INTERVALS,
-  UPDATE_INSTALL_METHOD,
-  UPDATE_INSTALL_METHODS,
-  UPDATE_SOURCES,
-  UPDATER_CONFIG,
+  UpdaterInstallManagers,
+  UpdaterInstallationKind,
+  UpdaterCheckIntervals,
+  UpdaterInstallMethod,
+  UpdaterInstallMethods,
+  UpdaterSources,
+  UpdaterConfig,
   type InstallationKind,
   type InstallManager,
   type ReleasePlatform,
@@ -32,13 +32,13 @@ import {
 } from "@/lib/updater-config.ts";
 
 export {
-  INSTALL_MANAGERS,
-  INSTALLATION_KIND,
-  UPDATE_CHECK_INTERVALS,
-  UPDATE_INSTALL_METHOD,
-  UPDATE_INSTALL_METHODS,
-  UPDATE_SOURCES,
-  UPDATER_CONFIG,
+  UpdaterInstallManagers,
+  UpdaterInstallationKind,
+  UpdaterCheckIntervals,
+  UpdaterInstallMethod,
+  UpdaterInstallMethods,
+  UpdaterSources,
+  UpdaterConfig,
   type InstallationKind,
   type InstallManager,
   type ReleasePlatform,
@@ -152,7 +152,7 @@ type AutomaticNoticeOptions = FetchLatestOptions & {
   stderrIsTTY?: boolean;
 };
 
-const AUTO_SKIP_COMMANDS: ReadonlySet<string> = new Set(UPDATER_CONFIG.automaticCheckSkipCommands);
+const AUTO_SKIP_COMMANDS: ReadonlySet<string> = new Set(UpdaterConfig.automaticCheckSkipCommands);
 
 function parseVersion(version: string): ParsedVersion | undefined {
   const match = version
@@ -233,7 +233,7 @@ export function compareVersions(leftVersion: string, rightVersion: string): numb
 }
 
 function updaterStateFile(): string {
-  return join(configDir(), UPDATER_CONFIG.stateFileName);
+  return join(configDir(), UpdaterConfig.stateFileName);
 }
 
 function writeJsonFileAtomic(filePath: string, data: unknown): void {
@@ -277,30 +277,30 @@ export function clearUpdateState(): void {
 }
 
 export function parseUpdateCheckInterval(value: string): UpdateCheckInterval | undefined {
-  if (isAllowedValue(UPDATE_CHECK_INTERVALS, value)) {
+  if (isAllowedValue(UpdaterCheckIntervals, value)) {
     return value;
   }
   return undefined;
 }
 
 export function getUpdateCheckInterval(): UpdateCheckInterval {
-  const fromConfig = parseUpdateCheckInterval(configGet(UPDATER_CONFIG.configKeys.checkInterval));
-  return fromConfig ?? UPDATER_CONFIG.defaults.checkInterval;
+  const fromConfig = parseUpdateCheckInterval(configGet(UpdaterConfig.configKeys.checkInterval));
+  return fromConfig ?? UpdaterConfig.defaults.checkInterval;
 }
 
 export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
-  configSet(UPDATER_CONFIG.configKeys.checkInterval, interval);
+  configSet(UpdaterConfig.configKeys.checkInterval, interval);
 }
 
 function parseUpdateSource(value: string | undefined): UpdateSource | undefined {
-  if (isAllowedValue(UPDATE_SOURCES, value)) {
+  if (isAllowedValue(UpdaterSources, value)) {
     return value;
   }
   return undefined;
 }
 
 function parseUpdateInstallMethod(value: string | undefined): UpdateInstallMethod | undefined {
-  if (isAllowedValue(UPDATE_INSTALL_METHODS, value)) {
+  if (isAllowedValue(UpdaterInstallMethods, value)) {
     return value;
   }
   return undefined;
@@ -309,16 +309,16 @@ function parseUpdateInstallMethod(value: string | undefined): UpdateInstallMetho
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {
   return (
     source ??
-    parseUpdateSource(process.env[UPDATER_CONFIG.env.source]) ??
-    UPDATER_CONFIG.defaults.source
+    parseUpdateSource(process.env[UpdaterConfig.env.source]) ??
+    UpdaterConfig.defaults.source
   );
 }
 
 export function resolveUpdateInstallMethod(method?: UpdateInstallMethod): UpdateInstallMethod {
   return (
     method ??
-    parseUpdateInstallMethod(process.env[UPDATER_CONFIG.env.installMethod]) ??
-    UPDATER_CONFIG.defaults.installMethod
+    parseUpdateInstallMethod(process.env[UpdaterConfig.env.installMethod]) ??
+    UpdaterConfig.defaults.installMethod
   );
 }
 
@@ -339,15 +339,15 @@ function repoSegments(repo: string): [string, string] {
 
 function npmRegistryUrl(): string {
   const registry =
-    process.env[UPDATER_CONFIG.env.registryUrl] ?? UPDATER_CONFIG.sources.npm.registryUrl;
+    process.env[UpdaterConfig.env.registryUrl] ?? UpdaterConfig.sources.npm.registryUrl;
   const url = new URL(registry);
-  appendEncodedUrlPath(url, UPDATER_CONFIG.packageName, "latest");
+  appendEncodedUrlPath(url, UpdaterConfig.packageName, "latest");
   return url.toString();
 }
 
 function githubLatestReleaseUrl(): string {
-  const repo = process.env[UPDATER_CONFIG.env.githubRepo] ?? UPDATER_CONFIG.githubRepo;
-  const url = new URL(UPDATER_CONFIG.sources.github.apiBaseUrl);
+  const repo = process.env[UpdaterConfig.env.githubRepo] ?? UpdaterConfig.githubRepo;
+  const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(url, ...repoSegments(repo), "releases", "latest");
   return url.toString();
 }
@@ -356,8 +356,8 @@ function githubReleaseMetadataUrl(version?: string): string {
   if (!version) {
     return githubLatestReleaseUrl();
   }
-  const repo = process.env[UPDATER_CONFIG.env.githubRepo] ?? UPDATER_CONFIG.githubRepo;
-  const url = new URL(UPDATER_CONFIG.sources.github.apiBaseUrl);
+  const repo = process.env[UpdaterConfig.env.githubRepo] ?? UpdaterConfig.githubRepo;
+  const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(
     url,
     ...repoSegments(repo),
@@ -369,16 +369,16 @@ function githubReleaseMetadataUrl(version?: string): string {
 }
 
 function githubReleasesFallbackUrl(): string {
-  const url = new URL(UPDATER_CONFIG.sources.github.webBaseUrl);
-  appendEncodedUrlPath(url, ...repoSegments(UPDATER_CONFIG.githubRepo), "releases");
+  const url = new URL(UpdaterConfig.sources.github.webBaseUrl);
+  appendEncodedUrlPath(url, ...repoSegments(UpdaterConfig.githubRepo), "releases");
   return url.toString();
 }
 
 function githubReleaseTagUrl(version: string): string {
-  const url = new URL(UPDATER_CONFIG.sources.github.webBaseUrl);
+  const url = new URL(UpdaterConfig.sources.github.webBaseUrl);
   appendEncodedUrlPath(
     url,
-    ...repoSegments(UPDATER_CONFIG.githubRepo),
+    ...repoSegments(UpdaterConfig.githubRepo),
     "releases",
     "tag",
     `v${normalizeVersion(version)}`,
@@ -387,8 +387,8 @@ function githubReleaseTagUrl(version: string): string {
 }
 
 export function packageReleaseUrl(version: string): string {
-  const url = new URL(UPDATER_CONFIG.sources.npm.packageBaseUrl);
-  appendEncodedUrlPath(url, UPDATER_CONFIG.packageName, "v", normalizeVersion(version));
+  const url = new URL(UpdaterConfig.sources.npm.packageBaseUrl);
+  appendEncodedUrlPath(url, UpdaterConfig.packageName, "v", normalizeVersion(version));
   return url.toString();
 }
 
@@ -473,7 +473,7 @@ function updateMetadataNotFoundError(
     });
   }
 
-  return new CliError(`No published npm release found for ${UPDATER_CONFIG.packageName}.`, {
+  return new CliError(`No published npm release found for ${UpdaterConfig.packageName}.`, {
     cause: error,
     details: [
       `Checked: ${error.url}`,
@@ -535,7 +535,7 @@ export function detectReleasePlatform(
   arch: string = process.arch,
 ): ReleasePlatform {
   const releasePlatform = `${platform}-${arch}`;
-  if (hasObjectKey(UPDATER_CONFIG.releasePlatforms, releasePlatform)) {
+  if (hasObjectKey(UpdaterConfig.releasePlatforms, releasePlatform)) {
     return releasePlatform;
   }
   throw new CliError(`Unsupported self-update platform: ${platform}-${arch}.`, {
@@ -544,7 +544,7 @@ export function detectReleasePlatform(
 }
 
 export function releaseAssetName(platform: ReleasePlatform): string {
-  return `${UPDATER_CONFIG.binaryAssetPrefix}-${platform}`;
+  return `${UpdaterConfig.binaryAssetPrefix}-${platform}`;
 }
 
 function readGitHubAsset(data: unknown): { name: string; downloadUrl: string } | undefined {
@@ -571,7 +571,7 @@ export async function fetchGitHubBinaryRelease(
 ): Promise<GitHubBinaryRelease> {
   const platform = options.platform ?? detectReleasePlatform();
   const assetName = releaseAssetName(platform);
-  const timeoutMs = options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.manual;
+  const timeoutMs = options.timeoutMs ?? UpdaterConfig.timeoutsMs.manual;
   const fetchImpl = options.fetchImpl ?? fetch;
   const data = await fetchUpdateJson(
     "github",
@@ -590,7 +590,7 @@ export async function fetchGitHubBinaryRelease(
     releaseUrl: readStringProperty(data, "html_url") || githubReleaseTagUrl(version),
     assetName,
     assetDownloadUrl: findGitHubAsset(data, assetName),
-    checksumsDownloadUrl: findGitHubAsset(data, UPDATER_CONFIG.checksumsAssetName),
+    checksumsDownloadUrl: findGitHubAsset(data, UpdaterConfig.checksumsAssetName),
   };
 }
 
@@ -621,7 +621,7 @@ export function verifySha256(filePath: string, expectedHash: string): boolean {
 
 export async function fetchLatestRelease(options: FetchLatestOptions = {}): Promise<ReleaseInfo> {
   const source = resolveUpdateSource(options.source);
-  const timeoutMs = options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.manual;
+  const timeoutMs = options.timeoutMs ?? UpdaterConfig.timeoutsMs.manual;
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (source === "github") {
@@ -650,8 +650,8 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
 }
 
 export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): InstallManager {
-  const override = env[UPDATER_CONFIG.env.installer];
-  if (isAllowedValue(INSTALL_MANAGERS, override)) {
+  const override = env[UpdaterConfig.env.installer];
+  if (isAllowedValue(UpdaterInstallManagers, override)) {
     return override;
   }
 
@@ -668,18 +668,18 @@ export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): Inst
   if (userAgent.startsWith("npm/")) {
     return "npm";
   }
-  if (env[UPDATER_CONFIG.env.bunInstall]) {
+  if (env[UpdaterConfig.env.bunInstall]) {
     return "bun";
   }
-  return UPDATER_CONFIG.defaults.installManager;
+  return UpdaterConfig.defaults.installManager;
 }
 
 export function createInstallPlan(
   version: string,
   manager: InstallManager = detectInstallManager(),
 ): InstallPlan {
-  const packageSpecifier = `${UPDATER_CONFIG.packageName}@${normalizeVersion(version)}`;
-  const plan = UPDATER_CONFIG.installCommands[manager];
+  const packageSpecifier = `${UpdaterConfig.packageName}@${normalizeVersion(version)}`;
+  const plan = UpdaterConfig.installCommands[manager];
   const args = [...plan.argsBeforePackage, packageSpecifier];
   return {
     manager,
@@ -716,14 +716,14 @@ export function detectCurrentInstallation(
   const scriptPath = argv[1] ?? "";
   const execName = basename(execPath);
   const scriptName = basename(scriptPath);
-  const detection = UPDATER_CONFIG.installationDetection;
+  const detection = UpdaterConfig.installationDetection;
 
   if (
     pathEndsWithAny(scriptPath, detection.sourceScriptSuffixes) ||
     anyEndsWith(scriptName, detection.sourceScriptExtensions)
   ) {
     return {
-      kind: INSTALLATION_KIND.source,
+      kind: UpdaterInstallationKind.source,
       executablePath: scriptPath || execPath,
       reason: "running from TypeScript source",
     };
@@ -735,18 +735,18 @@ export function detectCurrentInstallation(
     anyEndsWith(scriptName, detection.packageScriptExtensions)
   ) {
     return {
-      kind: INSTALLATION_KIND.packageManager,
+      kind: UpdaterInstallationKind.packageManager,
       executablePath: scriptPath || execPath,
       reason: "running a JavaScript package entrypoint",
     };
   }
 
   if (
-    execName === UPDATER_CONFIG.executableName ||
-    execName.startsWith(`${UPDATER_CONFIG.binaryAssetPrefix}-`)
+    execName === UpdaterConfig.executableName ||
+    execName.startsWith(`${UpdaterConfig.binaryAssetPrefix}-`)
   ) {
     return {
-      kind: INSTALLATION_KIND.nativeBinary,
+      kind: UpdaterInstallationKind.nativeBinary,
       executablePath: execPath,
       reason: "running a native release binary",
     };
@@ -757,14 +757,14 @@ export function detectCurrentInstallation(
     execName.startsWith(detection.bunExecutablePrefix)
   ) {
     return {
-      kind: INSTALLATION_KIND.source,
+      kind: UpdaterInstallationKind.source,
       executablePath: scriptPath || execPath,
       reason: "running under Bun",
     };
   }
 
   return {
-    kind: INSTALLATION_KIND.unknown,
+    kind: UpdaterInstallationKind.unknown,
     executablePath: execPath,
     reason: "unable to identify installation origin",
   };
@@ -780,7 +780,7 @@ export function isNativeCompiledInstall(
 ): boolean {
   return (
     detectCurrentInstallation({ execPath: executablePath, argv }).kind ===
-    INSTALLATION_KIND.nativeBinary
+    UpdaterInstallationKind.nativeBinary
   );
 }
 
@@ -788,14 +788,14 @@ function resolveInstallMethodForInstallation(
   requestedMethod: UpdateInstallMethod,
   installation: CurrentInstallation,
 ): ResolvedUpdateInstallMethod {
-  if (requestedMethod !== UPDATE_INSTALL_METHOD.auto) {
+  if (requestedMethod !== UpdaterInstallMethod.auto) {
     return requestedMethod;
   }
-  if (installation.kind === INSTALLATION_KIND.nativeBinary) {
-    return UPDATE_INSTALL_METHOD.githubBinary;
+  if (installation.kind === UpdaterInstallationKind.nativeBinary) {
+    return UpdaterInstallMethod.githubBinary;
   }
-  if (installation.kind === INSTALLATION_KIND.packageManager) {
-    return UPDATE_INSTALL_METHOD.packageManager;
+  if (installation.kind === UpdaterInstallationKind.packageManager) {
+    return UpdaterInstallMethod.packageManager;
   }
   throw new CliError("Automatic CLI install is not supported for this checkout.", {
     details:
@@ -869,7 +869,7 @@ function replaceFileAtomically(targetPath: string, replacementPath: string): voi
 function resolveGitHubBinaryTarget(options: InstallCliUpdateOptions): string {
   const installation = options.installation ?? detectCurrentInstallation();
   const targetPath = options.targetPath ?? installation.executablePath;
-  if (!options.targetPath && installation.kind !== INSTALLATION_KIND.nativeBinary) {
+  if (!options.targetPath && installation.kind !== UpdaterInstallationKind.nativeBinary) {
     throw new CliError("Self-update is only supported for native release binaries.", {
       details:
         "Use --install-method package-manager for npm-style installs, or pass --target-path for controlled binary replacement.",
@@ -920,7 +920,7 @@ export async function installGitHubBinaryRelease(
   options: InstallCliUpdateOptions = {},
 ): Promise<UpdateInstallResult> {
   const targetPath = resolveGitHubBinaryTarget(options);
-  const timeoutMs = options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.manual;
+  const timeoutMs = options.timeoutMs ?? UpdaterConfig.timeoutsMs.manual;
   const fetchImpl = options.fetchImpl ?? fetch;
   const release = await fetchGitHubBinaryRelease({
     version,
@@ -943,7 +943,7 @@ export async function installGitHubBinaryRelease(
   return {
     installed_version: release.version,
     verified_version: verifiedVersion,
-    method: UPDATE_INSTALL_METHOD.githubBinary,
+    method: UpdaterInstallMethod.githubBinary,
     target_path: targetPath,
   };
 }
@@ -988,7 +988,7 @@ function installPackageManagerRelease(
   return {
     installed_version: normalizeVersion(version),
     verified_version: verifiedVersion || normalizeVersion(version),
-    method: UPDATE_INSTALL_METHOD.packageManager,
+    method: UpdaterInstallMethod.packageManager,
     manager: plan.manager,
     command: plan.display,
   };
@@ -1002,7 +1002,7 @@ export async function installCliUpdate(
   const requestedMethod = resolveUpdateInstallMethod(options.method);
   const method = resolveInstallMethodForInstallation(requestedMethod, installation);
 
-  if (method === UPDATE_INSTALL_METHOD.githubBinary) {
+  if (method === UpdaterInstallMethod.githubBinary) {
     return await installGitHubBinaryRelease(version, { ...options, installation });
   }
 
@@ -1015,14 +1015,14 @@ export function recommendedInstallCommand(
 ): string {
   try {
     const method = resolveInstallMethodForInstallation(
-      UPDATER_CONFIG.defaults.installMethod,
+      UpdaterConfig.defaults.installMethod,
       installation,
     );
-    if (method === UPDATE_INSTALL_METHOD.githubBinary) {
-      return UPDATER_CONFIG.commands.selfUpdate;
+    if (method === UpdaterInstallMethod.githubBinary) {
+      return UpdaterConfig.commands.selfUpdate;
     }
   } catch {
-    return UPDATER_CONFIG.commands.packageManagerUpdate;
+    return UpdaterConfig.commands.packageManagerUpdate;
   }
   return createInstallPlan(version).display;
 }
@@ -1051,17 +1051,17 @@ export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<
 }
 
 function envDisablesAutomaticChecks(): boolean {
-  const noUpdate = process.env[UPDATER_CONFIG.env.noUpdateCheck];
+  const noUpdate = process.env[UpdaterConfig.env.noUpdateCheck];
   if (noUpdate === "1" || noUpdate === "true") {
     return true;
   }
 
-  const updateCheck = process.env[UPDATER_CONFIG.env.updateCheck];
+  const updateCheck = process.env[UpdaterConfig.env.updateCheck];
   return updateCheck === "0" || updateCheck === "false" || updateCheck === "never";
 }
 
 function intervalMs(interval: UpdateCheckInterval): number {
-  return UPDATER_CONFIG.intervalsMs[interval];
+  return UpdaterConfig.intervalsMs[interval];
 }
 
 export function shouldRunAutomaticUpdateCheck(options: {
@@ -1079,8 +1079,8 @@ export function shouldRunAutomaticUpdateCheck(options: {
     return false;
   }
   if (
-    process.env[UPDATER_CONFIG.env.ci] ||
-    process.env[UPDATER_CONFIG.env.test] ||
+    process.env[UpdaterConfig.env.ci] ||
+    process.env[UpdaterConfig.env.test] ||
     envDisablesAutomaticChecks()
   ) {
     return false;
@@ -1119,7 +1119,7 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
     const result = await checkForUpdate({
       source: options.source,
       fetchImpl: options.fetchImpl,
-      timeoutMs: options.timeoutMs ?? UPDATER_CONFIG.timeoutsMs.automatic,
+      timeoutMs: options.timeoutMs ?? UpdaterConfig.timeoutsMs.automatic,
     });
     if (!result.update_available) {
       return;
@@ -1130,7 +1130,7 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
       terminalMetadata(
         `Update available: altertable ${result.latest_version} (current ${result.current_version}).`,
       ),
-      terminalMetadata(`Run ${result.install_command} or ${UPDATER_CONFIG.commands.selfUpdate}.`),
+      terminalMetadata(`Run ${result.install_command} or ${UpdaterConfig.commands.selfUpdate}.`),
     ]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown update check error.";

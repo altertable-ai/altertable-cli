@@ -17,10 +17,10 @@ import {
   recommendedInstallCommand,
   releaseUrlForSource,
   setUpdateCheckInterval,
-  UPDATE_CHECK_INTERVALS,
-  UPDATE_INSTALL_METHODS,
-  UPDATE_SOURCES,
-  UPDATER_CONFIG,
+  UpdaterCheckIntervals,
+  UpdaterInstallMethods,
+  UpdaterSources,
+  UpdaterConfig,
   type UpdateCheckInterval,
   type UpdateCheckResult,
   type UpdateInstallMethod,
@@ -88,7 +88,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
     return;
   }
 
-  const source = args.source ?? UPDATER_CONFIG.defaults.source;
+  const source = args.source ?? UpdaterConfig.defaults.source;
   const targetVersion = asCliArgString(args["target-version"]);
   const result = targetVersion
     ? buildTargetResult(targetVersion, source)
@@ -114,7 +114,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
     );
   }
 
-  const method = args["install-method"] ?? UPDATER_CONFIG.defaults.installMethod;
+  const method = args["install-method"] ?? UpdaterConfig.defaults.installMethod;
   const methodLabel = method === "auto" ? "automatic installer" : method;
   sink.writeMetadata([`Running ${methodLabel} for altertable ${result.latest_version}`]);
   const installed = await installCliUpdate(result.latest_version, {
@@ -137,7 +137,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
 export const updateCommand = defineAltertableCommand({
   meta: {
     name: "update",
-    description: "Check for and install Altertable CLI updates.",
+    description: "Check for a newer Altertable CLI release and optionally install it.",
     examples: [
       "altertable update",
       "altertable update --install",
@@ -148,42 +148,42 @@ export const updateCommand = defineAltertableCommand({
   args: {
     install: {
       type: "boolean",
-      description: "Install the latest available CLI version after checking.",
+      description: "Install the latest available release after the update check succeeds.",
     },
     force: {
       type: "boolean",
-      description: "Install even when the target version is not newer.",
+      description: "Reinstall the selected release even when it is not newer than the current CLI.",
     },
     source: {
       type: "enum",
-      options: [...UPDATE_SOURCES],
-      description: `Release metadata source (default: ${UPDATER_CONFIG.defaults.source}).`,
+      options: [...UpdaterSources],
+      description: `Where to look for release metadata: npm or GitHub (default: ${UpdaterConfig.defaults.source}).`,
     },
     "target-version": {
       type: "string",
-      description: "Install or inspect an explicit version instead of checking latest.",
+      description: "Use an explicit version instead of discovering the latest release.",
     },
     "install-method": {
       type: "enum",
-      options: [...UPDATE_INSTALL_METHODS],
-      description: `Installer strategy for --install (default: ${UPDATER_CONFIG.defaults.installMethod}).`,
+      options: [...UpdaterInstallMethods],
+      description: `How --install applies the update: auto, package-manager, or github-binary (default: ${UpdaterConfig.defaults.installMethod}).`,
     },
     "target-path": {
       type: "string",
-      description: "Override the binary path for github-binary installs.",
+      description: "Replace this binary path when using --install-method github-binary.",
     },
     status: {
       type: "boolean",
-      description: "Show cached update state and automatic check policy.",
+      description: "Show the automatic update-check policy and cached latest-release state.",
     },
     "clear-cache": {
       type: "boolean",
-      description: "Clear cached update metadata.",
+      description: "Delete cached update metadata before continuing.",
     },
     "check-interval": {
       type: "enum",
-      options: [...UPDATE_CHECK_INTERVALS],
-      description: "Configure automatic update notices.",
+      options: [...UpdaterCheckIntervals],
+      description: "Set how often successful human-facing commands may show update notices.",
     },
   },
   async run({ args, sink }) {

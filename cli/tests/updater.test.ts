@@ -31,10 +31,10 @@ import {
   resolveUpdateSource,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
-  UPDATE_CHECK_INTERVALS,
-  UPDATE_INSTALL_METHODS,
-  UPDATE_SOURCES,
-  UPDATER_CONFIG,
+  UpdaterCheckIntervals,
+  UpdaterInstallMethods,
+  UpdaterSources,
+  UpdaterConfig,
   verifySha256,
 } from "@/lib/updater.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
@@ -92,7 +92,7 @@ function githubReleaseMetadata(version = UPDATE_TEST_VERSION): Record<string, un
         browser_download_url: LINUX_X64_DOWNLOAD_URL,
       },
       {
-        name: UPDATER_CONFIG.checksumsAssetName,
+        name: UpdaterConfig.checksumsAssetName,
         browser_download_url: CHECKSUMS_DOWNLOAD_URL,
       },
     ],
@@ -162,8 +162,8 @@ describe("package metadata", () => {
 
     expect(packageJson.name).toBe(CLI_PACKAGE_METADATA.name);
     expect(repositorySlugFromPackageJson(packageJson)).toBe(CLI_PACKAGE_METADATA.repositorySlug);
-    expect(UPDATER_CONFIG.packageName).toBe(CLI_PACKAGE_METADATA.name);
-    expect(UPDATER_CONFIG.githubRepo).toBe(CLI_PACKAGE_METADATA.repositorySlug);
+    expect(UpdaterConfig.packageName).toBe(CLI_PACKAGE_METADATA.name);
+    expect(UpdaterConfig.githubRepo).toBe(CLI_PACKAGE_METADATA.repositorySlug);
   });
 });
 
@@ -179,23 +179,23 @@ describe("version comparison", () => {
 describe("release discovery", () => {
   test("builds package URLs and install specs from updater config", () => {
     expect(packageReleaseUrl(`v${UPDATE_TEST_VERSION}`)).toBe(
-      `${UPDATER_CONFIG.sources.npm.packageBaseUrl}/${encodeURIComponent(
-        UPDATER_CONFIG.packageName,
+      `${UpdaterConfig.sources.npm.packageBaseUrl}/${encodeURIComponent(
+        UpdaterConfig.packageName,
       )}/v/${UPDATE_TEST_VERSION}`,
     );
     expect(createInstallPlan(UPDATE_TEST_VERSION, "npm").display).toBe(
-      `npm install -g ${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`,
+      `npm install -g ${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`,
     );
   });
 
   test("builds source-aware release URLs for explicit target versions", () => {
     expect(releaseUrlForSource("npm", `v${UPDATE_TEST_VERSION}`)).toBe(
-      `${UPDATER_CONFIG.sources.npm.packageBaseUrl}/${encodeURIComponent(
-        UPDATER_CONFIG.packageName,
+      `${UpdaterConfig.sources.npm.packageBaseUrl}/${encodeURIComponent(
+        UpdaterConfig.packageName,
       )}/v/${UPDATE_TEST_VERSION}`,
     );
     expect(releaseUrlForSource("github", `v${UPDATE_TEST_VERSION}`)).toBe(
-      `${UPDATER_CONFIG.sources.github.webBaseUrl}/${UPDATER_CONFIG.githubRepo}/releases/tag/v${UPDATE_TEST_VERSION}`,
+      `${UpdaterConfig.sources.github.webBaseUrl}/${UpdaterConfig.githubRepo}/releases/tag/v${UPDATE_TEST_VERSION}`,
     );
   });
 
@@ -211,7 +211,7 @@ describe("release discovery", () => {
 
     expect(requestedUrls[0]).toBe(
       `https://registry.example.test/custom/${encodeURIComponent(
-        UPDATER_CONFIG.packageName,
+        UpdaterConfig.packageName,
       )}/latest`,
     );
   });
@@ -229,10 +229,10 @@ describe("release discovery", () => {
     const release = await fetchLatestRelease({ source: "github", fetchImpl });
 
     expect(requestedUrls[0]).toBe(
-      `${UPDATER_CONFIG.sources.github.apiBaseUrl}/example/custom-cli/releases/latest`,
+      `${UpdaterConfig.sources.github.apiBaseUrl}/example/custom-cli/releases/latest`,
     );
     expect(release.releaseUrl).toBe(
-      `${UPDATER_CONFIG.sources.github.webBaseUrl}/${UPDATER_CONFIG.githubRepo}/releases`,
+      `${UpdaterConfig.sources.github.webBaseUrl}/${UpdaterConfig.githubRepo}/releases`,
     );
   });
 
@@ -271,7 +271,7 @@ describe("release discovery", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe(
-        `No published npm release found for ${UPDATER_CONFIG.packageName}.`,
+        `No published npm release found for ${UpdaterConfig.packageName}.`,
       );
       expect((error as { details?: string }).details).toContain(
         "Try GitHub releases instead: altertable update --source github",
@@ -354,7 +354,7 @@ describe("binary self-update", () => {
         kind: "package-manager",
         executablePath: "/usr/local/lib/node_modules/@altertable/cli/dist/cli.js",
       }),
-    ).toContain(`${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`);
+    ).toContain(`${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
   });
 
   test("parses and verifies SHA-256 checksums", () => {
@@ -462,7 +462,7 @@ describe("binary self-update", () => {
       }) as unknown as typeof import("node:child_process").spawnSync,
     });
 
-    expect(commands[0]).toBe(`npm install -g ${UPDATER_CONFIG.packageName}@${UPDATE_TEST_VERSION}`);
+    expect(commands[0]).toBe(`npm install -g ${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
     expect(result.method).toBe("package-manager");
   });
 });
@@ -529,7 +529,7 @@ describe("automatic update checks", () => {
   });
 
   test("skips commands configured for automatic update checks", () => {
-    for (const commandName of UPDATER_CONFIG.automaticCheckSkipCommands) {
+    for (const commandName of UpdaterConfig.automaticCheckSkipCommands) {
       expect(
         shouldRunAutomaticUpdateCheck({
           context: { debug: false, json: false, agent: false },
@@ -546,12 +546,12 @@ describe("automatic update checks", () => {
     expect(detectInstallManager({ BUN_INSTALL: "/tmp/bun" })).toBe("bun");
     expect(detectInstallManager({ ALTERTABLE_UPDATE_INSTALLER: "yarn" })).toBe("yarn");
     expect(detectInstallManager({ ALTERTABLE_UPDATE_INSTALLER: "invalid" })).toBe(
-      UPDATER_CONFIG.defaults.installManager,
+      UpdaterConfig.defaults.installManager,
     );
   });
 
   test("does not reject when failure state persistence is unavailable", async () => {
-    mkdirSync(join(testHome, UPDATER_CONFIG.stateFileName));
+    mkdirSync(join(testHome, UpdaterConfig.stateFileName));
 
     await maybeShowUpdateNotice({
       context: { debug: false, json: false, agent: false },
@@ -599,7 +599,7 @@ describe("update command", () => {
   });
 
   test("accepts every configured update source option", async () => {
-    for (const source of UPDATE_SOURCES) {
+    for (const source of UpdaterSources) {
       const output = await runUpdateCommand([
         "update",
         "--source",
@@ -616,7 +616,7 @@ describe("update command", () => {
   });
 
   test("accepts every configured automatic check interval option", async () => {
-    for (const interval of UPDATE_CHECK_INTERVALS) {
+    for (const interval of UpdaterCheckIntervals) {
       const output = await runUpdateCommand(["update", "--check-interval", interval]);
 
       expect(output.stdout[0]).toContain(`Auto update checks: ${interval}`);
@@ -625,14 +625,14 @@ describe("update command", () => {
   });
 
   test("exposes every configured install method option", () => {
-    expect(UPDATE_INSTALL_METHODS).toContain("auto");
-    expect(UPDATE_INSTALL_METHODS).toContain("package-manager");
-    expect(UPDATE_INSTALL_METHODS).toContain("github-binary");
+    expect(UpdaterInstallMethods).toContain("auto");
+    expect(UpdaterInstallMethods).toContain("package-manager");
+    expect(UpdaterInstallMethods).toContain("github-binary");
   });
 
   test("falls back to configured source default for invalid environment override", () => {
     process.env.ALTERTABLE_UPDATE_SOURCE = "invalid";
 
-    expect(resolveUpdateSource()).toBe(UPDATER_CONFIG.defaults.source);
+    expect(resolveUpdateSource()).toBe(UpdaterConfig.defaults.source);
   });
 });

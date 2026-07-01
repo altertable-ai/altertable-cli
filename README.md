@@ -106,7 +106,7 @@ altertable update --install
 `altertable update --install` is origin-aware:
 
 - prebuilt release binaries update from GitHub Releases, verify `checksums.txt`, then replace the current binary atomically;
-- npm-style installs use the package manager (`npm`, Bun, pnpm, or Yarn) and verify the installed `altertable --version`;
+- npm-style installs use the package manager (npm, Bun, pnpm, or Yarn) and verify the installed `altertable --version`;
 - source checkouts are not auto-installed by default; update them with `git pull` or choose an explicit install method.
 
 The CLI also performs a silent daily update check after successful human-facing commands. Notices are written to stderr only, never to stdout, and are disabled for `--json`, `--agent`, CI, and non-TTY output.
@@ -127,10 +127,10 @@ Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable
 
 The CLI talks to two independent APIs with separate auth schemes:
 
-| Plane                    | Purpose                                 | Auth           |
-| ------------------------ | --------------------------------------- | -------------- |
-| **Management (control)** | `context`, `catalogs`                   | Bearer API key |
-| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append`   | HTTP Basic     |
+| Plane                    | Purpose                               | Auth           |
+| ------------------------ | ------------------------------------- | -------------- |
+| **Management (control)** | `context`, `catalogs`                 | Bearer API key |
+| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic     |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
@@ -228,10 +228,10 @@ altertable profile show staging
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
 
-| Scope                              | Keys                                                               |
-| ---------------------------------- | ------------------------------------------------------------------ |
+| Scope                              | Keys                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`           |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`                                    |
 
 ### Credential precedence
 
