@@ -97,6 +97,14 @@ const appendRunArgs = {
   sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
 } satisfies ArgsDef;
 
+const appendGroupArgs = {
+  ...appendRunArgs,
+  catalog: { ...appendRunArgs.catalog, required: false },
+  schema: { ...appendRunArgs.schema, required: false },
+  table: { ...appendRunArgs.table, required: false },
+  data: { ...appendRunArgs.data, required: false },
+} satisfies ArgsDef;
+
 type QueryRunInput = LakehouseQueryOperationInput & ReturnType<typeof parseQueryOutputOptions>;
 
 const queryRunCommand = defineOperationCommand<QueryRunInput, LakehouseQueryResult>({
@@ -263,7 +271,7 @@ export const appendCommand = defineGroupCommand({
     ],
   },
   default: "run",
-  args: appendRunArgs,
+  args: appendGroupArgs,
   subCommands: {
     run: appendRowsCommand,
     task: appendTaskCommand,

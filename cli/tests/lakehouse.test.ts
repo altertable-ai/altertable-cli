@@ -6,8 +6,6 @@ import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
   buildLakehouseQueryPayload,
-  createLakehouseUploadRequest,
-  createLakehouseUpsertRequest,
   csvEscapeCell,
   getQueryColumnNames,
   parseLakehouseQueryResponse,
@@ -20,20 +18,10 @@ import {
 } from "@/lib/lakehouse-client.ts";
 import { httpSendStream } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import {
-  httpEffect,
-  httpStreamEffect,
-  runOperationEffect,
-  runOperationPlan,
-} from "@/lib/operation-effect.ts";
+import { httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
-import {
-  lakehouseAppendOperation,
-  lakehouseAppendTaskOperation,
-  lakehouseQueryCancelOperation,
-} from "@/lib/lakehouse-operations.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',
@@ -82,6 +70,13 @@ async function collectLakehouseQueryStream(
   }
 }
 
+function readLoggedPayloads(): string[] {
+  return readFileSync(logFile, "utf8")
+    .split("\n")
+    .filter((line) => line.startsWith("PAYLOAD="))
+    .map((line) => line.slice("PAYLOAD=".length));
+}
+
 afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
@@ -102,6 +97,36 @@ describe("parseLakehouseQueryResponse", () => {
       [1, "Alice"],
       [2, "Bob"],
     ]);
+  });
+
+  test("parses object column metadata and object rows", () => {
+    const result = parseLakehouseQueryResponse(
+      [
+        '{"statement":"SELECT * FROM users"}',
+        '[{"name":"id","type":"integer"},{"name":"name","type":"varchar"}]',
+        '{"id":1,"name":"Alice"}',
+        "",
+      ].join("\n"),
+    );
+
+    expect(result.columns).toEqual([
+      { name: "id", type: "integer" },
+      { name: "name", type: "varchar" },
+    ]);
+    expect(result.rows).toEqual([{ id: 1, name: "Alice" }]);
+  });
+
+  test("treats a non-column second line as the first row", () => {
+    const result = parseLakehouseQueryResponse(
+      ['{"statement":"SELECT 1"}', '{"id":1}', "", '{"id":2}'].join("\n"),
+    );
+
+    expect(result.columns).toEqual([]);
+    expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
+  test("throws ParseError when metadata is not an object", () => {
+    expect(() => parseLakehouseQueryResponse("[]\n")).toThrow("metadata must be a JSON object");
   });
 
   test("throws ParseError with line index for malformed JSON", () => {
@@ -194,6 +219,32 @@ describe("parseLakehouseQueryStream", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(ParseError);
     }
+  });
+
+  test("streams a pending first row when no columns line is present", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(['{"statement":"SELECT 1"}', '{"id":1}', '{"id":2}'].join("\n")),
+        );
+        controller.close();
+      },
+    });
+
+    const rowValues: LakehouseRow[] = [];
+    const streamParser = parseLakehouseQueryStream(stream);
+    while (true) {
+      const next = await streamParser.next();
+      if (next.done) {
+        expect(next.value.columns).toEqual([]);
+        expect(next.value.rows).toEqual([{ id: 1 }, { id: 2 }]);
+        break;
+      }
+      rowValues.push(next.value);
+    }
+
+    expect(rowValues).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   test("malformed row line includes line index", async () => {
@@ -306,7 +357,38 @@ describe("query renderers", () => {
   });
 });
 
-describe("lakehouse request construction", () => {
+describe("lakehouse command HTTP behavior", () => {
+  test("query command sends optional query and session identifiers", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/query",
+          method: "POST",
+          body: SAMPLE_NDJSON,
+        },
+      ]),
+    );
+
+    await runCommandWithTestRuntime([
+      "query",
+      "--statement",
+      "SELECT 1",
+      "--format",
+      "json",
+      "--query-id",
+      "query-1",
+      "--session-id",
+      "session-1",
+    ]);
+
+    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
+      query_id: "query-1",
+      session_id: "session-1",
+    });
+  });
+
   test("query subcommands dispatch without requiring --statement", async () => {
     const queryId = "11111111-2222-3333-4444-555555555555";
     writeFileSync(
@@ -347,24 +429,23 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const context = createOperationContext();
-    await runOperationPlan(
-      lakehouseAppendOperation.plan(
-        {
-          catalog: "memory",
-          schema: "main",
-          table: "users",
-          payload: '{"id":1}',
-          sync: true,
-        },
-        context,
-      ),
-      context,
-    );
+    await runCommandWithTestRuntime([
+      "append",
+      "--catalog",
+      "memory",
+      "--schema",
+      "main",
+      "--table",
+      "users",
+      "--data",
+      '{"id":1}',
+      "--sync",
+    ]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/append?");
     expect(logContent).toContain("sync=true");
+    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({ id: 1 });
   });
 
   test("get-task calls /tasks/{task_id}", async () => {
@@ -380,133 +461,14 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const context = createOperationContext();
-    const response = await runOperationPlan(
-      lakehouseAppendTaskOperation.plan(taskId, context),
-      context,
-    );
-    expect(response).toContain("completed");
+    await runCommandWithTestRuntime(["append", "task", taskId]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(`URL=https://example.com/tasks/${taskId}`);
   });
 
-  test("upload sends mode without format or primary_key query params", async () => {
+  test("upload command sends mode without exposing file contents", async () => {
     const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/upload",
-          method: "POST",
-          body: '{"ok":true}',
-        },
-      ]),
-    );
-
-    const uploadScope = createLakehouseUploadRequest({
-      catalog: "memory",
-      schema: "main",
-      table: "users",
-      mode: "overwrite",
-      filePath: uploadFile,
-      fileSizeBytes: 15,
-      contentType: "text/csv",
-    });
-    try {
-      await runOperationEffect(httpEffect(uploadScope.request), createOperationContext());
-    } finally {
-      uploadScope.release();
-    }
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("URL=https://example.com/upload?");
-    expect(logContent).toContain("mode=overwrite");
-    expect(logContent).not.toContain("format=csv");
-    expect(logContent).not.toContain("primary_key=id");
-    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
-  });
-
-  test("upload uses explicit content type only when format is provided", () => {
-    const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-
-    const uploadScope = createLakehouseUploadRequest({
-      catalog: "memory",
-      schema: "main",
-      table: "users",
-      mode: "overwrite",
-      filePath: uploadFile,
-      fileSizeBytes: 15,
-      contentType: "text/csv",
-    });
-    try {
-      expect(uploadScope.request.contentType).toBe("text/csv");
-      expect(uploadScope.request.body).toBeDefined();
-    } finally {
-      uploadScope.release();
-    }
-  });
-
-  test("upload without format streams the file without a content type hint", () => {
-    const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-
-    const uploadScope = createLakehouseUploadRequest({
-      catalog: "memory",
-      schema: "main",
-      table: "users",
-      mode: "overwrite",
-      filePath: uploadFile,
-      fileSizeBytes: 15,
-    });
-    try {
-      expect(uploadScope.request.contentType).toBeUndefined();
-      expect(uploadScope.request.body).toBeInstanceOf(ReadableStream);
-    } finally {
-      uploadScope.release();
-    }
-  });
-
-  test("upsert sends primary_key to /upsert", async () => {
-    const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/upsert",
-          method: "POST",
-          body: '{"ok":true}',
-        },
-      ]),
-    );
-
-    const uploadScope = createLakehouseUpsertRequest({
-      catalog: "memory",
-      schema: "main",
-      table: "users",
-      primaryKey: "id",
-      filePath: uploadFile,
-      fileSizeBytes: 15,
-      contentType: "text/csv",
-    });
-    try {
-      await runOperationEffect(httpEffect(uploadScope.request), createOperationContext());
-    } finally {
-      uploadScope.release();
-    }
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("URL=https://example.com/upsert?");
-    expect(logContent).toContain("primary_key=id");
-    expect(logContent).not.toContain("mode=upsert");
-    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
-  });
-
-  test("upload command validates file metadata without buffering the payload", async () => {
-    const uploadFile = join(testHome, "command-data.csv");
     writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
     writeFileSync(
       mockFile,
@@ -537,8 +499,48 @@ describe("lakehouse request construction", () => {
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain("URL=https://example.com/upload?");
+    expect(logContent).toContain("mode=overwrite");
+    expect(logContent).not.toContain("format=csv");
+    expect(logContent).not.toContain("primary_key=id");
     expect(logContent).toContain("PAYLOAD=@blob");
     expect(logContent).not.toContain("id,name");
+  });
+
+  test("upsert command sends primary key without upload mode", async () => {
+    const uploadFile = join(testHome, "data.csv");
+    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/upsert",
+          method: "POST",
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+
+    await runCommandWithTestRuntime([
+      "upsert",
+      "--catalog",
+      "memory",
+      "--schema",
+      "main",
+      "--table",
+      "users",
+      "--primary-key",
+      "id",
+      "--format",
+      "csv",
+      "--file",
+      uploadFile,
+    ]);
+
+    const logContent = readFileSync(logFile, "utf8");
+    expect(logContent).toContain("URL=https://example.com/upsert?");
+    expect(logContent).toContain("primary_key=id");
+    expect(logContent).not.toContain("mode=upsert");
+    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
   });
 
   test("upload command rejects missing files and directories", async () => {
@@ -604,11 +606,7 @@ describe("lakehouse request construction", () => {
       ]),
     );
 
-    const context = createOperationContext();
-    await runOperationPlan(
-      lakehouseQueryCancelOperation.plan({ queryId, sessionId: "session-1" }, context),
-      context,
-    );
+    await runCommandWithTestRuntime(["query", "cancel", queryId, "--session-id", "session-1"]);
 
     const logContent = readFileSync(logFile, "utf8");
     expect(logContent).toContain(`URL=https://example.com/query/${encodedQueryId}`);

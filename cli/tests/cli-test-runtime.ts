@@ -15,8 +15,11 @@ export function createCliTestRuntime(
   return runtime;
 }
 
-export async function runCommandWithTestRuntime(rawArgs: string[]): Promise<void> {
-  await runWithCliRuntime(createCliTestRuntime(), () =>
+export async function runCommandWithTestRuntime(
+  rawArgs: string[],
+  context: CliContext = { debug: false, json: true, agent: false },
+): Promise<void> {
+  await runWithCliRuntime(createCliTestRuntime(context), () =>
     runCommand(buildMainCommand(), { rawArgs }),
   );
 }
