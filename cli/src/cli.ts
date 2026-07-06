@@ -11,6 +11,7 @@ import {
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
 import { configureCommand } from "@/commands/configure.ts";
+import { loginCommand, logoutCommand } from "@/commands/login.ts";
 import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
@@ -88,6 +89,8 @@ export function buildMainCommand(): CommandDef {
 
   const topLevelCommands: Record<string, CommandDef> = {
     configure: configureCommand,
+    login: loginCommand,
+    logout: logoutCommand,
     profile: profileCommand,
     context: contextCommand,
     catalogs: catalogsCommand,

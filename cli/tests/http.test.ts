@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { CliError, HttpError, TimeoutError } from "@/lib/errors.ts";
+import { CliError, HttpError, NetworkError, TimeoutError } from "@/lib/errors.ts";
 import {
   computeRetryDelayMs,
   getSharedDispatcher,
@@ -270,6 +270,29 @@ describe("TimeoutError", () => {
     expect(error).toBeInstanceOf(TimeoutError);
     expect(error.name).toBe("TimeoutError");
     expect(error.message).toBe("Request timed out.");
+  });
+});
+
+describe("network error context", () => {
+  test("includes the method and URL of the failed request", async () => {
+    // Bypass the mock harness so we hit the real fetch path against a closed port.
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    let caught: unknown;
+    try {
+      await httpSend({
+        method: "POST",
+        url: "http://127.0.0.1:1/oauth/token",
+        authHeader: "",
+        body: "grant_type=authorization_code",
+        contentType: "application/x-www-form-urlencoded",
+        maxAttempts: 1,
+        connectTimeoutMs: 2000,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(NetworkError);
+    expect((caught as Error).message).toContain("POST http://127.0.0.1:1/oauth/token");
   });
 });
 

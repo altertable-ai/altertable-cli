@@ -2,6 +2,8 @@ import type { AuthPlane } from "@/lib/errors.ts";
 import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { requirePlaneAuth, type ExecutionContext } from "@/lib/execution-context.ts";
+import { getManagementAuthHeader } from "@/lib/auth.ts";
+import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 
@@ -28,14 +30,25 @@ function resolvePlaneUrl(request: OperationHttpRequest, context: ExecutionContex
   return PLANE_URL_BUILDERS[request.plane](request.endpoint, context);
 }
 
-function toHttpSendOptions(
+async function resolveRequestAuthHeader(
   request: OperationHttpRequest,
   context: ExecutionContext,
-): HttpSendOptions {
+): Promise<string> {
+  if (request.plane === "management" && hasOAuthSession()) {
+    await ensureFreshAccessToken();
+    return getManagementAuthHeader();
+  }
+  return requirePlaneAuth(context, request.plane);
+}
+
+async function toHttpSendOptions(
+  request: OperationHttpRequest,
+  context: ExecutionContext,
+): Promise<HttpSendOptions> {
   return {
     method: request.method,
     url: resolvePlaneUrl(request, context),
-    authHeader: requirePlaneAuth(context, request.plane),
+    authHeader: await resolveRequestAuthHeader(request, context),
     body: request.body,
     contentType: request.contentType,
     extraHeaders: request.extraHeaders,
@@ -47,16 +60,16 @@ function toHttpSendOptions(
   };
 }
 
-export function sendOperationHttp(
+export async function sendOperationHttp(
   request: OperationHttpRequest,
   context: ExecutionContext,
 ): Promise<string> {
-  return httpSend(toHttpSendOptions(request, context));
+  return httpSend(await toHttpSendOptions(request, context));
 }
 
-export function sendOperationHttpStream(
+export async function sendOperationHttpStream(
   request: OperationHttpRequest,
   context: ExecutionContext,
 ): Promise<ReadableStream<Uint8Array>> {
-  return httpSendStream(toHttpSendOptions(request, context));
+  return httpSendStream(await toHttpSendOptions(request, context));
 }

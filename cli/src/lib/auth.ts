@@ -33,13 +33,20 @@ export function getLakehouseAuthHeader(): string {
 }
 
 export function getManagementAuthHeader(): string {
-  let key = process.env.ALTERTABLE_API_KEY ?? "";
-  if (!key) {
-    key = secretGet("api-key");
+  const envKey = process.env.ALTERTABLE_API_KEY ?? "";
+  if (envKey) {
+    return `Authorization: Bearer ${envKey}`;
   }
+
+  const oauthToken = secretGet("oauth/access-token");
+  if (oauthToken) {
+    return `Authorization: Bearer ${oauthToken}`;
+  }
+
+  const key = secretGet("api-key");
   if (!key) {
     throw new ConfigurationError(
-      "No management API key. Run 'altertable configure --api-key atm_xxx --env <name>' or set ALTERTABLE_API_KEY.",
+      "No management credentials. Run 'altertable login', 'altertable configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
     );
   }
   return `Authorization: Bearer ${key}`;

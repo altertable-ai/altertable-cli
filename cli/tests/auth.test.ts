@@ -42,7 +42,7 @@ describe("auth", () => {
   test("getManagementAuthHeader throws ConfigurationError when API key is missing", () => {
     expect(() => getManagementAuthHeader()).toThrow(ConfigurationError);
     expect(() => getManagementAuthHeader()).toThrow(
-      "No management API key. Run 'altertable configure --api-key atm_xxx --env <name>' or set ALTERTABLE_API_KEY.",
+      "No management credentials. Run 'altertable login', 'altertable configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
     );
   });
 
