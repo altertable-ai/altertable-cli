@@ -35,6 +35,7 @@ afterEach(() => {
   delete process.env.ALTERTABLE_SECRET_BACKEND;
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+  delete process.env.ALTERTABLE_API_KEY;
 });
 
 describe("exchangeCode", () => {
@@ -59,14 +60,27 @@ describe("exchangeCode", () => {
   });
 });
 
-describe("ensureFreshManagementToken", () => {
+describe("ensureFreshAccessToken", () => {
   test("no-op when not logged in via OAuth", async () => {
-    expect(await ensureFreshAccessToken()).toBe(false);
+    await ensureFreshAccessToken();
+    expect(getStoredAccessToken()).toBe(""); // nothing stored, nothing refreshed
   });
 
   test("no-op when the token is still fresh", async () => {
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
-    expect(await ensureFreshAccessToken()).toBe(false);
+    await ensureFreshAccessToken();
+    expect(getStoredAccessToken()).toBe("acc"); // unchanged — no refresh
+  });
+
+  test("no-op when ALTERTABLE_API_KEY is set (env key short-circuits refresh)", async () => {
+    // Expired OAuth session, but no /oauth/token mock — a refresh attempt would throw.
+    secretSet("oauth/refresh-token", "ref");
+    configSet("oauth_expiry", String(Date.now() - 1000));
+    const tokenBefore = getStoredAccessToken();
+
+    process.env.ALTERTABLE_API_KEY = "atm_env";
+    await ensureFreshAccessToken();
+    expect(getStoredAccessToken()).toBe(tokenBefore); // tokens must not be cleared
   });
 
   test("refreshes and persists when expired", async () => {
@@ -83,7 +97,7 @@ describe("ensureFreshManagementToken", () => {
     secretSet("oauth/refresh-token", "ref");
     configSet("oauth_expiry", String(Date.now() - 1000));
 
-    expect(await ensureFreshAccessToken()).toBe(true);
+    await ensureFreshAccessToken();
     expect(getStoredAccessToken()).toBe("acc2");
     expect(Number.parseInt(configGet("oauth_expiry"), 10)).toBeGreaterThan(Date.now());
   });
@@ -115,8 +129,8 @@ describe("ensureFreshManagementToken", () => {
   });
 });
 
-describe("transport refresh preflight", () => {
-  test("a management request refreshes an expired OAuth token before sending", async () => {
+describe("management request auth resolution", () => {
+  test("refreshes an expired OAuth token before sending", async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
@@ -141,30 +155,8 @@ describe("transport refresh preflight", () => {
     expect(getStoredAccessToken()).toBe("acc3");
     expect(Number.parseInt(configGet("oauth_expiry"), 10)).toBeGreaterThan(Date.now());
   });
-});
 
-describe("FIX 1 — env API key short-circuits refresh", () => {
-  test("ensureFreshManagementToken returns false without attempting refresh when ALTERTABLE_API_KEY is set", async () => {
-    // Arrange: expired OAuth session + no /oauth/token mock (would throw if called)
-    secretSet("oauth/refresh-token", "ref");
-    configSet("oauth_expiry", String(Date.now() - 1000));
-    const tokenBefore = getStoredAccessToken();
-
-    process.env.ALTERTABLE_API_KEY = "atm_env";
-    try {
-      const result = await ensureFreshAccessToken();
-      expect(result).toBe(false);
-      // Tokens must not have been cleared
-      expect(getStoredAccessToken()).toBe(tokenBefore);
-    } finally {
-      delete process.env.ALTERTABLE_API_KEY;
-    }
-  });
-});
-
-describe("FIX 2 — live resolution when OAuth session is active", () => {
-  test("management request uses current stored token even when no refresh occurred in this call", async () => {
-    // Arrange: fresh OAuth session (no refresh needed)
+  test("resolves the header live from the store, not a bootstrap cache", async () => {
     storeOAuthTokens({ access_token: "tok_a", refresh_token: "r", expires_in: 3600 });
 
     writeFileSync(
@@ -177,13 +169,12 @@ describe("FIX 2 — live resolution when OAuth session is active", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     await runWithCliRuntime(runtime, async () => {
       refreshCliRuntimeContext(getCliContext());
-      // Simulate an out-of-band token rotation (e.g., a prior refresh in this process)
+      // Simulate an out-of-band token rotation (e.g. a prior refresh in this process).
       secretSet("oauth/access-token", "tok_b");
-      // The request must succeed and resolve live from the store, not the bootstrap cache
       await managementRequest("GET", "/whoami");
     });
 
-    // Live resolution: header now reflects the rotated token
+    // The header reflects the rotated token, resolved live at send time.
     expect(getManagementAuthHeader()).toBe("Authorization: Bearer tok_b");
   });
 });

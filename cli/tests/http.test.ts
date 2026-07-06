@@ -477,6 +477,18 @@ describe("debug response redaction", () => {
     expect(redacted).not.toContain("leaked-secret");
     expect(redacted).toContain("[REDACTED]");
   });
+
+  test("redactResponseBodyForDebug redacts OAuth access and refresh tokens", () => {
+    const body = JSON.stringify({
+      access_token: "acc-leak",
+      refresh_token: "ref-leak",
+      token_type: "Bearer",
+    });
+    const redacted = redactResponseBodyForDebug(body);
+    expect(redacted).not.toContain("acc-leak");
+    expect(redacted).not.toContain("ref-leak");
+    expect(redacted).toContain("[REDACTED]");
+  });
 });
 
 describe("retry-after header", () => {
