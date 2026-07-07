@@ -191,7 +191,7 @@ export async function promptProfileSwitch(
   const profiles = listProfiles();
   const activeProfile = getActiveProfileName();
   return await prompts.readSelect(
-    "Select active profile",
+    "Switch profile",
     profiles.map(profileSwitchOption),
     activeProfile,
   );
@@ -209,8 +209,11 @@ const profileListCommand = defineValueCommand({
     const table = renderFixedTableSection(
       profiles,
       [
-        { header: "NAME", cell: (profile) => profile.name, style: "strong" },
-        { header: "ACTIVE", cell: (profile) => (profile.active ? "*" : ""), style: "subtle" },
+        {
+          header: "NAME",
+          cell: (profile) => `${profile.active ? "✓" : " "} ${profile.name}`,
+          style: "strong",
+        },
         {
           header: "ORG",
           cell: (profile) => profile.organization ?? "",
@@ -269,7 +272,9 @@ const profileCreateCommand = defineLocalCommand({
     };
   },
   local(input) {
-    return createProfile(input.name, input.update);
+    createProfile(input.name, input.update);
+    setActiveProfile(input.name);
+    return inspectProfile(input.name);
   },
   present(profile) {
     return {

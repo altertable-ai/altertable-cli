@@ -222,8 +222,11 @@ Named profiles store credentials and endpoint overrides per environment. Global 
 Profile names can be provided explicitly, or derived from an organization slug and environment as `<org>_<env>`. Derived names are normalized to lowercase safe profile names, for example `Acme` + `Production` becomes `acme_production`.
 
 ```bash
-# Browser login derives the profile from the signed-in organization and environment
+# Browser login creates or reuses the signed-in org_env profile and switches to it
 altertable login
+
+# Or replace the current profile with the signed-in org_env profile
+altertable login --replace-profile
 
 # Set up multiple environments with org_env profile names
 altertable configure --org acme --api-key atm_xxx --env staging
@@ -257,7 +260,7 @@ altertable profile show --name acme_staging
 Advanced profile commands are available for metadata-only profiles, automation, and sharing non-secret configuration:
 
 ```bash
-# Create or update metadata without writing credentials
+# Create metadata without writing credentials. New profiles become active.
 altertable profile create acme_production --org acme --env production --description "Acme production"
 altertable profile update acme_production --description "Primary production environment"
 

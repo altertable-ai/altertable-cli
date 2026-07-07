@@ -182,11 +182,32 @@ describe("login profile metadata", () => {
     );
 
     expect(metadata).toEqual({ environment: "production", profileName: "altertable_production" });
+    expect(profileExists("default")).toBe(true);
     expect(profileExists("altertable_production")).toBe(true);
     expect(getActiveProfileName()).toBe("altertable_production");
     expect(configGet("api_key_env")).toBe("production");
     expect(configGet("organization_slug")).toBe("altertable");
     expect(configGet("organization_name")).toBe("Altertable");
+    expect(getStoredAccessToken()).toBe("acc");
+  });
+
+  test("can replace the current profile with the login-derived profile", () => {
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+
+    const metadata = storeLoginProfileMetadata(
+      {
+        principal: { type: "User", name: "François", email: "francois@altertable.ai" },
+        organization: { name: "Altertable", slug: "altertable" },
+        authentication_scope: "environment",
+        environment_slug: "production",
+      },
+      { "replace-profile": true },
+    );
+
+    expect(metadata).toEqual({ environment: "production", profileName: "altertable_production" });
+    expect(profileExists("default")).toBe(false);
+    expect(profileExists("altertable_production")).toBe(true);
+    expect(getActiveProfileName()).toBe("altertable_production");
     expect(getStoredAccessToken()).toBe("acc");
   });
 

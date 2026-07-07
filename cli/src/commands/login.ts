@@ -9,6 +9,7 @@ import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
 import { configureRunClear } from "@/lib/configure.ts";
 import {
+  createProfile,
   deriveProfileName,
   moveProfileConfigKey,
   profileExists,
@@ -48,7 +49,11 @@ function moveOAuthSession(sourceProfile: string, targetProfile: string): void {
   moveProfileConfigKey(sourceProfile, targetProfile, "oauth_expiry");
 }
 
-function promoteLoginProfile(whoami: WhoamiResponse, environment: string): string {
+function promoteLoginProfile(
+  whoami: WhoamiResponse,
+  environment: string,
+  replaceProfile: boolean,
+): string {
   const sourceProfile = resolveProfileName(getCliContext().profile);
   const organizationSlug = whoami.organization?.slug;
   const targetProfile = organizationSlug
@@ -60,8 +65,11 @@ function promoteLoginProfile(whoami: WhoamiResponse, environment: string): strin
 
   if (profileExists(targetProfile)) {
     moveOAuthSession(sourceProfile, targetProfile);
-  } else {
+  } else if (replaceProfile) {
     renameProfile(sourceProfile, targetProfile);
+  } else {
+    createProfile(targetProfile);
+    moveOAuthSession(sourceProfile, targetProfile);
   }
   setActiveProfile(targetProfile);
   setCliContext({ ...getCliContext(), profile: targetProfile });
@@ -80,7 +88,7 @@ export function storeLoginProfileMetadata(
     throw new Error("No environment returned from `whoami` post-login. Aborting.");
   }
 
-  const profileName = promoteLoginProfile(whoami, environment);
+  const profileName = promoteLoginProfile(whoami, environment, Boolean(args["replace-profile"]));
 
   updateProfile(profileName, {
     environment,
@@ -95,6 +103,7 @@ export function storeLoginProfileMetadata(
 export type LoginArgs = {
   "control-plane-url"?: string;
   "allow-insecure-http"?: boolean;
+  "replace-profile"?: boolean;
 };
 
 /**
@@ -150,13 +159,8 @@ export const loginCommand = defineLocalCommand({
   output: "none",
   meta: {
     name: "login",
-    description:
-      "Sign in with your browser (OAuth), derive the org_env profile from the account, and store the session.",
-    examples: [
-      "altertable login",
-      "altertable --profile scratch login",
-      "altertable profile status --verify",
-    ],
+    description: "Sign in with your browser (OAuth) and store the session.",
+    examples: ["altertable login", "altertable login --replace-profile"],
   },
   args: {
     "control-plane-url": {
@@ -168,6 +172,11 @@ export const loginCommand = defineLocalCommand({
       type: "boolean",
       description:
         "Allow http:// URLs other than localhost for --control-plane-url (for development only)",
+    },
+    "replace-profile": {
+      type: "boolean",
+      description:
+        "Rename the current profile to the derived login profile instead of creating one",
     },
   },
   local: (_input, context) => runLogin(context.args as LoginArgs, context.sink),

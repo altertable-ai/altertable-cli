@@ -124,6 +124,14 @@ describe("profile storage", () => {
     expect(inspectProfile("acme_prod").endpoints.data_plane).toBe("https://api.example.com");
   });
 
+  test("profile create switches to the created profile", async () => {
+    await configureRunSet({ apiKey: "atm_a", env: "prod" });
+
+    await runCommandWithTestRuntime(["profile", "create", "acme_stage", "--env", "staging"]);
+
+    expect(getActiveProfileName()).toBe("acme_stage");
+  });
+
   test("inspectProfile reports profile-scoped auth status", async () => {
     await configureRunSet({ profile: "acme_prod", apiKey: "atm_prod", env: "production" });
     await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
@@ -359,7 +367,8 @@ describe("profile storage", () => {
       readLine: async () => "",
       readPassword: async () => "",
       readConfirm: async () => true,
-      readSelect: async (_title, options, defaultValue) => {
+      readSelect: async (title, options, defaultValue) => {
+        expect(title).toBe("Switch profile");
         expect(defaultValue).toBe("default");
         expect(options.map((option) => option.value)).toContain("staging");
         return "staging";
