@@ -41,6 +41,61 @@ components:
               items:
                 type: string
 
+    Bucket:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
+        provider:
+          type: string
+          enum:
+            - s3
+            - r2
+            - gcs
+            - custom
+        built_in:
+          type: boolean
+        environment_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - provider
+        - built_in
+        - environment_id
+        - created_at
+        - updated_at
+    BucketResponse:
+      type: object
+      properties:
+        bucket:
+          "$ref": "#/components/schemas/Bucket"
+      required:
+        - bucket
+    BucketsListResponse:
+      type: object
+      properties:
+        buckets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Bucket"
+      required:
+        - buckets
     Connection:
       type: object
       properties:
@@ -70,10 +125,10 @@ components:
           type: boolean
         description:
           type: string
-        tags:
+        labels:
           type: array
           items:
-            type: string
+            "$ref": "#/components/schemas/Label"
         catalog:
           type: string
         environment_id:
@@ -90,7 +145,7 @@ components:
         - slug
         - engine
         - read_only
-        - tags
+        - labels
         - catalog
         - environment_id
         - created_at
@@ -253,6 +308,23 @@ components:
             "$ref": "#/components/schemas/Connection"
       required:
         - connections
+    CreateBucketRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        access_key_id:
+          type: string
+        secret_access_key:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
+      required:
+        - name
+        - access_key_id
+        - secret_access_key
     CreateConnectionRequest:
       type: object
       properties:
@@ -276,7 +348,7 @@ components:
             - duckdb
         read_only:
           type: boolean
-        tags:
+        label_ids:
           type: array
           items:
             type: string
@@ -312,6 +384,9 @@ components:
       properties:
         label:
           type: string
+        expires_at:
+          type: string
+          format: date-time
     CreateCredentialResponse:
       type: object
       properties:
@@ -331,7 +406,7 @@ components:
           type: string
         read_only:
           type: boolean
-        tags:
+        label_ids:
           type: array
           items:
             type: string
@@ -369,13 +444,6 @@ components:
           type: string
       required:
         - label
-    CreateServiceAccountResponse:
-      type: object
-      properties:
-        service_account:
-          "$ref": "#/components/schemas/ServiceAccount"
-      required:
-        - service_account
     Credential:
       type: object
       properties:
@@ -433,10 +501,10 @@ components:
           type: boolean
         description:
           type: string
-        tags:
+        labels:
           type: array
           items:
-            type: string
+            "$ref": "#/components/schemas/Label"
         catalog:
           type: string
         bucket_id:
@@ -457,7 +525,7 @@ components:
         - slug
         - read_only
         - built_in
-        - tags
+        - labels
         - catalog
         - bucket_id
         - environment_id
@@ -516,6 +584,19 @@ components:
           "$ref": "#/components/schemas/Environment"
       required:
         - environment
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - id
+        - name
+        - color
     Organization:
       type: object
       properties:
@@ -549,6 +630,54 @@ components:
         - id
         - type
         - name
+    RoleAssignment:
+      type: object
+      properties:
+        role:
+          type: string
+        resource_kind:
+          type: string
+        resource_id:
+          type: string
+      required:
+        - role
+        - resource_kind
+        - resource_id
+    RoleAssignmentsResponse:
+      type: object
+      properties:
+        role_assignments:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RoleAssignment"
+      required:
+        - role_assignments
+    RoleInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - catalog:reader
+            - catalog:writer
+            - environment:member
+            - environment:reader
+            - environment:writer
+            - organization:member
+            - organization:reader
+            - organization:writer
+            - organization:admin
+        resource_kind:
+          type: string
+          enum:
+            - organization
+            - environment
+            - catalog
+        resource_id:
+          type: string
+      required:
+        - role
+        - resource_id
     ServiceAccount:
       type: object
       properties:
@@ -562,6 +691,26 @@ components:
         - id
         - label
         - slug
+    ServiceAccountResponse:
+      type: object
+      properties:
+        service_account:
+          "$ref": "#/components/schemas/ServiceAccount"
+      required:
+        - service_account
+    UpdateBucketRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        access_key_id:
+          type: string
+        secret_access_key:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
     UpdateConnectionRequest:
       type: object
       properties:
@@ -569,7 +718,7 @@ components:
           type: string
         read_only:
           type: boolean
-        tags:
+        label_ids:
           type: array
           items:
             type: string
@@ -604,7 +753,7 @@ components:
           type: string
         read_only:
           type: boolean
-        tags:
+        label_ids:
           type: array
           items:
             type: string
@@ -612,6 +761,42 @@ components:
           type: integer
         description:
           type: string
+    UpdateRoleAssignmentsRequest:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RoleInput"
+      required:
+        - roles
+    UpdateServiceAccountRequest:
+      type: object
+      properties:
+        label:
+          type: string
+      required:
+        - label
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+      required:
+        - id
+        - email
+        - name
+    UserResponse:
+      type: object
+      properties:
+        user:
+          "$ref": "#/components/schemas/User"
+      required:
+        - user
     WhoamiResponse:
       type: object
       properties:
@@ -619,9 +804,14 @@ components:
           "$ref": "#/components/schemas/Principal"
         organization:
           "$ref": "#/components/schemas/Organization"
+        authentication_scope:
+          type: string
+        environment_slug:
+          type: string
       required:
         - principal
         - organization
+        - authentication_scope
 
   responses:
     Unauthorized:
@@ -713,6 +903,29 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteEnvironment
+      summary: Delete an environment
+      tags: [Environments]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Environment UUID or slug
+          schema:
+            type: string
+            examples:
+              - "019d7223-796e-7917-8d7e-ca256daa7979"
+              - "production"
+      responses:
+        "204":
+          description: Environment deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /environments:
     post:
@@ -760,7 +973,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateServiceAccountResponse"
+                $ref: "#/components/schemas/ServiceAccountResponse"
         "400":
           description: Missing required parameter
           content:
@@ -773,6 +986,62 @@ paths:
           $ref: "#/components/responses/Forbidden"
 
   /service_accounts/{id}:
+    get:
+      operationId: getServiceAccount
+      summary: Get a service account by ID
+      tags: [Service Accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Service account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServiceAccountResponse" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateServiceAccount
+      summary: Update a service account
+      tags: [Service Accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateServiceAccountRequest" }
+      responses:
+        "200":
+          description: Service account updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServiceAccountResponse" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
     delete:
       operationId: deleteServiceAccount
       summary: Delete a service account
@@ -793,6 +1062,138 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "422":
+          description: Service account still has active credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /environments/{environment_id}/buckets:
+    get:
+      operationId: listBuckets
+      summary: List buckets in an environment
+      tags: [Buckets]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Buckets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BucketsListResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: createBucket
+      summary: Connect a bucket
+      tags: [Buckets]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateBucketRequest" }
+      responses:
+        "201":
+          description: Bucket created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BucketResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /environments/{environment_id}/buckets/{id}:
+    get:
+      operationId: getBucket
+      summary: Get a bucket by ID or slug
+      tags: [Buckets]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Bucket
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BucketResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateBucket
+      summary: Update a bucket
+      tags: [Buckets]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateBucketRequest" }
+      responses:
+        "200":
+          description: Bucket updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BucketResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: deleteBucket
+      summary: Delete a bucket
+      tags: [Buckets]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Bucket deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Built-in buckets cannot be deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /environments/{environment_id}/connections:
     get:
@@ -1037,6 +1438,133 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/lookup:
+    get:
+      operationId: lookupUser
+      summary: Look up a user in the organization by email
+      tags: [Users]
+      parameters:
+        - name: email
+          in: query
+          required: true
+          description: Email address of the user to look up
+          schema: { type: string }
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "400":
+          description: Missing required parameter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: Get a user in the organization by ID
+      tags: [Users]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user_id}/role_assignments:
+    get:
+      operationId: getUserRoleAssignments
+      summary: List a user's direct role assignments
+      tags: [Role Assignments]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Role assignments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setUserRoleAssignments
+      summary: Replace a user's role assignments
+      tags: [Role Assignments]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRoleAssignmentsRequest" }
+      responses:
+        "200":
+          description: Role assignments replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /service_accounts/{service_account_id}/role_assignments:
+    get:
+      operationId: getServiceAccountRoleAssignments
+      summary: List a service account's direct role assignments
+      tags: [Role Assignments]
+      parameters:
+        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Role assignments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setServiceAccountRoleAssignments
+      summary: Replace a service account's role assignments
+      tags: [Role Assignments]
+      parameters:
+        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRoleAssignmentsRequest" }
+      responses:
+        "200":
+          description: Role assignments replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /users/{user_id}/environments/{environment_id}/credentials:
     post:

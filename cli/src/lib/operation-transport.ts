@@ -1,9 +1,14 @@
-import type { AuthPlane } from "@/lib/errors.ts";
+import { HttpError, type AuthPlane } from "@/lib/errors.ts";
 import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { requirePlaneAuth, type ExecutionContext } from "@/lib/execution-context.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
+import {
+  canRecoverLakehouseAuth,
+  hasManagementCredentials,
+  provisionLakehouseCredential,
+} from "@/lib/lakehouse-provision.ts";
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 
@@ -38,6 +43,11 @@ async function resolveRequestAuthHeader(
     await ensureFreshAccessToken();
     return getManagementAuthHeader();
   }
+  if (request.plane === "lakehouse" && !context.auth.lakehouse && hasManagementCredentials()) {
+    const header = await provisionLakehouseCredential(context);
+    context.auth.lakehouse = header;
+    return header;
+  }
   return requirePlaneAuth(context, request.plane);
 }
 
@@ -60,16 +70,47 @@ async function toHttpSendOptions(
   };
 }
 
+function isRecoverableLakehouseAuthFailure(request: OperationHttpRequest, error: unknown): boolean {
+  return (
+    error instanceof HttpError &&
+    error.status === 401 &&
+    request.plane === "lakehouse" &&
+    // A stream body was consumed by the failed attempt and cannot be resent.
+    !(request.body instanceof ReadableStream) &&
+    canRecoverLakehouseAuth()
+  );
+}
+
+async function sendWithAuthRecovery<T>(
+  request: OperationHttpRequest,
+  context: ExecutionContext,
+  send: (options: HttpSendOptions) => Promise<T>,
+): Promise<T> {
+  const options = await toHttpSendOptions(request, context);
+  try {
+    return await send(options);
+  } catch (error) {
+    if (!isRecoverableLakehouseAuthFailure(request, error)) {
+      throw error;
+    }
+    // The server can invalidate a provisioned credential (revocation, restart)
+    // before the locally stored expiry: mint a fresh one and retry once.
+    const authHeader = await provisionLakehouseCredential(context);
+    context.auth.lakehouse = authHeader;
+    return send({ ...options, authHeader });
+  }
+}
+
 export async function sendOperationHttp(
   request: OperationHttpRequest,
   context: ExecutionContext,
 ): Promise<string> {
-  return httpSend(await toHttpSendOptions(request, context));
+  return sendWithAuthRecovery(request, context, httpSend);
 }
 
 export async function sendOperationHttpStream(
   request: OperationHttpRequest,
   context: ExecutionContext,
 ): Promise<ReadableStream<Uint8Array>> {
-  return httpSendStream(await toHttpSendOptions(request, context));
+  return sendWithAuthRecovery(request, context, httpSendStream);
 }
