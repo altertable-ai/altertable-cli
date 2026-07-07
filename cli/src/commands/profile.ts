@@ -235,13 +235,13 @@ function formatProfileStatus(result: ProfileStatusResult): string {
 
 function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
   const details = [
-    profile.active ? "active" : "",
-    profile.organization ? `org: ${profile.organization}` : "",
-    profile.management_env ? `env: ${profile.management_env}` : "",
-    profile.principal ? `principal: ${profile.principal}` : "",
-    profile.management_auth ? `management: ${profile.management_auth}` : "",
-    profile.lakehouse_auth ? `lakehouse: ${profile.lakehouse_auth}` : "",
-  ].filter(Boolean);
+    profile.active && "active",
+    profile.organization && `org: ${profile.organization}`,
+    profile.management_env && `env: ${profile.management_env}`,
+    profile.principal && `principal: ${profile.principal}`,
+    profile.management_auth && `management: ${profile.management_auth}`,
+    profile.lakehouse_auth && `lakehouse: ${profile.lakehouse_auth}`,
+  ].filter((detail): detail is string => Boolean(detail));
   return {
     value: profile.name,
     label: details.length > 0 ? `${profile.name} (${details.join(", ")})` : profile.name,
