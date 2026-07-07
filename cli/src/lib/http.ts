@@ -41,6 +41,7 @@ export type HttpStreamOptions = HttpSendOptions & {
 type MockHttpEntry = {
   urlPattern: string;
   method?: string;
+  authPattern?: string;
   status?: number;
   body: string;
   chunked?: boolean;
@@ -168,7 +169,8 @@ function findMatchingMock(
   const matchingMocks = mocks.filter((mock) => {
     const urlMatches = options.url.includes(mock.urlPattern);
     const methodMatches = !mock.method || mock.method === options.method;
-    return urlMatches && methodMatches;
+    const authMatches = !mock.authPattern || options.authHeader.includes(mock.authPattern);
+    return urlMatches && methodMatches && authMatches;
   });
 
   if (matchingMocks.length === 0) {

@@ -70,6 +70,17 @@ async function sendLakehouseRequest(): Promise<string> {
   );
 }
 
+// bun-types declare rejects.toThrow() as void, so awaiting it trips the
+// await-thenable lint rule; capture the rejection explicitly instead.
+async function expectRejection(promise: Promise<unknown>, message: string): Promise<void> {
+  const error = await promise.then(
+    () => undefined,
+    (thrown: unknown) => thrown,
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toContain(message);
+}
+
 describe("lakehouse credential auto-provisioning", () => {
   test("provisions a credential when none exists and management auth is available", async () => {
     writeMocks();
@@ -107,7 +118,8 @@ describe("lakehouse credential auto-provisioning", () => {
     secretSet("lakehouse/basic-token", Buffer.from("old-user:old-pass").toString("base64"));
     configSet("lakehouse_credential_expiry", "not-a-number");
 
-    await expect(sendLakehouseRequest()).rejects.toThrow(
+    await expectRejection(
+      sendLakehouseRequest(),
       "Stored lakehouse credential expiry is corrupted. Run 'altertable configure --clear' and try again.",
     );
     expect(existsSync(logFile)).toBe(false);
@@ -131,6 +143,97 @@ describe("lakehouse credential auto-provisioning", () => {
     expect(secretGet("lakehouse/basic-token")).toBe(
       Buffer.from("old-user:old-pass").toString("base64"),
     );
+    expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+  });
+});
+
+describe("lakehouse credential recovery after 401", () => {
+  const OLD_TOKEN = Buffer.from("old-user:old-pass").toString("base64");
+
+  function storeProvisionedCredential(): void {
+    secretSet("lakehouse/basic-token", OLD_TOKEN);
+    configSet("lakehouse_credential_expiry", String(Date.now() + 60 * 60 * 1000));
+  }
+
+  test("re-provisions and retries when the server rejects a provisioned credential", async () => {
+    storeProvisionedCredential();
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "api.example.com/tables",
+          method: "GET",
+          authPattern: OLD_TOKEN,
+          status: 401,
+          body: "",
+        },
+        { urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY },
+        {
+          urlPattern: "/users/user-1/environments/env-1/credentials",
+          method: "POST",
+          body: CREDENTIAL_BODY,
+        },
+        { urlPattern: "api.example.com/tables", method: "GET", body: "ok" },
+      ]),
+    );
+
+    const response = await sendLakehouseRequest();
+
+    expect(response).toBe("ok");
+    expect(secretGet("lakehouse/basic-token")).toBe(
+      Buffer.from("cli-user:cli-pass").toString("base64"),
+    );
+  });
+
+  test("gives up after one re-provision attempt", async () => {
+    storeProvisionedCredential();
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
+        { urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY },
+        {
+          urlPattern: "/users/user-1/environments/env-1/credentials",
+          method: "POST",
+          body: CREDENTIAL_BODY,
+        },
+      ]),
+    );
+
+    await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
+    const whoamiCalls = readFileSync(logFile, "utf8").match(/\/whoami/g) ?? [];
+    expect(whoamiCalls).toHaveLength(1);
+  });
+
+  test("does not re-provision on 401 when env credentials are in use", async () => {
+    storeProvisionedCredential();
+    process.env.ALTERTABLE_BASIC_AUTH_TOKEN = "env-token";
+    try {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
+        ]),
+      );
+
+      await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
+      expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+    } finally {
+      delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
+    }
+  });
+
+  test("does not re-provision on 401 for manually configured credentials", async () => {
+    secretSet("lakehouse/basic-token", OLD_TOKEN);
+
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
+      ]),
+    );
+
+    await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
     expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
   });
 });

@@ -19,7 +19,7 @@ function storedLakehouseCredentialsExpired(): boolean {
   return Date.now() >= expiry;
 }
 
-export function getLakehouseAuthHeader(): string {
+function lakehouseEnvAuthHeader(): string | undefined {
   const envToken = process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
   if (envToken) {
     return `Authorization: Basic ${envToken}`;
@@ -30,6 +30,19 @@ export function getLakehouseAuthHeader(): string {
   if (envUser && envPassword) {
     const token = Buffer.from(`${envUser}:${envPassword}`).toString("base64");
     return `Authorization: Basic ${token}`;
+  }
+
+  return undefined;
+}
+
+export function hasLakehouseEnvCredentials(): boolean {
+  return lakehouseEnvAuthHeader() !== undefined;
+}
+
+export function getLakehouseAuthHeader(): string {
+  const envHeader = lakehouseEnvAuthHeader();
+  if (envHeader) {
+    return envHeader;
   }
 
   if (!storedLakehouseCredentialsExpired()) {

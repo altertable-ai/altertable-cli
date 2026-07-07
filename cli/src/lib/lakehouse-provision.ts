@@ -1,5 +1,9 @@
-import { getManagementAuthHeader, requireManagementEnv } from "@/lib/auth.ts";
-import { configSet } from "@/lib/config.ts";
+import {
+  getManagementAuthHeader,
+  hasLakehouseEnvCredentials,
+  requireManagementEnv,
+} from "@/lib/auth.ts";
+import { configGet, configSet } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
 import { httpSend } from "@/lib/http.ts";
@@ -17,6 +21,19 @@ export function hasManagementCredentials(): boolean {
   // optionalAuth only swallows ConfigurationError ("not configured");
   // real failures (e.g. keychain errors) propagate to the user.
   return optionalAuth(getManagementAuthHeader) !== undefined;
+}
+
+/**
+ * A lakehouse 401 is recoverable only when the credential in use is one we
+ * provisioned (never env vars or manually configured credentials — a 401 on
+ * those must surface) and management credentials exist to mint a new one.
+ */
+export function canRecoverLakehouseAuth(): boolean {
+  return (
+    !hasLakehouseEnvCredentials() &&
+    configGet("lakehouse_credential_expiry") !== "" &&
+    hasManagementCredentials()
+  );
 }
 
 async function sendManagementRequest(
