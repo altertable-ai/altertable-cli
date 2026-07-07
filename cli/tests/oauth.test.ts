@@ -181,13 +181,19 @@ describe("login profile metadata", () => {
       {},
     );
 
-    expect(metadata).toEqual({ environment: "production", profileName: "altertable_production" });
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "altertable_production",
+      profileAction: "created",
+    });
     expect(profileExists("default")).toBe(true);
     expect(profileExists("altertable_production")).toBe(true);
     expect(getActiveProfileName()).toBe("altertable_production");
     expect(configGet("api_key_env")).toBe("production");
     expect(configGet("organization_slug")).toBe("altertable");
     expect(configGet("organization_name")).toBe("Altertable");
+    expect(configGet("principal_name")).toBe("François");
+    expect(configGet("principal_email")).toBe("francois@altertable.ai");
     expect(getStoredAccessToken()).toBe("acc");
   });
 
@@ -204,7 +210,11 @@ describe("login profile metadata", () => {
       { "replace-profile": true },
     );
 
-    expect(metadata).toEqual({ environment: "production", profileName: "altertable_production" });
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "altertable_production",
+      profileAction: "replaced",
+    });
     expect(profileExists("default")).toBe(false);
     expect(profileExists("altertable_production")).toBe(true);
     expect(getActiveProfileName()).toBe("altertable_production");

@@ -40,6 +40,7 @@ export function resolveWhoamiEnvironmentSlug(whoami: WhoamiResponse): string | u
 type LoginProfileMetadata = {
   environment: string;
   profileName: string;
+  profileAction: "created" | "reused" | "replaced" | "unchanged";
 };
 
 const OAUTH_SECRET_ACCOUNTS = ["oauth/access-token", "oauth/refresh-token"] as const;
@@ -53,28 +54,32 @@ function promoteLoginProfile(
   whoami: WhoamiResponse,
   environment: string,
   replaceProfile: boolean,
-): string {
+): Pick<LoginProfileMetadata, "profileName" | "profileAction"> {
   const sourceProfile = resolveProfileName(getCliContext().profile);
   const organizationSlug = whoami.organization?.slug;
   const targetProfile = organizationSlug
     ? deriveProfileName(organizationSlug, environment)
     : sourceProfile;
   if (targetProfile === sourceProfile) {
-    return targetProfile;
+    return { profileName: targetProfile, profileAction: "unchanged" };
   }
 
+  let profileAction: LoginProfileMetadata["profileAction"];
   if (profileExists(targetProfile)) {
     moveOAuthSession(sourceProfile, targetProfile);
+    profileAction = "reused";
   } else if (replaceProfile) {
     renameProfile(sourceProfile, targetProfile);
+    profileAction = "replaced";
   } else {
     createProfile(targetProfile);
     moveOAuthSession(sourceProfile, targetProfile);
+    profileAction = "created";
   }
   setActiveProfile(targetProfile);
   setCliContext({ ...getCliContext(), profile: targetProfile });
   refreshCliRuntimeContext(getCliContext());
-  return targetProfile;
+  return { profileName: targetProfile, profileAction };
 }
 
 export function storeLoginProfileMetadata(
@@ -88,16 +93,24 @@ export function storeLoginProfileMetadata(
     throw new Error("No environment returned from `whoami` post-login. Aborting.");
   }
 
-  const profileName = promoteLoginProfile(whoami, environment, Boolean(args["replace-profile"]));
+  const { profileName, profileAction } = promoteLoginProfile(
+    whoami,
+    environment,
+    Boolean(args["replace-profile"]),
+  );
 
   updateProfile(profileName, {
     environment,
     organizationSlug: whoami.organization?.slug,
     organizationName: whoami.organization?.name,
+    principalType: whoami.principal?.type,
+    principalName: whoami.principal?.name,
+    principalEmail: whoami.principal?.email,
+    principalSlug: whoami.principal?.slug,
     ...(args["control-plane-url"] ? { controlPlane: args["control-plane-url"] } : {}),
   });
 
-  return { environment, profileName };
+  return { environment, profileName, profileAction };
 }
 
 export type LoginArgs = {
@@ -144,11 +157,19 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   // Login succeeded — now persist whoami metadata and any control-plane override
   // to the profile so later commands target it. The override is kept session-only
   // until here so a failed login against a bad URL never writes it.
-  const { environment } = storeLoginProfileMetadata(whoami, args);
+  const { environment, profileName, profileAction } = storeLoginProfileMetadata(whoami, args);
 
   const identity = formatWhoamiPrincipalLine(whoami);
+  const profileMessage =
+    profileAction === "created"
+      ? `created profile "${profileName}"`
+      : profileAction === "reused"
+        ? `using existing profile "${profileName}"`
+        : profileAction === "replaced"
+          ? `replaced current profile with "${profileName}"`
+          : `using profile "${profileName}"`;
   sink.writeMetadata([
-    `${terminalSuccess("✓")} Logged in (${identity}) — environment "${environment}".`,
+    `${terminalSuccess("✓")} Logged in (${identity}) — ${profileMessage}; environment "${environment}".`,
   ]);
 }
 

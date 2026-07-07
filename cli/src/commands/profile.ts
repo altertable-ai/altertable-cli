@@ -88,6 +88,7 @@ function formatProfileInspect(profile: ProfileInspect): string {
     [
       { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
       { label: "Status", value: profile.status },
+      { label: "Principal", value: formatProfilePrincipal(profile) },
       { label: "Organization", value: profile.organization.slug ?? "not set" },
       { label: "Environment", value: profile.environment ?? "not set" },
       { label: "Description", value: profile.description ?? "not set" },
@@ -102,6 +103,49 @@ function formatProfileInspect(profile: ProfileInspect): string {
     ],
     { indent: "  " },
   );
+}
+
+function formatProfilePrincipal(profile: ProfileInspect): string {
+  if (profile.principal.email) {
+    return profile.principal.name
+      ? `${profile.principal.name} <${profile.principal.email}>`
+      : profile.principal.email;
+  }
+  if (profile.principal.slug) {
+    return profile.principal.name
+      ? `${profile.principal.name} (${profile.principal.slug})`
+      : profile.principal.slug;
+  }
+  return profile.principal.name ?? "not set";
+}
+
+function formatCredentialDetail(
+  credential: ConfigureShowData["credentials"]["management"],
+): string {
+  if (!credential.configured) {
+    return "not configured";
+  }
+  const parts = [
+    credential.mechanism ?? "configured",
+    credential.source ? `source: ${credential.source}` : "",
+    credential.environment ? `env: ${credential.environment}` : "",
+    credential.expires ? `expires: ${credential.expires}` : "",
+  ].filter(Boolean);
+  return parts.join(", ");
+}
+
+function formatLakehouseCredentialDetail(
+  credential: ConfigureShowData["credentials"]["lakehouse"],
+): string {
+  if (!credential.configured) {
+    return "not configured";
+  }
+  const parts = [
+    credential.mechanism ?? "configured",
+    credential.source ? `source: ${credential.source}` : "",
+    credential.user ? `user: ${credential.user}` : "",
+  ].filter(Boolean);
+  return parts.join(", ");
 }
 
 type ProfileStatusResult = {
@@ -144,16 +188,14 @@ function formatProfileStatus(result: ProfileStatusResult): string {
         { label: "Verification", value: formatVerificationStatus(result.verification) },
         {
           label: "Management",
-          value: result.configuration.credentials.management.configured
-            ? (result.configuration.credentials.management.mechanism ?? "configured")
-            : "not configured",
+          value: formatCredentialDetail(result.configuration.credentials.management),
         },
         {
           label: "Lakehouse",
-          value: result.configuration.credentials.lakehouse.configured
-            ? (result.configuration.credentials.lakehouse.mechanism ?? "configured")
-            : "not configured",
+          value: formatLakehouseCredentialDetail(result.configuration.credentials.lakehouse),
         },
+        { label: "Control plane", value: formatTerminalUrls(result.configuration.control_plane) },
+        { label: "Data plane", value: formatTerminalUrls(result.configuration.data_plane) },
       ],
       { indent: "  " },
     ),
@@ -177,7 +219,9 @@ function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
     profile.active ? "active" : "",
     profile.organization ? `org: ${profile.organization}` : "",
     profile.management_env ? `env: ${profile.management_env}` : "",
-    profile.auth ? `auth: ${profile.auth}` : "",
+    profile.principal ? `principal: ${profile.principal}` : "",
+    profile.management_auth ? `management: ${profile.management_auth}` : "",
+    profile.lakehouse_auth ? `lakehouse: ${profile.lakehouse_auth}` : "",
   ].filter(Boolean);
   return {
     value: profile.name,
@@ -220,14 +264,29 @@ const profileListCommand = defineValueCommand({
           style: "muted",
         },
         {
+          header: "PRINCIPAL",
+          cell: (profile) => profile.principal ?? "",
+          style: "muted",
+        },
+        {
           header: "ENV",
           cell: (profile) => profile.management_env ?? "",
           style: "muted",
         },
         {
-          header: "AUTH",
-          cell: (profile) => profile.auth ?? "",
+          header: "MGMT",
+          cell: (profile) => profile.management_auth ?? "",
           style: "string",
+        },
+        {
+          header: "LAKEHOUSE",
+          cell: (profile) => profile.lakehouse_auth ?? "",
+          style: "string",
+        },
+        {
+          header: "OAUTH EXPIRES",
+          cell: (profile) => profile.oauth_expires_at ?? "",
+          style: "muted",
         },
         {
           header: "STATUS",
@@ -539,6 +598,36 @@ const profileEnvCommand = defineValueCommand({
   },
 });
 
+const profileDirenvCommand = defineValueCommand({
+  id: "profile.direnv",
+  capabilities: ["local-config"],
+  output: "normalized",
+  meta: { name: "direnv", description: "Print a .envrc snippet for a profile" },
+  args: {
+    name: { type: "positional", description: "Profile name (default: active profile)" },
+  },
+  parse({ args }) {
+    return args.name ? requireProfileName(args.name) : getActiveProfileName();
+  },
+  value(profileName) {
+    if (!profileExists(profileName)) {
+      throw new ConfigurationError(`Profile not found: ${profileName}`);
+    }
+    return profileName;
+  },
+  present(profileName) {
+    const env = { ALTERTABLE_PROFILE: profileName };
+    return {
+      kind: "normalized",
+      data: { profile: profileName, env },
+      humanText: [
+        "# Generated by: altertable profile direnv",
+        `export ALTERTABLE_PROFILE=${JSON.stringify(profileName)}`,
+      ].join("\n"),
+    };
+  },
+});
+
 const profileStatusCommand = defineLocalCommand<
   { profileName: string; verify: boolean },
   ProfileStatusResult
@@ -662,6 +751,7 @@ export const profileCommand = defineGroupCommand({
       "altertable profile status --verify",
       "altertable profile show --name acme_prod",
       'eval "$(altertable profile env acme_staging)"',
+      "altertable profile direnv acme_staging > .envrc",
       "altertable --profile acme_staging context",
     ],
   },
@@ -675,6 +765,7 @@ export const profileCommand = defineGroupCommand({
     switch: profileSwitchCommand,
     current: profileCurrentCommand,
     env: profileEnvCommand,
+    direnv: profileDirenvCommand,
     update: profileUpdateCommand,
     rename: profileRenameCommand,
     export: profileExportCommand,

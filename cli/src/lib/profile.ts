@@ -24,6 +24,10 @@ const PROFILE_CONFIG_KEYS = [
   "management_api_base",
   "organization_slug",
   "organization_name",
+  "principal_type",
+  "principal_name",
+  "principal_email",
+  "principal_slug",
   "description",
   "created_at",
   "updated_at",
@@ -44,8 +48,11 @@ export type ProfileSummary = {
   active: boolean;
   organization?: string;
   management_env?: string;
+  principal?: string;
   description?: string;
-  auth?: string;
+  management_auth?: string;
+  lakehouse_auth?: string;
+  oauth_expires_at?: string;
   status?: string;
   data_plane?: string;
   control_plane?: string;
@@ -54,6 +61,10 @@ export type ProfileSummary = {
 export type ProfileUpdate = {
   organizationSlug?: string;
   organizationName?: string;
+  principalType?: string;
+  principalName?: string;
+  principalEmail?: string;
+  principalSlug?: string;
   environment?: string;
   description?: string;
   dataPlane?: string;
@@ -67,6 +78,12 @@ export type ProfileInspect = {
   organization: {
     slug?: string;
     name?: string;
+  };
+  principal: {
+    type?: string;
+    name?: string;
+    email?: string;
+    slug?: string;
   };
   environment?: string;
   description?: string;
@@ -175,6 +192,10 @@ function readProfileConfigRecord(name: string): Record<ProfileConfigKey, string 
     management_api_base: undefined,
     organization_slug: undefined,
     organization_name: undefined,
+    principal_type: undefined,
+    principal_name: undefined,
+    principal_email: undefined,
+    principal_slug: undefined,
     description: undefined,
     created_at: undefined,
     updated_at: undefined,
@@ -193,6 +214,18 @@ function writeProfileUpdate(name: string, update: ProfileUpdate): void {
   }
   if (update.organizationName !== undefined) {
     writeProfileConfig(name, "organization_name", update.organizationName);
+  }
+  if (update.principalType !== undefined) {
+    writeProfileConfig(name, "principal_type", update.principalType);
+  }
+  if (update.principalName !== undefined) {
+    writeProfileConfig(name, "principal_name", update.principalName);
+  }
+  if (update.principalEmail !== undefined) {
+    writeProfileConfig(name, "principal_email", update.principalEmail);
+  }
+  if (update.principalSlug !== undefined) {
+    writeProfileConfig(name, "principal_slug", update.principalSlug);
   }
   if (update.environment !== undefined) {
     writeProfileConfig(name, "api_key_env", update.environment);
@@ -236,19 +269,36 @@ function profileStatus(snapshot: ProfileSnapshot): ProfileInspect["status"] {
   return hasAnyAuth ? "configured" : hasMetadata ? "partial" : "empty";
 }
 
-function profileAuthSummary(auth: ProfileAuth): string {
-  const parts: string[] = [];
+function profileManagementAuthSummary(auth: ProfileAuth): string {
   if (auth.management === "oauth") {
-    parts.push("oauth");
-  } else if (auth.management === "api_key") {
-    parts.push("api-key");
+    return "oauth";
   }
+  if (auth.management === "api_key") {
+    return "api-key";
+  }
+  return "none";
+}
+
+function profileLakehouseAuthSummary(auth: ProfileAuth): string {
   if (auth.lakehouse === "basic_token") {
-    parts.push("basic");
-  } else if (auth.lakehouse === "username_password") {
-    parts.push("user/pass");
+    return "basic";
   }
-  return parts.join(", ") || "none";
+  if (auth.lakehouse === "username_password") {
+    return "user/pass";
+  }
+  return "none";
+}
+
+function profilePrincipalSummary(
+  config: Record<ProfileConfigKey, string | undefined>,
+): string | undefined {
+  if (config.principal_email) {
+    return config.principal_email;
+  }
+  if (config.principal_slug) {
+    return config.principal_slug;
+  }
+  return config.principal_name;
 }
 
 export function profileConfigFile(name: string): string {
@@ -326,8 +376,11 @@ export function listProfiles(): ProfileSummary[] {
       active: name === active,
       organization: snapshot.config.organization_slug,
       management_env: snapshot.config.api_key_env,
+      principal: profilePrincipalSummary(snapshot.config),
       description: snapshot.config.description,
-      auth: profileAuthSummary(snapshot.auth),
+      management_auth: profileManagementAuthSummary(snapshot.auth),
+      lakehouse_auth: profileLakehouseAuthSummary(snapshot.auth),
+      oauth_expires_at: parseTimestampMs(snapshot.config.oauth_expiry),
       status: profileStatus(snapshot),
       data_plane: snapshot.config.api_base,
       control_plane: snapshot.config.management_api_base,
@@ -363,6 +416,12 @@ export function inspectProfile(name: string): ProfileInspect {
     organization: {
       slug: config.organization_slug,
       name: config.organization_name,
+    },
+    principal: {
+      type: config.principal_type,
+      name: config.principal_name,
+      email: config.principal_email,
+      slug: config.principal_slug,
     },
     environment: config.api_key_env,
     description: config.description,

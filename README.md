@@ -250,6 +250,9 @@ altertable --profile acme_production context
 # Use a profile for the current shell, including direnv
 eval "$(altertable profile env acme_staging)"
 
+# Or generate a .envrc snippet
+altertable profile direnv acme_staging > .envrc
+
 # Inspect profiles
 altertable profile list
 altertable profile current
@@ -271,6 +274,7 @@ altertable profile status --name acme_staging --verify
 
 # Print a shell snippet for direnv or manual use
 altertable profile env acme_staging
+altertable profile direnv acme_staging
 
 # Rename a profile
 altertable profile rename acme_staging acme_stage
@@ -285,7 +289,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Scope                              | Keys                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry` |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `principal_type`, `principal_name`, `principal_email`, `principal_slug`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry` |
 
 ### Credential precedence
 

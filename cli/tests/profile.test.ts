@@ -102,6 +102,9 @@ describe("profile storage", () => {
     expect(listProfiles().find((profile) => profile.name === "acme_production")?.organization).toBe(
       "Acme",
     );
+    expect(
+      listProfiles().find((profile) => profile.name === "acme_production")?.management_auth,
+    ).toBe("api-key");
   });
 
   test("createProfile and updateProfile manage metadata without credentials", () => {
