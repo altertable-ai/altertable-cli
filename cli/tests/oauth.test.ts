@@ -143,6 +143,7 @@ import {
   assertInteractiveLogin,
   resolveWhoamiEnvironmentSlug,
   applyControlPlaneOverride,
+  storeLoginProfileMetadata,
 } from "@/commands/login.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear } from "@/lib/configure.ts";
@@ -162,6 +163,38 @@ describe("resolveWhoamiEnvironment", () => {
 
   test("returns undefined when no environment is scoped", () => {
     expect(resolveWhoamiEnvironmentSlug({ principal: {}, organization: {} })).toBeUndefined();
+  });
+});
+
+describe("login profile metadata", () => {
+  test("stores environment and organization from whoami", () => {
+    const environment = storeLoginProfileMetadata(
+      {
+        principal: { type: "User", name: "François", email: "francois@altertable.ai" },
+        organization: { name: "Altertable", slug: "altertable" },
+        authentication_scope: "environment",
+        environment_slug: "production",
+      },
+      {},
+    );
+
+    expect(environment).toBe("production");
+    expect(configGet("api_key_env")).toBe("production");
+    expect(configGet("organization_slug")).toBe("altertable");
+    expect(configGet("organization_name")).toBe("Altertable");
+  });
+
+  test("stores the control-plane root after successful login metadata is available", () => {
+    storeLoginProfileMetadata(
+      {
+        principal: {},
+        organization: { name: "Altertable", slug: "altertable" },
+        environment_slug: "production",
+      },
+      { "control-plane-url": "https://app.altertable.test" },
+    );
+
+    expect(configGet("management_api_base")).toBe("https://app.altertable.test");
   });
 });
 

@@ -1,7 +1,6 @@
 import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput } from "@/context.ts";
-import { configSet } from "@/lib/config.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
@@ -9,6 +8,7 @@ import { runLoginFlow } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
 import { configureRunClear } from "@/lib/configure.ts";
+import { getActiveProfileName, updateProfile } from "@/lib/profile.ts";
 import { terminalSuccess } from "@/lib/terminal-style.ts";
 
 function isInteractiveTerminal(): boolean {
@@ -25,6 +25,24 @@ export function assertInteractiveLogin(): void {
 
 export function resolveWhoamiEnvironmentSlug(whoami: WhoamiResponse): string | undefined {
   return whoami.environment_slug;
+}
+
+export function storeLoginProfileMetadata(whoami: WhoamiResponse, args: LoginArgs): string {
+  const environment = resolveWhoamiEnvironmentSlug(whoami);
+
+  // OAuth login must always return an environment.
+  if (!environment) {
+    throw new Error("No environment returned from `whoami` post-login. Aborting.");
+  }
+
+  updateProfile(getActiveProfileName(), {
+    environment,
+    organizationSlug: whoami.organization?.slug,
+    organizationName: whoami.organization?.name,
+    ...(args["control-plane-url"] ? { controlPlane: args["control-plane-url"] } : {}),
+  });
+
+  return environment;
 }
 
 export type LoginArgs = {
@@ -67,20 +85,10 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   refreshCliRuntimeContext(getCliContext());
 
   const whoami = JSON.parse(await managementRequest("GET", "/whoami")) as WhoamiResponse;
-  const environment = resolveWhoamiEnvironmentSlug(whoami);
-
-  // OAuth login must always return an environment.
-  if (!environment) {
-    throw new Error("No environment returned from `whoami` post-login. Aborting.");
-  }
-  configSet("api_key_env", environment);
-
-  // Login succeeded — now persist the control-plane override to the profile so
-  // later commands target it (kept session-only until here so a failed login
-  // against a bad URL never writes it).
-  if (args["control-plane-url"]) {
-    configSet("management_api_base", args["control-plane-url"]);
-  }
+  // Login succeeded — now persist whoami metadata and any control-plane override
+  // to the profile so later commands target it. The override is kept session-only
+  // until here so a failed login against a bad URL never writes it.
+  const environment = storeLoginProfileMetadata(whoami, args);
 
   const identity = formatWhoamiPrincipalLine(whoami);
   sink.writeMetadata([

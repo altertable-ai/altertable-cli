@@ -238,6 +238,13 @@ type FormatConfigureAuthenticationOptions = {
 };
 
 function pushOAuthManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
+  const organizationSlug = configGet("organization_slug");
+  const organizationName = configGet("organization_name");
+  const organization =
+    organizationName && organizationSlug
+      ? `${organizationName} (${organizationSlug})`
+      : organizationName || organizationSlug;
+
   lines.push(
     formatTerminalLabelValue("Authentication:", "browser login (OAuth)", { indent, labelWidth }),
     formatTerminalLabelValue("Environment:", configGet("api_key_env") || "none", {
@@ -245,6 +252,14 @@ function pushOAuthManagementAuthLines(lines: string[], indent: string, labelWidt
       labelWidth: NESTED_LABEL_WIDTH,
     }),
   );
+  if (organization) {
+    lines.push(
+      formatTerminalLabelValue("Organization:", organization, {
+        indent: NESTED_INDENT,
+        labelWidth: NESTED_LABEL_WIDTH,
+      }),
+    );
+  }
   const expires = oauthExpiryDisplay();
   if (expires) {
     lines.push(
