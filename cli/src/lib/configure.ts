@@ -79,7 +79,10 @@ function configureClearLakehouseCredentials(profileName?: string): void {
 
 function configureClearManagementCredentials(profileName?: string): void {
   secretDelete("api-key", profileName);
+  secretDelete("oauth/access-token", profileName);
+  secretDelete("oauth/refresh-token", profileName);
   configUnset("api_key_env");
+  configUnset("oauth_expiry");
 }
 
 export function configureClearAll(): void {

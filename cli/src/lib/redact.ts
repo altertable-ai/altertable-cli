@@ -1,4 +1,6 @@
-export const SENSITIVE_JSON_KEYS = new Set(["password", "secret", "token", "api_key"]);
+// Substring patterns — a key is sensitive if it *contains* any of these (so
+// "access_token"/"refresh_token"/"client_secret" are all covered, not just exact "token").
+export const SENSITIVE_JSON_KEY_PATTERNS = new Set(["password", "secret", "token", "api_key"]);
 export const MASKED_PASSWORD_PLACEHOLDER = "[MASKED]";
 
 const PASSWORD_FIELD_PATTERN = /password\s*:\s*\S+/gi;
@@ -16,7 +18,13 @@ const BODY_MAX_LENGTH = 512;
 const BODY_ELLIPSIS = "…";
 
 function isSensitiveJsonKey(key: string): boolean {
-  return SENSITIVE_JSON_KEYS.has(key.toLowerCase());
+  const lower = key.toLowerCase();
+  for (const pattern of SENSITIVE_JSON_KEY_PATTERNS) {
+    if (lower.includes(pattern)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function redactSensitiveJsonValue(value: unknown): unknown {

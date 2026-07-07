@@ -8,7 +8,13 @@ import { isCliRuntimeReady } from "@/lib/runtime.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
 
-const PROFILE_SECRET_ACCOUNTS = ["api-key", "lakehouse/password", "lakehouse/basic-token"] as const;
+const PROFILE_SECRET_ACCOUNTS = [
+  "api-key",
+  "lakehouse/password",
+  "lakehouse/basic-token",
+  "oauth/access-token",
+  "oauth/refresh-token",
+] as const;
 
 export type ProfileSummary = {
   name: string;

@@ -103,6 +103,32 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+/** Flatten an Error's `cause` chain into a readable detail (e.g. fetch failed -> TLS reason). */
+function unwrapErrorDetail(error: unknown): string {
+  const messages: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current instanceof Error && depth < 4; depth += 1) {
+    if (current.message && !messages.includes(current.message)) {
+      messages.push(current.message);
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return messages.join(": ");
+}
+
+function timeoutError(options: HttpSendOptions, cause: unknown): TimeoutError {
+  return new TimeoutError(`Request timed out: ${options.method} ${options.url}`, { cause });
+}
+
+function connectionError(options: HttpSendOptions, cause: unknown): NetworkError {
+  const detail = unwrapErrorDetail(cause);
+  const suffix = detail ? ` (${detail})` : "";
+  return new NetworkError(
+    `Request failed (network error): ${options.method} ${options.url}${suffix}`,
+    { cause },
+  );
+}
+
 function streamWithTimeoutCleanup(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
@@ -327,15 +353,18 @@ function throwHttpError(
   });
 }
 
-function buildRequestHeaders(options: HttpSendOptions): Record<string, string> {
+export function buildRequestHeaders(options: HttpSendOptions): Record<string, string> {
+  const headers: Record<string, string> = {};
+
   const colonIndex = options.authHeader.indexOf(": ");
-  const authName = options.authHeader.slice(0, colonIndex);
-  const authValue = options.authHeader.slice(colonIndex + 2);
-  const headers: Record<string, string> = {
-    [authName]: authValue,
-    "User-Agent": `altertable-cli/${VERSION}`,
-    ...options.extraHeaders,
-  };
+  if (colonIndex !== -1) {
+    const authName = options.authHeader.slice(0, colonIndex);
+    const authValue = options.authHeader.slice(colonIndex + 2);
+    headers[authName] = authValue;
+  }
+
+  headers["User-Agent"] = `altertable-cli/${VERSION}`;
+  Object.assign(headers, options.extraHeaders);
 
   if (options.contentType) {
     headers["Content-Type"] = options.contentType;
@@ -380,9 +409,9 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
     } as RequestInit);
   } catch (error) {
     if (isAbortError(error)) {
-      throw new TimeoutError();
+      throw timeoutError(options, error);
     }
-    throw new NetworkError();
+    throw connectionError(options, error);
   }
 
   const responseBody = await response.text();
@@ -438,9 +467,9 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   } catch (error) {
     clearActiveTimeout();
     if (isAbortError(error)) {
-      throw new TimeoutError();
+      throw timeoutError(options, error);
     }
-    throw new NetworkError();
+    throw connectionError(options, error);
   }
 
   if (response.status >= 200 && response.status < 300) {

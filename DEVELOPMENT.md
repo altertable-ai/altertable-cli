@@ -111,6 +111,17 @@ export ALTERTABLE_API_BASE="http://localhost:15000"
 
 Localhost HTTP works without `--allow-insecure-http`. For LAN or other non-localhost HTTP endpoints, pass `--allow-insecure-http` (not recommended for production).
 
+### Self-signed HTTPS (e.g. `altertable login` against a local backend)
+
+When the control plane serves HTTPS with a self-signed / local-CA certificate, the CLI's `fetch` (Bun) rejects it with `unable to get local issuer certificate` — e.g. the OAuth token exchange fails with `Request failed (network error): POST https://.../oauth/token`.
+
+```bash
+# Quick escape hatch: disable TLS verification for this process only
+NODE_TLS_REJECT_UNAUTHORIZED=0 altertable login
+```
+
+`NODE_TLS_REJECT_UNAUTHORIZED=0` turns off certificate verification for **every** request in the process — keep it inline or scoped to a dev shell, never in a shared profile or CI.
+
 ## Verify (agents and contributors)
 
 From repo root, one script mirrors CI (minus native binary compile):

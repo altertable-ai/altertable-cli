@@ -11,10 +11,15 @@ import {
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
 import { configureCommand } from "@/commands/configure.ts";
+import { loginCommand, logoutCommand } from "@/commands/login.ts";
 import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
-import { appendCommand, queryCommand, uploadCommand, upsertCommand } from "@/commands/lakehouse.ts";
+import { appendCommand } from "@/commands/lakehouse/append.ts";
+import { queryCommand } from "@/commands/lakehouse/query.ts";
+import { schemaCommand } from "@/commands/lakehouse/schema.ts";
+import { uploadCommand } from "@/commands/lakehouse/upload.ts";
+import { upsertCommand } from "@/commands/lakehouse/upsert.ts";
 import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
 import { updateCommand } from "@/commands/update.ts";
@@ -84,10 +89,13 @@ export function buildMainCommand(): CommandDef {
 
   const topLevelCommands: Record<string, CommandDef> = {
     configure: configureCommand,
+    login: loginCommand,
+    logout: logoutCommand,
     profile: profileCommand,
     context: contextCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
+    schema: schemaCommand,
     append: appendCommand,
     upload: uploadCommand,
     upsert: upsertCommand,

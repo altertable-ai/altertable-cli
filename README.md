@@ -15,6 +15,7 @@ Query and manage your Altertable data platform from the terminal.
   - [Updates](#updates)
 - [Authentication](#authentication)
   - [Management API key](#management-api-key)
+  - [Browser login (OAuth)](#browser-login-oauth)
   - [Lakehouse credentials](#lakehouse-credentials)
   - [Dual-plane model](#dual-plane-model)
   - [Profiles](#profiles)
@@ -167,6 +168,15 @@ Or via environment variables:
 ```bash
 export ALTERTABLE_API_KEY="atm_xxxx"
 export ALTERTABLE_ENV="production"
+```
+
+### Browser login (OAuth)
+
+Sign in interactively with your browser instead of pasting an API key:
+
+```bash
+altertable login          # opens your browser, stores an OAuth session
+altertable logout         # clears stored credentials (alias for configure --clear)
 ```
 
 ### Lakehouse credentials
