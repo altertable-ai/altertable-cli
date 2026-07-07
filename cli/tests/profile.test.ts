@@ -233,6 +233,101 @@ describe("profile storage", () => {
     expect(secretGet("api-key", "staging")).toBe("");
   });
 
+  test("renameProfile restores the profile directory if keychain secret migration fails", () => {
+    createProfile("staging");
+    const spawnCalls: string[][] = [];
+    setSpawnSyncForTests((_command, args) => {
+      spawnCalls.push([...args]);
+      const account = args[args.indexOf("-a") + 1] ?? "";
+      if (args.includes("help")) {
+        return {
+          status: 0,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      if (args.includes("find-generic-password")) {
+        if (account === "profile/staging/api-key") {
+          return {
+            status: 0,
+            stdout: Buffer.from("atm_staging"),
+            stderr: Buffer.from(""),
+            pid: 0,
+            signal: null,
+            output: [null, Buffer.from("atm_staging"), Buffer.from("")],
+          };
+        }
+        if (account === "profile/staging/lakehouse/password") {
+          return {
+            status: 0,
+            stdout: Buffer.from("secret"),
+            stderr: Buffer.from(""),
+            pid: 0,
+            signal: null,
+            output: [null, Buffer.from("secret"), Buffer.from("")],
+          };
+        }
+        return {
+          status: 1,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      if (
+        args.includes("add-generic-password") &&
+        account === "profile/acme_staging/lakehouse/password"
+      ) {
+        return {
+          status: 1,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      return {
+        status: 0,
+        stdout: Buffer.from(""),
+        stderr: Buffer.from(""),
+        pid: 0,
+        signal: null,
+        output: [null, Buffer.from(""), Buffer.from("")],
+      };
+    });
+
+    const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
+    Object.defineProperty(process, "platform", { value: "darwin" });
+
+    try {
+      process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
+      expect(() => renameProfile("staging", "acme_staging")).toThrow(
+        "Failed to store secret in macOS keychain",
+      );
+      expect(profileExists("staging")).toBe(true);
+      expect(profileExists("acme_staging")).toBe(false);
+      expect(
+        spawnCalls.some(
+          (args) =>
+            args.includes("delete-generic-password") &&
+            args.includes("profile/acme_staging/api-key"),
+        ),
+      ).toBe(true);
+    } finally {
+      if (platformDescriptor) {
+        Object.defineProperty(process, "platform", platformDescriptor);
+      }
+      process.env.ALTERTABLE_SECRET_BACKEND = "file";
+      setSpawnSyncForTests(undefined);
+    }
+  });
+
   test("rejects path traversal profile names", () => {
     expect(() => resolveProfileName("../../outside")).toThrow(ConfigurationError);
     expect(() => setActiveProfile("..")).toThrow(ConfigurationError);

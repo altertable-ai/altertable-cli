@@ -477,7 +477,14 @@ export function renameProfile(source: string, target: string): void {
 
   const active = getActiveProfileName();
   renameSync(profileDir(source), profileDir(target));
-  moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+  try {
+    moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+  } catch (error) {
+    if (profileExists(target) && !profileExists(source)) {
+      renameSync(profileDir(target), profileDir(source));
+    }
+    throw error;
+  }
 
   if (active === source) {
     setActiveProfile(target);

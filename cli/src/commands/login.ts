@@ -1,6 +1,6 @@
 import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { getCliContext, isJsonOutput } from "@/context.ts";
+import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
@@ -8,7 +8,18 @@ import { runLoginFlow } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
 import { configureRunClear } from "@/lib/configure.ts";
-import { getActiveProfileName, updateProfile } from "@/lib/profile.ts";
+import {
+  deriveProfileName,
+  profileExists,
+  readProfileConfig,
+  renameProfile,
+  resolveProfileName,
+  setActiveProfile,
+  unsetProfileConfig,
+  updateProfile,
+  writeProfileConfig,
+} from "@/lib/profile.ts";
+import { moveProfileSecrets } from "@/lib/secrets.ts";
 import { terminalSuccess } from "@/lib/terminal-style.ts";
 
 function isInteractiveTerminal(): boolean {
@@ -27,7 +38,49 @@ export function resolveWhoamiEnvironmentSlug(whoami: WhoamiResponse): string | u
   return whoami.environment_slug;
 }
 
-export function storeLoginProfileMetadata(whoami: WhoamiResponse, args: LoginArgs): string {
+type LoginProfileMetadata = {
+  environment: string;
+  profileName: string;
+};
+
+const OAUTH_SECRET_ACCOUNTS = ["oauth/access-token", "oauth/refresh-token"] as const;
+
+function moveOAuthSession(sourceProfile: string, targetProfile: string): void {
+  moveProfileSecrets(sourceProfile, targetProfile, OAUTH_SECRET_ACCOUNTS);
+  const expiry = readProfileConfig(sourceProfile, "oauth_expiry");
+  if (expiry) {
+    writeProfileConfig(targetProfile, "oauth_expiry", expiry);
+    unsetProfileConfig(sourceProfile, "oauth_expiry");
+  }
+}
+
+function resolveLoginProfile(whoami: WhoamiResponse, environment: string): string {
+  const sourceProfile = resolveProfileName(getCliContext().profile);
+  const organizationSlug = whoami.organization?.slug;
+  if (!organizationSlug) {
+    return sourceProfile;
+  }
+
+  const targetProfile = deriveProfileName(organizationSlug, environment);
+  if (targetProfile === sourceProfile) {
+    return targetProfile;
+  }
+
+  if (profileExists(targetProfile)) {
+    moveOAuthSession(sourceProfile, targetProfile);
+  } else {
+    renameProfile(sourceProfile, targetProfile);
+  }
+  setActiveProfile(targetProfile);
+  setCliContext({ ...getCliContext(), profile: targetProfile });
+  refreshCliRuntimeContext(getCliContext());
+  return targetProfile;
+}
+
+export function storeLoginProfileMetadata(
+  whoami: WhoamiResponse,
+  args: LoginArgs,
+): LoginProfileMetadata {
   const environment = resolveWhoamiEnvironmentSlug(whoami);
 
   // OAuth login must always return an environment.
@@ -35,14 +88,16 @@ export function storeLoginProfileMetadata(whoami: WhoamiResponse, args: LoginArg
     throw new Error("No environment returned from `whoami` post-login. Aborting.");
   }
 
-  updateProfile(getActiveProfileName(), {
+  const profileName = resolveLoginProfile(whoami, environment);
+
+  updateProfile(profileName, {
     environment,
     organizationSlug: whoami.organization?.slug,
     organizationName: whoami.organization?.name,
     ...(args["control-plane-url"] ? { controlPlane: args["control-plane-url"] } : {}),
   });
 
-  return environment;
+  return { environment, profileName };
 }
 
 export type LoginArgs = {
@@ -88,7 +143,7 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   // Login succeeded — now persist whoami metadata and any control-plane override
   // to the profile so later commands target it. The override is kept session-only
   // until here so a failed login against a bad URL never writes it.
-  const environment = storeLoginProfileMetadata(whoami, args);
+  const { environment } = storeLoginProfileMetadata(whoami, args);
 
   const identity = formatWhoamiPrincipalLine(whoami);
   sink.writeMetadata([

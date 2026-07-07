@@ -7,6 +7,7 @@ import { configGet } from "@/lib/config.ts";
 import { setCliContext } from "@/context.ts";
 import { parseCallback, buildAuthorizeUrl, startLoopbackServer } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens, getStoredAccessToken, clearOAuthTokens } from "@/lib/oauth-profile.ts";
+import { getActiveProfileName, profileExists } from "@/lib/profile.ts";
 
 let testHome = "";
 
@@ -168,7 +169,9 @@ describe("resolveWhoamiEnvironment", () => {
 
 describe("login profile metadata", () => {
   test("stores environment and organization from whoami", () => {
-    const environment = storeLoginProfileMetadata(
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+
+    const metadata = storeLoginProfileMetadata(
       {
         principal: { type: "User", name: "François", email: "francois@altertable.ai" },
         organization: { name: "Altertable", slug: "altertable" },
@@ -178,10 +181,13 @@ describe("login profile metadata", () => {
       {},
     );
 
-    expect(environment).toBe("production");
+    expect(metadata).toEqual({ environment: "production", profileName: "altertable_production" });
+    expect(profileExists("altertable_production")).toBe(true);
+    expect(getActiveProfileName()).toBe("altertable_production");
     expect(configGet("api_key_env")).toBe("production");
     expect(configGet("organization_slug")).toBe("altertable");
     expect(configGet("organization_name")).toBe("Altertable");
+    expect(getStoredAccessToken()).toBe("acc");
   });
 
   test("stores the control-plane root after successful login metadata is available", () => {

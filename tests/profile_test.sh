@@ -53,6 +53,11 @@ echo "${OUT}" | grep -Fq 'Globex dev' || fail "profile inspect should show descr
 echo "${OUT}" | grep -Fq 'partial' || fail "profile inspect should show partial status"
 pass "profile create and inspect manage metadata"
 
+"${CLI}" profile create --org initech --env qa --description "Initech QA" >/dev/null 2>&1
+OUT="$("${CLI}" profile inspect --name initech_qa 2>/dev/null)"
+echo "${OUT}" | grep -Fq 'Initech QA' || fail "profile create should derive name from org/env"
+pass "profile create derives name from org/env"
+
 "${CLI}" profile update globex_dev --description "Globex development" >/dev/null 2>&1
 OUT="$("${CLI}" profile inspect --name globex_dev 2>/dev/null)"
 echo "${OUT}" | grep -Fq 'Globex development' || fail "profile update should change description"

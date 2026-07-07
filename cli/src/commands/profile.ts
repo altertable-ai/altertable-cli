@@ -146,7 +146,7 @@ const profileCreateCommand = defineLocalCommand({
   output: "normalized",
   meta: { name: "create", description: "Create an empty profile with metadata" },
   args: {
-    name: { type: "positional", description: "Profile name", required: true },
+    name: { type: "positional", description: "Profile name", required: false },
     org: { type: "string", description: "Organization slug" },
     "org-name": { type: "string", description: "Organization display name" },
     env: { type: "string", description: "Environment slug" },

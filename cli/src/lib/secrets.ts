@@ -197,12 +197,37 @@ export function moveProfileSecrets(
   targetProfile: string,
   accounts: readonly string[],
 ): void {
-  for (const account of accounts) {
-    const value = secretGet(account, sourceProfile);
-    if (value.length === 0) {
-      continue;
+  const prepared: { account: string; sourceValue: string; targetValue: string }[] = [];
+
+  try {
+    for (const account of accounts) {
+      const sourceValue = secretGet(account, sourceProfile);
+      if (sourceValue.length === 0) {
+        continue;
+      }
+      prepared.push({
+        account,
+        sourceValue,
+        targetValue: secretGet(account, targetProfile),
+      });
+      secretSet(account, sourceValue, targetProfile);
     }
-    secretSet(account, value, targetProfile);
+  } catch (error) {
+    for (const entry of prepared.toReversed()) {
+      try {
+        if (entry.targetValue.length > 0) {
+          secretSet(entry.account, entry.targetValue, targetProfile);
+        } else {
+          secretDelete(entry.account, targetProfile);
+        }
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    throw error;
+  }
+
+  for (const { account } of prepared) {
     secretDelete(account, sourceProfile);
   }
 }
