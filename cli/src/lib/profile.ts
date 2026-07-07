@@ -31,7 +31,13 @@ const PROFILE_CONFIG_KEYS = [
   "oauth_expiry",
 ] as const;
 
-type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
+export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
+type ProfileManagementAuth = "oauth" | "api_key" | "none";
+type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
+type ProfileAuth = {
+  management: ProfileManagementAuth;
+  lakehouse: ProfileLakehouseAuth;
+};
 
 export type ProfileSummary = {
   name: string;
@@ -68,10 +74,7 @@ export type ProfileInspect = {
     data_plane?: string;
     control_plane?: string;
   };
-  auth: {
-    management: "oauth" | "api_key" | "none";
-    lakehouse: "basic_token" | "username_password" | "none";
-  };
+  auth: ProfileAuth;
   status: "configured" | "partial" | "empty";
   timestamps: {
     created_at?: string;
@@ -88,6 +91,11 @@ export type ProfileExport = {
     config: Record<ProfileConfigKey, string | undefined>;
   };
   secrets_included: false;
+};
+
+type ProfileSnapshot = {
+  config: Record<ProfileConfigKey, string | undefined>;
+  auth: ProfileAuth;
 };
 
 export function profilesDir(): string {
@@ -200,6 +208,49 @@ function writeProfileUpdate(name: string, update: ProfileUpdate): void {
   }
 }
 
+function profileAuth(name: string): ProfileAuth {
+  return {
+    management: secretExists("oauth/access-token", name)
+      ? "oauth"
+      : secretExists("api-key", name)
+        ? "api_key"
+        : "none",
+    lakehouse: secretExists("lakehouse/basic-token", name)
+      ? "basic_token"
+      : secretExists("lakehouse/password", name)
+        ? "username_password"
+        : "none",
+  };
+}
+
+function readProfileSnapshot(name: string): ProfileSnapshot {
+  return {
+    config: readProfileConfigRecord(name),
+    auth: profileAuth(name),
+  };
+}
+
+function profileStatus(snapshot: ProfileSnapshot): ProfileInspect["status"] {
+  const hasMetadata = Object.values(snapshot.config).some((value) => value !== undefined);
+  const hasAnyAuth = snapshot.auth.management !== "none" || snapshot.auth.lakehouse !== "none";
+  return hasAnyAuth ? "configured" : hasMetadata ? "partial" : "empty";
+}
+
+function profileAuthSummary(auth: ProfileAuth): string {
+  const parts: string[] = [];
+  if (auth.management === "oauth") {
+    parts.push("oauth");
+  } else if (auth.management === "api_key") {
+    parts.push("api-key");
+  }
+  if (auth.lakehouse === "basic_token") {
+    parts.push("basic");
+  } else if (auth.lakehouse === "username_password") {
+    parts.push("user/pass");
+  }
+  return parts.join(", ") || "none";
+}
+
 export function profileConfigFile(name: string): string {
   return join(profileDir(name), "config");
 }
@@ -268,52 +319,20 @@ export function listProfiles(): ProfileSummary[] {
     return [{ name: DEFAULT_PROFILE_NAME, active: active === DEFAULT_PROFILE_NAME }];
   }
 
-  return names.map((name) => ({
-    name,
-    active: name === active,
-    organization: kvGet(profileConfigFile(name), "organization_slug") || undefined,
-    management_env: kvGet(profileConfigFile(name), "api_key_env") || undefined,
-    description: kvGet(profileConfigFile(name), "description") || undefined,
-    auth: profileAuthSummary(name),
-    status: inspectProfile(name).status,
-    data_plane: kvGet(profileConfigFile(name), "api_base") || undefined,
-    control_plane: kvGet(profileConfigFile(name), "management_api_base") || undefined,
-  }));
-}
-
-function profileAuthSummary(name: string): string {
-  const parts: string[] = [];
-  if (secretExists("oauth/access-token", name)) {
-    parts.push("oauth");
-  } else if (secretExists("api-key", name)) {
-    parts.push("api-key");
-  }
-  if (secretExists("lakehouse/basic-token", name)) {
-    parts.push("basic");
-  } else if (secretExists("lakehouse/password", name)) {
-    parts.push("user/pass");
-  }
-  return parts.join(", ") || "none";
-}
-
-function profileManagementAuth(name: string): ProfileInspect["auth"]["management"] {
-  if (secretExists("oauth/access-token", name)) {
-    return "oauth";
-  }
-  if (secretExists("api-key", name)) {
-    return "api_key";
-  }
-  return "none";
-}
-
-function profileLakehouseAuth(name: string): ProfileInspect["auth"]["lakehouse"] {
-  if (secretExists("lakehouse/basic-token", name)) {
-    return "basic_token";
-  }
-  if (secretExists("lakehouse/password", name)) {
-    return "username_password";
-  }
-  return "none";
+  return names.map((name) => {
+    const snapshot = readProfileSnapshot(name);
+    return {
+      name,
+      active: name === active,
+      organization: snapshot.config.organization_slug,
+      management_env: snapshot.config.api_key_env,
+      description: snapshot.config.description,
+      auth: profileAuthSummary(snapshot.auth),
+      status: profileStatus(snapshot),
+      data_plane: snapshot.config.api_base,
+      control_plane: snapshot.config.management_api_base,
+    };
+  });
 }
 
 function parseTimestampMs(raw: string | undefined): string | undefined {
@@ -334,12 +353,8 @@ export function inspectProfile(name: string): ProfileInspect {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
 
-  const config = readProfileConfigRecord(name);
-  const management = profileManagementAuth(name);
-  const lakehouse = profileLakehouseAuth(name);
-  const hasMetadata = Object.values(config).some((value) => value !== undefined);
-  const hasAnyAuth = management !== "none" || lakehouse !== "none";
-  const status = hasAnyAuth ? "configured" : hasMetadata ? "partial" : "empty";
+  const snapshot = readProfileSnapshot(name);
+  const { config, auth } = snapshot;
 
   return {
     name,
@@ -355,8 +370,8 @@ export function inspectProfile(name: string): ProfileInspect {
       data_plane: config.api_base,
       control_plane: config.management_api_base,
     },
-    auth: { management, lakehouse },
-    status,
+    auth,
+    status: profileStatus(snapshot),
     timestamps: {
       created_at: config.created_at,
       updated_at: config.updated_at,
@@ -540,6 +555,19 @@ export function writeProfileConfig(profileName: string, key: string, value: stri
 
 export function unsetProfileConfig(profileName: string, key: string): void {
   kvUnset(profileConfigFile(profileName), key);
+}
+
+export function moveProfileConfigKey(
+  sourceProfile: string,
+  targetProfile: string,
+  key: ProfileConfigKey,
+): void {
+  const value = readProfileConfig(sourceProfile, key);
+  if (!value) {
+    return;
+  }
+  writeProfileConfig(targetProfile, key, value);
+  unsetProfileConfig(sourceProfile, key);
 }
 
 export function ensureProfileExists(name: string): void {

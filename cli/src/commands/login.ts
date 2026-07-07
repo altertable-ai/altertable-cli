@@ -10,14 +10,12 @@ import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management
 import { configureRunClear } from "@/lib/configure.ts";
 import {
   deriveProfileName,
+  moveProfileConfigKey,
   profileExists,
-  readProfileConfig,
   renameProfile,
   resolveProfileName,
   setActiveProfile,
-  unsetProfileConfig,
   updateProfile,
-  writeProfileConfig,
 } from "@/lib/profile.ts";
 import { moveProfileSecrets } from "@/lib/secrets.ts";
 import { terminalSuccess } from "@/lib/terminal-style.ts";
@@ -47,21 +45,15 @@ const OAUTH_SECRET_ACCOUNTS = ["oauth/access-token", "oauth/refresh-token"] as c
 
 function moveOAuthSession(sourceProfile: string, targetProfile: string): void {
   moveProfileSecrets(sourceProfile, targetProfile, OAUTH_SECRET_ACCOUNTS);
-  const expiry = readProfileConfig(sourceProfile, "oauth_expiry");
-  if (expiry) {
-    writeProfileConfig(targetProfile, "oauth_expiry", expiry);
-    unsetProfileConfig(sourceProfile, "oauth_expiry");
-  }
+  moveProfileConfigKey(sourceProfile, targetProfile, "oauth_expiry");
 }
 
-function resolveLoginProfile(whoami: WhoamiResponse, environment: string): string {
+function promoteLoginProfile(whoami: WhoamiResponse, environment: string): string {
   const sourceProfile = resolveProfileName(getCliContext().profile);
   const organizationSlug = whoami.organization?.slug;
-  if (!organizationSlug) {
-    return sourceProfile;
-  }
-
-  const targetProfile = deriveProfileName(organizationSlug, environment);
+  const targetProfile = organizationSlug
+    ? deriveProfileName(organizationSlug, environment)
+    : sourceProfile;
   if (targetProfile === sourceProfile) {
     return targetProfile;
   }
@@ -88,7 +80,7 @@ export function storeLoginProfileMetadata(
     throw new Error("No environment returned from `whoami` post-login. Aborting.");
   }
 
-  const profileName = resolveLoginProfile(whoami, environment);
+  const profileName = promoteLoginProfile(whoami, environment);
 
   updateProfile(profileName, {
     environment,

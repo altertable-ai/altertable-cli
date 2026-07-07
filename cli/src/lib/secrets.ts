@@ -197,7 +197,7 @@ export function moveProfileSecrets(
   targetProfile: string,
   accounts: readonly string[],
 ): void {
-  const prepared: { account: string; sourceValue: string; targetValue: string }[] = [];
+  const prepared: Array<{ account: string; targetValue: string }> = [];
 
   try {
     for (const account of accounts) {
@@ -207,7 +207,6 @@ export function moveProfileSecrets(
       }
       prepared.push({
         account,
-        sourceValue,
         targetValue: secretGet(account, targetProfile),
       });
       secretSet(account, sourceValue, targetProfile);
