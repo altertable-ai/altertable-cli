@@ -3,6 +3,7 @@ import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
+import { PROFILE_CONFIG_KEYS, type ProfileConfigKey } from "@/lib/profile-config-keys.ts";
 import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
 import { isCliRuntimeReady } from "@/lib/runtime.ts";
 
@@ -17,26 +18,6 @@ const PROFILE_SECRET_ACCOUNTS = [
 ] as const;
 
 const PROFILE_EXPORT_VERSION = 1;
-const PROFILE_CONFIG_KEYS = [
-  "user",
-  "api_key_env",
-  "api_base",
-  "management_api_base",
-  "organization_slug",
-  "organization_name",
-  "principal_type",
-  "principal_name",
-  "principal_email",
-  "principal_slug",
-  "description",
-  "created_at",
-  "updated_at",
-  "last_verified_at",
-  "oauth_expiry",
-  "lakehouse_credential_expiry",
-] as const;
-
-export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
 type ProfileAuth = {
@@ -99,6 +80,7 @@ export type ProfileInspect = {
     updated_at?: string;
     last_verified_at?: string;
     oauth_expires_at?: string;
+    lakehouse_expires_at?: string;
   };
 };
 
@@ -415,8 +397,15 @@ export function inspectProfile(name: string): ProfileInspect {
       updated_at: config.updated_at,
       last_verified_at: config.last_verified_at,
       oauth_expires_at: parseTimestampMs(config.oauth_expiry),
+      lakehouse_expires_at: parseTimestampMs(config.lakehouse_credential_expiry),
     },
   };
+}
+
+export function createAndActivateProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {
+  createProfile(name, update);
+  setActiveProfile(name);
+  return inspectProfile(name);
 }
 
 export function createProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {

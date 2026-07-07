@@ -10,6 +10,7 @@ import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management
 import { configureRunClear } from "@/lib/configure.ts";
 import {
   createProfile,
+  deleteProfile,
   deriveProfileName,
   moveProfileConfigKey,
   profileExists,
@@ -76,7 +77,16 @@ function promoteLoginProfile(
     profileAction = "replaced";
   } else {
     createProfile(targetProfile);
-    moveOAuthSession(sourceProfile, targetProfile);
+    try {
+      moveOAuthSession(sourceProfile, targetProfile);
+    } catch (error) {
+      try {
+        deleteProfile(targetProfile);
+      } catch {
+        // Preserve the original secret migration failure.
+      }
+      throw error;
+    }
     profileAction = "created";
   }
   setActiveProfile(targetProfile);

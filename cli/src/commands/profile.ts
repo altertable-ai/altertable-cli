@@ -4,27 +4,27 @@ import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
 import type { ConfigureShowData } from "@/lib/configure-credential-status.ts";
-import {
-  configureVerify,
-  type ConfigureAuthPlane,
-  type ConfigureVerifyResult,
-  formatConfigureVerifyRemediation,
-} from "@/lib/configure-verify.ts";
-import {
-  defaultConfigurePrompts,
-  type ConfigurePrompts,
-  type ConfigureSelectOption,
-} from "@/lib/configure-prompts.ts";
+import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
+import { configureVerify } from "@/lib/configure-verify.ts";
+import { defaultConfigurePrompts, type ConfigurePrompts } from "@/lib/configure-prompts.ts";
 import {
   defineGroupCommand,
   defineLocalCommand,
   defineValueCommand,
 } from "@/lib/operation-command-builders.ts";
-import { formatInfoList } from "@/lib/info-list.ts";
 import { renderFixedTableSection } from "@/lib/table-format.ts";
-import { formatTerminalUrls, terminalAccent } from "@/lib/terminal-style.ts";
+import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
-  createProfile,
+  formatProfileDirenv,
+  formatProfileEnv,
+  formatProfileInspect,
+  formatProfileStatus,
+  profileShellExports,
+  profileSwitchOption,
+  type ProfileStatusResult,
+} from "@/lib/profile-formatters.ts";
+import {
+  createAndActivateProfile,
   deleteProfile,
   deriveProfileName,
   exportProfile,
@@ -36,8 +36,6 @@ import {
   renameProfile,
   setActiveProfile,
   updateProfile,
-  type ProfileInspect,
-  type ProfileSummary,
   type ProfileUpdate,
 } from "@/lib/profile.ts";
 import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
@@ -94,85 +92,6 @@ function compactJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-function formatProfileInspect(profile: ProfileInspect): string {
-  return formatInfoList(
-    [
-      { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
-      { label: "Status", value: profile.status },
-      { label: "Principal", value: formatProfilePrincipal(profile) },
-      { label: "Organization", value: profile.organization.slug ?? "not set" },
-      { label: "Environment", value: profile.environment ?? "not set" },
-      { label: "Description", value: profile.description ?? "not set" },
-      { label: "Management auth", value: profile.auth.management },
-      { label: "Lakehouse auth", value: profile.auth.lakehouse },
-      { label: "Data plane", value: formatTerminalUrls(profile.endpoints.data_plane ?? "default") },
-      {
-        label: "Control plane",
-        value: formatTerminalUrls(profile.endpoints.control_plane ?? "default"),
-      },
-      { label: "Config file", value: terminalAccent(profile.config_file) },
-    ],
-    { indent: "  " },
-  );
-}
-
-function formatProfilePrincipal(profile: ProfileInspect): string {
-  if (profile.principal.email) {
-    return profile.principal.name
-      ? `${profile.principal.name} <${profile.principal.email}>`
-      : profile.principal.email;
-  }
-  if (profile.principal.slug) {
-    return profile.principal.name
-      ? `${profile.principal.name} (${profile.principal.slug})`
-      : profile.principal.slug;
-  }
-  return profile.principal.name ?? "not set";
-}
-
-function formatCredentialDetail(
-  credential: ConfigureShowData["credentials"]["management"],
-): string {
-  if (!credential.configured) {
-    return "not configured";
-  }
-  const parts = [
-    credential.mechanism ?? "configured",
-    credential.source ? `source: ${credential.source}` : "",
-    credential.environment ? `env: ${credential.environment}` : "",
-    credential.expires ? `expires: ${credential.expires}` : "",
-  ].filter(Boolean);
-  return parts.join(", ");
-}
-
-function formatLakehouseCredentialDetail(
-  credential: ConfigureShowData["credentials"]["lakehouse"],
-): string {
-  if (!credential.configured) {
-    return "not configured";
-  }
-  const parts = [
-    credential.mechanism ?? "configured",
-    credential.source ? `source: ${credential.source}` : "",
-    credential.user ? `user: ${credential.user}` : "",
-  ].filter(Boolean);
-  return parts.join(", ");
-}
-
-function profileShellExports(profileName: string): Record<"ALTERTABLE_PROFILE", string> {
-  return { ALTERTABLE_PROFILE: profileName };
-}
-
-function formatShellExport(name: string, value: string): string {
-  return `export ${name}=${JSON.stringify(value)}`;
-}
-
-type ProfileStatusResult = {
-  profile: ProfileInspect;
-  configuration: ConfigureShowData;
-  verification?: ConfigureVerifyResult;
-};
-
 function configuredVerificationPlanes(configuration: ConfigureShowData): ConfigureAuthPlane[] {
   const planes: ConfigureAuthPlane[] = [];
   if (configuration.credentials.management.configured) {
@@ -182,70 +101,6 @@ function configuredVerificationPlanes(configuration: ConfigureShowData): Configu
     planes.push("lakehouse");
   }
   return planes;
-}
-
-function formatVerificationStatus(result: ConfigureVerifyResult | undefined): string {
-  if (!result) {
-    return "not run";
-  }
-  if (result.configured.length === 0) {
-    return "nothing configured";
-  }
-  if (result.errors.length === 0) {
-    return "verified";
-  }
-  const failed = result.errors.map((error) => error.plane).join(", ");
-  return `failed (${failed})`;
-}
-
-function formatProfileStatus(result: ProfileStatusResult): string {
-  const lines = [
-    formatProfileInspect(result.profile),
-    "",
-    formatInfoList(
-      [
-        { label: "Verification", value: formatVerificationStatus(result.verification) },
-        {
-          label: "Management",
-          value: formatCredentialDetail(result.configuration.credentials.management),
-        },
-        {
-          label: "Lakehouse",
-          value: formatLakehouseCredentialDetail(result.configuration.credentials.lakehouse),
-        },
-        { label: "Control plane", value: formatTerminalUrls(result.configuration.control_plane) },
-        { label: "Data plane", value: formatTerminalUrls(result.configuration.data_plane) },
-      ],
-      { indent: "  " },
-    ),
-  ];
-
-  if (result.verification?.errors.length) {
-    lines.push(
-      "",
-      ...result.verification.errors.map(
-        (error) =>
-          `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
-      ),
-    );
-  }
-
-  return lines.join("\n");
-}
-
-function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
-  const details = [
-    profile.active && "active",
-    profile.organization && `org: ${profile.organization}`,
-    profile.management_env && `env: ${profile.management_env}`,
-    profile.principal && `principal: ${profile.principal}`,
-    profile.management_auth && `management: ${profile.management_auth}`,
-    profile.lakehouse_auth && `lakehouse: ${profile.lakehouse_auth}`,
-  ].filter((detail): detail is string => Boolean(detail));
-  return {
-    value: profile.name,
-    label: details.length > 0 ? `${profile.name} (${details.join(", ")})` : profile.name,
-  };
 }
 
 export async function promptProfileSwitch(
@@ -350,9 +205,7 @@ const profileCreateCommand = defineLocalCommand({
     };
   },
   local(input) {
-    createProfile(input.name, input.update);
-    setActiveProfile(input.name);
-    return inspectProfile(input.name);
+    return createAndActivateProfile(input.name, input.update);
   },
   present(profile) {
     return {
@@ -606,7 +459,7 @@ const profileEnvCommand = defineValueCommand({
     return {
       kind: "normalized",
       data: { profile: profileName, env },
-      humanText: formatShellExport("ALTERTABLE_PROFILE", env.ALTERTABLE_PROFILE),
+      humanText: formatProfileEnv(profileName),
     };
   },
 });
@@ -630,10 +483,7 @@ const profileDirenvCommand = defineValueCommand({
     return {
       kind: "normalized",
       data: { profile: profileName, env },
-      humanText: [
-        "# Generated by: altertable profile direnv",
-        formatShellExport("ALTERTABLE_PROFILE", env.ALTERTABLE_PROFILE),
-      ].join("\n"),
+      humanText: formatProfileDirenv(profileName),
     };
   },
 });

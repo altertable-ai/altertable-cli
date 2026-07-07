@@ -287,10 +287,12 @@ altertable profile import acme_stage.profile.json --name acme_stage_copy
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
 
-| Scope                              | Keys                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `principal_type`, `principal_name`, `principal_email`, `principal_slug`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry`, `lakehouse_credential_expiry` |
+| Scope                  | Stored there                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| Global root `config`   | Active profile and display/update preferences such as query layout, query width, and update checks |
+| Profile-specific config | Credentials metadata, endpoint overrides, organization/principal metadata, and credential expiry timestamps |
+
+`profile status` and `profile inspect` show the profile metadata that is usually useful to humans, including OAuth and auto-provisioned lakehouse credential expiry when present.
 
 ### Credential precedence
 

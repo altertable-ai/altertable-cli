@@ -68,13 +68,20 @@ function hasOAuthLogin(): boolean {
   return secretExists("oauth/access-token");
 }
 
-function oauthExpiryDisplay(): string {
-  const raw = configGet("oauth_expiry");
+function timestampMsDisplay(raw: string): string {
   if (!raw) {
     return "";
   }
   const ms = Number.parseInt(raw, 10);
   return Number.isNaN(ms) ? "" : new Date(ms).toLocaleString();
+}
+
+function oauthExpiryDisplay(): string {
+  return timestampMsDisplay(configGet("oauth_expiry"));
+}
+
+function lakehouseExpiryDisplay(): string {
+  return timestampMsDisplay(configGet("lakehouse_credential_expiry"));
 }
 
 function hasEnvLakehouseCredentials(): boolean {
@@ -138,6 +145,7 @@ function buildLakehouseCredential(): ConfigurePlaneCredential {
         mechanism: "lakehouse_basic_token",
         source: "stored",
         basic_token: "set",
+        expires: lakehouseExpiryDisplay() || undefined,
       };
     }
     return {

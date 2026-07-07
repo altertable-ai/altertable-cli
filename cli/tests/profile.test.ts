@@ -138,12 +138,16 @@ describe("profile storage", () => {
   test("inspectProfile reports profile-scoped auth status", async () => {
     await configureRunSet({ profile: "acme_prod", apiKey: "atm_prod", env: "production" });
     await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
+    const lakehouseExpiry = Date.now() + 60 * 60 * 1000;
+    setCliContext({ debug: false, json: false, agent: false, profile: "acme_prod" });
+    configSet("lakehouse_credential_expiry", String(lakehouseExpiry));
 
     const profile = inspectProfile("acme_prod");
     expect(profile.status).toBe("configured");
     expect(profile.auth.management).toBe("api_key");
     expect(profile.auth.lakehouse).toBe("username_password");
     expect(profile.timestamps.created_at).toBeTruthy();
+    expect(profile.timestamps.lakehouse_expires_at).toBe(new Date(lakehouseExpiry).toISOString());
   });
 
   test("exportProfile and importProfile copy config without secrets", async () => {
