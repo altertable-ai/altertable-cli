@@ -142,7 +142,7 @@ export const lakehouseAppendOperation = defineHttpOperation<LakehouseAppendOpera
 });
 
 export const lakehouseAppendTaskOperation = defineHttpOperation<string, string>({
-  id: "lakehouse.append.task",
+  id: "lakehouse.append.status",
   request: (taskId) => ({
     plane: "lakehouse",
     method: "GET",

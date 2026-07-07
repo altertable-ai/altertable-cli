@@ -330,7 +330,7 @@ altertable upsert --catalog my_cat --schema public --table users --primary-key i
 ```bash
 altertable query show <query-uuid>
 altertable query cancel <query-uuid> --session-id <uuid>
-altertable append task <task-id>
+altertable append status <append-id>
 ```
 
 ### Management

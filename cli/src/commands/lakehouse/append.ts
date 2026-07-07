@@ -14,7 +14,18 @@ const appendRunArgs = {
   schema: { type: "string", description: "Schema name", required: true },
   table: { type: "string", description: "Table name", required: true },
   data: { type: "string", description: "JSON object, array, or @file", required: true },
-  sync: { type: "boolean", description: "Wait for the append task to finish before returning" },
+  sync: {
+    type: "boolean",
+    description: "Wait for the append operation to finish before returning",
+  },
+} satisfies ArgsDef;
+
+const appendGroupArgs = {
+  ...appendRunArgs,
+  catalog: { ...appendRunArgs.catalog, required: false },
+  schema: { ...appendRunArgs.schema, required: false },
+  table: { ...appendRunArgs.table, required: false },
+  data: { ...appendRunArgs.data, required: false },
 } satisfies ArgsDef;
 
 const appendRowsCommand = defineOperationCommand({
@@ -49,20 +60,24 @@ const appendRowsCommand = defineOperationCommand({
   },
 });
 
-const appendTaskCommand = defineHttpCommand({
-  id: "lakehouse.append.task",
+const appendStatusCommand = defineHttpCommand({
+  id: "lakehouse.append.status",
   plane: "lakehouse",
   operation: lakehouseAppendTaskOperation,
   output: "raw-api",
   meta: {
-    name: "task",
-    description: "Fetch status for an append task.",
+    name: "status",
+    description: "Fetch status for an append operation.",
   },
   args: {
-    "task-id": { type: "positional", description: "Task id returned by append", required: true },
+    "append-id": {
+      type: "positional",
+      description: "Append id returned by append",
+      required: true,
+    },
   },
   parse({ args }) {
-    return stringArg(args, "task-id");
+    return stringArg(args, "append-id");
   },
   present(response) {
     return { kind: "raw_api", body: response };
@@ -75,13 +90,13 @@ export const appendCommand = defineGroupCommand({
     description: "Append JSON rows to a table.",
     examples: [
       "altertable append --catalog db --schema public --table events --data '[{\"id\":1}]'",
-      "altertable append task <task-id>",
+      "altertable append status <append-id>",
     ],
   },
   default: "run",
-  args: appendRunArgs,
+  args: appendGroupArgs,
   subCommands: {
     run: appendRowsCommand,
-    task: appendTaskCommand,
+    status: appendStatusCommand,
   },
 });
