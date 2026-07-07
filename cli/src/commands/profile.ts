@@ -175,9 +175,9 @@ function formatProfileStatus(result: ProfileStatusResult): string {
 function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
   const details = [
     profile.active ? "active" : "",
-    profile.organization,
-    profile.management_env,
-    profile.auth,
+    profile.organization ? `org: ${profile.organization}` : "",
+    profile.management_env ? `env: ${profile.management_env}` : "",
+    profile.auth ? `auth: ${profile.auth}` : "",
   ].filter(Boolean);
   return {
     value: profile.name,

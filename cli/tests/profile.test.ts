@@ -371,6 +371,9 @@ describe("profile storage", () => {
         expect(title).toBe("Switch profile");
         expect(defaultValue).toBe("default");
         expect(options.map((option) => option.value)).toContain("staging");
+        expect(options.find((option) => option.value === "staging")?.label).toContain(
+          "env: staging",
+        );
         return "staging";
       },
     });
