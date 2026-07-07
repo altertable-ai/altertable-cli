@@ -210,7 +210,7 @@ const profileListCommand = defineValueCommand({
       profiles,
       [
         {
-          header: "NAME",
+          header: "  NAME",
           cell: (profile) => `${profile.active ? "✓" : " "} ${profile.name}`,
           style: "strong",
         },
