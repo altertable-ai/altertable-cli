@@ -10,6 +10,11 @@ import { storeOAuthTokens, getStoredAccessToken, clearOAuthTokens } from "@/lib/
 import { getActiveProfileName, profileExists } from "@/lib/profile.ts";
 
 let testHome = "";
+const TEST_PRINCIPAL = {
+  type: "User",
+  name: "Test User",
+  email: "test.user@altertable.test",
+} as const;
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-oauth-test-"));
@@ -173,7 +178,7 @@ describe("login profile metadata", () => {
 
     const metadata = storeLoginProfileMetadata(
       {
-        principal: { type: "User", name: "François", email: "francois@altertable.ai" },
+        principal: TEST_PRINCIPAL,
         organization: { name: "Altertable", slug: "altertable" },
         authentication_scope: "environment",
         environment_slug: "production",
@@ -192,8 +197,8 @@ describe("login profile metadata", () => {
     expect(configGet("api_key_env")).toBe("production");
     expect(configGet("organization_slug")).toBe("altertable");
     expect(configGet("organization_name")).toBe("Altertable");
-    expect(configGet("principal_name")).toBe("François");
-    expect(configGet("principal_email")).toBe("francois@altertable.ai");
+    expect(configGet("principal_name")).toBe("Test User");
+    expect(configGet("principal_email")).toBe("test.user@altertable.test");
     expect(getStoredAccessToken()).toBe("acc");
   });
 
@@ -202,7 +207,7 @@ describe("login profile metadata", () => {
 
     const metadata = storeLoginProfileMetadata(
       {
-        principal: { type: "User", name: "François", email: "francois@altertable.ai" },
+        principal: TEST_PRINCIPAL,
         organization: { name: "Altertable", slug: "altertable" },
         authentication_scope: "environment",
         environment_slug: "production",

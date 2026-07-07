@@ -44,10 +44,16 @@ type LoginProfileMetadata = {
 };
 
 const OAUTH_SECRET_ACCOUNTS = ["oauth/access-token", "oauth/refresh-token"] as const;
+type LoginProfileAction = LoginProfileMetadata["profileAction"];
 
 function moveOAuthSession(sourceProfile: string, targetProfile: string): void {
   moveProfileSecrets(sourceProfile, targetProfile, OAUTH_SECRET_ACCOUNTS);
   moveProfileConfigKey(sourceProfile, targetProfile, "oauth_expiry");
+}
+
+function loginProfileName(whoami: WhoamiResponse, environment: string, fallback: string): string {
+  const organizationSlug = whoami.organization?.slug;
+  return organizationSlug ? deriveProfileName(organizationSlug, environment) : fallback;
 }
 
 function promoteLoginProfile(
@@ -56,15 +62,12 @@ function promoteLoginProfile(
   replaceProfile: boolean,
 ): Pick<LoginProfileMetadata, "profileName" | "profileAction"> {
   const sourceProfile = resolveProfileName(getCliContext().profile);
-  const organizationSlug = whoami.organization?.slug;
-  const targetProfile = organizationSlug
-    ? deriveProfileName(organizationSlug, environment)
-    : sourceProfile;
+  const targetProfile = loginProfileName(whoami, environment, sourceProfile);
   if (targetProfile === sourceProfile) {
     return { profileName: targetProfile, profileAction: "unchanged" };
   }
 
-  let profileAction: LoginProfileMetadata["profileAction"];
+  let profileAction: LoginProfileAction;
   if (profileExists(targetProfile)) {
     moveOAuthSession(sourceProfile, targetProfile);
     profileAction = "reused";
@@ -121,7 +124,7 @@ export type LoginArgs = {
 
 /**
  * When `--control-plane-url` is passed, validate it and apply it to this login
- * session only, up until the login is successul.
+ * session only, up until the login is successful.
  */
 export function applyControlPlaneOverride(args: LoginArgs): void {
   const url = args["control-plane-url"];
@@ -160,16 +163,14 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const { environment, profileName, profileAction } = storeLoginProfileMetadata(whoami, args);
 
   const identity = formatWhoamiPrincipalLine(whoami);
-  const profileMessage =
-    profileAction === "created"
-      ? `created profile "${profileName}"`
-      : profileAction === "reused"
-        ? `using existing profile "${profileName}"`
-        : profileAction === "replaced"
-          ? `replaced current profile with "${profileName}"`
-          : `using profile "${profileName}"`;
+  const profileMessages = {
+    created: `created profile "${profileName}"`,
+    reused: `using existing profile "${profileName}"`,
+    replaced: `replaced current profile with "${profileName}"`,
+    unchanged: `using profile "${profileName}"`,
+  } satisfies Record<LoginProfileAction, string>;
   sink.writeMetadata([
-    `${terminalSuccess("✓")} Logged in (${identity}) — ${profileMessage}; environment "${environment}".`,
+    `${terminalSuccess("✓")} Logged in (${identity}) — ${profileMessages[profileAction]}; environment "${environment}".`,
   ]);
 }
 

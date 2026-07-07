@@ -115,6 +115,31 @@ type ProfileSnapshot = {
   auth: ProfileAuth;
 };
 
+const PROFILE_UPDATE_CONFIG_KEYS = {
+  organizationSlug: "organization_slug",
+  organizationName: "organization_name",
+  principalType: "principal_type",
+  principalName: "principal_name",
+  principalEmail: "principal_email",
+  principalSlug: "principal_slug",
+  environment: "api_key_env",
+  description: "description",
+  dataPlane: "api_base",
+  controlPlane: "management_api_base",
+} as const satisfies Record<keyof ProfileUpdate, ProfileConfigKey>;
+
+const MANAGEMENT_AUTH_LABELS = {
+  oauth: "oauth",
+  api_key: "api-key",
+  none: "none",
+} as const satisfies Record<ProfileManagementAuth, string>;
+
+const LAKEHOUSE_AUTH_LABELS = {
+  basic_token: "basic",
+  username_password: "user/pass",
+  none: "none",
+} as const satisfies Record<ProfileLakehouseAuth, string>;
+
 export function profilesDir(): string {
   return join(configDir(), "profiles");
 }
@@ -185,23 +210,10 @@ function nowIso(): string {
 }
 
 function readProfileConfigRecord(name: string): Record<ProfileConfigKey, string | undefined> {
-  const config: Record<ProfileConfigKey, string | undefined> = {
-    user: undefined,
-    api_key_env: undefined,
-    api_base: undefined,
-    management_api_base: undefined,
-    organization_slug: undefined,
-    organization_name: undefined,
-    principal_type: undefined,
-    principal_name: undefined,
-    principal_email: undefined,
-    principal_slug: undefined,
-    description: undefined,
-    created_at: undefined,
-    updated_at: undefined,
-    last_verified_at: undefined,
-    oauth_expiry: undefined,
-  };
+  const config = Object.fromEntries(PROFILE_CONFIG_KEYS.map((key) => [key, undefined])) as Record<
+    ProfileConfigKey,
+    string | undefined
+  >;
   for (const key of PROFILE_CONFIG_KEYS) {
     config[key] = kvGet(profileConfigFile(name), key) || undefined;
   }
@@ -209,35 +221,13 @@ function readProfileConfigRecord(name: string): Record<ProfileConfigKey, string 
 }
 
 function writeProfileUpdate(name: string, update: ProfileUpdate): void {
-  if (update.organizationSlug !== undefined) {
-    writeProfileConfig(name, "organization_slug", update.organizationSlug);
-  }
-  if (update.organizationName !== undefined) {
-    writeProfileConfig(name, "organization_name", update.organizationName);
-  }
-  if (update.principalType !== undefined) {
-    writeProfileConfig(name, "principal_type", update.principalType);
-  }
-  if (update.principalName !== undefined) {
-    writeProfileConfig(name, "principal_name", update.principalName);
-  }
-  if (update.principalEmail !== undefined) {
-    writeProfileConfig(name, "principal_email", update.principalEmail);
-  }
-  if (update.principalSlug !== undefined) {
-    writeProfileConfig(name, "principal_slug", update.principalSlug);
-  }
-  if (update.environment !== undefined) {
-    writeProfileConfig(name, "api_key_env", update.environment);
-  }
-  if (update.description !== undefined) {
-    writeProfileConfig(name, "description", update.description);
-  }
-  if (update.dataPlane !== undefined) {
-    writeProfileConfig(name, "api_base", update.dataPlane);
-  }
-  if (update.controlPlane !== undefined) {
-    writeProfileConfig(name, "management_api_base", update.controlPlane);
+  for (const profileField of Object.keys(PROFILE_UPDATE_CONFIG_KEYS) as Array<
+    keyof ProfileUpdate
+  >) {
+    const value = update[profileField];
+    if (value !== undefined) {
+      writeProfileConfig(name, PROFILE_UPDATE_CONFIG_KEYS[profileField], value);
+    }
   }
 }
 
@@ -270,23 +260,11 @@ function profileStatus(snapshot: ProfileSnapshot): ProfileInspect["status"] {
 }
 
 function profileManagementAuthSummary(auth: ProfileAuth): string {
-  if (auth.management === "oauth") {
-    return "oauth";
-  }
-  if (auth.management === "api_key") {
-    return "api-key";
-  }
-  return "none";
+  return MANAGEMENT_AUTH_LABELS[auth.management];
 }
 
 function profileLakehouseAuthSummary(auth: ProfileAuth): string {
-  if (auth.lakehouse === "basic_token") {
-    return "basic";
-  }
-  if (auth.lakehouse === "username_password") {
-    return "user/pass";
-  }
-  return "none";
+  return LAKEHOUSE_AUTH_LABELS[auth.lakehouse];
 }
 
 function profilePrincipalSummary(
