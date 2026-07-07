@@ -89,6 +89,50 @@ describe("formatConfigureAuthenticationLines", () => {
   });
 });
 
+describe("OAuth login status", () => {
+  function loginViaOAuth(): void {
+    secretSet("oauth/access-token", "tok");
+    configSet("oauth_expiry", String(Date.now() + 3_600_000));
+    configSet("api_key_env", "production");
+  }
+
+  test("counts as a management credential", () => {
+    loginViaOAuth();
+    expect(configureCredentialStatus().hasManagement).toBe(true);
+  });
+
+  test("shows browser login (OAuth), not the api-key lines", () => {
+    loginViaOAuth();
+    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    expect(text).toContain("browser login (OAuth)");
+    expect(text).toContain("production");
+    expect(text).not.toContain("api key:");
+    expect(text).not.toContain("management API key");
+  });
+
+  test("OAuth login shadows a leftover stored api key", () => {
+    secretSet("api-key", "atm_leftover");
+    loginViaOAuth();
+    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    expect(text).toContain("browser login (OAuth)");
+    expect(text).not.toContain("api key:");
+    expect(managementPlaneStatusDetail()).toBe("OAuth login (production)");
+    expect(buildConfigureShowData().credentials.management).toMatchObject({
+      mechanism: "management_oauth",
+      oauth: "set",
+    });
+  });
+
+  test("ALTERTABLE_API_KEY env still takes precedence over OAuth", () => {
+    loginViaOAuth();
+    process.env.ALTERTABLE_API_KEY = "atm_env";
+    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    expect(text).toContain("ALTERTABLE_API_KEY");
+    expect(text).not.toContain("browser login (OAuth)");
+    expect(managementPlaneStatusDetail()).toBe("via ALTERTABLE_API_KEY");
+  });
+});
+
 describe("buildConfigureShowData", () => {
   test("returns structured credential status without secrets", () => {
     secretSet("api-key", "atm_test");

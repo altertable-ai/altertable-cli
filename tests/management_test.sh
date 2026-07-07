@@ -91,7 +91,7 @@ echo "${OUT}" | grep -Fq 'No credentials configured' || fail "context: expected 
 pass "context works without management API key"
 
 ERR="$("${CLI}" api GET /whoami 2>&1 >/dev/null)"
-echo "${ERR}" | grep -q "No management API key" || fail "mgmt: expected 'No management API key' error, got '${ERR}'"
+echo "${ERR}" | grep -q "No management credentials" || fail "mgmt: expected 'No management credentials' error, got '${ERR}'"
 pass "api GET /whoami errors clearly without management API key"
 
 # ── HTTP invocations (reconfigure auth + env) ──

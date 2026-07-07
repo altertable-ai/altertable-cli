@@ -15,6 +15,8 @@ export type WhoamiResponse = {
     name?: string;
     slug?: string;
   };
+  authentication_scope?: string;
+  environment_slug?: string;
 };
 
 export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {

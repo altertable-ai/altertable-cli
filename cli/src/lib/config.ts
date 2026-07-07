@@ -207,6 +207,10 @@ export function resolveManagementApiBase(): string {
   return `${resolveManagementApiRoot()}/rest/v1`;
 }
 
+export function resolveOAuthBase(): string {
+  return `${resolveManagementApiRoot()}/oauth`;
+}
+
 const QUERY_LAYOUT_VALUES = new Set(["auto", "table", "line"]);
 const QUERY_PAGER_VALUES = new Set(["auto", "always", "never"]);
 const MIN_QUERY_MAX_COL_WIDTH = 8;

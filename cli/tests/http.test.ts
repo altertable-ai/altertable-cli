@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { CliError, HttpError, TimeoutError } from "@/lib/errors.ts";
+import { CliError, HttpError, NetworkError, TimeoutError } from "@/lib/errors.ts";
 import {
   computeRetryDelayMs,
   getSharedDispatcher,
@@ -273,6 +273,29 @@ describe("TimeoutError", () => {
   });
 });
 
+describe("network error context", () => {
+  test("includes the method and URL of the failed request", async () => {
+    // Bypass the mock harness so we hit the real fetch path against a closed port.
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    let caught: unknown;
+    try {
+      await httpSend({
+        method: "POST",
+        url: "http://127.0.0.1:1/oauth/token",
+        authHeader: "",
+        body: "grant_type=authorization_code",
+        contentType: "application/x-www-form-urlencoded",
+        maxAttempts: 1,
+        connectTimeoutMs: 2000,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(NetworkError);
+    expect((caught as Error).message).toContain("POST http://127.0.0.1:1/oauth/token");
+  });
+});
+
 describe("context timeout resolution", () => {
   test("resolveFetchTimeoutMs uses context read timeout override", () => {
     setCliContext({ debug: false, json: false, agent: false, readTimeoutMs: 30_000 });
@@ -452,6 +475,18 @@ describe("debug response redaction", () => {
     const body = JSON.stringify({ credential: { id: "c1" }, password: "leaked-secret" });
     const redacted = redactResponseBodyForDebug(body);
     expect(redacted).not.toContain("leaked-secret");
+    expect(redacted).toContain("[REDACTED]");
+  });
+
+  test("redactResponseBodyForDebug redacts OAuth access and refresh tokens", () => {
+    const body = JSON.stringify({
+      access_token: "acc-leak",
+      refresh_token: "ref-leak",
+      token_type: "Bearer",
+    });
+    const redacted = redactResponseBodyForDebug(body);
+    expect(redacted).not.toContain("acc-leak");
+    expect(redacted).not.toContain("ref-leak");
     expect(redacted).toContain("[REDACTED]");
   });
 });

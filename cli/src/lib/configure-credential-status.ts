@@ -22,11 +22,17 @@ export type ConfigureCredentialStatus = {
 
 export type ConfigurePlaneCredential = {
   configured: boolean;
-  mechanism?: "management_api_key" | "lakehouse_basic_token" | "lakehouse_username_password";
+  mechanism?:
+    | "management_api_key"
+    | "management_oauth"
+    | "lakehouse_basic_token"
+    | "lakehouse_username_password";
   source?: "stored" | "environment";
   environment?: string;
   user?: string;
   api_key?: "set";
+  oauth?: "set";
+  expires?: string;
   password?: "set";
   basic_token?: "set";
 };
@@ -58,6 +64,19 @@ function hasStoredManagementCredentials(): boolean {
   return secretExists("api-key");
 }
 
+function hasOAuthLogin(): boolean {
+  return secretExists("oauth/access-token");
+}
+
+function oauthExpiryDisplay(): string {
+  const raw = configGet("oauth_expiry");
+  if (!raw) {
+    return "";
+  }
+  const ms = Number.parseInt(raw, 10);
+  return Number.isNaN(ms) ? "" : new Date(ms).toLocaleString();
+}
+
 function hasEnvLakehouseCredentials(): boolean {
   if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
     return true;
@@ -73,12 +92,32 @@ function hasStoredLakehouseCredentials(): boolean {
 
 export function configureCredentialStatus(): ConfigureCredentialStatus {
   return {
-    hasManagement: hasStoredManagementCredentials() || hasEnvManagementCredentials(),
+    hasManagement:
+      hasStoredManagementCredentials() || hasEnvManagementCredentials() || hasOAuthLogin(),
     hasLakehouse: hasStoredLakehouseCredentials() || hasEnvLakehouseCredentials(),
   };
 }
 
 function buildManagementCredential(): ConfigurePlaneCredential {
+  // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
+  if (hasEnvManagementCredentials()) {
+    return {
+      configured: true,
+      mechanism: "management_api_key",
+      source: "environment",
+      environment: process.env.ALTERTABLE_ENV ?? configGet("api_key_env") ?? undefined,
+    };
+  }
+  if (hasOAuthLogin()) {
+    return {
+      configured: true,
+      mechanism: "management_oauth",
+      source: "stored",
+      environment: configGet("api_key_env") || undefined,
+      oauth: "set",
+      expires: oauthExpiryDisplay() || undefined,
+    };
+  }
   if (hasStoredManagementCredentials()) {
     return {
       configured: true,
@@ -86,14 +125,6 @@ function buildManagementCredential(): ConfigurePlaneCredential {
       source: "stored",
       environment: configGet("api_key_env") || undefined,
       api_key: "set",
-    };
-  }
-  if (hasEnvManagementCredentials()) {
-    return {
-      configured: true,
-      mechanism: "management_api_key",
-      source: "environment",
-      environment: process.env.ALTERTABLE_ENV ?? configGet("api_key_env") ?? undefined,
     };
   }
   return { configured: false };
@@ -173,6 +204,10 @@ export function managementPlaneStatusDetail(): string | null {
   if (hasEnvManagementCredentials()) {
     return "via ALTERTABLE_API_KEY";
   }
+  if (hasOAuthLogin()) {
+    const env = configGet("api_key_env");
+    return env ? `OAuth login (${env})` : "OAuth login";
+  }
   if (!hasStoredManagementCredentials()) {
     return null;
   }
@@ -201,6 +236,25 @@ type FormatConfigureAuthenticationOptions = {
   indent?: string;
   labelWidth?: number;
 };
+
+function pushOAuthManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
+  lines.push(
+    formatTerminalLabelValue("Authentication:", "browser login (OAuth)", { indent, labelWidth }),
+    formatTerminalLabelValue("Environment:", configGet("api_key_env") || "none", {
+      indent: NESTED_INDENT,
+      labelWidth: NESTED_LABEL_WIDTH,
+    }),
+  );
+  const expires = oauthExpiryDisplay();
+  if (expires) {
+    lines.push(
+      formatTerminalLabelValue("Expires:", expires, {
+        indent: NESTED_INDENT,
+        labelWidth: NESTED_LABEL_WIDTH,
+      }),
+    );
+  }
+}
 
 function pushStoredManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
   lines.push(
@@ -304,10 +358,13 @@ export function formatConfigureAuthenticationLines(
   const lines: string[] = [];
 
   if (includePlane("management")) {
-    if (hasStoredManagementCredentials()) {
-      pushStoredManagementAuthLines(lines, indent, labelWidth);
-    } else if (hasEnvManagementCredentials()) {
+    // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
+    if (hasEnvManagementCredentials()) {
       pushEnvManagementAuthLines(lines, indent, labelWidth);
+    } else if (hasOAuthLogin()) {
+      pushOAuthManagementAuthLines(lines, indent, labelWidth);
+    } else if (hasStoredManagementCredentials()) {
+      pushStoredManagementAuthLines(lines, indent, labelWidth);
     }
   }
 
