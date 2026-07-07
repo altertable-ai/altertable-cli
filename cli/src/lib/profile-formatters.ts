@@ -4,8 +4,16 @@ import {
   formatConfigureVerifyRemediation,
 } from "@/lib/configure-verify.ts";
 import type { ConfigureSelectOption } from "@/lib/configure-prompts.ts";
-import { formatInfoList } from "@/lib/info-list.ts";
-import { formatTerminalUrls, terminalAccent } from "@/lib/terminal-style.ts";
+import {
+  document,
+  renderDisplayDocument,
+  rows,
+  section,
+  text,
+  type DisplayDocument,
+  type DisplayRow,
+} from "@/lib/display-view.ts";
+import { terminalAccent } from "@/lib/terminal-style.ts";
 import type { ProfileInspect, ProfileSummary } from "@/lib/profile.ts";
 
 export type ProfileStatusResult = {
@@ -14,31 +22,51 @@ export type ProfileStatusResult = {
   verification?: ConfigureVerifyResult;
 };
 
+export type ProfileInspectView = {
+  document: DisplayDocument;
+};
+
+export type ProfileStatusView = {
+  document: DisplayDocument;
+};
+
+function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
+  return [
+    { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
+    { label: "Status", value: profile.status },
+    { label: "Principal", value: formatProfilePrincipal(profile) },
+    { label: "Organization", value: profile.organization.slug ?? "not set" },
+    { label: "Environment", value: profile.environment ?? "not set" },
+    { label: "Description", value: profile.description ?? "not set" },
+    { label: "Management auth", value: profile.auth.management },
+    { label: "Lakehouse auth", value: profile.auth.lakehouse },
+    { label: "OAuth expires", value: profile.timestamps.oauth_expires_at ?? "not set" },
+    {
+      label: "Lakehouse expires",
+      value: profile.timestamps.lakehouse_expires_at ?? "not set",
+    },
+    {
+      label: "Data plane",
+      value: profile.endpoints.data_plane ?? "default",
+      linkifyUrls: true,
+    },
+    {
+      label: "Control plane",
+      value: profile.endpoints.control_plane ?? "default",
+      linkifyUrls: true,
+    },
+    { label: "Config file", value: terminalAccent(profile.config_file) },
+  ];
+}
+
+export function buildProfileInspectView(profile: ProfileInspect): ProfileInspectView {
+  return {
+    document: document(section(rows(profileInspectRows(profile)))),
+  };
+}
+
 export function formatProfileInspect(profile: ProfileInspect): string {
-  return formatInfoList(
-    [
-      { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
-      { label: "Status", value: profile.status },
-      { label: "Principal", value: formatProfilePrincipal(profile) },
-      { label: "Organization", value: profile.organization.slug ?? "not set" },
-      { label: "Environment", value: profile.environment ?? "not set" },
-      { label: "Description", value: profile.description ?? "not set" },
-      { label: "Management auth", value: profile.auth.management },
-      { label: "Lakehouse auth", value: profile.auth.lakehouse },
-      { label: "OAuth expires", value: profile.timestamps.oauth_expires_at ?? "not set" },
-      {
-        label: "Lakehouse expires",
-        value: profile.timestamps.lakehouse_expires_at ?? "not set",
-      },
-      { label: "Data plane", value: formatTerminalUrls(profile.endpoints.data_plane ?? "default") },
-      {
-        label: "Control plane",
-        value: formatTerminalUrls(profile.endpoints.control_plane ?? "default"),
-      },
-      { label: "Config file", value: terminalAccent(profile.config_file) },
-    ],
-    { indent: "  " },
-  );
+  return renderDisplayDocument(buildProfileInspectView(profile).document).join("\n");
 }
 
 function formatProfilePrincipal(profile: ProfileInspect): string {
@@ -99,39 +127,36 @@ function formatVerificationStatus(result: ConfigureVerifyResult | undefined): st
   return `failed (${failed})`;
 }
 
-export function formatProfileStatus(result: ProfileStatusResult): string {
-  const lines = [
-    formatProfileInspect(result.profile),
-    "",
-    formatInfoList(
-      [
-        { label: "Verification", value: formatVerificationStatus(result.verification) },
-        {
-          label: "Management",
-          value: formatCredentialDetail(result.configuration.credentials.management),
-        },
-        {
-          label: "Lakehouse",
-          value: formatLakehouseCredentialDetail(result.configuration.credentials.lakehouse),
-        },
-        { label: "Control plane", value: formatTerminalUrls(result.configuration.control_plane) },
-        { label: "Data plane", value: formatTerminalUrls(result.configuration.data_plane) },
-      ],
-      { indent: "  " },
-    ),
+export function buildProfileStatusView(result: ProfileStatusResult): ProfileStatusView {
+  const statusRows: DisplayRow[] = [
+    { label: "Verification", value: formatVerificationStatus(result.verification) },
+    {
+      label: "Management",
+      value: formatCredentialDetail(result.configuration.credentials.management),
+    },
+    {
+      label: "Lakehouse",
+      value: formatLakehouseCredentialDetail(result.configuration.credentials.lakehouse),
+    },
+    { label: "Control plane", value: result.configuration.control_plane, linkifyUrls: true },
+    { label: "Data plane", value: result.configuration.data_plane, linkifyUrls: true },
   ];
+  const errors =
+    result.verification?.errors.map(
+      (error) =>
+        `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
+    ) ?? [];
 
-  if (result.verification?.errors.length) {
-    lines.push(
-      "",
-      ...result.verification.errors.map(
-        (error) =>
-          `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
-      ),
-    );
-  }
+  return {
+    document: document(
+      section(rows(profileInspectRows(result.profile))),
+      section(rows(statusRows), ...(errors.length > 0 ? [text(errors)] : [])),
+    ),
+  };
+}
 
-  return lines.join("\n");
+export function formatProfileStatus(result: ProfileStatusResult): string {
+  return renderDisplayDocument(buildProfileStatusView(result).document).join("\n");
 }
 
 export function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {

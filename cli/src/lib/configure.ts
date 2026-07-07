@@ -1,38 +1,22 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
-import {
-  configDir,
-  configFile,
-  configGet,
-  configSet,
-  configUnset,
-  credentialsFile,
-  resolveApiBase,
-  resolveManagementApiBase,
-} from "@/lib/config.ts";
+import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   deriveProfileName,
-  getActiveProfileName,
   ensureProfileExists,
   listProfiles,
   profilesDir,
 } from "@/lib/profile.ts";
 import { getCliContext, setCliContext } from "@/context.ts";
-import { secretDelete, secretSet, secretStoreDisplay } from "@/lib/secrets.ts";
+import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   buildConfigureShowData,
-  configureCredentialStatus,
-  formatConfigureAuthenticationLines,
-  formatConfigureEnvOverrideLines,
-  formatConfigureSetupHints,
+  buildConfigureShowView,
+  renderConfigureShowView,
 } from "@/lib/configure-credential-status.ts";
-import {
-  formatTerminalLabelValue,
-  formatTerminalSection,
-  terminalMetadata,
-} from "@/lib/terminal-style.ts";
+import { formatTerminalSection, terminalMetadata } from "@/lib/terminal-style.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";
@@ -260,38 +244,9 @@ export function buildConfigureShowDataForProfile(profileOverride?: string) {
 }
 
 function configureRunShowInternal(profileOverride?: string): string {
-  const activeProfile = getActiveProfileName();
-  const displayProfile = profileOverride ?? getCliContext().profile ?? activeProfile;
-  const labelWidth = 17;
-  const indent = "  ";
-
-  const lines = [
-    formatTerminalLabelValue("Config dir:", configDir(), { indent, labelWidth }),
-    formatTerminalLabelValue("Active profile:", displayProfile, { indent, labelWidth }),
-    formatTerminalLabelValue("Secret store:", secretStoreDisplay(), { indent, labelWidth }),
-  ];
-
   return withProfileContextSync(profileOverride ?? getCliContext().profile, () => {
-    lines.push(
-      formatTerminalLabelValue("Data plane:", resolveApiBase(), {
-        indent,
-        labelWidth,
-        linkifyUrls: true,
-      }),
-      formatTerminalLabelValue("Control plane:", resolveManagementApiBase(), {
-        indent,
-        labelWidth,
-        linkifyUrls: true,
-      }),
-      "",
-    );
-
-    const credentialStatus = configureCredentialStatus();
-    lines.push(...formatConfigureAuthenticationLines({ indent, labelWidth }));
-    lines.push(...formatConfigureSetupHints(credentialStatus));
-    lines.push(...formatConfigureEnvOverrideLines(indent, labelWidth));
-
-    return formatTerminalSection(lines);
+    const data = buildConfigureShowData(profileOverride);
+    return formatTerminalSection(renderConfigureShowView(buildConfigureShowView(data)));
   });
 }
 

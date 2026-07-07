@@ -24,7 +24,7 @@ import {
   type ProfileStatusResult,
 } from "@/lib/profile-formatters.ts";
 import {
-  createAndActivateProfile,
+  createProfile,
   deleteProfile,
   deriveProfileName,
   exportProfile,
@@ -205,7 +205,9 @@ const profileCreateCommand = defineLocalCommand({
     };
   },
   local(input) {
-    return createAndActivateProfile(input.name, input.update);
+    createProfile(input.name, input.update);
+    setActiveProfile(input.name);
+    return inspectProfile(input.name);
   },
   present(profile) {
     return {

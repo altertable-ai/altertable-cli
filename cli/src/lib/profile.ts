@@ -402,12 +402,6 @@ export function inspectProfile(name: string): ProfileInspect {
   };
 }
 
-export function createAndActivateProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {
-  createProfile(name, update);
-  setActiveProfile(name);
-  return inspectProfile(name);
-}
-
 export function createProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {
   assertSafeProfileName(name);
   ensureProfilesLayout();
