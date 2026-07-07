@@ -10,9 +10,9 @@ import {
 } from "@/lib/oauth-profile.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
 import { configGet, configSet } from "@/lib/config.ts";
-import { secretSet } from "@/lib/secrets.ts";
+import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { ConfigurationError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
 
@@ -126,6 +126,52 @@ describe("ensureFreshAccessToken", () => {
     }
     expect(caught).toBeInstanceOf(ConfigurationError);
     expect(getStoredAccessToken()).toBe("");
+  });
+
+  test("keeps tokens and rethrows when refresh returns 404 (wrong URL, not a dead session)", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/oauth/token",
+          method: "POST",
+          status: 404,
+          body: "not found",
+        },
+      ]),
+    );
+    secretSet("oauth/access-token", "acc");
+    secretSet("oauth/refresh-token", "ref");
+    configSet("oauth_expiry", String(Date.now() - 1000));
+
+    let caught: unknown;
+    try {
+      await ensureFreshAccessToken();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(HttpError);
+    expect(getStoredAccessToken()).toBe("acc"); // session preserved
+    expect(secretGet("oauth/refresh-token")).toBe("ref");
+  });
+
+  test("keeps tokens and rethrows when the refresh fails with a network error", async () => {
+    // Bypass the mock harness so the refresh hits a real closed port.
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    process.env.ALTERTABLE_MANAGEMENT_API_BASE = "http://127.0.0.1:1";
+    secretSet("oauth/access-token", "acc");
+    secretSet("oauth/refresh-token", "ref");
+    configSet("oauth_expiry", String(Date.now() - 1000));
+
+    let caught: unknown;
+    try {
+      await ensureFreshAccessToken();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(NetworkError);
+    expect(getStoredAccessToken()).toBe("acc");
+    expect(secretGet("oauth/refresh-token")).toBe("ref");
   });
 });
 

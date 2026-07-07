@@ -11,15 +11,14 @@ import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management
 import { configureRunClear } from "@/lib/configure.ts";
 import { terminalSuccess } from "@/lib/terminal-style.ts";
 
+function isInteractiveTerminal(): boolean {
+  return process.stdin.isTTY;
+}
+
 export function assertInteractiveLogin(): void {
-  if (isJsonOutput(getCliContext())) {
+  if (isJsonOutput(getCliContext()) || !isInteractiveTerminal()) {
     throw new ConfigurationError(
-      "altertable login does not support --json or --agent; it needs an interactive browser sign-in.",
-    );
-  }
-  if (!process.stdin.isTTY) {
-    throw new ConfigurationError(
-      "altertable login needs an interactive terminal. For headless setups use 'altertable configure --api-key atm_xxx --env <name>'.",
+      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\nFor headless setups use 'altertable configure --api-key atm_xxx --env <name>'.",
     );
   }
 }

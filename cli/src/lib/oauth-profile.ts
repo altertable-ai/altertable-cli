@@ -1,6 +1,6 @@
 import { configGet, configSet, configUnset } from "@/lib/config.ts";
 import { secretDelete, secretGet, secretSet } from "@/lib/secrets.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { ConfigurationError, HttpError } from "@/lib/errors.ts";
 import { refreshAccessToken, type TokenResponse } from "@/lib/oauth-flow.ts";
 
 const ACCESS_TOKEN_ACCOUNT = "oauth/access-token";
@@ -50,11 +50,20 @@ export async function ensureFreshAccessToken(): Promise<void> {
   let oauthResponse: TokenResponse;
   try {
     oauthResponse = await refreshAccessToken(refreshToken);
-  } catch {
-    clearOAuthTokens();
-    throw new ConfigurationError(
-      "Your login session expired or was revoked. Run 'altertable login' to sign in again.",
-    );
+  } catch (error) {
+    // Only a rejected grant means the session is gone: the token endpoint returns
+    // 400 (invalid_grant — expired/revoked refresh token, RFC 6749 §5.2) or 401
+    // (invalid_client). Anything else — 403 (gateway/WAF block or suspended
+    // account), 404 (wrong control-plane URL), 429 (rate limited), 5xx,
+    // network/timeout — keeps the tokens and surfaces as-is so we don't wipe a
+    // valid session and print a misleading "expired" message.
+    if (error instanceof HttpError && (error.status === 400 || error.status === 401)) {
+      clearOAuthTokens();
+      throw new ConfigurationError(
+        "Your login session expired or was revoked. Run 'altertable login' to sign in again.",
+      );
+    }
+    throw error;
   }
   storeOAuthTokens(oauthResponse);
 }
