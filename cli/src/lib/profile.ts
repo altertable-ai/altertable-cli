@@ -3,7 +3,7 @@ import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { moveProfileSecrets, secretDelete } from "@/lib/secrets.ts";
+import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
 import { isCliRuntimeReady } from "@/lib/runtime.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
@@ -16,13 +16,78 @@ const PROFILE_SECRET_ACCOUNTS = [
   "oauth/refresh-token",
 ] as const;
 
+const PROFILE_EXPORT_VERSION = 1;
+const PROFILE_CONFIG_KEYS = [
+  "user",
+  "api_key_env",
+  "api_base",
+  "management_api_base",
+  "organization_slug",
+  "organization_name",
+  "description",
+  "created_at",
+  "updated_at",
+  "last_verified_at",
+  "oauth_expiry",
+] as const;
+
+type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
+
 export type ProfileSummary = {
   name: string;
   active: boolean;
   organization?: string;
   management_env?: string;
+  description?: string;
+  auth?: string;
+  status?: string;
   data_plane?: string;
   control_plane?: string;
+};
+
+export type ProfileUpdate = {
+  organizationSlug?: string;
+  organizationName?: string;
+  environment?: string;
+  description?: string;
+  dataPlane?: string;
+  controlPlane?: string;
+};
+
+export type ProfileInspect = {
+  name: string;
+  active: boolean;
+  config_file: string;
+  organization: {
+    slug?: string;
+    name?: string;
+  };
+  environment?: string;
+  description?: string;
+  endpoints: {
+    data_plane?: string;
+    control_plane?: string;
+  };
+  auth: {
+    management: "oauth" | "api_key" | "none";
+    lakehouse: "basic_token" | "username_password" | "none";
+  };
+  status: "configured" | "partial" | "empty";
+  timestamps: {
+    created_at?: string;
+    updated_at?: string;
+    last_verified_at?: string;
+    oauth_expires_at?: string;
+  };
+};
+
+export type ProfileExport = {
+  version: number;
+  profile: {
+    name: string;
+    config: Record<ProfileConfigKey, string | undefined>;
+  };
+  secrets_included: false;
 };
 
 export function profilesDir(): string {
@@ -88,6 +153,51 @@ export function deriveProfileName(org: string, env: string): string {
   const profileName = `${orgPart}_${envPart}`;
   assertSafeProfileName(profileName);
   return profileName;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function readProfileConfigRecord(name: string): Record<ProfileConfigKey, string | undefined> {
+  const config: Record<ProfileConfigKey, string | undefined> = {
+    user: undefined,
+    api_key_env: undefined,
+    api_base: undefined,
+    management_api_base: undefined,
+    organization_slug: undefined,
+    organization_name: undefined,
+    description: undefined,
+    created_at: undefined,
+    updated_at: undefined,
+    last_verified_at: undefined,
+    oauth_expiry: undefined,
+  };
+  for (const key of PROFILE_CONFIG_KEYS) {
+    config[key] = kvGet(profileConfigFile(name), key) || undefined;
+  }
+  return config;
+}
+
+function writeProfileUpdate(name: string, update: ProfileUpdate): void {
+  if (update.organizationSlug !== undefined) {
+    writeProfileConfig(name, "organization_slug", update.organizationSlug);
+  }
+  if (update.organizationName !== undefined) {
+    writeProfileConfig(name, "organization_name", update.organizationName);
+  }
+  if (update.environment !== undefined) {
+    writeProfileConfig(name, "api_key_env", update.environment);
+  }
+  if (update.description !== undefined) {
+    writeProfileConfig(name, "description", update.description);
+  }
+  if (update.dataPlane !== undefined) {
+    writeProfileConfig(name, "api_base", update.dataPlane);
+  }
+  if (update.controlPlane !== undefined) {
+    writeProfileConfig(name, "management_api_base", update.controlPlane);
+  }
 }
 
 export function profileConfigFile(name: string): string {
@@ -163,9 +273,191 @@ export function listProfiles(): ProfileSummary[] {
     active: name === active,
     organization: kvGet(profileConfigFile(name), "organization_slug") || undefined,
     management_env: kvGet(profileConfigFile(name), "api_key_env") || undefined,
+    description: kvGet(profileConfigFile(name), "description") || undefined,
+    auth: profileAuthSummary(name),
+    status: inspectProfile(name).status,
     data_plane: kvGet(profileConfigFile(name), "api_base") || undefined,
     control_plane: kvGet(profileConfigFile(name), "management_api_base") || undefined,
   }));
+}
+
+function profileAuthSummary(name: string): string {
+  const parts: string[] = [];
+  if (secretExists("oauth/access-token", name)) {
+    parts.push("oauth");
+  } else if (secretExists("api-key", name)) {
+    parts.push("api-key");
+  }
+  if (secretExists("lakehouse/basic-token", name)) {
+    parts.push("basic");
+  } else if (secretExists("lakehouse/password", name)) {
+    parts.push("user/pass");
+  }
+  return parts.join(", ") || "none";
+}
+
+function profileManagementAuth(name: string): ProfileInspect["auth"]["management"] {
+  if (secretExists("oauth/access-token", name)) {
+    return "oauth";
+  }
+  if (secretExists("api-key", name)) {
+    return "api_key";
+  }
+  return "none";
+}
+
+function profileLakehouseAuth(name: string): ProfileInspect["auth"]["lakehouse"] {
+  if (secretExists("lakehouse/basic-token", name)) {
+    return "basic_token";
+  }
+  if (secretExists("lakehouse/password", name)) {
+    return "username_password";
+  }
+  return "none";
+}
+
+function parseTimestampMs(raw: string | undefined): string | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const timestamp = Number.parseInt(raw, 10);
+  if (Number.isNaN(timestamp)) {
+    return undefined;
+  }
+  return new Date(timestamp).toISOString();
+}
+
+export function inspectProfile(name: string): ProfileInspect {
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (!profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+
+  const config = readProfileConfigRecord(name);
+  const management = profileManagementAuth(name);
+  const lakehouse = profileLakehouseAuth(name);
+  const hasMetadata = Object.values(config).some((value) => value !== undefined);
+  const hasAnyAuth = management !== "none" || lakehouse !== "none";
+  const status = hasAnyAuth ? "configured" : hasMetadata ? "partial" : "empty";
+
+  return {
+    name,
+    active: getActiveProfileName() === name,
+    config_file: profileConfigFile(name),
+    organization: {
+      slug: config.organization_slug,
+      name: config.organization_name,
+    },
+    environment: config.api_key_env,
+    description: config.description,
+    endpoints: {
+      data_plane: config.api_base,
+      control_plane: config.management_api_base,
+    },
+    auth: { management, lakehouse },
+    status,
+    timestamps: {
+      created_at: config.created_at,
+      updated_at: config.updated_at,
+      last_verified_at: config.last_verified_at,
+      oauth_expires_at: parseTimestampMs(config.oauth_expiry),
+    },
+  };
+}
+
+export function createProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (profileExists(name)) {
+    throw new ConfigurationError(`Profile already exists: ${name}`);
+  }
+  ensureProfileExists(name);
+  const createdAt = nowIso();
+  writeProfileConfig(name, "created_at", createdAt);
+  writeProfileConfig(name, "updated_at", createdAt);
+  writeProfileUpdate(name, update);
+  return inspectProfile(name);
+}
+
+export function updateProfile(name: string, update: ProfileUpdate): ProfileInspect {
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (!profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+  writeProfileUpdate(name, update);
+  writeProfileConfig(name, "updated_at", nowIso());
+  return inspectProfile(name);
+}
+
+export function exportProfile(name: string): ProfileExport {
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (!profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+  return {
+    version: PROFILE_EXPORT_VERSION,
+    profile: {
+      name,
+      config: readProfileConfigRecord(name),
+    },
+    secrets_included: false,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function parseProfileExport(value: unknown): ProfileExport {
+  if (!isRecord(value) || !isRecord(value.profile) || !isRecord(value.profile.config)) {
+    throw new ConfigurationError("Profile import file is not a valid Altertable profile export.");
+  }
+  const version = typeof value.version === "number" ? value.version : 0;
+  const name = typeof value.profile.name === "string" ? value.profile.name : "";
+  const config: Partial<Record<ProfileConfigKey, string | undefined>> = {};
+  for (const key of PROFILE_CONFIG_KEYS) {
+    const configValue = value.profile.config[key];
+    if (configValue !== undefined && typeof configValue !== "string") {
+      throw new ConfigurationError(`Profile import config value must be a string: ${key}`);
+    }
+    config[key] = configValue;
+  }
+  return {
+    version,
+    profile: {
+      name,
+      config: config as Record<ProfileConfigKey, string | undefined>,
+    },
+    secrets_included: false,
+  };
+}
+
+export function importProfile(exportedValue: unknown, targetName?: string): ProfileInspect {
+  const exported = parseProfileExport(exportedValue);
+  if (exported.version !== PROFILE_EXPORT_VERSION) {
+    throw new ConfigurationError(`Unsupported profile export version: ${exported.version}`);
+  }
+  const name = targetName ?? exported.profile.name;
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (profileExists(name)) {
+    throw new ConfigurationError(`Profile already exists: ${name}`);
+  }
+  ensureProfileExists(name);
+  for (const key of PROFILE_CONFIG_KEYS) {
+    const value = exported.profile.config[key];
+    if (value !== undefined) {
+      writeProfileConfig(name, key, value);
+    }
+  }
+  if (!readProfileConfig(name, "created_at")) {
+    writeProfileConfig(name, "created_at", nowIso());
+  }
+  writeProfileConfig(name, "updated_at", nowIso());
+  return inspectProfile(name);
 }
 
 export function renameProfile(source: string, target: string): void {

@@ -12,16 +12,21 @@ import {
 } from "@/lib/secrets.ts";
 import {
   DEFAULT_PROFILE_NAME,
+  createProfile,
   deleteProfile,
   deriveProfileName,
   ensureProfilesLayout,
+  exportProfile,
   getActiveProfileName,
+  importProfile,
+  inspectProfile,
   listProfiles,
   profileConfigFile,
   profileExists,
   renameProfile,
   resolveProfileName,
   setActiveProfile,
+  updateProfile,
 } from "@/lib/profile.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
@@ -95,6 +100,50 @@ describe("profile storage", () => {
     expect(listProfiles().find((profile) => profile.name === "acme_production")?.organization).toBe(
       "Acme",
     );
+  });
+
+  test("createProfile and updateProfile manage metadata without credentials", () => {
+    const created = createProfile("acme_prod", {
+      organizationSlug: "acme",
+      organizationName: "Acme Inc",
+      environment: "production",
+      description: "Acme production",
+      dataPlane: "https://api.example.com",
+      controlPlane: "https://app.example.com",
+    });
+
+    expect(created.name).toBe("acme_prod");
+    expect(created.status).toBe("partial");
+    expect(created.organization.slug).toBe("acme");
+    expect(created.environment).toBe("production");
+
+    const updated = updateProfile("acme_prod", { description: "Primary prod" });
+    expect(updated.description).toBe("Primary prod");
+    expect(inspectProfile("acme_prod").endpoints.data_plane).toBe("https://api.example.com");
+  });
+
+  test("inspectProfile reports profile-scoped auth status", async () => {
+    await configureRunSet({ profile: "acme_prod", apiKey: "atm_prod", env: "production" });
+    await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
+
+    const profile = inspectProfile("acme_prod");
+    expect(profile.status).toBe("configured");
+    expect(profile.auth.management).toBe("api_key");
+    expect(profile.auth.lakehouse).toBe("username_password");
+    expect(profile.timestamps.created_at).toBeTruthy();
+  });
+
+  test("exportProfile and importProfile copy config without secrets", async () => {
+    await configureRunSet({ profile: "acme_prod", org: "acme", apiKey: "atm_prod", env: "prod" });
+    const exported = exportProfile("acme_prod");
+
+    expect(exported.secrets_included).toBe(false);
+    expect(exported.profile.config.organization_slug).toBe("acme");
+    expect(JSON.stringify(exported)).not.toContain("atm_prod");
+
+    const imported = importProfile(exported, "acme_prod_copy");
+    expect(imported.organization.slug).toBe("acme");
+    expect(secretGet("api-key", "acme_prod_copy")).toBe("");
   });
 
   test("configure creates implicit profile directories", async () => {

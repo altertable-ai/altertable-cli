@@ -2,6 +2,7 @@ import { unlinkSync, rmSync, existsSync } from "node:fs";
 import {
   configDir,
   configFile,
+  configGet,
   configSet,
   configUnset,
   credentialsFile,
@@ -57,6 +58,14 @@ export type ConfigureOptions = {
 };
 
 const AUTO_PROFILE_NAME = "auto";
+
+function markCurrentProfileUpdated(): void {
+  const timestamp = new Date().toISOString();
+  if (!configGet("created_at")) {
+    configSet("created_at", timestamp);
+  }
+  configSet("updated_at", timestamp);
+}
 
 function resolveConfigureProfile(options: ConfigureOptions): string | undefined {
   const explicitProfile = options.profile;
@@ -233,6 +242,7 @@ export async function configureRunSet(
     } else if (hasLakehouse) {
       sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
     }
+    markCurrentProfileUpdated();
   });
 }
 

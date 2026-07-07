@@ -6,9 +6,9 @@ import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineLocalCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
 import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
+import { formatInfoList } from "@/lib/info-list.ts";
 import {
   formatTerminalMarkdownLinks,
-  formatTerminalLabelValue,
   terminalAccent,
   terminalSubtle,
   terminalSuccess,
@@ -219,16 +219,17 @@ function formatInstallMessage(result: InstallResult): string {
 
   const lines = [
     `${terminalSuccess("✓")} Shell completion installed`,
-    formatTerminalLabelValue("Shell:", result.shell, { labelWidth, indent: "  " }),
-    formatTerminalLabelValue("Script:", terminalAccent(result.completionPath), {
-      labelWidth,
-      indent: "  ",
-    }),
-    formatTerminalLabelValue("Startup:", startup, { labelWidth, indent: "  " }),
-    formatTerminalLabelValue("Next:", next, { labelWidth, indent: "  " }),
-    formatTerminalLabelValue(
-      "Docs:",
-      formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+    formatInfoList(
+      [
+        { label: "Shell", value: result.shell },
+        { label: "Script", value: terminalAccent(result.completionPath) },
+        { label: "Startup", value: startup },
+        { label: "Next", value: next },
+        {
+          label: "Docs",
+          value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+        },
+      ],
       { labelWidth, indent: "  " },
     ),
   ];

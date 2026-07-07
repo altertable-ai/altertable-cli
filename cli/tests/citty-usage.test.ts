@@ -57,6 +57,22 @@ describe("renderAltertableUsage", () => {
     expect(usage).toContain("altertable demo --flag value");
   });
 
+  test("hides advanced subcommands from summary usage", async () => {
+    const command = defineAltertableCommand({
+      meta: { name: "demo", description: "Demo command." },
+      subCommands: {
+        visible: { meta: { name: "visible", description: "Visible command" } },
+        advanced: {
+          meta: { name: "advanced", description: "Advanced command", hidden: true },
+        },
+      },
+    });
+
+    const usage = await renderAltertableUsage(command);
+    expect(usage).toContain("visible");
+    expect(usage).not.toContain("advanced");
+  });
+
   test("resolves api command examples for unknown endpoint errors", async () => {
     const main = buildMainCommand();
     const [command] = await resolveSubCommandForUsage(main, ["api", "/environments/production"]);

@@ -233,7 +233,7 @@ altertable configure --profile acme_prod --api-key atm_yyy --env production
 altertable configure --profile auto
 
 # Switch active profile
-altertable profile switch acme_staging
+altertable profile use acme_staging
 
 # Use a profile for one command
 altertable --profile acme_production context
@@ -242,10 +242,28 @@ altertable --profile acme_production context
 export ALTERTABLE_PROFILE=acme_staging
 altertable profile list
 altertable profile current
-altertable profile show acme_staging
+altertable profile show --name acme_staging
+```
+
+Advanced profile commands are available for metadata-only profiles, automation, and sharing non-secret configuration:
+
+```bash
+# Create or update metadata without writing credentials
+altertable profile create acme_production --org acme --env production --description "Acme production"
+altertable profile update acme_production --description "Primary production environment"
+
+# Inspect metadata, endpoint overrides, and auth status
+altertable profile inspect --name acme_staging
+
+# Print a shell snippet for direnv or manual use
+altertable profile env acme_staging
 
 # Rename a profile
 altertable profile rename acme_staging acme_stage
+
+# Export/import metadata without secrets
+altertable profile export acme_stage > acme_stage.profile.json
+altertable profile import acme_stage.profile.json --name acme_stage_copy
 ```
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
@@ -253,7 +271,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Scope                              | Keys                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name` |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry` |
 
 ### Credential precedence
 

@@ -47,5 +47,28 @@ OUT="$("${CLI}" profile current 2>/dev/null)"
 echo "${OUT}" | grep -Fxq 'acme_stage' || fail "profile rename should carry active profile"
 pass "profile rename moves the active profile"
 
+"${CLI}" profile create globex_dev --org globex --env dev --description "Globex dev" >/dev/null 2>&1
+OUT="$("${CLI}" profile inspect --name globex_dev 2>/dev/null)"
+echo "${OUT}" | grep -Fq 'Globex dev' || fail "profile inspect should show description"
+echo "${OUT}" | grep -Fq 'partial' || fail "profile inspect should show partial status"
+pass "profile create and inspect manage metadata"
+
+"${CLI}" profile update globex_dev --description "Globex development" >/dev/null 2>&1
+OUT="$("${CLI}" profile inspect --name globex_dev 2>/dev/null)"
+echo "${OUT}" | grep -Fq 'Globex development' || fail "profile update should change description"
+pass "profile update changes metadata"
+
+EXPORT_FILE="${TEST_HOME}/globex_dev.profile.json"
+"${CLI}" profile export globex_dev >"${EXPORT_FILE}" 2>/dev/null
+if grep -q 'atm_' "${EXPORT_FILE}"; then fail "profile export must not include secrets"; fi
+"${CLI}" profile import "${EXPORT_FILE}" --name globex_dev_copy >/dev/null 2>&1
+OUT="$("${CLI}" profile inspect --name globex_dev_copy 2>/dev/null)"
+echo "${OUT}" | grep -Fq 'Globex development' || fail "profile import should restore metadata"
+pass "profile export/import copies metadata without secrets"
+
+OUT="$("${CLI}" profile env globex_dev 2>/dev/null)"
+echo "${OUT}" | grep -Fxq 'export ALTERTABLE_PROFILE="globex_dev"' || fail "profile env should print shell export"
+pass "profile env prints shell export"
+
 echo ""
 echo -e "${GREEN}All profile tests passed.${NC}"

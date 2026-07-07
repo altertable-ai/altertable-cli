@@ -63,6 +63,9 @@ function extractFlags(command: CommandDef): CompletionFlag[] {
 
 function resolveSubcommandName(_key: string, command: CommandDef): string | undefined {
   const meta = command.meta;
+  if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
+    return undefined;
+  }
   if (meta && typeof meta === "object" && "name" in meta && meta.name) {
     return String(meta.name);
   }

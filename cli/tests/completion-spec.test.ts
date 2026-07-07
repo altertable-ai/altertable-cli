@@ -64,6 +64,18 @@ describe("buildCompletionSpec", () => {
     expect(flattenTopLevelNames(spec)).toEqual(["visible"]);
   });
 
+  test("skips commands marked hidden", () => {
+    const root: CommandDef = {
+      subCommands: {
+        visible: { meta: { name: "visible" } },
+        hidden: { meta: { name: "hidden", hidden: true } },
+      },
+    };
+
+    const spec = buildCompletionSpec(root);
+    expect(flattenTopLevelNames(spec)).toEqual(["visible"]);
+  });
+
   test("real root command includes expected top-level and nested commands", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const catalogs = findNode(spec, "catalogs");

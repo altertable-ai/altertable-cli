@@ -113,6 +113,31 @@ async function resolveCommandExamples(command: CommandDef): Promise<readonly str
   return meta.examples ?? [];
 }
 
+async function isHiddenCommand(command: CommandDef): Promise<boolean> {
+  const meta = await resolveCommandMeta(command);
+  return meta.hidden === true;
+}
+
+async function commandForVisibleUsage(command: CommandDef): Promise<CommandDef> {
+  const subCommands = await resolveValue(command.subCommands);
+  if (!subCommands || Object.keys(subCommands).length === 0) {
+    return command;
+  }
+
+  const visibleEntries: [string, CommandDef][] = [];
+  for (const [name, subCommand] of Object.entries(subCommands)) {
+    const resolved = await resolveValue(subCommand);
+    if (!(await isHiddenCommand(resolved))) {
+      visibleEntries.push([name, resolved]);
+    }
+  }
+
+  return {
+    ...command,
+    subCommands: Object.fromEntries(visibleEntries),
+  };
+}
+
 const ROOT_COMMAND_NAME = "altertable";
 const ANSI_FOREGROUND_RESET = `${String.fromCharCode(27)}[39m`;
 
@@ -182,7 +207,8 @@ export async function renderAltertableUsage(
   command: CommandDef,
   parent?: CommandDef,
 ): Promise<string> {
-  const usage = stripCittyDescriptionSuffix(await renderUsage(command, parent));
+  const usageCommand = await commandForVisibleUsage(command);
+  const usage = stripCittyDescriptionSuffix(await renderUsage(usageCommand, parent));
   const meta = await resolveCommandMeta(command);
   const contextSummary = shouldShowActiveContextOnUsage(meta)
     ? tryFormatActiveContextSummary(getCliContext().profile)

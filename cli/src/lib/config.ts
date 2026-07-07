@@ -22,6 +22,11 @@ const PROFILE_SCOPED_KEYS = new Set([
   "management_api_base",
   "organization_slug",
   "organization_name",
+  "description",
+  "created_at",
+  "updated_at",
+  "last_verified_at",
+  "oauth_expiry",
 ]);
 
 function isProfileScopedKey(key: string): boolean {
