@@ -6,7 +6,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
-import { VERSION } from "@/version.ts";
+import { USER_AGENT, VERSION } from "@/version.ts";
 import { configDir, configGet, configSet } from "@/lib/config.ts";
 import { urlencode } from "@/lib/encode.ts";
 import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
@@ -417,7 +417,7 @@ async function fetchResponse(
     response = await fetchImpl(url, {
       headers: {
         Accept: "application/json",
-        "User-Agent": `altertable-cli/${VERSION}`,
+        "User-Agent": USER_AGENT,
       },
       signal: AbortSignal.timeout(timeoutMs),
     });

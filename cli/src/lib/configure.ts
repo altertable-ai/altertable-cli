@@ -105,6 +105,7 @@ function configureClearLakehouseCredentials(profileName?: string): void {
   secretDelete("lakehouse/password", profileName);
   secretDelete("lakehouse/basic-token", profileName);
   configUnset("user");
+  configUnset("lakehouse_credential_expiry");
 }
 
 function configureClearManagementCredentials(profileName?: string): void {
@@ -184,8 +185,8 @@ export async function configureRunSet(
         "Choose a single authentication mechanism per configure invocation: lakehouse credentials or --api-key.",
       );
     }
-    if ((dataPlaneUrl || controlPlaneUrl) && !hasAnyCredential) {
-      throw new CliError("endpoint flags must be set together with a credential.");
+    if (controlPlaneUrl && !hasAnyCredential) {
+      throw new CliError("--control-plane-url must be set together with a credential.");
     }
     if (env && !hasApiKey) {
       throw new CliError("--env applies only to --api-key.");
@@ -193,7 +194,7 @@ export async function configureRunSet(
     if (org && !hasApiKey) {
       throw new CliError("--org applies only to --api-key.");
     }
-    if (!hasAnyCredential) {
+    if (!hasAnyCredential && !dataPlaneUrl) {
       throw new CliError(
         "Nothing to configure. Use --user/--password, --basic-token, or --api-key --env <name>.",
       );
@@ -241,6 +242,8 @@ export async function configureRunSet(
       sink.writeMetadata([terminalMetadata("Saved lakehouse Basic token.")]);
     } else if (hasLakehouse) {
       sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
+    } else if (dataPlaneUrl) {
+      sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);
     }
     markCurrentProfileUpdated();
   });

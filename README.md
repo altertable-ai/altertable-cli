@@ -128,10 +128,10 @@ Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable
 
 The CLI talks to two independent APIs with separate auth schemes:
 
-| Plane                    | Purpose                               | Auth           |
-| ------------------------ | ------------------------------------- | -------------- |
-| **Management (control)** | `context`, `catalogs`                 | Bearer API key |
-| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic     |
+| Plane                    | Purpose                               | Auth                    |
+| ------------------------ | ------------------------------------- | ----------------------- |
+| **Management (control)** | `context`, `catalogs`                 | Browser OAuth or API key |
+| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic              |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
@@ -146,6 +146,7 @@ altertable configure lakehouse
 # Non-interactive (scripts/CI)
 altertable configure --api-key atm_xxxx --env production
 altertable configure --user your_username --password your_password
+altertable configure --data-plane-url https://api.example.com
 altertable configure --show
 
 # Verify after flag-based configure
@@ -192,7 +193,7 @@ printf '%s' 'your_password' | altertable configure --user your_username --passwo
 printf '%s' "$KEY" | altertable configure --api-key-stdin --env production
 ```
 
-Plane URLs default to HTTPS. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
+Plane URLs default to HTTPS. `--data-plane-url` can be saved by itself without changing credentials; `--control-plane-url` must be saved with a management credential so failed login/configure attempts do not leave a stale control-plane override. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
 
 Or via environment variables:
 
@@ -289,7 +290,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Scope                              | Keys                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `principal_type`, `principal_name`, `principal_email`, `principal_slug`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry` |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name`, `principal_type`, `principal_name`, `principal_email`, `principal_slug`, `description`, `created_at`, `updated_at`, `last_verified_at`, `oauth_expiry`, `lakehouse_credential_expiry` |
 
 ### Credential precedence
 

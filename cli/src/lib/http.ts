@@ -1,6 +1,6 @@
 import { appendFileSync } from "node:fs";
 import { getCliContext, getConnectTimeoutMs } from "@/context.ts";
-import { VERSION } from "@/version.ts";
+import { USER_AGENT } from "@/version.ts";
 import { CliError, HttpError, NetworkError, TimeoutError, type AuthPlane } from "@/lib/errors.ts";
 import { logDebug } from "@/lib/log.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
@@ -41,6 +41,7 @@ export type HttpStreamOptions = HttpSendOptions & {
 type MockHttpEntry = {
   urlPattern: string;
   method?: string;
+  authPattern?: string;
   status?: number;
   body: string;
   chunked?: boolean;
@@ -168,7 +169,8 @@ function findMatchingMock(
   const matchingMocks = mocks.filter((mock) => {
     const urlMatches = options.url.includes(mock.urlPattern);
     const methodMatches = !mock.method || mock.method === options.method;
-    return urlMatches && methodMatches;
+    const authMatches = !mock.authPattern || options.authHeader.includes(mock.authPattern);
+    return urlMatches && methodMatches && authMatches;
   });
 
   if (matchingMocks.length === 0) {
@@ -363,7 +365,7 @@ export function buildRequestHeaders(options: HttpSendOptions): Record<string, st
     headers[authName] = authValue;
   }
 
-  headers["User-Agent"] = `altertable-cli/${VERSION}`;
+  headers["User-Agent"] = USER_AGENT;
   Object.assign(headers, options.extraHeaders);
 
   if (options.contentType) {

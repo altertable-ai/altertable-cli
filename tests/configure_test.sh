@@ -211,12 +211,19 @@ teardown_http_log
 [[ "${URL}" == "http://localhost:13000/rest/v1/whoami" ]] || fail "endpoints: expected stored root + /rest/v1/whoami, got '${URL}'"
 pass "a stored control-plane root resolves to <root>/rest/v1"
 
-# ── endpoint flag without a credential errors ──
+# ── control-plane flag without a credential errors ──
 rm -f "${CONFIG_FILE}" "${CRED_FILE}"
 rm -rf "${TEST_HOME}/profiles"
-ERR="$("${CLI}" configure --data-plane-url http://x 2>&1 >/dev/null)"
-echo "${ERR}" | grep -Fq "endpoint flags must be set together with a credential." || fail "endpoints: standalone endpoint should error, got '${ERR}'"
-pass "an endpoint flag without a credential is rejected"
+ERR="$("${CLI}" configure --control-plane-url http://localhost:13000 2>&1 >/dev/null)"
+echo "${ERR}" | grep -Fq -- "--control-plane-url must be set together with a credential." || fail "endpoints: standalone --control-plane-url should error, got '${ERR}'"
+pass "--control-plane-url without a credential is rejected"
+
+# ── standalone data-plane URL is stored without a credential ──
+rm -f "${CONFIG_FILE}" "${CRED_FILE}"
+rm -rf "${TEST_HOME}/profiles"
+"${CLI}" configure --data-plane-url http://localhost:15000 >/dev/null 2>&1
+grep -q '^api_base=http://localhost:15000$' "${PROFILE_CONFIG}" || fail "endpoints: standalone --data-plane-url should store api_base"
+pass "a standalone --data-plane-url is stored without a credential"
 
 # ── omitting an endpoint resets it to the default (override model) ──
 rm -f "${CONFIG_FILE}" "${CRED_FILE}"

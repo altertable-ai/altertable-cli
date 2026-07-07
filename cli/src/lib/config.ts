@@ -31,6 +31,7 @@ const PROFILE_SCOPED_KEYS = new Set([
   "updated_at",
   "last_verified_at",
   "oauth_expiry",
+  "lakehouse_credential_expiry",
 ]);
 
 function isProfileScopedKey(key: string): boolean {

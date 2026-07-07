@@ -198,7 +198,7 @@ export const configureCommand = defineLocalCommand({
     "data-plane-url": {
       type: "string",
       description:
-        "Data-plane base URL (stored with the credential; default: https://api.altertable.ai)",
+        "Data-plane base URL; can be set alone or with a credential (default: https://api.altertable.ai)",
     },
     "control-plane-url": {
       type: "string",

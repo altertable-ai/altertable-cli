@@ -33,6 +33,7 @@ const PROFILE_CONFIG_KEYS = [
   "updated_at",
   "last_verified_at",
   "oauth_expiry",
+  "lakehouse_credential_expiry",
 ] as const;
 
 export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];

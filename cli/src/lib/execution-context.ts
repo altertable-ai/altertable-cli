@@ -28,7 +28,7 @@ const PLANE_AUTH_RESOLVERS = {
   management: getManagementAuthHeader,
 } satisfies Record<AuthPlane, () => string>;
 
-function optionalAuth(resolve: () => string): string | undefined {
+export function optionalAuth(resolve: () => string): string | undefined {
   try {
     return resolve();
   } catch (error) {
