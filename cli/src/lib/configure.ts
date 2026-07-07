@@ -10,6 +10,7 @@ import {
 } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
+  deriveProfileName,
   getActiveProfileName,
   ensureProfileExists,
   listProfiles,
@@ -46,6 +47,7 @@ export type ConfigureOptions = {
   dataPlaneUrl?: string;
   controlPlaneUrl?: string;
   profile?: string;
+  org?: string;
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
@@ -53,6 +55,25 @@ export type ConfigureOptions = {
   /** Secrets collected via the interactive wizard (not CLI flags). */
   interactive?: boolean;
 };
+
+const AUTO_PROFILE_NAME = "auto";
+
+function resolveConfigureProfile(options: ConfigureOptions): string | undefined {
+  const explicitProfile = options.profile;
+  const org = options.org ?? "";
+  const env = options.env ?? "";
+
+  if (explicitProfile && explicitProfile !== AUTO_PROFILE_NAME) {
+    return explicitProfile;
+  }
+  if (org && env) {
+    return deriveProfileName(org, env);
+  }
+  if (explicitProfile === AUTO_PROFILE_NAME) {
+    throw new CliError("--profile auto requires --org and --env when using credential flags.");
+  }
+  return undefined;
+}
 
 export async function withConfigureProfileContext<T>(
   profileName: string | undefined,
@@ -96,7 +117,7 @@ export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),
 ): Promise<void> {
-  return withConfigureProfileContext(options.profile, async () => {
+  return withConfigureProfileContext(resolveConfigureProfile(options), async () => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -104,6 +125,7 @@ export async function configureRunSet(
     const env = options.env ?? "";
     const dataPlaneUrl = options.dataPlaneUrl ?? "";
     const controlPlaneUrl = options.controlPlaneUrl ?? "";
+    const org = options.org ?? "";
     const allowInsecureHttp = options.allowInsecureHttp ?? false;
 
     const passwordFromArgv =
@@ -159,6 +181,9 @@ export async function configureRunSet(
     if (env && !hasApiKey) {
       throw new CliError("--env applies only to --api-key.");
     }
+    if (org && !hasApiKey) {
+      throw new CliError("--org applies only to --api-key.");
+    }
     if (!hasAnyCredential) {
       throw new CliError(
         "Nothing to configure. Use --user/--password, --basic-token, or --api-key --env <name>.",
@@ -175,6 +200,9 @@ export async function configureRunSet(
       configureClearManagementCredentials();
       secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
       configSet("api_key_env", env);
+      if (org) {
+        configSet("organization_slug", org);
+      }
     }
     if (hasToken) {
       configureClearLakehouseCredentials();

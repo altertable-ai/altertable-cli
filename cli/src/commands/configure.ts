@@ -22,6 +22,7 @@ type ConfigureCommandArgs = {
   "basic-token"?: string;
   "api-key"?: string;
   env?: string;
+  org?: string;
   "password-stdin"?: boolean;
   "api-key-stdin"?: boolean;
   show?: boolean;
@@ -39,6 +40,10 @@ const configurePlaneArgs = {
     type: "string",
     description: "Profile to configure (default: active profile)",
   },
+  org: {
+    type: "string",
+    description: "Organization slug for auto-naming profiles as <org>_<env>",
+  },
   verify: { type: "boolean", description: "Verify credentials after saving" },
   "no-verify": { type: "boolean", description: "Skip verification" },
   "allow-insecure-http": {
@@ -54,6 +59,7 @@ function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
     basicToken: args["basic-token"],
     apiKey: args["api-key"],
     env: args.env,
+    org: args.org,
     passwordStdin: args["password-stdin"],
     apiKeyStdin: args["api-key-stdin"],
     dataPlaneUrl: args["data-plane-url"],
@@ -84,6 +90,7 @@ async function runConfigureWizardFromArgs(
   await runConfigureWizard({
     scope,
     profile: options.profile,
+    org: options.org,
     verify: args.verify,
     noVerify: args["no-verify"],
     allowInsecureHttp: options.allowInsecureHttp,
@@ -172,6 +179,10 @@ export const configureCommand = defineLocalCommand({
     env: {
       type: "string",
       description: "Target environment (management API keys are per-environment)",
+    },
+    org: {
+      type: "string",
+      description: "Organization slug for auto-naming profiles as <org>_<env>",
     },
     "password-stdin": { type: "boolean", description: "Read the lakehouse password from stdin" },
     "api-key-stdin": { type: "boolean", description: "Read the management API key from stdin" },

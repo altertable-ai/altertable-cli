@@ -13,11 +13,13 @@ import {
 import {
   DEFAULT_PROFILE_NAME,
   deleteProfile,
+  deriveProfileName,
   ensureProfilesLayout,
   getActiveProfileName,
   listProfiles,
   profileConfigFile,
   profileExists,
+  renameProfile,
   resolveProfileName,
   setActiveProfile,
 } from "@/lib/profile.ts";
@@ -77,6 +79,24 @@ describe("resolveProfileName", () => {
 });
 
 describe("profile storage", () => {
+  test("derives safe org_env profile names", () => {
+    expect(deriveProfileName("Acme Inc.", "Production")).toBe("acme-inc_production");
+    expect(deriveProfileName("acme", "prod/eu")).toBe("acme_prod-eu");
+  });
+
+  test("configure --org derives profile name and stores organization metadata", async () => {
+    await configureRunSet({ org: "Acme", apiKey: "atm_prod", env: "Production" });
+
+    expect(profileExists("acme_production")).toBe(true);
+    setCliContext({ debug: false, json: false, agent: false, profile: "acme_production" });
+    expect(configGet("api_key_env")).toBe("Production");
+    expect(configGet("organization_slug")).toBe("Acme");
+    expect(secretGet("api-key")).toBe("atm_prod");
+    expect(listProfiles().find((profile) => profile.name === "acme_production")?.organization).toBe(
+      "Acme",
+    );
+  });
+
   test("configure creates implicit profile directories", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
@@ -149,6 +169,19 @@ describe("profile storage", () => {
       process.env.ALTERTABLE_SECRET_BACKEND = "file";
       setSpawnSyncForTests(undefined);
     }
+  });
+
+  test("renameProfile moves profile config, active profile, and secrets", async () => {
+    await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
+    setActiveProfile("staging");
+
+    renameProfile("staging", "acme_staging");
+
+    expect(profileExists("staging")).toBe(false);
+    expect(profileExists("acme_staging")).toBe(true);
+    expect(getActiveProfileName()).toBe("acme_staging");
+    expect(secretGet("api-key", "acme_staging")).toBe("atm_staging");
+    expect(secretGet("api-key", "staging")).toBe("");
   });
 
   test("rejects path traversal profile names", () => {

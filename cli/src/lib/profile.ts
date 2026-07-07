@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { secretDelete } from "@/lib/secrets.ts";
+import { moveProfileSecrets, secretDelete } from "@/lib/secrets.ts";
 import { isCliRuntimeReady } from "@/lib/runtime.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
@@ -19,6 +19,7 @@ const PROFILE_SECRET_ACCOUNTS = [
 export type ProfileSummary = {
   name: string;
   active: boolean;
+  organization?: string;
   management_env?: string;
   data_plane?: string;
   control_plane?: string;
@@ -29,6 +30,8 @@ export function profilesDir(): string {
 }
 
 const SAFE_PROFILE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
+const PROFILE_NAME_PART_PATTERN = /[^a-z0-9._-]+/g;
+const PROFILE_NAME_SEPARATOR_PATTERN = /[._-]{2,}/g;
 
 export function assertSafeProfileName(name: string): void {
   if (name.length === 0) {
@@ -62,6 +65,29 @@ export function assertSafeProfileName(name: string): void {
 function profileDir(name: string): string {
   assertSafeProfileName(name);
   return join(profilesDir(), name);
+}
+
+function normalizeProfileNamePart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(PROFILE_NAME_PART_PATTERN, "-")
+    .replace(PROFILE_NAME_SEPARATOR_PATTERN, "-")
+    .replace(/^[._-]+/, "")
+    .replace(/[._-]+$/, "");
+}
+
+export function deriveProfileName(org: string, env: string): string {
+  const orgPart = normalizeProfileNamePart(org);
+  const envPart = normalizeProfileNamePart(env);
+  if (!orgPart || !envPart) {
+    throw new ConfigurationError(
+      "Profile auto-naming requires non-empty organization and environment values.",
+    );
+  }
+  const profileName = `${orgPart}_${envPart}`;
+  assertSafeProfileName(profileName);
+  return profileName;
 }
 
 export function profileConfigFile(name: string): string {
@@ -135,10 +161,35 @@ export function listProfiles(): ProfileSummary[] {
   return names.map((name) => ({
     name,
     active: name === active,
+    organization: kvGet(profileConfigFile(name), "organization_slug") || undefined,
     management_env: kvGet(profileConfigFile(name), "api_key_env") || undefined,
     data_plane: kvGet(profileConfigFile(name), "api_base") || undefined,
     control_plane: kvGet(profileConfigFile(name), "management_api_base") || undefined,
   }));
+}
+
+export function renameProfile(source: string, target: string): void {
+  assertSafeProfileName(source);
+  assertSafeProfileName(target);
+  ensureProfilesLayout();
+
+  if (source === target) {
+    return;
+  }
+  if (!profileExists(source)) {
+    throw new ConfigurationError(`Profile not found: ${source}`);
+  }
+  if (profileExists(target)) {
+    throw new ConfigurationError(`Profile already exists: ${target}`);
+  }
+
+  const active = getActiveProfileName();
+  renameSync(profileDir(source), profileDir(target));
+  moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+
+  if (active === source) {
+    setActiveProfile(target);
+  }
 }
 
 export function deleteProfile(name: string): void {

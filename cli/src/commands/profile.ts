@@ -13,6 +13,7 @@ import {
   getActiveProfileName,
   listProfiles,
   profileExists,
+  renameProfile,
   setActiveProfile,
 } from "@/lib/profile.ts";
 
@@ -38,6 +39,11 @@ const profileListCommand = defineValueCommand({
       [
         { header: "NAME", cell: (profile) => profile.name, style: "strong" },
         { header: "ACTIVE", cell: (profile) => (profile.active ? "*" : ""), style: "subtle" },
+        {
+          header: "ORG",
+          cell: (profile) => profile.organization ?? "",
+          style: "muted",
+        },
         {
           header: "ENV",
           cell: (profile) => profile.management_env ?? "",
@@ -87,27 +93,78 @@ const profileShowCommand = defineValueCommand({
   },
 });
 
-const profileUseCommand = defineLocalCommand({
-  id: "profile.use",
-  mutates: true,
-  localConfig: true,
+function createProfileUseCommand(id: string, name: string) {
+  return defineLocalCommand({
+    id,
+    mutates: true,
+    localConfig: true,
+    output: "normalized",
+    meta: { name, description: "Set the active profile" },
+    args: {
+      name: { type: "positional", description: "Profile name", required: true },
+    },
+    parse({ args }) {
+      return requireProfileName(args.name);
+    },
+    local(profileName) {
+      setActiveProfile(profileName);
+      return profileName;
+    },
+    present(profileName) {
+      return {
+        kind: "ack",
+        data: { active_profile: profileName },
+        metadataMessage: `Active profile set to ${profileName}.`,
+      };
+    },
+  });
+}
+
+const profileUseCommand = createProfileUseCommand("profile.use", "use");
+const profileSwitchCommand = createProfileUseCommand("profile.switch", "switch");
+
+const profileCurrentCommand = defineValueCommand({
+  id: "profile.current",
+  capabilities: ["local-config"],
   output: "normalized",
-  meta: { name: "use", description: "Set the active profile" },
-  args: {
-    name: { type: "positional", description: "Profile name", required: true },
-  },
-  parse({ args }) {
-    return requireProfileName(args.name);
-  },
-  local(profileName) {
-    setActiveProfile(profileName);
-    return profileName;
+  meta: { name: "current", description: "Show the active profile name" },
+  value() {
+    return getActiveProfileName();
   },
   present(profileName) {
     return {
-      kind: "ack",
+      kind: "normalized",
       data: { active_profile: profileName },
-      metadataMessage: `Active profile set to ${profileName}.`,
+      humanText: profileName,
+    };
+  },
+});
+
+const profileRenameCommand = defineLocalCommand({
+  id: "profile.rename",
+  mutates: true,
+  localConfig: true,
+  output: "normalized",
+  meta: { name: "rename", description: "Rename a profile" },
+  args: {
+    from: { type: "positional", description: "Current profile name", required: true },
+    to: { type: "positional", description: "New profile name", required: true },
+  },
+  parse({ args }) {
+    return {
+      from: requireProfileName(args.from),
+      to: requireProfileName(args.to),
+    };
+  },
+  local(input) {
+    renameProfile(input.from, input.to);
+    return input;
+  },
+  present(input) {
+    return {
+      kind: "ack",
+      data: { renamed: true, from: input.from, to: input.to },
+      metadataMessage: `Renamed profile ${input.from} to ${input.to}.`,
     };
   },
 });
@@ -150,6 +207,8 @@ export const profileCommand = defineGroupCommand({
     examples: [
       "altertable profile list",
       "altertable profile use staging",
+      "altertable profile switch acme_prod",
+      "altertable profile current",
       "altertable profile show production",
     ],
   },
@@ -157,6 +216,9 @@ export const profileCommand = defineGroupCommand({
     list: profileListCommand,
     show: profileShowCommand,
     use: profileUseCommand,
+    switch: profileSwitchCommand,
+    current: profileCurrentCommand,
+    rename: profileRenameCommand,
     delete: profileDeleteCommand,
   },
 });

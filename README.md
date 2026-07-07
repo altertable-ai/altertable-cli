@@ -219,21 +219,33 @@ Rules for updating credentials:
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
+Profile names can be provided explicitly, or derived from an organization slug and environment as `<org>_<env>`. Derived names are normalized to lowercase safe profile names, for example `Acme` + `Production` becomes `acme_production`.
+
 ```bash
-# Set up multiple environments
-altertable configure --profile staging --api-key atm_xxx --env staging
-altertable configure --profile production --api-key atm_yyy --env production
+# Set up multiple environments with org_env profile names
+altertable configure --org acme --api-key atm_xxx --env staging
+altertable configure --org acme --api-key atm_yyy --env production
+
+# Or provide an explicit profile name
+altertable configure --profile acme_prod --api-key atm_yyy --env production
+
+# Interactive setup can derive the profile after asking for org and env
+altertable configure --profile auto
 
 # Switch active profile
-altertable profile use staging
+altertable profile switch acme_staging
 
 # Use a profile for one command
-altertable --profile production context
+altertable --profile acme_production context
 
 # Inspect profiles
-export ALTERTABLE_PROFILE=staging
+export ALTERTABLE_PROFILE=acme_staging
 altertable profile list
-altertable profile show staging
+altertable profile current
+altertable profile show acme_staging
+
+# Rename a profile
+altertable profile rename acme_staging acme_stage
 ```
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
@@ -241,7 +253,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Scope                              | Keys                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`                                    |
+| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`, `organization_slug`, `organization_name` |
 
 ### Credential precedence
 

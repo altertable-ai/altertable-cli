@@ -192,6 +192,21 @@ export function secretDelete(account: string, profileName?: string): void {
   kvUnset(credentialsFile(), storageAccount);
 }
 
+export function moveProfileSecrets(
+  sourceProfile: string,
+  targetProfile: string,
+  accounts: readonly string[],
+): void {
+  for (const account of accounts) {
+    const value = secretGet(account, sourceProfile);
+    if (value.length === 0) {
+      continue;
+    }
+    secretSet(account, value, targetProfile);
+    secretDelete(account, sourceProfile);
+  }
+}
+
 export function secretStoreDisplay(): string {
   return secretBackend() === "macos" ? "MacOS keychain" : credentialsFile();
 }

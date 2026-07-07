@@ -205,6 +205,41 @@ describe("runConfigureWizard", () => {
     }
   });
 
+  test("auto profile stores both planes in derived org_env profile", async () => {
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+
+    const prompts = createMockPrompts({
+      selects: ["both", "user-password"],
+      lines: ["production", "Acme", "alice"],
+      passwords: ["atm_test_key", "lake-secret"],
+      confirms: [true, true, true],
+    });
+
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    try {
+      await runWithCliRuntime(runtime, async () => {
+        await runConfigureWizard({
+          scope: "both",
+          profile: "auto",
+          noVerify: true,
+          prompts,
+          sink: runtime.output,
+        });
+      });
+
+      await withConfigureProfileContext("acme_production", () => {
+        expect(secretGet("api-key")).toBe("atm_test_key");
+        expect(configGet("api_key_env")).toBe("production");
+        expect(configGet("organization_slug")).toBe("Acme");
+        expect(configGet("user")).toBe("alice");
+        expect(secretGet("lakehouse/password")).toBe("lake-secret");
+      });
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
+    }
+  });
+
   test("does not warn about argv secrets when saving interactively", async () => {
     const originalIsTTY = process.stdin.isTTY;
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
