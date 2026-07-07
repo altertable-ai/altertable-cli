@@ -1,6 +1,6 @@
 import { appendFileSync } from "node:fs";
 import { getCliContext, getConnectTimeoutMs } from "@/context.ts";
-import { VERSION } from "@/version.ts";
+import { USER_AGENT } from "@/version.ts";
 import { CliError, HttpError, NetworkError, TimeoutError, type AuthPlane } from "@/lib/errors.ts";
 import { logDebug } from "@/lib/log.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
@@ -363,7 +363,7 @@ export function buildRequestHeaders(options: HttpSendOptions): Record<string, st
     headers[authName] = authValue;
   }
 
-  headers["User-Agent"] = `altertable-cli/${VERSION}`;
+  headers["User-Agent"] = USER_AGENT;
   Object.assign(headers, options.extraHeaders);
 
   if (options.contentType) {

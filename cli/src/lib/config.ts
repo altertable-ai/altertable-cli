@@ -15,7 +15,13 @@ import {
 } from "@/lib/profile.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 
-const PROFILE_SCOPED_KEYS = new Set(["user", "api_key_env", "api_base", "management_api_base"]);
+const PROFILE_SCOPED_KEYS = new Set([
+  "user",
+  "api_key_env",
+  "api_base",
+  "management_api_base",
+  "lakehouse_credential_expiry",
+]);
 
 function isProfileScopedKey(key: string): boolean {
   return PROFILE_SCOPED_KEYS.has(key);

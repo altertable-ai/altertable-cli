@@ -1,6 +1,23 @@
 import { configGet } from "@/lib/config.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { CliError, ConfigurationError, EXIT_CONFIG } from "@/lib/errors.ts";
 import { secretGet } from "@/lib/secrets.ts";
+
+function storedLakehouseCredentialsExpired(): boolean {
+  const raw = configGet("lakehouse_credential_expiry");
+  if (!raw) {
+    return false;
+  }
+  // Plain CliError, not ConfigurationError: the optional-auth resolvers treat
+  // ConfigurationError as "not configured" and would silently re-provision.
+  const expiry = Number(raw);
+  if (Number.isNaN(expiry)) {
+    throw new CliError(
+      "Stored lakehouse credential expiry is corrupted. Run 'altertable configure --clear' and try again.",
+      { exitCode: EXIT_CONFIG },
+    );
+  }
+  return Date.now() >= expiry;
+}
 
 export function getLakehouseAuthHeader(): string {
   const envToken = process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
@@ -15,16 +32,18 @@ export function getLakehouseAuthHeader(): string {
     return `Authorization: Basic ${token}`;
   }
 
-  const storedToken = secretGet("lakehouse/basic-token");
-  if (storedToken) {
-    return `Authorization: Basic ${storedToken}`;
-  }
+  if (!storedLakehouseCredentialsExpired()) {
+    const storedToken = secretGet("lakehouse/basic-token");
+    if (storedToken) {
+      return `Authorization: Basic ${storedToken}`;
+    }
 
-  const user = configGet("user");
-  const password = secretGet("lakehouse/password");
-  if (user && password) {
-    const token = Buffer.from(`${user}:${password}`).toString("base64");
-    return `Authorization: Basic ${token}`;
+    const user = configGet("user");
+    const password = secretGet("lakehouse/password");
+    if (user && password) {
+      const token = Buffer.from(`${user}:${password}`).toString("base64");
+      return `Authorization: Basic ${token}`;
+    }
   }
 
   throw new ConfigurationError(

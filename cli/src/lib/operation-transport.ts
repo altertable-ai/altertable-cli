@@ -4,6 +4,10 @@ import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { requirePlaneAuth, type ExecutionContext } from "@/lib/execution-context.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
+import {
+  hasManagementCredentials,
+  provisionLakehouseCredential,
+} from "@/lib/lakehouse-provision.ts";
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 
@@ -37,6 +41,11 @@ async function resolveRequestAuthHeader(
   if (request.plane === "management" && hasOAuthSession()) {
     await ensureFreshAccessToken();
     return getManagementAuthHeader();
+  }
+  if (request.plane === "lakehouse" && !context.auth.lakehouse && hasManagementCredentials()) {
+    const header = await provisionLakehouseCredential(context);
+    context.auth.lakehouse = header;
+    return header;
   }
   return requirePlaneAuth(context, request.plane);
 }
