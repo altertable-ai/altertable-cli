@@ -150,8 +150,13 @@ export const loginCommand = defineLocalCommand({
   output: "none",
   meta: {
     name: "login",
-    description: "Sign in with your browser (OAuth) and store the session.",
-    examples: ["altertable login"],
+    description:
+      "Sign in with your browser (OAuth), derive the org_env profile from the account, and store the session.",
+    examples: [
+      "altertable login",
+      "altertable --profile scratch login",
+      "altertable profile status --verify",
+    ],
   },
   args: {
     "control-plane-url": {

@@ -222,6 +222,9 @@ Named profiles store credentials and endpoint overrides per environment. Global 
 Profile names can be provided explicitly, or derived from an organization slug and environment as `<org>_<env>`. Derived names are normalized to lowercase safe profile names, for example `Acme` + `Production` becomes `acme_production`.
 
 ```bash
+# Browser login derives the profile from the signed-in organization and environment
+altertable login
+
 # Set up multiple environments with org_env profile names
 altertable configure --org acme --api-key atm_xxx --env staging
 altertable configure --org acme --api-key atm_yyy --env production
@@ -232,16 +235,22 @@ altertable configure --profile acme_prod --api-key atm_yyy --env production
 # Interactive setup can derive the profile after asking for org and env
 altertable configure --profile auto
 
-# Switch active profile
+# Switch the sticky active profile
 altertable profile use acme_staging
+
+# Or choose interactively
+altertable profile switch
 
 # Use a profile for one command
 altertable --profile acme_production context
 
+# Use a profile for the current shell, including direnv
+eval "$(altertable profile env acme_staging)"
+
 # Inspect profiles
-export ALTERTABLE_PROFILE=acme_staging
 altertable profile list
 altertable profile current
+altertable profile status --verify
 altertable profile show --name acme_staging
 ```
 
@@ -254,6 +263,8 @@ altertable profile update acme_production --description "Primary production envi
 
 # Inspect metadata, endpoint overrides, and auth status
 altertable profile inspect --name acme_staging
+altertable profile status --name acme_staging
+altertable profile status --name acme_staging --verify
 
 # Print a shell snippet for direnv or manual use
 altertable profile env acme_staging

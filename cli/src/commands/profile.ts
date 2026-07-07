@@ -1,7 +1,20 @@
 import { readFileSync } from "node:fs";
 import { asCliArgString } from "@/lib/cli-args.ts";
+import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
+import type { ConfigureShowData } from "@/lib/configure-credential-status.ts";
+import {
+  configureVerify,
+  type ConfigureAuthPlane,
+  type ConfigureVerifyResult,
+  formatConfigureVerifyRemediation,
+} from "@/lib/configure-verify.ts";
+import {
+  defaultConfigurePrompts,
+  type ConfigurePrompts,
+  type ConfigureSelectOption,
+} from "@/lib/configure-prompts.ts";
 import {
   defineGroupCommand,
   defineLocalCommand,
@@ -24,8 +37,10 @@ import {
   setActiveProfile,
   updateProfile,
   type ProfileInspect,
+  type ProfileSummary,
   type ProfileUpdate,
 } from "@/lib/profile.ts";
+import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 function requireProfileName(name: unknown): string {
   const trimmed = asCliArgString(name).trim();
@@ -86,6 +101,99 @@ function formatProfileInspect(profile: ProfileInspect): string {
       { label: "Config file", value: terminalAccent(profile.config_file) },
     ],
     { indent: "  " },
+  );
+}
+
+type ProfileStatusResult = {
+  profile: ProfileInspect;
+  configuration: ConfigureShowData;
+  verification?: ConfigureVerifyResult;
+};
+
+function configuredVerificationPlanes(configuration: ConfigureShowData): ConfigureAuthPlane[] {
+  const planes: ConfigureAuthPlane[] = [];
+  if (configuration.credentials.management.configured) {
+    planes.push("management");
+  }
+  if (configuration.credentials.lakehouse.configured) {
+    planes.push("lakehouse");
+  }
+  return planes;
+}
+
+function formatVerificationStatus(result: ConfigureVerifyResult | undefined): string {
+  if (!result) {
+    return "not run";
+  }
+  if (result.configured.length === 0) {
+    return "nothing configured";
+  }
+  if (result.errors.length === 0) {
+    return "verified";
+  }
+  const failed = result.errors.map((error) => error.plane).join(", ");
+  return `failed (${failed})`;
+}
+
+function formatProfileStatus(result: ProfileStatusResult): string {
+  const lines = [
+    formatProfileInspect(result.profile),
+    "",
+    formatInfoList(
+      [
+        { label: "Verification", value: formatVerificationStatus(result.verification) },
+        {
+          label: "Management",
+          value: result.configuration.credentials.management.configured
+            ? (result.configuration.credentials.management.mechanism ?? "configured")
+            : "not configured",
+        },
+        {
+          label: "Lakehouse",
+          value: result.configuration.credentials.lakehouse.configured
+            ? (result.configuration.credentials.lakehouse.mechanism ?? "configured")
+            : "not configured",
+        },
+      ],
+      { indent: "  " },
+    ),
+  ];
+
+  if (result.verification?.errors.length) {
+    lines.push(
+      "",
+      ...result.verification.errors.map(
+        (error) =>
+          `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
+      ),
+    );
+  }
+
+  return lines.join("\n");
+}
+
+function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
+  const details = [
+    profile.active ? "active" : "",
+    profile.organization,
+    profile.management_env,
+    profile.auth,
+  ].filter(Boolean);
+  return {
+    value: profile.name,
+    label: details.length > 0 ? `${profile.name} (${details.join(", ")})` : profile.name,
+  };
+}
+
+export async function promptProfileSwitch(
+  prompts: ConfigurePrompts = defaultConfigurePrompts,
+): Promise<string> {
+  const profiles = listProfiles();
+  const activeProfile = getActiveProfileName();
+  return await prompts.readSelect(
+    "Select active profile",
+    profiles.map(profileSwitchOption),
+    activeProfile,
   );
 }
 
@@ -352,7 +460,36 @@ function createProfileUseCommand(id: string, name: string, hidden = false) {
 }
 
 const profileUseCommand = createProfileUseCommand("profile.use", "use");
-const profileSwitchCommand = createProfileUseCommand("profile.switch", "switch", true);
+const profileSwitchCommand = defineLocalCommand<string | undefined, string>({
+  id: "profile.switch",
+  mutates: true,
+  localConfig: true,
+  output: "normalized",
+  meta: { name: "switch", description: "Interactively switch the active profile" },
+  args: {
+    name: { type: "positional", description: "Profile name", required: false },
+  },
+  parse({ args }) {
+    return args.name ? requireProfileName(args.name) : undefined;
+  },
+  async local(profileName) {
+    if (!profileName) {
+      if (isJsonOutput(getCliContext()) || getCliContext().agent || process.stdin.isTTY !== true) {
+        throw new CliError("Interactive profile switch requires a TTY. Pass a profile name.");
+      }
+      profileName = await promptProfileSwitch();
+    }
+    setActiveProfile(profileName);
+    return profileName;
+  },
+  present(profileName) {
+    return {
+      kind: "ack",
+      data: { active_profile: profileName },
+      metadataMessage: `Active profile set to ${profileName}.`,
+    };
+  },
+});
 
 const profileCurrentCommand = defineValueCommand({
   id: "profile.current",
@@ -375,7 +512,7 @@ const profileEnvCommand = defineValueCommand({
   id: "profile.env",
   capabilities: ["local-config"],
   output: "normalized",
-  meta: { name: "env", description: "Print shell exports for a profile", hidden: true },
+  meta: { name: "env", description: "Print shell exports for a profile" },
   args: {
     name: { type: "positional", description: "Profile name (default: active profile)" },
   },
@@ -393,6 +530,56 @@ const profileEnvCommand = defineValueCommand({
       kind: "normalized",
       data: { profile: profileName, env: { ALTERTABLE_PROFILE: profileName } },
       humanText: `export ALTERTABLE_PROFILE=${JSON.stringify(profileName)}`,
+    };
+  },
+});
+
+const profileStatusCommand = defineLocalCommand<
+  { profileName: string; verify: boolean },
+  ProfileStatusResult
+>({
+  id: "profile.status",
+  localConfig: true,
+  output: "normalized",
+  meta: {
+    name: "status",
+    description: "Show profile auth status and optionally verify credentials",
+  },
+  args: {
+    name: { type: "string", description: "Profile name (default: active profile)" },
+    verify: { type: "boolean", description: "Verify configured credentials with live requests" },
+  },
+  parse({ args }) {
+    return {
+      profileName: args.name ? requireProfileName(args.name) : getActiveProfileName(),
+      verify: Boolean(args.verify),
+    };
+  },
+  async local(input) {
+    if (!profileExists(input.profileName)) {
+      throw new ConfigurationError(`Profile not found: ${input.profileName}`);
+    }
+
+    const previous = getCliContext();
+    try {
+      const next = { ...previous, profile: input.profileName };
+      setCliContext(next);
+      refreshCliRuntimeContext(next);
+      const profile = inspectProfile(input.profileName);
+      const configuration = buildConfigureShowDataForProfile(input.profileName);
+      const planes = configuredVerificationPlanes(configuration);
+      const verification = input.verify ? await configureVerify(planes) : undefined;
+      return { profile, configuration, verification };
+    } finally {
+      setCliContext(previous);
+      refreshCliRuntimeContext(previous);
+    }
+  },
+  present(result) {
+    return {
+      kind: "normalized",
+      data: result,
+      humanText: formatProfileStatus(result),
     };
   },
 });
@@ -465,8 +652,11 @@ export const profileCommand = defineGroupCommand({
       "altertable profile list",
       "altertable profile create acme_prod --org acme --env production",
       "altertable profile use acme_prod",
+      "altertable profile switch",
       "altertable profile current",
+      "altertable profile status --verify",
       "altertable profile show --name acme_prod",
+      'eval "$(altertable profile env acme_staging)"',
       "altertable --profile acme_staging context",
     ],
   },
@@ -474,6 +664,7 @@ export const profileCommand = defineGroupCommand({
     create: profileCreateCommand,
     list: profileListCommand,
     show: profileShowCommand,
+    status: profileStatusCommand,
     inspect: profileInspectCommand,
     use: profileUseCommand,
     switch: profileSwitchCommand,

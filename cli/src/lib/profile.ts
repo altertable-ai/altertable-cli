@@ -510,11 +510,6 @@ export function deleteProfile(name: string): void {
   assertSafeProfileName(name);
   ensureProfilesLayout();
 
-  const profiles = listProfiles();
-  if (profiles.length <= 1) {
-    throw new ConfigurationError("Cannot delete the last profile.");
-  }
-
   if (!profileExists(name)) {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }

@@ -28,8 +28,10 @@ import {
   setActiveProfile,
   updateProfile,
 } from "@/lib/profile.ts";
+import { promptProfileSwitch } from "@/commands/profile.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
+import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 
 let testHome = "";
 
@@ -178,9 +180,16 @@ describe("profile storage", () => {
     expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
   });
 
-  test("deleteProfile refuses to delete the last profile", async () => {
+  test("deleteProfile allows deleting the last inactive profile", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    expect(() => deleteProfile("default")).toThrow("Cannot delete the last profile");
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+    setActiveProfile("staging");
+
+    deleteProfile("default");
+
+    expect(profileExists("default")).toBe(false);
+    expect(profileExists("staging")).toBe(true);
+    expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
   });
 
   test("deleteProfile removes secrets via secretDelete including keychain", async () => {
@@ -339,5 +348,30 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "prod-eu", apiKey: "atm_prod", env: "prod" });
     expect(profileExists("staging")).toBe(true);
     expect(profileExists("prod-eu")).toBe(true);
+  });
+
+  test("promptProfileSwitch selects from configured profiles", async () => {
+    await configureRunSet({ apiKey: "atm_a", env: "prod" });
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+
+    const selected = await promptProfileSwitch({
+      writePrompt() {},
+      readLine: async () => "",
+      readPassword: async () => "",
+      readConfirm: async () => true,
+      readSelect: async (_title, options, defaultValue) => {
+        expect(defaultValue).toBe("default");
+        expect(options.map((option) => option.value)).toContain("staging");
+        return "staging";
+      },
+    });
+
+    expect(selected).toBe("staging");
+  });
+
+  test("profile status runs without live verification by default", async () => {
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+
+    await runCommandWithTestRuntime(["profile", "status", "--name", "staging"]);
   });
 });
