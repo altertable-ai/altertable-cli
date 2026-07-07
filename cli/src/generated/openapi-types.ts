@@ -32,7 +32,8 @@ export interface paths {
         get: operations["getEnvironment"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an environment */
+        delete: operations["deleteEnvironment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -79,14 +80,53 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get a service account by ID */
+        get: operations["getServiceAccount"];
         put?: never;
         post?: never;
         /** Delete a service account */
         delete: operations["deleteServiceAccount"];
         options?: never;
         head?: never;
+        /** Update a service account */
+        patch: operations["updateServiceAccount"];
+        trace?: never;
+    };
+    "/environments/{environment_id}/buckets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List buckets in an environment */
+        get: operations["listBuckets"];
+        put?: never;
+        /** Connect a bucket */
+        post: operations["createBucket"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/environments/{environment_id}/buckets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a bucket by ID or slug */
+        get: operations["getBucket"];
+        put?: never;
+        post?: never;
+        /** Delete a bucket */
+        delete: operations["deleteBucket"];
+        options?: never;
+        head?: never;
+        /** Update a bucket */
+        patch: operations["updateBucket"];
         trace?: never;
     };
     "/environments/{environment_id}/connections": {
@@ -161,6 +201,76 @@ export interface paths {
         head?: never;
         /** Update a database */
         patch: operations["updateDatabase"];
+        trace?: never;
+    };
+    "/users/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Look up a user in the organization by email */
+        get: operations["lookupUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user in the organization by ID */
+        get: operations["getUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/role_assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a user's direct role assignments */
+        get: operations["getUserRoleAssignments"];
+        /** Replace a user's role assignments */
+        put: operations["setUserRoleAssignments"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service_accounts/{service_account_id}/role_assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a service account's direct role assignments */
+        get: operations["getServiceAccountRoleAssignments"];
+        /** Replace a service account's role assignments */
+        put: operations["setServiceAccountRoleAssignments"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/users/{user_id}/environments/{environment_id}/credentials": {
@@ -245,6 +355,27 @@ export interface components {
                 details?: string[];
             };
         };
+        Bucket: {
+            id: string;
+            name: string;
+            slug: string;
+            region?: string;
+            endpoint?: string;
+            /** @enum {string} */
+            provider: "s3" | "r2" | "gcs" | "custom";
+            built_in: boolean;
+            environment_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        BucketResponse: {
+            bucket: components["schemas"]["Bucket"];
+        };
+        BucketsListResponse: {
+            buckets: components["schemas"]["Bucket"][];
+        };
         Connection: {
             id: string;
             name: string;
@@ -253,7 +384,7 @@ export interface components {
             engine: "postgres" | "bigquery" | "redshift" | "snowflake" | "mariadb" | "mysql" | "supabase" | "buckettables" | "icebergtables" | "r2catalog" | "s3tables" | "glue" | "duckdb";
             read_only: boolean;
             description?: string;
-            tags: string[];
+            labels: components["schemas"]["Label"][];
             catalog: string;
             environment_id: string;
             /** Format: date-time */
@@ -342,12 +473,19 @@ export interface components {
         ConnectionsListResponse: {
             connections: components["schemas"]["Connection"][];
         };
+        CreateBucketRequest: {
+            name: string;
+            access_key_id: string;
+            secret_access_key: string;
+            region?: string;
+            endpoint?: string;
+        };
         CreateConnectionRequest: {
             name: string;
             /** @enum {string} */
             engine: "postgres" | "bigquery" | "redshift" | "snowflake" | "mariadb" | "mysql" | "supabase" | "buckettables" | "icebergtables" | "r2catalog" | "s3tables" | "glue" | "duckdb";
             read_only?: boolean;
-            tags?: string[];
+            label_ids?: string[];
             description?: string;
             standard_config?: components["schemas"]["ConnectionStandardConfig"];
             mysql_config?: components["schemas"]["ConnectionMysqlConfig"];
@@ -363,6 +501,8 @@ export interface components {
         };
         CreateCredentialRequest: {
             label?: string;
+            /** Format: date-time */
+            expires_at?: string;
         };
         CreateCredentialResponse: {
             credential: components["schemas"]["Credential"];
@@ -372,7 +512,7 @@ export interface components {
             name: string;
             bucket_id?: string;
             read_only?: boolean;
-            tags?: string[];
+            label_ids?: string[];
             snapshot_retention_days?: number;
             description?: string;
         };
@@ -387,9 +527,6 @@ export interface components {
         };
         CreateServiceAccountRequest: {
             label: string;
-        };
-        CreateServiceAccountResponse: {
-            service_account: components["schemas"]["ServiceAccount"];
         };
         Credential: {
             id: string;
@@ -417,7 +554,7 @@ export interface components {
             read_only: boolean;
             built_in: boolean;
             description?: string;
-            tags: string[];
+            labels: components["schemas"]["Label"][];
             catalog: string;
             bucket_id: string;
             snapshot_retention_days?: number;
@@ -448,6 +585,11 @@ export interface components {
         EnvironmentResponse: {
             environment: components["schemas"]["Environment"];
         };
+        Label: {
+            id: string;
+            name: string;
+            color: string;
+        };
         Organization: {
             id: string;
             name: string;
@@ -461,15 +603,40 @@ export interface components {
             email?: string;
             slug?: string;
         };
+        RoleAssignment: {
+            role: string;
+            resource_kind: string;
+            resource_id: string;
+        };
+        RoleAssignmentsResponse: {
+            role_assignments: components["schemas"]["RoleAssignment"][];
+        };
+        RoleInput: {
+            /** @enum {string} */
+            role: "catalog:reader" | "catalog:writer" | "environment:member" | "environment:reader" | "environment:writer" | "organization:member" | "organization:reader" | "organization:writer" | "organization:admin";
+            /** @enum {string} */
+            resource_kind?: "organization" | "environment" | "catalog";
+            resource_id: string;
+        };
         ServiceAccount: {
             id: string;
             label: string;
             slug: string;
         };
+        ServiceAccountResponse: {
+            service_account: components["schemas"]["ServiceAccount"];
+        };
+        UpdateBucketRequest: {
+            name?: string;
+            access_key_id?: string;
+            secret_access_key?: string;
+            region?: string;
+            endpoint?: string;
+        };
         UpdateConnectionRequest: {
             name?: string;
             read_only?: boolean;
-            tags?: string[];
+            label_ids?: string[];
             description?: string;
             standard_config?: components["schemas"]["ConnectionStandardConfig"];
             mysql_config?: components["schemas"]["ConnectionMysqlConfig"];
@@ -486,13 +653,29 @@ export interface components {
         UpdateDatabaseRequest: {
             name?: string;
             read_only?: boolean;
-            tags?: string[];
+            label_ids?: string[];
             snapshot_retention_days?: number;
             description?: string;
+        };
+        UpdateRoleAssignmentsRequest: {
+            roles: components["schemas"]["RoleInput"][];
+        };
+        UpdateServiceAccountRequest: {
+            label: string;
+        };
+        User: {
+            id: string;
+            email: string;
+            name: string;
+        };
+        UserResponse: {
+            user: components["schemas"]["User"];
         };
         WhoamiResponse: {
             principal: components["schemas"]["Principal"];
             organization: components["schemas"]["Organization"];
+            authentication_scope: string;
+            environment_slug?: string;
         };
     };
     responses: {
@@ -578,6 +761,30 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    deleteEnvironment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Environment UUID or slug */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Environment deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     createEnvironment: {
         parameters: {
             query?: never;
@@ -632,7 +839,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CreateServiceAccountResponse"];
+                    "application/json": components["schemas"]["ServiceAccountResponse"];
                 };
             };
             /** @description Missing required parameter */
@@ -646,6 +853,31 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getServiceAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service account */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceAccountResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     deleteServiceAccount: {
@@ -669,6 +901,214 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description Service account still has active credentials */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateServiceAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateServiceAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Service account updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceAccountResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBuckets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Buckets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BucketsListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createBucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBucketRequest"];
+            };
+        };
+        responses: {
+            /** @description Bucket created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BucketResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getBucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environment_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bucket */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BucketResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteBucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environment_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bucket deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Built-in buckets cannot be deleted */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateBucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                environment_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBucketRequest"];
+            };
+        };
+        responses: {
+            /** @description Bucket updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BucketResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listConnections: {
@@ -959,6 +1399,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatabaseResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    lookupUser: {
+        parameters: {
+            query: {
+                /** @description Email address of the user to look up */
+                email: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Missing required parameter */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getUserRoleAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Role assignments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignmentsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setUserRoleAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleAssignmentsRequest"];
+            };
+        };
+        responses: {
+            /** @description Role assignments replaced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignmentsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getServiceAccountRoleAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                service_account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Role assignments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignmentsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setServiceAccountRoleAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                service_account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleAssignmentsRequest"];
+            };
+        };
+        responses: {
+            /** @description Role assignments replaced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleAssignmentsResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];

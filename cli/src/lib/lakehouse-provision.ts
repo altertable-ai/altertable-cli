@@ -1,4 +1,7 @@
+import type { components } from "@/generated/openapi-types.ts";
 import {
+  basicAuthHeader,
+  basicAuthToken,
   getManagementAuthHeader,
   hasLakehouseEnvCredentials,
   requireManagementEnv,
@@ -59,9 +62,11 @@ async function sendManagementRequest(
 export async function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
   context.output.writeMetadata([terminalMuted("Refreshing lakehouse credentials...")]);
   const env = context.managementEnv ?? requireManagementEnv();
-  const whoami = (await sendManagementRequest(context, "GET", "/whoami")) as {
-    principal?: { id?: string; type?: string };
-  };
+  const whoami = (await sendManagementRequest(
+    context,
+    "GET",
+    "/whoami",
+  )) as components["schemas"]["WhoamiResponse"];
   const principal = whoami.principal;
   if (!principal?.id || principal.type !== "User") {
     throw new ConfigurationError(
@@ -75,7 +80,7 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
     "POST",
     `/users/${principal.id}/environments/${env}/credentials`,
     JSON.stringify({ label: CREDENTIAL_LABEL, expires_at: expiresAt }),
-  )) as { credential?: { username?: string; expires_at?: string }; password?: string };
+  )) as components["schemas"]["CreateCredentialResponse"];
 
   const username = created.credential?.username;
   const password = created.password;
@@ -90,8 +95,8 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
     throw new ConfigurationError("Credential creation response was missing an expiry.");
   }
 
-  const token = Buffer.from(`${username}:${password}`).toString("base64");
+  const token = basicAuthToken(username, password);
   secretSet("lakehouse/basic-token", token);
   configSet("lakehouse_credential_expiry", String(expiryMs));
-  return `Authorization: Basic ${token}`;
+  return basicAuthHeader(token);
 }

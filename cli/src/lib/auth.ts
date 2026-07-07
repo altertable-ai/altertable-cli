@@ -2,6 +2,14 @@ import { configGet } from "@/lib/config.ts";
 import { CliError, ConfigurationError, EXIT_CONFIG } from "@/lib/errors.ts";
 import { secretGet } from "@/lib/secrets.ts";
 
+export function basicAuthToken(user: string, password: string): string {
+  return Buffer.from(`${user}:${password}`).toString("base64");
+}
+
+export function basicAuthHeader(token: string): string {
+  return `Authorization: Basic ${token}`;
+}
+
 function storedLakehouseCredentialsExpired(): boolean {
   const raw = configGet("lakehouse_credential_expiry");
   if (!raw) {
@@ -22,14 +30,13 @@ function storedLakehouseCredentialsExpired(): boolean {
 function lakehouseEnvAuthHeader(): string | undefined {
   const envToken = process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
   if (envToken) {
-    return `Authorization: Basic ${envToken}`;
+    return basicAuthHeader(envToken);
   }
 
   const envUser = process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
   const envPassword = process.env.ALTERTABLE_LAKEHOUSE_PASSWORD;
   if (envUser && envPassword) {
-    const token = Buffer.from(`${envUser}:${envPassword}`).toString("base64");
-    return `Authorization: Basic ${token}`;
+    return basicAuthHeader(basicAuthToken(envUser, envPassword));
   }
 
   return undefined;
@@ -48,14 +55,13 @@ export function getLakehouseAuthHeader(): string {
   if (!storedLakehouseCredentialsExpired()) {
     const storedToken = secretGet("lakehouse/basic-token");
     if (storedToken) {
-      return `Authorization: Basic ${storedToken}`;
+      return basicAuthHeader(storedToken);
     }
 
     const user = configGet("user");
     const password = secretGet("lakehouse/password");
     if (user && password) {
-      const token = Buffer.from(`${user}:${password}`).toString("base64");
-      return `Authorization: Basic ${token}`;
+      return basicAuthHeader(basicAuthToken(user, password));
     }
   }
 
