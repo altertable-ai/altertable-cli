@@ -448,23 +448,23 @@ describe("lakehouse command HTTP behavior", () => {
     expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({ id: 1 });
   });
 
-  test("get-task calls /tasks/{task_id}", async () => {
-    const taskId = "11111111-2222-3333-4444-555555555555";
+  test("append status calls /tasks/{append_id}", async () => {
+    const appendId = "11111111-2222-3333-4444-555555555555";
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: `/tasks/${taskId}`,
+          urlPattern: `/tasks/${appendId}`,
           method: "GET",
           body: '{"task_id":"11111111-2222-3333-4444-555555555555","status":"completed"}',
         },
       ]),
     );
 
-    await runCommandWithTestRuntime(["append", "task", taskId]);
+    await runCommandWithTestRuntime(["append", "status", appendId]);
 
     const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain(`URL=https://example.com/tasks/${taskId}`);
+    expect(logContent).toContain(`URL=https://example.com/tasks/${appendId}`);
   });
 
   test("upload command sends mode without exposing file contents", async () => {
