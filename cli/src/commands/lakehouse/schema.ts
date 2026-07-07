@@ -163,7 +163,6 @@ export function formatSchemaTree(result: LakehouseQueryResult, catalog: string):
 const schemaArgs = {
   catalog: { type: "positional", description: "Catalog name", required: true },
   format: queryRunArgs.format,
-  layout: queryRunArgs.layout,
   columns: queryRunArgs.columns,
   "max-width": queryRunArgs["max-width"],
   pager: queryRunArgs.pager,
@@ -188,7 +187,11 @@ export const schemaCommand = defineOperationCommand<SchemaRunInput, LakehouseQue
   args: schemaArgs,
   parse({ args, rawArgs }) {
     const catalog = stringArg(args, "catalog");
-    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, rawArgs);
+    // --layout is not supported: human output is always the schema tree.
+    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
+      { ...args, layout: undefined },
+      rawArgs,
+    );
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     return {
       catalog,

@@ -10,7 +10,11 @@ import {
   parseLakehouseFileContentType,
 } from "@/commands/lakehouse-args.ts";
 import { parseQueryResultFormat } from "@/lib/lakehouse-client.ts";
-import { buildSchemaStatement, formatSchemaTree } from "@/commands/lakehouse/schema.ts";
+import {
+  buildSchemaStatement,
+  formatSchemaTree,
+  schemaCommand,
+} from "@/commands/lakehouse/schema.ts";
 import { setCliContext } from "@/context.ts";
 import {
   forceNoTerminalColorForTests,
@@ -115,6 +119,12 @@ describe("buildSchemaStatement", () => {
     const statement = buildSchemaStatement("o'brien");
     expect(statement).toContain("database_name = 'o''brien'");
     expect(statement).not.toContain("'o'brien'");
+  });
+});
+
+describe("schemaCommand", () => {
+  test("does not expose --layout (human output is always the tree)", () => {
+    expect(Object.keys(schemaCommand.args ?? {})).not.toContain("layout");
   });
 });
 
