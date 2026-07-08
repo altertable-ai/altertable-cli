@@ -4,6 +4,8 @@ The CLI is a TypeScript project in `cli/`, run via Bun.
 
 The Bun runtime used by contributors, CI, and release builds is pinned in [`.bun-version`](.bun-version) and mirrored by `packageManager` in `cli/package.json`.
 
+GitHub Actions use the Node.js LTS version pinned in [`.node-version`](.node-version).
+
 ```bash
 cd cli
 bun install
