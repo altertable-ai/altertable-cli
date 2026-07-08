@@ -4,7 +4,7 @@ import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { PROFILE_CONFIG_KEYS, type ProfileConfigKey } from "@/lib/profile-config-keys.ts";
-import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
+import { secretDelete, secretExists, secretGet, secretSet } from "@/lib/secrets.ts";
 import { isCliRuntimeReady } from "@/lib/runtime.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
@@ -17,7 +17,6 @@ const PROFILE_SECRET_ACCOUNTS = [
   "oauth/refresh-token",
 ] as const;
 
-const PROFILE_EXPORT_VERSION = 1;
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
 type ProfileAuth = {
@@ -82,15 +81,6 @@ export type ProfileInspect = {
     oauth_expires_at?: string;
     lakehouse_expires_at?: string;
   };
-};
-
-export type ProfileExport = {
-  version: number;
-  profile: {
-    name: string;
-    config: Record<ProfileConfigKey, string | undefined>;
-  };
-  secrets_included: false;
 };
 
 type ProfileSnapshot = {
@@ -427,73 +417,43 @@ export function updateProfile(name: string, update: ProfileUpdate): ProfileInspe
   return inspectProfile(name);
 }
 
-export function exportProfile(name: string): ProfileExport {
-  assertSafeProfileName(name);
-  ensureProfilesLayout();
-  if (!profileExists(name)) {
-    throw new ConfigurationError(`Profile not found: ${name}`);
-  }
-  return {
-    version: PROFILE_EXPORT_VERSION,
-    profile: {
-      name,
-      config: readProfileConfigRecord(name),
-    },
-    secrets_included: false,
-  };
-}
+function moveProfileSecrets(
+  sourceProfile: string,
+  targetProfile: string,
+  secretKeys: readonly string[],
+): void {
+  const prepared: Array<{ secretKey: string; targetValue: string }> = [];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-export function parseProfileExport(value: unknown): ProfileExport {
-  if (!isRecord(value) || !isRecord(value.profile) || !isRecord(value.profile.config)) {
-    throw new ConfigurationError("Profile import file is not a valid Altertable profile export.");
-  }
-  const version = typeof value.version === "number" ? value.version : 0;
-  const name = typeof value.profile.name === "string" ? value.profile.name : "";
-  const config: Partial<Record<ProfileConfigKey, string | undefined>> = {};
-  for (const key of PROFILE_CONFIG_KEYS) {
-    const configValue = value.profile.config[key];
-    if (configValue !== undefined && typeof configValue !== "string") {
-      throw new ConfigurationError(`Profile import config value must be a string: ${key}`);
+  try {
+    for (const secretKey of secretKeys) {
+      const sourceValue = secretGet(secretKey, sourceProfile);
+      if (sourceValue.length === 0) {
+        continue;
+      }
+      prepared.push({
+        secretKey,
+        targetValue: secretGet(secretKey, targetProfile),
+      });
+      secretSet(secretKey, sourceValue, targetProfile);
     }
-    config[key] = configValue;
-  }
-  return {
-    version,
-    profile: {
-      name,
-      config: config as Record<ProfileConfigKey, string | undefined>,
-    },
-    secrets_included: false,
-  };
-}
-
-export function importProfile(exportedValue: unknown, targetName?: string): ProfileInspect {
-  const exported = parseProfileExport(exportedValue);
-  if (exported.version !== PROFILE_EXPORT_VERSION) {
-    throw new ConfigurationError(`Unsupported profile export version: ${exported.version}`);
-  }
-  const name = targetName ?? exported.profile.name;
-  assertSafeProfileName(name);
-  ensureProfilesLayout();
-  if (profileExists(name)) {
-    throw new ConfigurationError(`Profile already exists: ${name}`);
-  }
-  ensureProfileExists(name);
-  for (const key of PROFILE_CONFIG_KEYS) {
-    const value = exported.profile.config[key];
-    if (value !== undefined) {
-      writeProfileConfig(name, key, value);
+  } catch (error) {
+    for (const entry of prepared.toReversed()) {
+      try {
+        if (entry.targetValue.length > 0) {
+          secretSet(entry.secretKey, entry.targetValue, targetProfile);
+        } else {
+          secretDelete(entry.secretKey, targetProfile);
+        }
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
     }
+    throw error;
   }
-  if (!readProfileConfig(name, "created_at")) {
-    writeProfileConfig(name, "created_at", nowIso());
+
+  for (const { secretKey } of prepared) {
+    secretDelete(secretKey, sourceProfile);
   }
-  writeProfileConfig(name, "updated_at", nowIso());
-  return inspectProfile(name);
 }
 
 export function renameProfile(source: string, target: string): void {
@@ -571,19 +531,6 @@ export function writeProfileConfig(profileName: string, key: string, value: stri
 
 export function unsetProfileConfig(profileName: string, key: string): void {
   kvUnset(profileConfigFile(profileName), key);
-}
-
-export function moveProfileConfigKey(
-  sourceProfile: string,
-  targetProfile: string,
-  key: ProfileConfigKey,
-): void {
-  const value = readProfileConfig(sourceProfile, key);
-  if (!value) {
-    return;
-  }
-  writeProfileConfig(targetProfile, key, value);
-  unsetProfileConfig(sourceProfile, key);
 }
 
 export function ensureProfileExists(name: string): void {

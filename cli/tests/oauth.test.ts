@@ -174,8 +174,6 @@ describe("resolveWhoamiEnvironment", () => {
 
 describe("login profile metadata", () => {
   test("stores environment and organization from whoami", () => {
-    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
-
     const metadata = storeLoginProfileMetadata(
       {
         principal: TEST_PRINCIPAL,
@@ -185,6 +183,7 @@ describe("login profile metadata", () => {
       },
       {},
     );
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
 
     expect(metadata).toEqual({
       environment: "production",
@@ -202,9 +201,7 @@ describe("login profile metadata", () => {
     expect(getStoredAccessToken()).toBe("acc");
   });
 
-  test("can replace the current profile with the login-derived profile", () => {
-    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
-
+  test("can replace the current profile login session", () => {
     const metadata = storeLoginProfileMetadata(
       {
         principal: TEST_PRINCIPAL,
@@ -217,26 +214,31 @@ describe("login profile metadata", () => {
 
     expect(metadata).toEqual({
       environment: "production",
-      profileName: "altertable_production",
+      profileName: "default",
       profileAction: "replaced",
     });
-    expect(profileExists("default")).toBe(false);
-    expect(profileExists("altertable_production")).toBe(true);
-    expect(getActiveProfileName()).toBe("altertable_production");
+    expect(profileExists("default")).toBe(true);
+    expect(profileExists("altertable_production")).toBe(false);
+    expect(getActiveProfileName()).toBe("default");
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
     expect(getStoredAccessToken()).toBe("acc");
   });
 
-  test("stores the control-plane root after successful login metadata is available", () => {
+  test("stores endpoint overrides after successful login metadata is available", () => {
     storeLoginProfileMetadata(
       {
         principal: {},
         organization: { name: "Altertable", slug: "altertable" },
         environment_slug: "production",
       },
-      { "control-plane-url": "https://app.altertable.test" },
+      {
+        "control-plane-url": "https://app.altertable.test",
+        "data-plane-url": "https://api.altertable.test",
+      },
     );
 
     expect(configGet("management_api_base")).toBe("https://app.altertable.test");
+    expect(configGet("api_base")).toBe("https://api.altertable.test");
   });
 });
 

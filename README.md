@@ -226,14 +226,11 @@ Profile names can be provided explicitly, or derived from an organization slug a
 # Browser login creates or reuses the signed-in org_env profile and switches to it
 altertable login
 
-# Or replace the current profile with the signed-in org_env profile
+# Or store the signed-in session in the current profile
 altertable login --replace-profile
 
-# Set up multiple environments with org_env profile names
-altertable configure --org acme --api-key atm_xxx --env staging
-altertable configure --org acme --api-key atm_yyy --env production
-
-# Or provide an explicit profile name
+# Set up multiple environments with explicit profile names
+altertable configure --profile acme_staging --api-key atm_xxx --env staging
 altertable configure --profile acme_prod --api-key atm_yyy --env production
 
 # Interactive setup can derive the profile after asking for org and env
@@ -269,7 +266,6 @@ altertable profile create acme_production --org acme --env production --descript
 altertable profile update acme_production --description "Primary production environment"
 
 # Inspect metadata, endpoint overrides, and auth status
-altertable profile inspect --name acme_staging
 altertable profile status --name acme_staging
 altertable profile status --name acme_staging --verify
 
@@ -279,10 +275,6 @@ altertable profile direnv acme_staging
 
 # Rename a profile
 altertable profile rename acme_staging acme_stage
-
-# Export/import metadata without secrets
-altertable profile export acme_stage > acme_stage.profile.json
-altertable profile import acme_stage.profile.json --name acme_stage_copy
 ```
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
@@ -292,7 +284,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Global root `config`   | Active profile and display/update preferences such as query layout, query width, and update checks |
 | Profile-specific config | Credentials metadata, endpoint overrides, organization/principal metadata, and credential expiry timestamps |
 
-`profile status` and `profile inspect` show the profile metadata that is usually useful to humans, including OAuth and auto-provisioned lakehouse credential expiry when present.
+`profile status` shows the profile metadata that is usually useful to humans, including OAuth and auto-provisioned lakehouse credential expiry when present.
 
 ### Credential precedence
 

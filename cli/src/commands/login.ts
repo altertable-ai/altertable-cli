@@ -2,25 +2,22 @@ import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
+import { getCliRuntime, refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
-import { runLoginFlow } from "@/lib/oauth-flow.ts";
+import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
 import { configureRunClear } from "@/lib/configure.ts";
 import {
   createProfile,
-  deleteProfile,
   deriveProfileName,
-  moveProfileConfigKey,
   profileExists,
-  renameProfile,
   resolveProfileName,
   setActiveProfile,
   updateProfile,
 } from "@/lib/profile.ts";
-import { moveProfileSecrets } from "@/lib/secrets.ts";
 import { terminalSuccess } from "@/lib/terminal-style.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
 
 function isInteractiveTerminal(): boolean {
   return process.stdin.isTTY;
@@ -44,49 +41,33 @@ type LoginProfileMetadata = {
   profileAction: "created" | "reused" | "replaced" | "unchanged";
 };
 
-const OAUTH_SECRET_ACCOUNTS = ["oauth/access-token", "oauth/refresh-token"] as const;
 type LoginProfileAction = LoginProfileMetadata["profileAction"];
-
-function moveOAuthSession(sourceProfile: string, targetProfile: string): void {
-  moveProfileSecrets(sourceProfile, targetProfile, OAUTH_SECRET_ACCOUNTS);
-  moveProfileConfigKey(sourceProfile, targetProfile, "oauth_expiry");
-}
 
 function loginProfileName(whoami: WhoamiResponse, environment: string, fallback: string): string {
   const organizationSlug = whoami.organization?.slug;
   return organizationSlug ? deriveProfileName(organizationSlug, environment) : fallback;
 }
 
-function promoteLoginProfile(
+function selectLoginProfile(
   whoami: WhoamiResponse,
   environment: string,
-  replaceProfile: boolean,
+  replaceCurrentProfile: boolean,
 ): Pick<LoginProfileMetadata, "profileName" | "profileAction"> {
-  const sourceProfile = resolveProfileName(getCliContext().profile);
-  const targetProfile = loginProfileName(whoami, environment, sourceProfile);
-  if (targetProfile === sourceProfile) {
+  const currentProfile = resolveProfileName(getCliContext().profile);
+  if (replaceCurrentProfile) {
+    return { profileName: currentProfile, profileAction: "replaced" };
+  }
+
+  const targetProfile = loginProfileName(whoami, environment, currentProfile);
+  if (targetProfile === currentProfile) {
     return { profileName: targetProfile, profileAction: "unchanged" };
   }
 
   let profileAction: LoginProfileAction;
   if (profileExists(targetProfile)) {
-    moveOAuthSession(sourceProfile, targetProfile);
     profileAction = "reused";
-  } else if (replaceProfile) {
-    renameProfile(sourceProfile, targetProfile);
-    profileAction = "replaced";
   } else {
     createProfile(targetProfile);
-    try {
-      moveOAuthSession(sourceProfile, targetProfile);
-    } catch (error) {
-      try {
-        deleteProfile(targetProfile);
-      } catch {
-        // Preserve the original secret migration failure.
-      }
-      throw error;
-    }
     profileAction = "created";
   }
   setActiveProfile(targetProfile);
@@ -106,11 +87,16 @@ export function storeLoginProfileMetadata(
     throw new Error("No environment returned from `whoami` post-login. Aborting.");
   }
 
-  const { profileName, profileAction } = promoteLoginProfile(
+  const { profileName, profileAction } = selectLoginProfile(
     whoami,
     environment,
     Boolean(args["replace-profile"]),
   );
+  if (args["data-plane-url"]) {
+    assertAllowedApiBase(args["data-plane-url"], {
+      allowInsecureHttp: Boolean(args["allow-insecure-http"]),
+    });
+  }
 
   updateProfile(profileName, {
     environment,
@@ -120,6 +106,7 @@ export function storeLoginProfileMetadata(
     principalName: whoami.principal?.name,
     principalEmail: whoami.principal?.email,
     principalSlug: whoami.principal?.slug,
+    ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
     ...(args["control-plane-url"] ? { controlPlane: args["control-plane-url"] } : {}),
   });
 
@@ -127,6 +114,7 @@ export function storeLoginProfileMetadata(
 }
 
 export type LoginArgs = {
+  "data-plane-url"?: string;
   "control-plane-url"?: string;
   "allow-insecure-http"?: boolean;
   "replace-profile"?: boolean;
@@ -157,20 +145,26 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
   process.env.ALTERTABLE_MANAGEMENT_API_BASE = url;
 }
 
+async function fetchLoginWhoami(oauthResponse: TokenResponse): Promise<WhoamiResponse> {
+  const execution = createExecutionContext(getCliRuntime());
+  execution.auth.management = `Authorization: Bearer ${oauthResponse.access_token}`;
+  return JSON.parse(
+    await managementRequest("GET", "/whoami", undefined, execution),
+  ) as WhoamiResponse;
+}
+
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   assertInteractiveLogin();
   applyControlPlaneOverride(args);
 
   const oauthResponse = await runLoginFlow(sink);
-  storeOAuthTokens(oauthResponse);
-  // Rebuild the session so the just-stored token is used
-  refreshCliRuntimeContext(getCliContext());
-
-  const whoami = JSON.parse(await managementRequest("GET", "/whoami")) as WhoamiResponse;
+  const whoami = await fetchLoginWhoami(oauthResponse);
   // Login succeeded — now persist whoami metadata and any control-plane override
   // to the profile so later commands target it. The override is kept session-only
   // until here so a failed login against a bad URL never writes it.
   const { environment, profileName, profileAction } = storeLoginProfileMetadata(whoami, args);
+  storeOAuthTokens(oauthResponse);
+  refreshCliRuntimeContext(getCliContext());
 
   const identity = formatWhoamiPrincipalLine(whoami);
   const profileMessages = {
@@ -200,6 +194,11 @@ export const loginCommand = defineLocalCommand({
       description:
         "Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai",
     },
+    "data-plane-url": {
+      type: "string",
+      description:
+        "Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai",
+    },
     "allow-insecure-http": {
       type: "boolean",
       description:
@@ -207,8 +206,7 @@ export const loginCommand = defineLocalCommand({
     },
     "replace-profile": {
       type: "boolean",
-      description:
-        "Rename the current profile to the derived login profile instead of creating one",
+      description: "Store the login session in the current profile instead of switching profiles",
     },
   },
   local: (_input, context) => runLogin(context.args as LoginArgs, context.sink),

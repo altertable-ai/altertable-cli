@@ -59,11 +59,11 @@ function resolveConfigureProfile(options: ConfigureOptions): string | undefined 
   if (explicitProfile && explicitProfile !== AUTO_PROFILE_NAME) {
     return explicitProfile;
   }
-  if (org && env) {
+  if (explicitProfile === AUTO_PROFILE_NAME && options.interactive && org && env) {
     return deriveProfileName(org, env);
   }
   if (explicitProfile === AUTO_PROFILE_NAME) {
-    throw new CliError("--profile auto requires --org and --env when using credential flags.");
+    throw new CliError("--profile auto is only supported by interactive configure.");
   }
   return undefined;
 }
@@ -174,9 +174,6 @@ export async function configureRunSet(
     }
     if (env && !hasApiKey) {
       throw new CliError("--env applies only to --api-key.");
-    }
-    if (org && !hasApiKey) {
-      throw new CliError("--org applies only to --api-key.");
     }
     if (!hasAnyCredential && !dataPlaneUrl) {
       throw new CliError(

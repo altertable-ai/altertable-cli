@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
@@ -27,9 +26,7 @@ import {
   createProfile,
   deleteProfile,
   deriveProfileName,
-  exportProfile,
   getActiveProfileName,
-  importProfile,
   inspectProfile,
   listProfiles,
   profileExists,
@@ -86,10 +83,6 @@ function existingProfileName(name: string): string {
 
 function profileNameArgOrActive(args: Record<string, unknown>): string {
   return args.name ? requireProfileName(args.name) : getActiveProfileName();
-}
-
-function compactJson(value: unknown): string {
-  return JSON.stringify(value, null, 2);
 }
 
 function configuredVerificationPlanes(configuration: ConfigureShowData): ConfigureAuthPlane[] {
@@ -245,93 +238,6 @@ const profileUpdateCommand = defineLocalCommand({
   },
   local(input) {
     return updateProfile(input.name, input.update);
-  },
-  present(profile) {
-    return {
-      kind: "normalized",
-      data: { profile },
-      humanText: formatProfileInspect(profile),
-    };
-  },
-});
-
-const profileInspectCommand = defineValueCommand({
-  id: "profile.inspect",
-  capabilities: ["local-config"],
-  output: "normalized",
-  meta: {
-    name: "inspect",
-    description: "Inspect profile metadata, endpoints, and auth status",
-    hidden: true,
-  },
-  args: {
-    name: { type: "string", description: "Profile name (default: active profile)" },
-  },
-  parse({ args }) {
-    return profileNameArgOrActive(args);
-  },
-  value(profileName) {
-    return inspectProfile(profileName);
-  },
-  present(profile) {
-    return {
-      kind: "normalized",
-      data: { profile },
-      humanText: formatProfileInspect(profile),
-    };
-  },
-});
-
-const profileExportCommand = defineValueCommand({
-  id: "profile.export",
-  capabilities: ["local-config"],
-  output: "normalized",
-  meta: { name: "export", description: "Export a profile without secrets", hidden: true },
-  args: {
-    name: { type: "positional", description: "Profile name", required: true },
-  },
-  parse({ args }) {
-    return requireProfileName(args.name);
-  },
-  value(profileName) {
-    return exportProfile(profileName);
-  },
-  present(exported) {
-    return {
-      kind: "normalized",
-      data: exported,
-      humanText: compactJson(exported),
-    };
-  },
-});
-
-const profileImportCommand = defineLocalCommand({
-  id: "profile.import",
-  mutates: true,
-  localConfig: true,
-  readFile: true,
-  output: "normalized",
-  meta: { name: "import", description: "Import a profile export without secrets", hidden: true },
-  args: {
-    file: { type: "positional", description: "Profile export JSON file", required: true },
-    name: { type: "string", description: "Imported profile name override" },
-  },
-  parse({ args }) {
-    return {
-      file: asCliArgString(args.file),
-      name: optionalArg(args.name),
-    };
-  },
-  local(input) {
-    const body = readFileSync(input.file, "utf8");
-    try {
-      return importProfile(JSON.parse(body), input.name);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new ConfigurationError("Profile import file is not valid JSON.");
-      }
-      throw error;
-    }
   },
   present(profile) {
     return {
@@ -620,7 +526,6 @@ export const profileCommand = defineGroupCommand({
     list: profileListCommand,
     show: profileShowCommand,
     status: profileStatusCommand,
-    inspect: profileInspectCommand,
     use: profileUseCommand,
     switch: profileSwitchCommand,
     current: profileCurrentCommand,
@@ -628,8 +533,6 @@ export const profileCommand = defineGroupCommand({
     direnv: profileDirenvCommand,
     update: profileUpdateCommand,
     rename: profileRenameCommand,
-    export: profileExportCommand,
-    import: profileImportCommand,
     delete: profileDeleteCommand,
   },
 });

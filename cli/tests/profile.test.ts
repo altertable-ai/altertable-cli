@@ -16,9 +16,7 @@ import {
   deleteProfile,
   deriveProfileName,
   ensureProfilesLayout,
-  exportProfile,
   getActiveProfileName,
-  importProfile,
   inspectProfile,
   listProfiles,
   profileConfigFile,
@@ -91,17 +89,13 @@ describe("profile storage", () => {
     expect(deriveProfileName("acme", "prod/eu")).toBe("acme_prod-eu");
   });
 
-  test("configure --org derives profile name and stores organization metadata", async () => {
-    await configureRunSet({ org: "Acme", apiKey: "atm_prod", env: "Production" });
+  test("configure writes credentials to an explicit profile", async () => {
+    await configureRunSet({ profile: "acme_production", apiKey: "atm_prod", env: "Production" });
 
     expect(profileExists("acme_production")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "acme_production" });
     expect(configGet("api_key_env")).toBe("Production");
-    expect(configGet("organization_slug")).toBe("Acme");
     expect(secretGet("api-key")).toBe("atm_prod");
-    expect(listProfiles().find((profile) => profile.name === "acme_production")?.organization).toBe(
-      "Acme",
-    );
     expect(
       listProfiles().find((profile) => profile.name === "acme_production")?.management_auth,
     ).toBe("api-key");
@@ -148,19 +142,6 @@ describe("profile storage", () => {
     expect(profile.auth.lakehouse).toBe("username_password");
     expect(profile.timestamps.created_at).toBeTruthy();
     expect(profile.timestamps.lakehouse_expires_at).toBe(new Date(lakehouseExpiry).toISOString());
-  });
-
-  test("exportProfile and importProfile copy config without secrets", async () => {
-    await configureRunSet({ profile: "acme_prod", org: "acme", apiKey: "atm_prod", env: "prod" });
-    const exported = exportProfile("acme_prod");
-
-    expect(exported.secrets_included).toBe(false);
-    expect(exported.profile.config.organization_slug).toBe("acme");
-    expect(JSON.stringify(exported)).not.toContain("atm_prod");
-
-    const imported = importProfile(exported, "acme_prod_copy");
-    expect(imported.organization.slug).toBe("acme");
-    expect(secretGet("api-key", "acme_prod_copy")).toBe("");
   });
 
   test("configure creates implicit profile directories", async () => {
