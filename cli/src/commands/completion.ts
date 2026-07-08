@@ -12,7 +12,7 @@ import {
   terminalAccent,
   terminalSubtle,
   terminalSuccess,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 import { buildCompletionSpec } from "@/lib/completion-spec.ts";
 import {
   formatBashCompletion,

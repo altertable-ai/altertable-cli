@@ -1,5 +1,5 @@
 import type { LakehouseColumn, LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
-import { classifyStringDataType, type TerminalDataType } from "@/lib/terminal-style.ts";
+import { classifyStringDataType, type TerminalDataType } from "@/ui/terminal/styles.ts";
 
 export type ColumnTypeMap = Map<string, string | undefined>;
 

@@ -5,7 +5,7 @@ import {
   configureCredentialStatus,
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
-} from "@/lib/configure-credential-status.ts";
+} from "@/features/configure/model.ts";
 import { CliError } from "@/lib/errors.ts";
 import { secretExists, secretGet } from "@/lib/secrets.ts";
 import type { ConfigureWizardOptions, ConfigureWizardScope } from "@/lib/configure-wizard-types.ts";
@@ -16,7 +16,7 @@ import {
   terminalStrong,
   terminalSubtle,
   formatTerminalUrls,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const DEFAULT_CONTROL_PLANE_URL = "https://app.altertable.ai";
 const DEFAULT_DATA_PLANE_URL = "https://api.altertable.ai";

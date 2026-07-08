@@ -6,7 +6,7 @@ import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { terminalMetadata } from "@/lib/terminal-style.ts";
+import { terminalMetadata } from "@/ui/terminal/styles.ts";
 
 export type CommandOutputMode =
   | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }

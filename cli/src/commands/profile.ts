@@ -2,7 +2,7 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
-import type { ConfigureShowData } from "@/lib/configure-credential-status.ts";
+import type { ConfigureShowData } from "@/features/configure/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
 import { configureVerify } from "@/lib/configure-verify.ts";
 import { defaultConfigurePrompts, type ConfigurePrompts } from "@/lib/configure-prompts.ts";
@@ -14,13 +14,15 @@ import {
 import {
   buildProfileDirenvView,
   buildProfileShellExportView,
+  profileSwitchOption,
+  type ProfileStatusResult,
+} from "@/features/profile/views.ts";
+import {
   formatProfileInspect,
   formatProfileList,
   formatProfileStatus,
-  profileSwitchOption,
-  renderShellExportView,
-  type ProfileStatusResult,
-} from "@/lib/profile-formatters.ts";
+} from "@/features/profile/render.ts";
+import { renderShellExportView } from "@/ui/shell/render.ts";
 import {
   createProfile,
   deleteProfile,
@@ -33,7 +35,7 @@ import {
   setActiveProfile,
   updateProfile,
   type ProfileUpdate,
-} from "@/lib/profile.ts";
+} from "@/features/profile/model.ts";
 import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 function requireProfileName(name: unknown): string {

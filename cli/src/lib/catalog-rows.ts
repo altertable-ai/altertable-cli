@@ -1,5 +1,6 @@
 import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { type CatalogRow, formatCatalogsTable } from "@/lib/management-formatters.ts";
+import type { CatalogRow } from "@/features/management/model.ts";
+import { formatCatalogsTable } from "@/features/management/render.ts";
 
 type DatabaseSummary = {
   name?: string;

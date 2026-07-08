@@ -14,7 +14,7 @@ import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { secretSet } from "@/lib/secrets.ts";
-import { terminalMuted } from "@/lib/terminal-style.ts";
+import { terminalMuted } from "@/ui/terminal/styles.ts";
 import { USER_AGENT } from "@/version.ts";
 
 const CREDENTIAL_LABEL = USER_AGENT;

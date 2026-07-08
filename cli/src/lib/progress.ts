@@ -4,7 +4,7 @@ import {
   terminalError,
   terminalMuted,
   terminalSuccess,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 export type ProgressHandle = {
   done: (message?: string) => void;

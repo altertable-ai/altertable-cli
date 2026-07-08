@@ -40,7 +40,7 @@ import {
 } from "@/lib/citty-usage.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
-import { terminalError, applyTerminalColorFromContext } from "@/lib/terminal-style.ts";
+import { terminalError, applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {

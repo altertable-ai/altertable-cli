@@ -30,7 +30,7 @@ import {
   terminalWarning,
   truncateTerminalText,
   applyTerminalColorFromContext,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const originalNoColor = process.env.NO_COLOR;
 const originalTerm = process.env.TERM;

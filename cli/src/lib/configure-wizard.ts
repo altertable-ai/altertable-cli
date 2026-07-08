@@ -4,7 +4,7 @@ import {
   type ConfigureOptions,
 } from "@/lib/configure.ts";
 import { ConfigurePromptCancelled, defaultConfigurePrompts } from "@/lib/configure-prompts.ts";
-import { formatConfigureSessionSummary } from "@/lib/configure-credential-status.ts";
+import { formatConfigureSessionSummary } from "@/features/configure/render.ts";
 import {
   configureVerify,
   formatConfigureVerifyRemediation,
@@ -27,8 +27,8 @@ import {
   terminalMuted,
   getTerminalWidth,
   getVisibleTextWidth,
-} from "@/lib/terminal-style.ts";
-import { deriveProfileName } from "@/lib/profile.ts";
+} from "@/ui/terminal/styles.ts";
+import { deriveProfileName } from "@/features/profile/model.ts";
 
 export type { ConfigurePlaneStatusOptions } from "@/lib/configure-wizard-status.ts";
 export type { ConfigureWizardOptions, ConfigureWizardScope } from "@/lib/configure-wizard-types.ts";

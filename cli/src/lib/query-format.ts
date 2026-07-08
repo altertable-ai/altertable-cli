@@ -27,7 +27,7 @@ import {
   terminalSubtle,
   terminalTimestamp,
   type TerminalTextAlignment,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;

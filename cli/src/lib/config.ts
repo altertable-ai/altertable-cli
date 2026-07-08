@@ -12,7 +12,7 @@ import {
   resolveProfileName,
   unsetProfileConfig,
   writeProfileConfig,
-} from "@/lib/profile.ts";
+} from "@/features/profile/model.ts";
 import { isProfileScopedConfigKey } from "@/lib/profile-config-keys.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 

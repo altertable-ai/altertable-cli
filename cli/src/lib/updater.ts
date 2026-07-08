@@ -13,7 +13,7 @@ import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { terminalMetadata } from "@/lib/terminal-style.ts";
+import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import {
   UpdaterInstallManagers,
   UpdaterInstallationKind,

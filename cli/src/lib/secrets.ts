@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
-import { profileScopedSecretAccount } from "@/lib/profile.ts";
+import { profileScopedSecretAccount } from "@/features/profile/model.ts";
 
 type SecretBackend = "macos" | "file";
 

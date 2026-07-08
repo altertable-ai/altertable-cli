@@ -5,8 +5,8 @@ import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
 import { localPlan, runOperationEffect } from "@/lib/operation-effect.ts";
-import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management-formatters.ts";
-import { terminalMetadata } from "@/lib/terminal-style.ts";
+import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
+import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import {
   buildManagementCatalogRows,
   managementCatalogConnectionsOperation,

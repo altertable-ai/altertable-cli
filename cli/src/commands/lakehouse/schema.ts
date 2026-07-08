@@ -17,7 +17,7 @@ import {
   terminalStrong,
   terminalSubtle,
   terminalWarning,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 import type { LakehouseQueryResult, LakehouseRow } from "@/lib/lakehouse-ndjson.ts";
 
 export function buildSchemaStatement(catalog: string): string {

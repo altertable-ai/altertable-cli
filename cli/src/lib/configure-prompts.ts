@@ -7,7 +7,7 @@ import {
 } from "@clack/prompts";
 import { stdin as input, stderr as output } from "node:process";
 import { CliError } from "@/lib/errors.ts";
-import { ensurePromptColorAlignment } from "@/lib/terminal-style.ts";
+import { ensurePromptColorAlignment } from "@/ui/terminal/styles.ts";
 export type ConfigureSelectOption = {
   value: string;
   label: string;

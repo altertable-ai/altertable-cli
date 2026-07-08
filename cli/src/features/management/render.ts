@@ -1,19 +1,5 @@
-import { renderFixedTableSection } from "@/lib/table-format.ts";
-
-export type WhoamiResponse = {
-  principal: {
-    type?: string;
-    name?: string;
-    email?: string;
-    slug?: string;
-  };
-  organization: {
-    name?: string;
-    slug?: string;
-  };
-  authentication_scope?: string;
-  environment_slug?: string;
-};
+import type { CatalogRow, WhoamiResponse } from "@/features/management/model.ts";
+import { renderFixedTableSection } from "@/ui/terminal/table-layout.ts";
 
 export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
   const principal = data.principal ?? {};
@@ -25,14 +11,6 @@ export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
   }
   return `User: ${principal.name ?? ""}`;
 }
-
-export type CatalogRow = {
-  type: string;
-  name: string;
-  slug: string;
-  engine: string;
-  catalog: string;
-};
 
 export function formatCatalogsSummary(rows: CatalogRow[]): string | null {
   if (rows.length === 0) {

@@ -11,7 +11,7 @@ import {
   terminalSubtle,
   terminalTableHeader,
   truncateTerminalText,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const COLUMN_GAP = "  ";
 const FLEX_SHRINK_MIN_WIDTH = 4;

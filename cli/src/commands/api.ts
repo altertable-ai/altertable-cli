@@ -27,12 +27,12 @@ import {
 import { noopPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
-import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
+import { renderApiRoutesTableSection } from "@/ui/terminal/table-layout.ts";
 import {
   formatTerminalLabelValue,
   formatTerminalSection,
   terminalAccent,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;

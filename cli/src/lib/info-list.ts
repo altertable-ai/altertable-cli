@@ -1,4 +1,4 @@
-import { formatTerminalLabelValue } from "@/lib/terminal-style.ts";
+import { formatTerminalLabelValue } from "@/ui/terminal/styles.ts";
 
 export type InfoListItem = {
   label: string;

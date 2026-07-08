@@ -6,13 +6,17 @@ import { getBootstrapCliContext } from "@/context.ts";
 import {
   activeContextToJson,
   buildActiveContext,
+  withAuthenticatedIdentity,
+} from "@/features/context/model.ts";
+import {
   buildActiveContextDetailsView,
   buildActiveContextSummaryView,
+} from "@/features/context/views.ts";
+import {
   formatActiveContextDetails,
   formatActiveContextSummary,
   tryFormatActiveContextSummary,
-  withAuthenticatedIdentity,
-} from "@/lib/active-context.ts";
+} from "@/features/context/render.ts";
 import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 

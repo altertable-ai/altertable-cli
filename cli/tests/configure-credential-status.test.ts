@@ -4,13 +4,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   buildConfigureShowData,
-  buildConfigureShowView,
   configureCredentialStatus,
-  formatConfigureAuthenticationLines,
-  formatConfigureSessionSummary,
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
-} from "@/lib/configure-credential-status.ts";
+} from "@/features/configure/model.ts";
+import { buildConfigureShowView } from "@/features/configure/views.ts";
+import {
+  formatConfigureAuthenticationLines,
+  formatConfigureSessionSummary,
+} from "@/features/configure/render.ts";
 import { secretSet } from "@/lib/secrets.ts";
 import { configSet } from "@/lib/config.ts";
 

@@ -25,7 +25,7 @@ import {
   resolveProfileName,
   setActiveProfile,
   updateProfile,
-} from "@/lib/profile.ts";
+} from "@/features/profile/model.ts";
 import { promptProfileSwitch } from "@/commands/profile.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import {
@@ -33,7 +33,7 @@ import {
   buildProfileInspectView,
   buildProfileListView,
   buildProfileShellExportView,
-} from "@/lib/profile-formatters.ts";
+} from "@/features/profile/views.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 

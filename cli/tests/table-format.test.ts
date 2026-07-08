@@ -4,8 +4,8 @@ import {
   renderApiRoutesTableSection,
   renderFixedTable,
   renderFixedTableSection,
-} from "@/lib/table-format.ts";
-import { setTerminalColorMode, getVisibleTextWidth } from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/table-layout.ts";
+import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
 const originalStdoutIsTTY = process.stdout.isTTY;

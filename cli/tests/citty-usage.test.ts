@@ -8,7 +8,7 @@ import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/citty-usage.ts";
 import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
 import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
-import { formatCommandExamplesSection } from "@/lib/terminal-style.ts";
+import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 import {
   restoreTerminalState,
   snapshotTerminalState,
