@@ -15,6 +15,7 @@ import { loginCommand, logoutCommand } from "@/commands/login.ts";
 import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
+import { duckdbCommand } from "@/commands/duckdb.ts";
 import { appendCommand } from "@/commands/lakehouse/append.ts";
 import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
 import { schemaCommand } from "@/commands/lakehouse/schema.ts";
@@ -96,6 +97,7 @@ export function buildMainCommand(): CommandDef {
     catalogs: catalogsCommand,
     query: queryCommand,
     schema: schemaCommand,
+    duckdb: duckdbCommand,
     append: appendCommand,
     upload: uploadCommand,
     upsert: upsertCommand,

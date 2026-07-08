@@ -5,5 +5,5 @@
   "ignore": ["src/generated/**"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["undici"],
-  "ignoreBinaries": ["less"]
+  "ignoreBinaries": ["less", "duckdb"]
 }
