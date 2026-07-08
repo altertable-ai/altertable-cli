@@ -44,3 +44,7 @@ export function renderTree(view: TreeView): string[] {
   lines.push(...renderTreeNodes(view.children, ""));
   return lines;
 }
+
+export function renderTreeText(view: TreeView): string {
+  return renderTree(view).join("\n");
+}

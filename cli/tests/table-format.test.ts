@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { renderFixedTable, renderFixedTableSection } from "@/ui/terminal/table.ts";
+import { renderFixedTable } from "@/ui/terminal/table.ts";
 import { renderApiRoutesTable, renderApiRoutesTableSection } from "@/features/api/render.ts";
 import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 
@@ -85,15 +85,6 @@ describe("renderFixedTable", () => {
     );
     expect(output).toContain("abcdefghijklmnopqrstuvwxyz");
     expect(output).not.toContain("…");
-  });
-
-  test("wraps table output without a section title", () => {
-    const output = renderFixedTableSection(
-      [{ name: "default" }],
-      [{ header: "NAME", cell: (row) => row.name }],
-    );
-    expect(output).toContain("NAME");
-    expect(output).toContain("default");
   });
 
   test("sizes columns using visible width for wide characters", () => {

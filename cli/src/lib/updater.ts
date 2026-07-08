@@ -14,6 +14,8 @@ import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { terminalMetadata } from "@/ui/terminal/styles.ts";
+import { document, rows, section, text, type DisplayRow } from "@/ui/document.ts";
+import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import {
   UpdaterInstallManagers,
   UpdaterInstallationKind,
@@ -1148,26 +1150,35 @@ export function formatUpdateResult(result: UpdateCheckResult): string {
     return `altertable is up to date (${result.current_version}).`;
   }
 
-  return [
-    `altertable ${result.latest_version} is available (current ${result.current_version}).`,
-    `Install: ${result.install_command}`,
-    `Release: ${result.release_url}`,
-  ].join("\n");
+  return renderDocumentText(
+    document(
+      section(
+        text([
+          `altertable ${result.latest_version} is available (current ${result.current_version}).`,
+        ]),
+        rows([
+          { label: "Install:", value: result.install_command },
+          { label: "Release:", value: result.release_url, linkifyUrls: true },
+        ]),
+      ),
+    ),
+    { labelWidth: "Release:".length },
+  );
 }
 
 export function formatUpdateStatus(interval: UpdateCheckInterval, state: UpdateState): string {
-  const lines = [`Auto update checks: ${interval}`];
+  const statusRows: DisplayRow[] = [{ label: "Auto update checks:", value: interval }];
   if (state.last_checked_at) {
-    lines.push(`Last checked: ${state.last_checked_at}`);
+    statusRows.push({ label: "Last checked:", value: state.last_checked_at });
   }
   if (state.latest_version) {
-    lines.push(`Cached latest: ${state.latest_version}`);
+    statusRows.push({ label: "Cached latest:", value: state.latest_version });
   }
   if (state.last_error) {
-    lines.push(`Last error: ${state.last_error}`);
+    statusRows.push({ label: "Last error:", value: state.last_error });
   }
   if (!existsSync(updaterStateFile())) {
-    lines.push("Cache: empty");
+    statusRows.push({ label: "Cache:", value: "empty" });
   }
-  return lines.join("\n");
+  return renderDocumentText(document(section(rows(statusRows))));
 }

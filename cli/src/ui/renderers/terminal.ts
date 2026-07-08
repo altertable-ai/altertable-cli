@@ -66,3 +66,10 @@ export function renderDocument(
     ...renderSection(section, options),
   ]);
 }
+
+export function renderDocumentText(
+  document: DisplayDocument,
+  options: TerminalRenderOptions = {},
+): string {
+  return renderDocument(document, options).join("\n");
+}

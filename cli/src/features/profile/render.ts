@@ -5,16 +5,16 @@ import {
   type ProfileStatusResult,
 } from "@/features/profile/views.ts";
 import type { ProfileInspect, ProfileSummary } from "@/features/profile/model.ts";
-import { renderDocument } from "@/ui/renderers/terminal.ts";
+import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 
 export function formatProfileInspect(profile: ProfileInspect): string {
-  return renderDocument(buildProfileInspectView(profile)).join("\n");
+  return renderDocumentText(buildProfileInspectView(profile));
 }
 
 export function formatProfileStatus(result: ProfileStatusResult): string {
-  return renderDocument(buildProfileStatusView(result)).join("\n");
+  return renderDocumentText(buildProfileStatusView(result));
 }
 
 export function formatProfileList(profiles: readonly ProfileSummary[]): string {
-  return renderDocument(buildProfileListView(profiles)).join("\n");
+  return renderDocumentText(buildProfileListView(profiles));
 }

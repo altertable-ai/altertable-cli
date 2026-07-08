@@ -1,5 +1,4 @@
 import {
-  formatTerminalSection,
   getTerminalWidth,
   getVisibleTextWidth,
   padVisibleText,
@@ -170,14 +169,4 @@ export function renderFixedTable<T>(
   }
 
   return [header, ...bodyLines].join("\n");
-}
-
-export function renderFixedTableSection<T>(
-  rows: T[],
-  columns: TableColumn<T>[],
-  emptyMessage = "No rows.",
-  options: FixedTableRenderOptions<T> = {},
-): string {
-  const table = renderFixedTable(rows, columns, emptyMessage, options);
-  return formatTerminalSection(table.split("\n"));
 }

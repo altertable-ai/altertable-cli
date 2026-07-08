@@ -1,5 +1,7 @@
 import type { CatalogRow, WhoamiResponse } from "@/features/management/model.ts";
-import { renderFixedTableSection } from "@/ui/terminal/table.ts";
+import { buildCatalogsTableView } from "@/features/management/views.ts";
+import { renderDocument } from "@/ui/renderers/terminal.ts";
+import { formatTerminalSection } from "@/ui/terminal/styles.ts";
 
 export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
   const principal = data.principal ?? {};
@@ -35,16 +37,5 @@ export function formatCatalogsSummary(rows: CatalogRow[]): string | null {
 }
 
 export function formatCatalogsTable(rows: CatalogRow[]): string {
-  return renderFixedTableSection(
-    rows,
-    [
-      { header: "SLUG", cell: (row) => row.slug, style: "accent" },
-      { header: "NAME", cell: (row) => row.name, style: "strong", flex: true },
-      { header: "ENGINE", cell: (row) => row.engine, style: "muted" },
-      { header: "CATALOG", cell: (row) => row.catalog, style: "string", flex: true },
-      { header: "TYPE", cell: (row) => row.type, style: "subtle" },
-    ],
-    "No catalogs found.",
-    { groupBy: (row) => row.type },
-  );
+  return formatTerminalSection(renderDocument(buildCatalogsTableView(rows)));
 }

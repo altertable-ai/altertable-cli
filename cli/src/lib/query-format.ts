@@ -14,7 +14,6 @@ import { pluralizeLabel } from "@/lib/pluralize.ts";
 import { redactPasswordFieldInText } from "@/lib/redact.ts";
 import { formatRelativeTimestamp, formatTimestampWithRelative } from "@/lib/relative-time.ts";
 import {
-  formatTerminalLabelValue,
   getTerminalWidth,
   getVisibleTextWidth,
   isTimestampValue,
@@ -29,6 +28,7 @@ import {
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
 import type { QueryLayout } from "@/ui/layouts/query.ts";
+import { renderRows } from "@/ui/renderers/terminal.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;
@@ -574,15 +574,16 @@ function renderQueryExpanded(model: QueryRenderModel, options: QueryDisplayOptio
   const showRowNumbers = rows.length > 1;
 
   const records = rows.map((row, rowIndex) => {
-    const lines = columnNames.map((name, columnIndex) => {
+    const displayRows = columnNames.map((name, columnIndex) => {
       const value = formatQueryCell(row.values[columnIndex], {
         colorize,
         includeRelative: true,
         columnName: name,
         columnTypeMap,
       });
-      return formatTerminalLabelValue(`${name}:`, value, { labelWidth });
+      return { label: `${name}:`, value };
     });
+    const lines = renderRows(displayRows, { indent: "", labelWidth });
     const body = lines.join("\n");
     if (showRowNumbers) {
       return `${styleQueryTableChrome(`#${rowIndex + 1}`, colorize)}\n${body}`;
