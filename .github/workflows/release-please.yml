@@ -28,6 +28,7 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     permissions:
+      artifact-metadata: write
       attestations: write
       contents: write
       id-token: write
@@ -64,7 +65,7 @@ jobs:
           cd ../dist && shasum -a 256 altertable-* altertable-cli.js > checksums.txt
 
       - name: Attest release assets
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest@v4
         with:
           subject-path: |
             dist/altertable-*
