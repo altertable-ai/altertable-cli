@@ -15,7 +15,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -33,13 +33,13 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: .bun-version
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
           registry-url: "https://registry.npmjs.org"
@@ -65,7 +65,7 @@ jobs:
           cd ../dist && shasum -a 256 altertable-* altertable-cli.js > checksums.txt
 
       - name: Attest release assets
-        uses: actions/attest@v4
+        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
         with:
           subject-path: |
             dist/altertable-*
