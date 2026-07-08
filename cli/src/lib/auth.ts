@@ -70,6 +70,25 @@ export function getLakehouseAuthHeader(): string {
   );
 }
 
+export type LakehouseCredentials = { user: string; password: string };
+
+function decodeBasicToken(token: string): LakehouseCredentials | undefined {
+  const decoded = Buffer.from(token, "base64").toString("utf8");
+  const [user, password] = decoded.split(":");
+  if (!user || !password) {
+    return undefined;
+  }
+  return { user, password };
+}
+
+export function getLoginLakehouseCredentials(): LakehouseCredentials | undefined {
+  if (storedLakehouseCredentialsExpired()) {
+    return undefined;
+  }
+  const token = secretGet("lakehouse/basic-token");
+  return token ? decodeBasicToken(token) : undefined;
+}
+
 export function getManagementAuthHeader(): string {
   const envKey = process.env.ALTERTABLE_API_KEY ?? "";
   if (envKey) {
