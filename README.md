@@ -60,7 +60,7 @@ altertable query --statement "SELECT * FROM users LIMIT 10"
 npm install -g @altertable/cli
 ```
 
-Requires [Bun](https://bun.sh) 1.3.9+ at runtime (used as the JS engine when running the npm package).
+Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package).
 
 ### Prebuilt binaries
 

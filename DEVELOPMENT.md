@@ -2,7 +2,7 @@
 
 The CLI is a TypeScript project in `cli/`, run via Bun.
 
-The Bun runtime used by CI and release builds is pinned in [`.bun-version`](.bun-version) and mirrored in `cli/package.json`.
+The Bun runtime used by contributors, CI, and release builds is pinned in [`.bun-version`](.bun-version) and mirrored by `packageManager` in `cli/package.json`.
 
 ```bash
 cd cli
@@ -83,7 +83,7 @@ CI (`.github/workflows/test.yml`) runs the same `bun run build`, `bun run pack:c
 
 ### npm publish
 
-The `@altertable/cli` package is published to npm on each release by `.github/workflows/release-please.yml` using the `NPM_TOKEN` repository secret and npm provenance. Install globally with `npm install -g @altertable/cli` (requires Bun 1.3.9+ at runtime).
+The `@altertable/cli` package is published to npm on each release by `.github/workflows/release-please.yml` using the `NPM_TOKEN` repository secret and npm provenance. Install globally with `npm install -g @altertable/cli`; npm installs require Bun at runtime, while prebuilt binaries do not.
 
 ### Update installer
 
