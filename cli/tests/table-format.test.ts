@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  renderApiRoutesTable,
-  renderApiRoutesTableSection,
-  renderFixedTable,
-  renderFixedTableSection,
-} from "@/ui/terminal/table.ts";
+import { renderFixedTable, renderFixedTableSection } from "@/ui/terminal/table.ts";
+import { renderApiRoutesTable, renderApiRoutesTableSection } from "@/features/api/render.ts";
 import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;

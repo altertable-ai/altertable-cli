@@ -12,39 +12,18 @@ import {
   terminalTableHeader,
   truncateTerminalText,
 } from "@/ui/terminal/styles.ts";
+import type {
+  DisplayTableColumn,
+  DisplayTableColumnStyle,
+  DisplayTableOptions,
+} from "@/ui/document.ts";
 
 const COLUMN_GAP = "  ";
 const FLEX_SHRINK_MIN_WIDTH = 4;
 
-export type TableColumnStyle =
-  | "foreground"
-  | "subtle"
-  | "muted"
-  | "accent"
-  | "string"
-  | "strong"
-  | "httpMethod";
-
-export type TableColumn<T> = {
-  header: string;
-  cell: (row: T) => string;
-  maxWidth?: number;
-  style?: TableColumnStyle;
-  flex?: boolean;
-};
-
-export type FixedTableRenderOptions<T> = {
-  terminalWidth?: number;
-  groupBy?: (row: T) => string;
-  horizontalScroll?: boolean;
-};
-
-export type ApiRouteRow = {
-  method: string;
-  path: string;
-  operationId: string;
-  summary: string;
-};
+export type TableColumnStyle = DisplayTableColumnStyle;
+export type TableColumn<T> = DisplayTableColumn<T>;
+export type FixedTableRenderOptions<T> = DisplayTableOptions<T>;
 
 function truncateCell(text: string, maxWidth?: number): string {
   return truncateTerminalText(text, maxWidth);
@@ -200,55 +179,5 @@ export function renderFixedTableSection<T>(
   options: FixedTableRenderOptions<T> = {},
 ): string {
   const table = renderFixedTable(rows, columns, emptyMessage, options);
-  return formatTerminalSection(table.split("\n"));
-}
-
-type ApiRouteRenderOptions = {
-  terminalWidth?: number;
-};
-
-export function renderApiRoutesTable(
-  rows: ApiRouteRow[],
-  emptyMessage = "No operations found.",
-  options: ApiRouteRenderOptions = {},
-): string {
-  return renderFixedTable(
-    rows,
-    [
-      {
-        header: "METHOD",
-        cell: (row) => row.method,
-        style: "httpMethod",
-      },
-      {
-        header: "PATH",
-        cell: (row) => row.path,
-        style: "foreground",
-      },
-      {
-        header: "OPERATION",
-        cell: (row) => row.operationId,
-        style: "subtle",
-      },
-      {
-        header: "SUMMARY",
-        cell: (row) => row.summary,
-        style: "muted",
-      },
-    ],
-    emptyMessage,
-    {
-      ...options,
-      horizontalScroll: true,
-      groupBy: (row) => row.path.split("/").filter(Boolean)[0] ?? "",
-    },
-  );
-}
-
-export function renderApiRoutesTableSection(
-  rows: ApiRouteRow[],
-  emptyMessage = "No operations found.",
-): string {
-  const table = renderApiRoutesTable(rows, emptyMessage);
   return formatTerminalSection(table.split("\n"));
 }

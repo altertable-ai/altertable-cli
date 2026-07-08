@@ -142,16 +142,3 @@ export function readProfileConfigRecord(
   }
   return config;
 }
-
-export function moveProfileConfigKey(
-  sourceProfile: string,
-  targetProfile: string,
-  key: ProfileConfigKey,
-): void {
-  const value = readProfileConfig(sourceProfile, key);
-  if (!value) {
-    return;
-  }
-  writeProfileConfig(targetProfile, key, value);
-  unsetProfileConfig(sourceProfile, key);
-}

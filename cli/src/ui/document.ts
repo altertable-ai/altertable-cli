@@ -1,10 +1,31 @@
-import type { FixedTableRenderOptions, TableColumn } from "@/ui/terminal/table.ts";
-
 export type DisplayRow = {
   label: string;
   value: string;
   level?: 0 | 1;
   linkifyUrls?: boolean;
+};
+
+export type DisplayTableColumnStyle =
+  | "foreground"
+  | "subtle"
+  | "muted"
+  | "accent"
+  | "string"
+  | "strong"
+  | "httpMethod";
+
+export type DisplayTableColumn<Row> = {
+  header: string;
+  cell: (row: Row) => string;
+  maxWidth?: number;
+  style?: DisplayTableColumnStyle;
+  flex?: boolean;
+};
+
+export type DisplayTableOptions<Row> = {
+  terminalWidth?: number;
+  groupBy?: (row: Row) => string;
+  horizontalScroll?: boolean;
 };
 
 export type DisplayBlock =
@@ -31,9 +52,9 @@ export type DisplayDocument = {
 
 export type DisplayTable<Row = unknown> = {
   rows: readonly Row[];
-  columns: readonly TableColumn<Row>[];
+  columns: readonly DisplayTableColumn<Row>[];
   emptyMessage?: string;
-  options?: FixedTableRenderOptions<Row>;
+  options?: DisplayTableOptions<Row>;
 };
 
 export function rows(rows: readonly DisplayRow[]): DisplayBlock {

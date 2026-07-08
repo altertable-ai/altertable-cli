@@ -1,6 +1,6 @@
 import { renameSync, rmSync } from "node:fs";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { PROFILE_CONFIG_KEYS, type ProfileConfigKey } from "@/lib/profile-config-keys.ts";
+import type { ProfileConfigKey } from "@/lib/profile-config-keys.ts";
 import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
 import {
   assertSafeProfileName,
@@ -12,7 +12,6 @@ import {
   profileConfigFile,
   profileDir,
   profileExists,
-  readProfileConfig,
   readProfileConfigRecord,
   setActiveProfile,
   writeProfileConfig,
@@ -24,7 +23,6 @@ export {
   ensureProfileExists,
   ensureProfilesLayout,
   getActiveProfileName,
-  moveProfileConfigKey,
   profileConfigFile,
   profileExists,
   profilesDir,
