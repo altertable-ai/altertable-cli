@@ -5,11 +5,14 @@ import { tmpdir } from "node:os";
 import {
   buildConfigureShowData,
   configureCredentialStatus,
-  formatConfigureAuthenticationLines,
-  formatConfigureSessionSummary,
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
-} from "@/lib/configure-credential-status.ts";
+} from "@/features/configure/model.ts";
+import { buildConfigureShowView } from "@/features/configure/views.ts";
+import {
+  formatConfigureAuthenticationLines,
+  formatConfigureSessionSummary,
+} from "@/features/configure/render.ts";
 import { secretSet } from "@/lib/secrets.ts";
 import { configSet } from "@/lib/config.ts";
 
@@ -176,5 +179,35 @@ describe("buildConfigureShowData", () => {
       api_key: true,
     });
     expect(JSON.stringify(data)).not.toContain("atm_override");
+  });
+
+  test("configure show view separates summary and authentication sections", () => {
+    secretSet("api-key", "atm_test");
+    configSet("api_key_env", "production");
+
+    const view = buildConfigureShowView(buildConfigureShowData());
+    const [summary, authentication] = view.sections;
+    const [summaryRows] = summary?.blocks ?? [];
+    const [authenticationRows] = authentication?.blocks ?? [];
+
+    expect(summaryRows?.kind).toBe("rows");
+    if (summaryRows?.kind === "rows") {
+      expect(summaryRows.rows).toEqual(
+        expect.arrayContaining([
+          { label: "Active profile:", value: "default" },
+          { label: "Data plane:", value: "https://api.altertable.ai", linkifyUrls: true },
+        ]),
+      );
+    }
+
+    expect(authenticationRows?.kind).toBe("rows");
+    if (authenticationRows?.kind === "rows") {
+      expect(authenticationRows.rows).toEqual(
+        expect.arrayContaining([
+          { label: "Authentication:", value: "management API key" },
+          { label: "environment:", value: "production", level: 1 },
+        ]),
+      );
+    }
   });
 });

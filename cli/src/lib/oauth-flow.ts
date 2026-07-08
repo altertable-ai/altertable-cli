@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { resolveOAuthBase } from "@/lib/config.ts";
 import { httpSend } from "@/lib/http.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { terminalMetadata } from "@/lib/terminal-style.ts";
+import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
 const LOGIN_TIMEOUT_MS = 180_000;

@@ -1,4 +1,4 @@
-import { setTerminalColorMode } from "@/lib/terminal-style.ts";
+import { setTerminalColorMode } from "@/ui/terminal/styles.ts";
 
 const TERMINAL_ENV_KEYS = [
   "ALTERTABLE_COLOR",

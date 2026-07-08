@@ -10,11 +10,8 @@ import {
   parseLakehouseFileContentType,
 } from "@/commands/lakehouse-args.ts";
 import { parseQueryResultFormat } from "@/lib/lakehouse-client.ts";
-import {
-  buildSchemaStatement,
-  formatSchemaTree,
-  schemaCommand,
-} from "@/commands/lakehouse/schema.ts";
+import { buildSchemaStatement, schemaCommand } from "@/commands/lakehouse/schema.ts";
+import { formatSchemaTree } from "@/features/lakehouse/schema/render.ts";
 import { setCliContext } from "@/context.ts";
 import {
   forceNoTerminalColorForTests,

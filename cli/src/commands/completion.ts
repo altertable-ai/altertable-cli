@@ -6,13 +6,14 @@ import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineLocalCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
 import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
-import { formatInfoList } from "@/lib/info-list.ts";
+import { document, rows, section, text } from "@/ui/document.ts";
+import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import {
   formatTerminalMarkdownLinks,
   terminalAccent,
   terminalSubtle,
   terminalSuccess,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 import { buildCompletionSpec } from "@/lib/completion-spec.ts";
 import {
   formatBashCompletion,
@@ -205,7 +206,6 @@ export async function installCompletion(
 }
 
 function formatInstallMessage(result: InstallResult): string {
-  const labelWidth = 8;
   const startup =
     result.startupAction === "updated"
       ? `updated ${terminalAccent(result.rcPath ?? "")}`
@@ -217,23 +217,24 @@ function formatInstallMessage(result: InstallResult): string {
       ? "Add the completion script to your shell startup file, then open a new terminal."
       : "Open a new terminal, or reload your shell, to start using completion.";
 
-  const lines = [
-    `${terminalSuccess("✓")} Shell completion installed`,
-    formatInfoList(
-      [
-        { label: "Shell", value: result.shell },
-        { label: "Script", value: terminalAccent(result.completionPath) },
-        { label: "Startup", value: startup },
-        { label: "Next", value: next },
-        {
-          label: "Docs",
-          value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
-        },
-      ],
-      { labelWidth, indent: "  " },
+  return renderDocumentText(
+    document(
+      section(
+        text([`${terminalSuccess("✓")} Shell completion installed`]),
+        rows([
+          { label: "Shell:", value: result.shell },
+          { label: "Script:", value: terminalAccent(result.completionPath) },
+          { label: "Startup:", value: startup },
+          { label: "Next:", value: next },
+          {
+            label: "Docs:",
+            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+          },
+        ]),
+      ),
     ),
-  ];
-  return lines.join("\n");
+    { labelWidth: "Startup:".length },
+  );
 }
 
 function createShellCompletionCommand(

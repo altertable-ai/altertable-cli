@@ -5,15 +5,14 @@ import { CliError } from "@/lib/errors.ts";
 import { defaultDisplayOptions } from "@/lib/query-format.ts";
 import { resolvePagerOptions, type PagerMode, type PagerOptions } from "@/lib/pager.ts";
 import { parseTimeoutSeconds } from "@/lib/timeout-args.ts";
-import type { QueryDisplayOptions, QueryLayout } from "@/lib/query-format.ts";
+import type { QueryDisplayOptions } from "@/lib/query-format.ts";
 import { parseQueryResultFormat, type QueryResultFormat } from "@/lib/lakehouse-client.ts";
+import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 
 const MIN_MAX_COLUMN_WIDTH = 8;
 export const QUERY_RESULT_FORMAT_OPTIONS = ["human", "json", "csv", "markdown"] as const;
-export const QUERY_LAYOUT_OPTIONS = ["auto", "table", "line"] as const;
 export const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
 
-const QUERY_LAYOUTS = new Set<QueryLayout>(QUERY_LAYOUT_OPTIONS);
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;
 
@@ -65,10 +64,10 @@ export function parseQueryLayout(args: Record<string, unknown>): QueryLayout {
   }
 
   const layoutRaw = asCliArgString(args.layout);
-  if (!QUERY_LAYOUTS.has(layoutRaw as QueryLayout)) {
+  if (!isQueryLayout(layoutRaw)) {
     throw new CliError("--layout must be auto, table, or line.");
   }
-  return layoutRaw as QueryLayout;
+  return layoutRaw;
 }
 
 export function parseQueryDisplayOptions(

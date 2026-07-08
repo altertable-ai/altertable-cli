@@ -1,4 +1,4 @@
-import type { ConfigureShowData } from "@/lib/configure-credential-status.ts";
+import type { ConfigureShowData } from "@/features/configure/model.ts";
 import {
   type ConfigureVerifyResult,
   formatConfigureVerifyRemediation,
@@ -6,28 +6,25 @@ import {
 import type { ConfigureSelectOption } from "@/lib/configure-prompts.ts";
 import {
   document,
-  renderDisplayDocument,
   rows,
   section,
+  table,
   text,
   type DisplayDocument,
   type DisplayRow,
-} from "@/lib/display-view.ts";
-import { terminalAccent } from "@/lib/terminal-style.ts";
-import type { ProfileInspect, ProfileSummary } from "@/lib/profile.ts";
+} from "@/ui/document.ts";
+import { formatTerminalUrls, terminalAccent } from "@/ui/terminal/styles.ts";
+import type { ProfileInspect, ProfileSummary } from "@/features/profile/model.ts";
+import type { ShellExportView } from "@/ui/shell/model.ts";
+
+const ACTIVE_PROFILE_MARK = "✓";
+const INACTIVE_PROFILE_MARK = " ";
+const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
 
 export type ProfileStatusResult = {
   profile: ProfileInspect;
   configuration: ConfigureShowData;
   verification?: ConfigureVerifyResult;
-};
-
-export type ProfileInspectView = {
-  document: DisplayDocument;
-};
-
-export type ProfileStatusView = {
-  document: DisplayDocument;
 };
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
@@ -59,14 +56,8 @@ function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
   ];
 }
 
-export function buildProfileInspectView(profile: ProfileInspect): ProfileInspectView {
-  return {
-    document: document(section(rows(profileInspectRows(profile)))),
-  };
-}
-
-export function formatProfileInspect(profile: ProfileInspect): string {
-  return renderDisplayDocument(buildProfileInspectView(profile).document).join("\n");
+export function buildProfileInspectView(profile: ProfileInspect): DisplayDocument {
+  return document(section(rows(profileInspectRows(profile))));
 }
 
 function formatProfilePrincipal(profile: ProfileInspect): string {
@@ -83,19 +74,29 @@ function formatProfilePrincipal(profile: ProfileInspect): string {
   return profile.principal.name ?? "not set";
 }
 
-function formatCredentialDetail(
+function credentialDetail(parts: readonly string[]): string {
+  return parts.filter(Boolean).join(", ");
+}
+
+function formatManagementCredentialDetail(
   credential: ConfigureShowData["credentials"]["management"],
 ): string {
   if (!credential.configured) {
     return "not configured";
   }
-  const parts = [
-    credential.mechanism ?? "configured",
+  if (credential.mechanism === "management_oauth") {
+    return credentialDetail([
+      "management_oauth",
+      credential.source ? `source: ${credential.source}` : "",
+      credential.environment ? `env: ${credential.environment}` : "",
+      credential.expires ? `expires: ${credential.expires}` : "",
+    ]);
+  }
+  return credentialDetail([
+    credential.mechanism,
     credential.source ? `source: ${credential.source}` : "",
     credential.environment ? `env: ${credential.environment}` : "",
-    credential.expires ? `expires: ${credential.expires}` : "",
-  ].filter(Boolean);
-  return parts.join(", ");
+  ]);
 }
 
 function formatLakehouseCredentialDetail(
@@ -104,13 +105,18 @@ function formatLakehouseCredentialDetail(
   if (!credential.configured) {
     return "not configured";
   }
-  const parts = [
-    credential.mechanism ?? "configured",
+  if (credential.mechanism === "lakehouse_basic_token") {
+    return credentialDetail([
+      "lakehouse_basic_token",
+      credential.source ? `source: ${credential.source}` : "",
+      credential.expires ? `expires: ${credential.expires}` : "",
+    ]);
+  }
+  return credentialDetail([
+    credential.mechanism,
     credential.source ? `source: ${credential.source}` : "",
     credential.user ? `user: ${credential.user}` : "",
-    credential.expires ? `expires: ${credential.expires}` : "",
-  ].filter(Boolean);
-  return parts.join(", ");
+  ]);
 }
 
 function formatVerificationStatus(result: ConfigureVerifyResult | undefined): string {
@@ -127,12 +133,12 @@ function formatVerificationStatus(result: ConfigureVerifyResult | undefined): st
   return `failed (${failed})`;
 }
 
-export function buildProfileStatusView(result: ProfileStatusResult): ProfileStatusView {
+export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
   const statusRows: DisplayRow[] = [
     { label: "Verification", value: formatVerificationStatus(result.verification) },
     {
       label: "Management",
-      value: formatCredentialDetail(result.configuration.credentials.management),
+      value: formatManagementCredentialDetail(result.configuration.credentials.management),
     },
     {
       label: "Lakehouse",
@@ -147,16 +153,69 @@ export function buildProfileStatusView(result: ProfileStatusResult): ProfileStat
         `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
     ) ?? [];
 
-  return {
-    document: document(
-      section(rows(profileInspectRows(result.profile))),
-      section(rows(statusRows), ...(errors.length > 0 ? [text(errors)] : [])),
-    ),
-  };
+  return document(
+    section(rows(profileInspectRows(result.profile))),
+    section(rows(statusRows), ...(errors.length > 0 ? [text(errors)] : [])),
+  );
 }
 
-export function formatProfileStatus(result: ProfileStatusResult): string {
-  return renderDisplayDocument(buildProfileStatusView(result).document).join("\n");
+export function buildProfileListView(profiles: readonly ProfileSummary[]): DisplayDocument {
+  return document(
+    section(
+      table({
+        rows: profiles,
+        columns: [
+          {
+            header: PROFILE_NAME_HEADER,
+            cell: (profile) =>
+              `${profile.active ? ACTIVE_PROFILE_MARK : INACTIVE_PROFILE_MARK} ${profile.name}`,
+            style: "strong",
+          },
+          {
+            header: "ORG",
+            cell: (profile) => profile.organization ?? "",
+            style: "muted",
+          },
+          {
+            header: "PRINCIPAL",
+            cell: (profile) => profile.principal ?? "",
+            style: "muted",
+          },
+          {
+            header: "ENV",
+            cell: (profile) => profile.management_env ?? "",
+            style: "muted",
+          },
+          {
+            header: "MGMT",
+            cell: (profile) => profile.management_auth ?? "",
+            style: "string",
+          },
+          {
+            header: "LAKEHOUSE",
+            cell: (profile) => profile.lakehouse_auth ?? "",
+            style: "string",
+          },
+          {
+            header: "OAUTH EXPIRES",
+            cell: (profile) => profile.oauth_expires_at ?? "",
+            style: "muted",
+          },
+          {
+            header: "STATUS",
+            cell: (profile) => profile.status ?? "",
+            style: "accent",
+          },
+          {
+            header: "DATA PLANE",
+            cell: (profile) => formatTerminalUrls(profile.data_plane ?? ""),
+            style: "muted",
+          },
+        ],
+        emptyMessage: "No profiles configured.",
+      }),
+    ),
+  );
 }
 
 export function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
@@ -174,18 +233,15 @@ export function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOpt
   };
 }
 
-export function profileShellExports(profileName: string): Record<"ALTERTABLE_PROFILE", string> {
-  return { ALTERTABLE_PROFILE: profileName };
+export function buildProfileShellExportView(profileName: string): ShellExportView {
+  return {
+    env: { ALTERTABLE_PROFILE: profileName },
+  };
 }
 
-function formatShellExport(name: string, value: string): string {
-  return `export ${name}=${JSON.stringify(value)}`;
-}
-
-export function formatProfileEnv(profileName: string): string {
-  return formatShellExport("ALTERTABLE_PROFILE", profileName);
-}
-
-export function formatProfileDirenv(profileName: string): string {
-  return ["# Generated by: altertable profile direnv", formatProfileEnv(profileName)].join("\n");
+export function buildProfileDirenvView(profileName: string): ShellExportView {
+  return {
+    ...buildProfileShellExportView(profileName),
+    comments: ["Generated by: altertable profile direnv"],
+  };
 }

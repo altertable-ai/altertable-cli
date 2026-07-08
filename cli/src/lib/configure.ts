@@ -1,22 +1,16 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import {
-  deriveProfileName,
-  ensureProfileExists,
-  listProfiles,
-  profilesDir,
-} from "@/lib/profile.ts";
+import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
+import { ensureProfileExists, profilesDir } from "@/lib/profile-store.ts";
 import { getCliContext, setCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import {
-  buildConfigureShowData,
-  buildConfigureShowView,
-  renderConfigureShowView,
-} from "@/lib/configure-credential-status.ts";
-import { formatTerminalSection, terminalMetadata } from "@/lib/terminal-style.ts";
+import { buildConfigureShowData } from "@/features/configure/model.ts";
+import { buildConfigureShowView } from "@/features/configure/views.ts";
+import { renderConfigureShowView } from "@/features/configure/render.ts";
+import { formatTerminalSection, terminalMetadata } from "@/ui/terminal/styles.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";

@@ -5,7 +5,7 @@ import {
   terminalNotConfiguredStatus,
   terminalSubtle,
   truncateTerminalText,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
 
 const PLANE_STATUS_INDENT = "  ";
 const PLANE_LABEL_WIDTH = 11;

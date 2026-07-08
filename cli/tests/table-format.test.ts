@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  renderApiRoutesTable,
-  renderApiRoutesTableSection,
-  renderFixedTable,
-  renderFixedTableSection,
-} from "@/lib/table-format.ts";
-import { setTerminalColorMode, getVisibleTextWidth } from "@/lib/terminal-style.ts";
+import { renderFixedTable } from "@/ui/terminal/table.ts";
+import { renderApiRoutesTable, renderApiRoutesTableSection } from "@/features/api/render.ts";
+import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
 const originalStdoutIsTTY = process.stdout.isTTY;
@@ -89,15 +85,6 @@ describe("renderFixedTable", () => {
     );
     expect(output).toContain("abcdefghijklmnopqrstuvwxyz");
     expect(output).not.toContain("…");
-  });
-
-  test("wraps table output without a section title", () => {
-    const output = renderFixedTableSection(
-      [{ name: "default" }],
-      [{ header: "NAME", cell: (row) => row.name }],
-    );
-    expect(output).toContain("NAME");
-    expect(output).toContain("default");
   });
 
   test("sizes columns using visible width for wide characters", () => {

@@ -6,7 +6,8 @@ import { getCliRuntime, refreshCliRuntimeContext, type OutputSink } from "@/lib/
 import { managementRequest } from "@/lib/management-transport.ts";
 import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
-import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
+import type { WhoamiResponse } from "@/features/management/model.ts";
+import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
 import { configureRunClear } from "@/lib/configure.ts";
 import {
   createProfile,
@@ -15,8 +16,8 @@ import {
   resolveProfileName,
   setActiveProfile,
   updateProfile,
-} from "@/lib/profile.ts";
-import { terminalSuccess } from "@/lib/terminal-style.ts";
+} from "@/features/profile/model.ts";
+import { terminalSuccess } from "@/ui/terminal/styles.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 
 function isInteractiveTerminal(): boolean {

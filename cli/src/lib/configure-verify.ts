@@ -4,14 +4,15 @@ import { CliError } from "@/lib/errors.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import { defineHttpOperation, type HttpOperationDescriptor } from "@/lib/http-operation.ts";
 import { lakehouseVerifyOperation } from "@/lib/lakehouse-operations.ts";
-import { formatWhoamiPrincipalLine, type WhoamiResponse } from "@/lib/management-formatters.ts";
+import type { WhoamiResponse } from "@/features/management/model.ts";
+import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { runOperationPlan } from "@/lib/operation-effect.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { resolveProfileName } from "@/lib/profile.ts";
+import { resolveProfileName } from "@/lib/profile-store.ts";
 
-export { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
+export { configureCredentialStatus } from "@/features/configure/model.ts";
 
 export type ConfigureAuthPlane = "management" | "lakehouse";
 

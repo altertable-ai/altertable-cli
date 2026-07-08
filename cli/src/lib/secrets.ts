@@ -1,10 +1,11 @@
 import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
 import { chmodSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { getCliContext } from "@/context.ts";
 import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
-import { profileScopedSecretAccount } from "@/lib/profile.ts";
+import { assertSafeProfileName, resolveProfileName } from "@/lib/profile-store.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -72,7 +73,12 @@ function secretBackend(): SecretBackend {
 }
 
 function resolveSecretAccount(account: string, profileName?: string): string {
-  return profileScopedSecretAccount(account, profileName);
+  if (profileName) {
+    assertSafeProfileName(profileName);
+    return `profile/${profileName}/${account}`;
+  }
+  const profile = resolveProfileName(getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
+  return `profile/${profile}/${account}`;
 }
 
 export type SecretSetOptions = {
@@ -190,6 +196,45 @@ export function secretDelete(account: string, profileName?: string): void {
   }
 
   kvUnset(credentialsFile(), storageAccount);
+}
+
+export function moveProfileSecrets(
+  sourceProfile: string,
+  targetProfile: string,
+  accounts: readonly string[],
+): void {
+  const prepared: Array<{ account: string; targetValue: string }> = [];
+
+  try {
+    for (const account of accounts) {
+      const sourceValue = secretGet(account, sourceProfile);
+      if (sourceValue.length === 0) {
+        continue;
+      }
+      prepared.push({
+        account,
+        targetValue: secretGet(account, targetProfile),
+      });
+      secretSet(account, sourceValue, targetProfile);
+    }
+  } catch (error) {
+    for (const entry of prepared.toReversed()) {
+      try {
+        if (entry.targetValue.length > 0) {
+          secretSet(entry.account, entry.targetValue, targetProfile);
+        } else {
+          secretDelete(entry.account, targetProfile);
+        }
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    throw error;
+  }
+
+  for (const { account } of prepared) {
+    secretDelete(account, sourceProfile);
+  }
 }
 
 export function secretStoreDisplay(): string {

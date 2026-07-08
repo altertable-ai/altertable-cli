@@ -30,7 +30,8 @@ import {
   terminalWarning,
   truncateTerminalText,
   applyTerminalColorFromContext,
-} from "@/lib/terminal-style.ts";
+} from "@/ui/terminal/styles.ts";
+import { padLeft } from "@/ui/terminal/spacing.ts";
 
 const originalNoColor = process.env.NO_COLOR;
 const originalTerm = process.env.TERM;
@@ -236,6 +237,10 @@ describe("terminal-style", () => {
   test("counts wide characters as double width", () => {
     expect(getVisibleTextWidth("日本語")).toBe(6);
     expect(getVisibleTextWidth("abc")).toBe(3);
+  });
+
+  test("padLeft indents multi-line terminal output", () => {
+    expect(padLeft(["A\nB", "C"], "  ")).toEqual(["  A", "  B", "  C"]);
   });
 
   test("linkifies URLs and emits OSC 8 hyperlinks when supported", () => {

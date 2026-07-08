@@ -7,7 +7,7 @@ import { configGet } from "@/lib/config.ts";
 import { setCliContext } from "@/context.ts";
 import { parseCallback, buildAuthorizeUrl, startLoopbackServer } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens, getStoredAccessToken, clearOAuthTokens } from "@/lib/oauth-profile.ts";
-import { getActiveProfileName, profileExists } from "@/lib/profile.ts";
+import { getActiveProfileName, profileExists } from "@/lib/profile-store.ts";
 
 let testHome = "";
 const TEST_PRINCIPAL = {

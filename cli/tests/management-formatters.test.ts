@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatCatalogsSummary,
-  formatCatalogsTable,
-  type CatalogRow,
-} from "@/lib/management-formatters.ts";
+import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
+import type { CatalogRow } from "@/features/management/model.ts";
 
 const sampleRows: CatalogRow[] = [
   {

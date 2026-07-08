@@ -15,7 +15,7 @@
  * | 9    | EXIT_NETWORK       | NetworkError, TimeoutError       |
  * | 10   | EXIT_CONFIG        | ConfigurationError               |
  */
-import { terminalError } from "@/lib/terminal-style.ts";
+import { terminalError } from "@/ui/terminal/styles.ts";
 
 export const EXIT_SUCCESS = 0;
 export const EXIT_GENERIC = 1;

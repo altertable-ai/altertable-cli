@@ -4,7 +4,6 @@ import {
   getOpenapiSpecYaml,
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
-import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import {
   API_HTTP_OPERATION,
   apiHttpResultOutput,
@@ -13,7 +12,6 @@ import {
   type ResolvedApiHttp,
 } from "@/lib/api-http.ts";
 import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
-import { CliError } from "@/lib/errors.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineHttpCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
@@ -27,15 +25,10 @@ import {
 import { noopPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
-import { renderApiRoutesTableSection } from "@/lib/table-format.ts";
-import {
-  formatTerminalLabelValue,
-  formatTerminalSection,
-  terminalAccent,
-} from "@/lib/terminal-style.ts";
+import { apiOperationDetails, apiOperationsJson, apiRouteRows } from "@/features/api/model.ts";
+import { formatApiOperationDetails, formatApiRoutes } from "@/features/api/render.ts";
 
 const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
-const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
 const API_COMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
 const API_HTTP_BASE_ARGS = {
@@ -149,42 +142,12 @@ function createApiMethodCommand(method: string) {
   });
 }
 
-function extractPathParameters(path: string): string[] {
-  return [...path.matchAll(PATH_PARAMETER_PATTERN)].map((match) => String(match[1]));
-}
-
 function formatOperationDetails(operationId: string): string {
-  const operation = OPENAPI_OPERATIONS.find((candidate) => candidate.operationId === operationId);
-  if (!operation) {
-    throw new CliError(`Unknown API operation: ${operationId}`);
-  }
-
-  const pathParameters = extractPathParameters(operation.path);
-  const parameterText = pathParameters.length > 0 ? pathParameters.join(", ") : "(none)";
-
-  const detailLines = [
-    formatTerminalLabelValue("Operation:", terminalAccent(operation.operationId), {
-      labelWidth: 12,
-    }),
-    formatTerminalLabelValue("Method:", operation.method, { labelWidth: 12 }),
-    formatTerminalLabelValue("Path:", operation.path, { labelWidth: 12 }),
-    formatTerminalLabelValue("Parameters:", parameterText, { labelWidth: 12 }),
-    formatTerminalLabelValue("Summary:", operation.summary, { labelWidth: 12 }),
-  ];
-
-  return formatTerminalSection(detailLines);
+  return formatApiOperationDetails(apiOperationDetails(operationId));
 }
 
 function operationDetailsJson(operationId: string): Record<string, unknown> {
-  const operation = OPENAPI_OPERATIONS.find((candidate) => candidate.operationId === operationId);
-  if (!operation) {
-    throw new CliError(`Unknown API operation: ${operationId}`);
-  }
-
-  return {
-    ...operation,
-    parameters: extractPathParameters(operation.path),
-  };
+  return apiOperationDetails(operationId);
 }
 
 function apiSpecOutput(sink: OutputSink, options?: { format?: string }) {
@@ -217,17 +180,11 @@ function apiRoutesOutput(operationId?: string) {
     };
   }
 
-  const table = renderApiRoutesTableSection(
-    OPENAPI_OPERATIONS.map((operation) => ({
-      method: operation.method,
-      path: operation.path,
-      operationId: operation.operationId,
-      summary: operation.summary,
-    })),
-  );
+  const operations = apiOperationsJson();
+  const table = formatApiRoutes(apiRouteRows());
   return {
     kind: "normalized" as const,
-    data: OPENAPI_OPERATIONS,
+    data: operations,
     humanText: table,
     pageHumanText: true,
   };

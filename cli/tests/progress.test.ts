@@ -6,7 +6,7 @@ import {
   shouldShowProgress,
   startProgress,
 } from "@/lib/progress.ts";
-import { setTerminalColorMode } from "@/lib/terminal-style.ts";
+import { setTerminalColorMode } from "@/ui/terminal/styles.ts";
 
 describe("shouldShowProgress", () => {
   const originalStderrIsTTY = process.stderr.isTTY;

@@ -1,8 +1,8 @@
 import { renderUsage, type ArgsDef, type CommandDef } from "citty";
 import { getCliContext, isJsonOutput } from "@/context.ts";
 import type { AltertableCommandMeta } from "@/lib/command-context.ts";
-import { tryFormatActiveContextSummary } from "@/lib/active-context.ts";
-import { formatCommandExamplesSection } from "@/lib/terminal-style.ts";
+import { tryFormatActiveContextSummary } from "@/features/context/render.ts";
+import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 
 function toArray<T>(value: T | T[] | undefined): T[] {
   if (Array.isArray(value)) {
