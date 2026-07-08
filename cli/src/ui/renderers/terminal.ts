@@ -4,7 +4,13 @@ import {
   type DisplayRow,
   type DisplaySection,
 } from "@/ui/document.ts";
-import { renderFixedTable } from "@/ui/terminal/table-layout.ts";
+import {
+  nestedIndent,
+  TERMINAL_INDENT,
+  TERMINAL_LABEL_WIDTH,
+  TERMINAL_NESTED_LABEL_WIDTH,
+} from "@/ui/terminal/spacing.ts";
+import { renderFixedTable } from "@/ui/terminal/table.ts";
 import { formatTerminalLabelValue } from "@/ui/terminal/styles.ts";
 
 export type TerminalRenderOptions = {
@@ -18,14 +24,14 @@ export function renderRows(
   rows: readonly DisplayRow[],
   options: TerminalRenderOptions = {},
 ): string[] {
-  const indent = options.indent ?? "  ";
-  const labelWidth = options.labelWidth ?? 17;
-  const nestedIndent = options.nestedIndent ?? `${indent}  `;
-  const nestedLabelWidth = options.nestedLabelWidth ?? 14;
+  const indent = options.indent ?? TERMINAL_INDENT;
+  const labelWidth = options.labelWidth ?? TERMINAL_LABEL_WIDTH;
+  const childIndent = options.nestedIndent ?? nestedIndent(indent);
+  const nestedLabelWidth = options.nestedLabelWidth ?? TERMINAL_NESTED_LABEL_WIDTH;
 
   return rows.map((row) =>
     formatTerminalLabelValue(row.label, row.value, {
-      indent: row.level === 1 ? nestedIndent : indent,
+      indent: row.level === 1 ? childIndent : indent,
       labelWidth: row.level === 1 ? nestedLabelWidth : labelWidth,
       linkifyUrls: row.linkifyUrls,
     }),

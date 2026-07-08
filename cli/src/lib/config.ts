@@ -15,6 +15,7 @@ import {
 } from "@/features/profile/model.ts";
 import { isProfileScopedConfigKey } from "@/lib/profile-config-keys.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
+import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 
 function resolveConfigProfile(override?: string): string {
   return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
@@ -206,7 +207,6 @@ export function resolveOAuthBase(): string {
   return `${resolveManagementApiRoot()}/oauth`;
 }
 
-const QUERY_LAYOUT_VALUES = new Set(["auto", "table", "line"]);
 const QUERY_PAGER_VALUES = new Set(["auto", "always", "never"]);
 const MIN_QUERY_MAX_COL_WIDTH = 8;
 
@@ -222,13 +222,13 @@ export function getQueryDefaultMaxColumnWidth(): number | undefined {
   return parsed;
 }
 
-export function getQueryDefaultLayout(): "auto" | "table" | "line" | undefined {
+export function getQueryDefaultLayout(): QueryLayout | undefined {
   const value = configGet("query_layout");
   if (value.length === 0) {
     return undefined;
   }
-  if (QUERY_LAYOUT_VALUES.has(value)) {
-    return value as "auto" | "table" | "line";
+  if (isQueryLayout(value)) {
+    return value;
   }
   return undefined;
 }

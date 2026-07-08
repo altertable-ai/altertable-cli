@@ -12,10 +12,8 @@ import {
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
+import { TERMINAL_INDENT, TERMINAL_LABEL_WIDTH } from "@/ui/terminal/spacing.ts";
 import { terminalHighlightCommands, terminalNotConfiguredStatus } from "@/ui/terminal/styles.ts";
-
-const DETAIL_INDENT = "  ";
-const DETAIL_LABEL_WIDTH = 17;
 
 export type ActiveContextSummaryView = {
   document: DisplayDocument;
@@ -139,7 +137,7 @@ export function buildActiveContextSummaryView(context: ActiveContext): ActiveCon
 
 export function buildActiveContextDetailsView(context: ActiveContext): ActiveContextDetailsView {
   const hints = formatConfigureSetupHints(context.credentialStatus);
-  const overrides = formatConfigureEnvOverrideLines(DETAIL_INDENT, DETAIL_LABEL_WIDTH);
+  const overrides = formatConfigureEnvOverrideLines(TERMINAL_INDENT, TERMINAL_LABEL_WIDTH);
   const detailBlocks = [
     rows(contextDetailRows(context)),
     ...(hints.length > 0 || overrides.length > 0 ? [text(["", ...hints, ...overrides])] : []),

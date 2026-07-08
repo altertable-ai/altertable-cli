@@ -5,8 +5,9 @@ The CLI UI layer is a small platform for declarative terminal output.
 ## Boundaries
 
 - `ui/document.ts` defines display data only: documents, sections, rows, tables, and text blocks.
+- `ui/layouts/*` defines user-facing output layout modes, such as query `--layout`.
 - `ui/renderers/*` turns display data into concrete output.
-- `ui/terminal/*` owns terminal mechanics: ANSI styles, links, visible width, and table layout.
+- `ui/terminal/*` owns terminal mechanics: ANSI styles, links, visible width, spacing, and tables.
 - `ui/shell/*` owns shell snippet data and rendering.
 - `features/*/views.ts` builds feature-specific display data.
 - `features/*/render.ts` renders feature display data for terminal output.
@@ -18,3 +19,6 @@ renderers may import `ui/renderers/*`.
 
 Commands should depend on feature models/services for data and feature renderers for human
 output. Commands should not define tables, label rows, or shell snippets inline.
+
+Use `layout` for output mode choices exposed to users. Use `spacing`, `width`, or `table`
+for terminal rendering mechanics.

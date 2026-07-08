@@ -7,11 +7,12 @@ import {
   type ConfigureShowView,
 } from "@/features/configure/views.ts";
 import { renderDocument, renderRows } from "@/ui/renderers/terminal.ts";
-
-const DETAIL_INDENT = "  ";
-const DETAIL_LABEL_WIDTH = 17;
-const NESTED_INDENT = `${DETAIL_INDENT}  `;
-const NESTED_LABEL_WIDTH = 14;
+import {
+  nestedIndent,
+  TERMINAL_INDENT,
+  TERMINAL_LABEL_WIDTH,
+  TERMINAL_NESTED_LABEL_WIDTH,
+} from "@/ui/terminal/spacing.ts";
 
 type FormatConfigureAuthenticationOptions = {
   planes?: ConfigureAuthPlane[];
@@ -24,10 +25,10 @@ function renderConfigureRows(
   options: FormatConfigureAuthenticationOptions,
 ): string[] {
   return renderRows(rows, {
-    indent: options.indent ?? DETAIL_INDENT,
-    labelWidth: options.labelWidth ?? DETAIL_LABEL_WIDTH,
-    nestedIndent: NESTED_INDENT,
-    nestedLabelWidth: NESTED_LABEL_WIDTH,
+    indent: options.indent ?? TERMINAL_INDENT,
+    labelWidth: options.labelWidth ?? TERMINAL_LABEL_WIDTH,
+    nestedIndent: nestedIndent(options.indent),
+    nestedLabelWidth: TERMINAL_NESTED_LABEL_WIDTH,
   });
 }
 
@@ -36,10 +37,10 @@ export function renderConfigureShowView(
   options: FormatConfigureAuthenticationOptions = {},
 ): string[] {
   return renderDocument(view.document, {
-    indent: options.indent ?? DETAIL_INDENT,
-    labelWidth: options.labelWidth ?? DETAIL_LABEL_WIDTH,
-    nestedIndent: NESTED_INDENT,
-    nestedLabelWidth: NESTED_LABEL_WIDTH,
+    indent: options.indent ?? TERMINAL_INDENT,
+    labelWidth: options.labelWidth ?? TERMINAL_LABEL_WIDTH,
+    nestedIndent: nestedIndent(options.indent),
+    nestedLabelWidth: TERMINAL_NESTED_LABEL_WIDTH,
   });
 }
 
@@ -56,14 +57,14 @@ export function formatConfigureSetupHints(
 }
 
 export function formatConfigureEnvOverrideLines(
-  indent: string = DETAIL_INDENT,
-  labelWidth: number = DETAIL_LABEL_WIDTH,
+  indent: string = TERMINAL_INDENT,
+  labelWidth: number = TERMINAL_LABEL_WIDTH,
 ): string[] {
   return renderRows(configureOverrideRows(buildConfigureShowData().overrides), {
     indent,
     labelWidth,
-    nestedIndent: NESTED_INDENT,
-    nestedLabelWidth: NESTED_LABEL_WIDTH,
+    nestedIndent: nestedIndent(indent),
+    nestedLabelWidth: TERMINAL_NESTED_LABEL_WIDTH,
   });
 }
 

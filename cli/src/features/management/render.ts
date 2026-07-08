@@ -1,5 +1,5 @@
 import type { CatalogRow, WhoamiResponse } from "@/features/management/model.ts";
-import { renderFixedTableSection } from "@/ui/terminal/table-layout.ts";
+import { renderFixedTableSection } from "@/ui/terminal/table.ts";
 
 export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
   const principal = data.principal ?? {};

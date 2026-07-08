@@ -15,9 +15,8 @@ import {
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
+import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
 import { terminalDescription, terminalHighlightCommands } from "@/ui/terminal/styles.ts";
-
-const DETAIL_INDENT = "  ";
 
 export type ConfigureShowView = {
   document: DisplayDocument;
@@ -163,9 +162,9 @@ export function configureAuthenticationRows(
 export function configureSetupHintLines(status: ConfigureCredentialStatus): string[] {
   if (!status.hasManagement && !status.hasLakehouse) {
     return [
-      terminalDescription(`${DETAIL_INDENT}No credentials configured. Run: altertable configure`),
+      terminalDescription(`${TERMINAL_INDENT}No credentials configured. Run: altertable configure`),
       terminalHighlightCommands(
-        `${DETAIL_INDENT}Hint: run 'altertable configure management' (or 'altertable configure --api-key atm_xxx --env <name>') for management commands, then 'altertable configure lakehouse' (or 'altertable configure --user <u> --password <p>') for lakehouse queries.`,
+        `${TERMINAL_INDENT}Hint: run 'altertable configure management' (or 'altertable configure --api-key atm_xxx --env <name>') for management commands, then 'altertable configure lakehouse' (or 'altertable configure --user <u> --password <p>') for lakehouse queries.`,
       ),
     ];
   }
@@ -173,7 +172,7 @@ export function configureSetupHintLines(status: ConfigureCredentialStatus): stri
   if (status.hasManagement && !status.hasLakehouse) {
     return [
       terminalHighlightCommands(
-        `${DETAIL_INDENT}Hint: run 'altertable configure lakehouse' or 'altertable configure --user <u> --password <p>' for lakehouse query, upload, upsert, and append commands.`,
+        `${TERMINAL_INDENT}Hint: run 'altertable configure lakehouse' or 'altertable configure --user <u> --password <p>' for lakehouse query, upload, upsert, and append commands.`,
       ),
     ];
   }
@@ -181,7 +180,7 @@ export function configureSetupHintLines(status: ConfigureCredentialStatus): stri
   if (status.hasLakehouse && !status.hasManagement) {
     return [
       terminalHighlightCommands(
-        `${DETAIL_INDENT}Hint: run 'altertable configure management' or 'altertable configure --api-key atm_xxx --env <name>' for context, catalogs, and other management commands.`,
+        `${TERMINAL_INDENT}Hint: run 'altertable configure management' or 'altertable configure --api-key atm_xxx --env <name>' for context, catalogs, and other management commands.`,
       ),
     ];
   }

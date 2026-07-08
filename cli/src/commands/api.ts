@@ -27,7 +27,7 @@ import {
 import { noopPlan } from "@/lib/operation-effect.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
-import { renderApiRoutesTableSection } from "@/ui/terminal/table-layout.ts";
+import { renderApiRoutesTableSection } from "@/ui/terminal/table.ts";
 import {
   formatTerminalLabelValue,
   formatTerminalSection,

@@ -1,4 +1,4 @@
-import type { FixedTableRenderOptions, TableColumn } from "@/ui/terminal/table-layout.ts";
+import type { FixedTableRenderOptions, TableColumn } from "@/ui/terminal/table.ts";
 
 export type DisplayRow = {
   label: string;

@@ -5,25 +5,19 @@ import {
 } from "@/features/context/views.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { renderDocument } from "@/ui/renderers/terminal.ts";
+import { padLeft, TERMINAL_INDENT, TERMINAL_LABEL_WIDTH } from "@/ui/terminal/spacing.ts";
 import { formatTerminalSection } from "@/ui/terminal/styles.ts";
 import type { ActiveContext } from "@/features/context/model.ts";
 
-const DETAIL_INDENT = "  ";
-const DETAIL_LABEL_WIDTH = 17;
-
-function indentSummaryLines(lines: string[]): string[] {
-  return lines.flatMap((line) => line.split("\n").map((segment) => `${DETAIL_INDENT}${segment}`));
-}
-
 export function formatActiveContextSummary(context: ActiveContext): string {
   const lines = renderDocument(buildActiveContextSummaryView(context).document);
-  return `\n\n${formatTerminalSection(indentSummaryLines(lines))}`;
+  return `\n\n${formatTerminalSection(padLeft(lines))}`;
 }
 
 export function formatActiveContextDetails(context: ActiveContext): string {
   const lines = renderDocument(buildActiveContextDetailsView(context).document, {
-    indent: DETAIL_INDENT,
-    labelWidth: DETAIL_LABEL_WIDTH,
+    indent: TERMINAL_INDENT,
+    labelWidth: TERMINAL_LABEL_WIDTH,
   });
   return formatTerminalSection(lines);
 }

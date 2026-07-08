@@ -28,13 +28,13 @@ import {
   terminalTimestamp,
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
+import type { QueryLayout } from "@/ui/layouts/query.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;
 const NULL_DISPLAY = "NULL";
 const ELLIPSIS = "…";
 
-export type QueryLayout = "auto" | "table" | "line";
 type QueryColumnAlignment = TerminalTextAlignment;
 
 type QueryDisplayRow = {
