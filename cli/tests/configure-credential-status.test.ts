@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   buildConfigureShowData,
+  buildConfigureShowView,
   configureCredentialStatus,
   formatConfigureAuthenticationLines,
   formatConfigureSessionSummary,
@@ -176,5 +177,35 @@ describe("buildConfigureShowData", () => {
       api_key: true,
     });
     expect(JSON.stringify(data)).not.toContain("atm_override");
+  });
+
+  test("configure show view separates summary and authentication sections", () => {
+    secretSet("api-key", "atm_test");
+    configSet("api_key_env", "production");
+
+    const view = buildConfigureShowView(buildConfigureShowData());
+    const [summary, authentication] = view.document.sections;
+    const [summaryRows] = summary?.blocks ?? [];
+    const [authenticationRows] = authentication?.blocks ?? [];
+
+    expect(summaryRows?.kind).toBe("rows");
+    if (summaryRows?.kind === "rows") {
+      expect(summaryRows.rows).toEqual(
+        expect.arrayContaining([
+          { label: "Active profile:", value: "default" },
+          { label: "Data plane:", value: "https://api.altertable.ai", linkifyUrls: true },
+        ]),
+      );
+    }
+
+    expect(authenticationRows?.kind).toBe("rows");
+    if (authenticationRows?.kind === "rows") {
+      expect(authenticationRows.rows).toEqual(
+        expect.arrayContaining([
+          { label: "Authentication:", value: "management API key" },
+          { label: "environment:", value: "production", level: 1 },
+        ]),
+      );
+    }
   });
 });

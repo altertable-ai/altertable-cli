@@ -6,6 +6,8 @@ import { getBootstrapCliContext } from "@/context.ts";
 import {
   activeContextToJson,
   buildActiveContext,
+  buildActiveContextDetailsView,
+  buildActiveContextSummaryView,
   formatActiveContextDetails,
   formatActiveContextSummary,
   tryFormatActiveContextSummary,
@@ -71,6 +73,59 @@ describe("active context formatters", () => {
       expect(details).toContain("production");
       expect(details).toContain("Jane Doe <jane@x.io>");
       expect(details).toContain("Acme (acme)");
+    });
+  });
+
+  test("summary view describes the context as a table", async () => {
+    await runInTestHome(async () => {
+      await configureRunSet({ apiKey: "atm_test", env: "production" });
+
+      const view = buildActiveContextSummaryView(buildActiveContext());
+      const [summarySection] = view.document.sections;
+      const [summaryBlock] = summarySection?.blocks ?? [];
+
+      expect(summaryBlock?.kind).toBe("table");
+      if (summaryBlock?.kind === "table") {
+        expect(summaryBlock.table.columns.map((column) => column.header)).toEqual([
+          "PROFILE",
+          "ENV",
+          "MGMT",
+          "LAKEHOUSE",
+        ]);
+        expect(summaryBlock.table.rows).toEqual([
+          {
+            profile: "default",
+            environment: "production",
+            management: "production",
+            lakehouse: "not set",
+          },
+        ]);
+      }
+    });
+  });
+
+  test("details view keeps identity and endpoint rows declarative", async () => {
+    await runInTestHome(async () => {
+      await configureRunSet({ apiKey: "atm_test", env: "production" });
+      const view = buildActiveContextDetailsView(
+        withAuthenticatedIdentity(buildActiveContext(), {
+          principal: { type: "User", name: "Alex Doe", email: "alex@example.com" },
+          organization: { name: "Acme", slug: "acme" },
+        }),
+      );
+      const [detailSection] = view.document.sections;
+      const [detailBlock] = detailSection?.blocks ?? [];
+
+      expect(detailBlock?.kind).toBe("rows");
+      if (detailBlock?.kind === "rows") {
+        expect(detailBlock.rows).toEqual(
+          expect.arrayContaining([
+            { label: "User:", value: "Alex Doe <alex@example.com>" },
+            { label: "Organization:", value: "Acme (acme)" },
+            { label: "Data plane:", value: "https://api.altertable.ai", linkifyUrls: true },
+          ]),
+        );
+      }
     });
   });
 

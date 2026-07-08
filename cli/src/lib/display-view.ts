@@ -1,4 +1,9 @@
 import { formatTerminalLabelValue } from "@/lib/terminal-style.ts";
+import {
+  renderFixedTable,
+  type FixedTableRenderOptions,
+  type TableColumn,
+} from "@/lib/table-format.ts";
 
 export type DisplayRow = {
   label: string;
@@ -13,6 +18,10 @@ export type DisplayBlock =
       rows: readonly DisplayRow[];
     }
   | {
+      kind: "table";
+      table: DisplayTable;
+    }
+  | {
       kind: "text";
       lines: readonly string[];
     };
@@ -25,6 +34,13 @@ export type DisplayDocument = {
   sections: readonly DisplaySection[];
 };
 
+export type DisplayTable<Row = unknown> = {
+  rows: readonly Row[];
+  columns: readonly TableColumn<Row>[];
+  emptyMessage?: string;
+  options?: FixedTableRenderOptions<Row>;
+};
+
 export type DisplayRenderOptions = {
   indent?: string;
   labelWidth?: number;
@@ -34,6 +50,10 @@ export type DisplayRenderOptions = {
 
 export function rows(rows: readonly DisplayRow[]): DisplayBlock {
   return { kind: "rows", rows };
+}
+
+export function table<Row>(displayTable: DisplayTable<Row>): DisplayBlock {
+  return { kind: "table", table: displayTable as DisplayTable };
 }
 
 export function text(lines: readonly string[]): DisplayBlock {
@@ -69,6 +89,14 @@ export function renderDisplayRows(
 function renderDisplayBlock(block: DisplayBlock, options: DisplayRenderOptions): string[] {
   if (block.kind === "text") {
     return [...block.lines];
+  }
+  if (block.kind === "table") {
+    return renderFixedTable(
+      [...block.table.rows],
+      [...block.table.columns],
+      block.table.emptyMessage,
+      block.table.options,
+    ).split("\n");
   }
   return renderDisplayRows(block.rows, options);
 }

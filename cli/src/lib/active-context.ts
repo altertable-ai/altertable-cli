@@ -8,12 +8,20 @@ import {
   managementPlaneStatusDetail,
   type ConfigureShowData,
 } from "@/lib/configure-credential-status.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { formatWhoamiIdentityLines, type WhoamiResponse } from "@/lib/management-formatters.ts";
-import { ensureProfileExists } from "@/lib/profile.ts";
-import { renderFixedTableSection } from "@/lib/table-format.ts";
 import {
-  formatTerminalLabelValue,
+  document,
+  renderDisplayDocument,
+  rows,
+  section,
+  table,
+  text,
+  type DisplayDocument,
+  type DisplayRow,
+} from "@/lib/display-view.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
+import type { WhoamiResponse } from "@/lib/management-formatters.ts";
+import { ensureProfileExists } from "@/lib/profile.ts";
+import {
   formatTerminalSection,
   terminalHighlightCommands,
   terminalNotConfiguredStatus,
@@ -50,7 +58,13 @@ export type ActiveContext = {
   organization?: WhoamiResponse["organization"];
 };
 
-const DETAIL_LABEL_OPTIONS = { indent: DETAIL_INDENT, labelWidth: DETAIL_LABEL_WIDTH };
+export type ActiveContextSummaryView = {
+  document: DisplayDocument;
+};
+
+export type ActiveContextDetailsView = {
+  document: DisplayDocument;
+};
 
 function formatConfiguredValue(detail: string | null | undefined): string {
   if (detail === null || detail === undefined || detail.length === 0) {
@@ -89,46 +103,6 @@ function contextSummaryRow(context: ActiveContext): ContextSummaryRow {
   };
 }
 
-function formatContextSummaryTable(context: ActiveContext): string {
-  const row = contextSummaryRow(context);
-  return renderFixedTableSection(
-    [row],
-    [
-      {
-        header: "PROFILE",
-        cell: (entry) => formatStatusCell(entry.profile),
-        style: "strong",
-      },
-      {
-        header: "ENV",
-        cell: (entry) => formatStatusCell(entry.environment),
-        style: "accent",
-      },
-      {
-        header: "MGMT",
-        cell: (entry) => formatStatusCell(entry.management),
-        style: "muted",
-      },
-      {
-        header: "LAKEHOUSE",
-        cell: (entry) => formatStatusCell(entry.lakehouse),
-        style: "string",
-        flex: true,
-      },
-    ],
-  );
-}
-
-function formatContextSummaryLines(context: ActiveContext): string[] {
-  const lines = [formatContextSummaryTable(context)];
-
-  if (!context.credentialStatus.hasManagement && !context.credentialStatus.hasLakehouse) {
-    lines.push(terminalHighlightCommands("Hint: run `altertable configure`"));
-  }
-
-  return lines;
-}
-
 function resolveEnvironment(showData: ConfigureShowData): string | undefined {
   const envOverride = process.env.ALTERTABLE_ENV;
   if (envOverride && envOverride.length > 0) {
@@ -137,45 +111,41 @@ function resolveEnvironment(showData: ConfigureShowData): string | undefined {
   return showData.credentials.management.environment;
 }
 
-function formatContextDetailLines(context: ActiveContext): string[] {
-  const lines = [
-    formatTerminalLabelValue("Profile:", context.profile, DETAIL_LABEL_OPTIONS),
-    formatTerminalLabelValue(
-      "Environment:",
-      formatConfiguredValue(context.environment),
-      DETAIL_LABEL_OPTIONS,
-    ),
-  ];
-
+function identityRows(context: ActiveContext): DisplayRow[] {
   if (context.principal !== undefined || context.organization !== undefined) {
-    lines.push(
-      ...formatWhoamiIdentityLines(
-        {
-          principal: context.principal ?? {},
-          organization: context.organization ?? {},
-        },
-        DETAIL_LABEL_OPTIONS,
-      ),
-    );
+    const principal = context.principal ?? {};
+    const organization = context.organization ?? {};
+    const identity: DisplayRow[] = [];
+    if (principal.type === "ServiceAccount") {
+      identity.push({
+        label: "Service account:",
+        value: `${principal.name ?? ""} (${principal.slug ?? ""})`,
+      });
+    } else if (principal.email) {
+      identity.push({ label: "User:", value: `${principal.name ?? ""} <${principal.email}>` });
+    } else if (principal.name) {
+      identity.push({ label: "User:", value: principal.name });
+    }
+    if (organization.name || organization.slug) {
+      identity.push({
+        label: "Organization:",
+        value: `${organization.name ?? ""} (${organization.slug ?? ""})`,
+      });
+    }
+    return identity;
   }
+  return [];
+}
 
-  lines.push(
-    formatTerminalLabelValue("Data plane:", context.data_plane, {
-      ...DETAIL_LABEL_OPTIONS,
-      linkifyUrls: true,
-    }),
-    formatTerminalLabelValue("Control plane:", context.control_plane, {
-      ...DETAIL_LABEL_OPTIONS,
-      linkifyUrls: true,
-    }),
-    formatTerminalLabelValue(
-      "Lakehouse:",
-      formatConfiguredValue(context.lakehouse),
-      DETAIL_LABEL_OPTIONS,
-    ),
-  );
-
-  return lines;
+function contextDetailRows(context: ActiveContext): DisplayRow[] {
+  return [
+    { label: "Profile:", value: context.profile },
+    { label: "Environment:", value: formatConfiguredValue(context.environment) },
+    ...identityRows(context),
+    { label: "Data plane:", value: context.data_plane, linkifyUrls: true },
+    { label: "Control plane:", value: context.control_plane, linkifyUrls: true },
+    { label: "Lakehouse:", value: formatConfiguredValue(context.lakehouse) },
+  ];
 }
 
 export function buildActiveContext(profileOverride?: string): ActiveContext {
@@ -229,20 +199,67 @@ function indentSummaryLines(lines: string[]): string[] {
   return lines.flatMap((line) => line.split("\n").map((segment) => `${DETAIL_INDENT}${segment}`));
 }
 
+export function buildActiveContextSummaryView(context: ActiveContext): ActiveContextSummaryView {
+  const summaryBlocks = [
+    table({
+      rows: [contextSummaryRow(context)],
+      columns: [
+        {
+          header: "PROFILE",
+          cell: (entry) => formatStatusCell(entry.profile),
+          style: "strong",
+        },
+        {
+          header: "ENV",
+          cell: (entry) => formatStatusCell(entry.environment),
+          style: "accent",
+        },
+        {
+          header: "MGMT",
+          cell: (entry) => formatStatusCell(entry.management),
+          style: "muted",
+        },
+        {
+          header: "LAKEHOUSE",
+          cell: (entry) => formatStatusCell(entry.lakehouse),
+          style: "string",
+          flex: true,
+        },
+      ],
+    }),
+    ...(!context.credentialStatus.hasManagement && !context.credentialStatus.hasLakehouse
+      ? [text([terminalHighlightCommands("Hint: run `altertable configure`")])]
+      : []),
+  ];
+
+  return {
+    document: document(section(...summaryBlocks)),
+  };
+}
+
 export function formatActiveContextSummary(context: ActiveContext): string {
-  return `\n\n${formatTerminalSection(indentSummaryLines(formatContextSummaryLines(context)))}`;
+  const lines = renderDisplayDocument(buildActiveContextSummaryView(context).document);
+  return `\n\n${formatTerminalSection(indentSummaryLines(lines))}`;
+}
+
+export function buildActiveContextDetailsView(context: ActiveContext): ActiveContextDetailsView {
+  const hints = formatConfigureSetupHints(context.credentialStatus);
+  const overrides = formatConfigureEnvOverrideLines(DETAIL_INDENT, DETAIL_LABEL_WIDTH);
+  const detailBlocks = [
+    rows(contextDetailRows(context)),
+    ...(hints.length > 0 || overrides.length > 0 ? [text(["", ...hints, ...overrides])] : []),
+  ];
+
+  return {
+    document: document(section(...detailBlocks)),
+  };
 }
 
 export function formatActiveContextDetails(context: ActiveContext): string {
-  const lines = [...formatContextDetailLines(context)];
-  const hints = formatConfigureSetupHints(context.credentialStatus);
-  const overrides = formatConfigureEnvOverrideLines(DETAIL_INDENT, DETAIL_LABEL_WIDTH);
-
-  if (hints.length > 0 || overrides.length > 0) {
-    lines.push("");
-    lines.push(...hints, ...overrides);
-  }
-
+  const lines = renderDisplayDocument(buildActiveContextDetailsView(context).document, {
+    indent: DETAIL_INDENT,
+    labelWidth: DETAIL_LABEL_WIDTH,
+  });
   return formatTerminalSection(lines);
 }
 

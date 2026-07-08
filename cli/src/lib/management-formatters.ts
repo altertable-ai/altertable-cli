@@ -1,8 +1,4 @@
 import { renderFixedTableSection } from "@/lib/table-format.ts";
-import { formatTerminalLabelValue } from "@/lib/terminal-style.ts";
-
-const DETAIL_INDENT = "  ";
-const DETAIL_LABEL_WIDTH = 17;
 
 export type WhoamiResponse = {
   principal: {
@@ -28,53 +24,6 @@ export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
     return `User: ${principal.name ?? ""} <${principal.email}>`;
   }
   return `User: ${principal.name ?? ""}`;
-}
-
-type WhoamiLabelOptions = {
-  indent?: string;
-  labelWidth?: number;
-};
-
-export function formatWhoamiIdentityLines(
-  data: WhoamiResponse,
-  labelOptions: WhoamiLabelOptions = {},
-): string[] {
-  const principal = data.principal ?? {};
-  const organization = data.organization ?? {};
-  const options = {
-    indent: labelOptions.indent ?? DETAIL_INDENT,
-    labelWidth: labelOptions.labelWidth ?? DETAIL_LABEL_WIDTH,
-  };
-
-  const lines: string[] = [];
-
-  if (principal.type === "ServiceAccount") {
-    lines.push(
-      formatTerminalLabelValue(
-        "Service account:",
-        `${principal.name ?? ""} (${principal.slug ?? ""})`,
-        options,
-      ),
-    );
-  } else if (principal.email) {
-    lines.push(
-      formatTerminalLabelValue("User:", `${principal.name ?? ""} <${principal.email}>`, options),
-    );
-  } else if (principal.name) {
-    lines.push(formatTerminalLabelValue("User:", principal.name, options));
-  }
-
-  if (organization.name || organization.slug) {
-    lines.push(
-      formatTerminalLabelValue(
-        "Organization:",
-        `${organization.name ?? ""} (${organization.slug ?? ""})`,
-        options,
-      ),
-    );
-  }
-
-  return lines;
 }
 
 export type CatalogRow = {

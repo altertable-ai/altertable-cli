@@ -11,15 +11,14 @@ import {
   defineLocalCommand,
   defineValueCommand,
 } from "@/lib/operation-command-builders.ts";
-import { renderFixedTableSection } from "@/lib/table-format.ts";
-import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
-  formatProfileDirenv,
-  formatProfileEnv,
+  buildProfileDirenvView,
+  buildProfileShellExportView,
   formatProfileInspect,
+  formatProfileList,
   formatProfileStatus,
-  profileShellExports,
   profileSwitchOption,
+  renderShellExportView,
   type ProfileStatusResult,
 } from "@/lib/profile-formatters.ts";
 import {
@@ -117,61 +116,10 @@ const profileListCommand = defineValueCommand({
     return listProfiles();
   },
   present(profiles) {
-    const table = renderFixedTableSection(
-      profiles,
-      [
-        {
-          header: "  NAME",
-          cell: (profile) => `${profile.active ? "✓" : " "} ${profile.name}`,
-          style: "strong",
-        },
-        {
-          header: "ORG",
-          cell: (profile) => profile.organization ?? "",
-          style: "muted",
-        },
-        {
-          header: "PRINCIPAL",
-          cell: (profile) => profile.principal ?? "",
-          style: "muted",
-        },
-        {
-          header: "ENV",
-          cell: (profile) => profile.management_env ?? "",
-          style: "muted",
-        },
-        {
-          header: "MGMT",
-          cell: (profile) => profile.management_auth ?? "",
-          style: "string",
-        },
-        {
-          header: "LAKEHOUSE",
-          cell: (profile) => profile.lakehouse_auth ?? "",
-          style: "string",
-        },
-        {
-          header: "OAUTH EXPIRES",
-          cell: (profile) => profile.oauth_expires_at ?? "",
-          style: "muted",
-        },
-        {
-          header: "STATUS",
-          cell: (profile) => profile.status ?? "",
-          style: "accent",
-        },
-        {
-          header: "DATA PLANE",
-          cell: (profile) => formatTerminalUrls(profile.data_plane ?? ""),
-          style: "muted",
-        },
-      ],
-      "No profiles configured.",
-    );
     return {
       kind: "normalized",
       data: { profiles },
-      humanText: table,
+      humanText: formatProfileList(profiles),
     };
   },
 });
@@ -363,11 +311,11 @@ const profileEnvCommand = defineValueCommand({
     return profileName;
   },
   present(profileName) {
-    const env = profileShellExports(profileName);
+    const view = buildProfileShellExportView(profileName);
     return {
       kind: "normalized",
-      data: { profile: profileName, env },
-      humanText: formatProfileEnv(profileName),
+      data: { profile: profileName, env: view.env },
+      humanText: renderShellExportView(view),
     };
   },
 });
@@ -387,11 +335,11 @@ const profileDirenvCommand = defineValueCommand({
     return profileName;
   },
   present(profileName) {
-    const env = profileShellExports(profileName);
+    const view = buildProfileDirenvView(profileName);
     return {
       kind: "normalized",
-      data: { profile: profileName, env },
-      humanText: formatProfileDirenv(profileName),
+      data: { profile: profileName, env: view.env },
+      humanText: renderShellExportView(view),
     };
   },
 });
