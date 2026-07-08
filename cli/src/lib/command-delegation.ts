@@ -70,6 +70,44 @@ export function isDelegatedSubCommand(
   return token !== undefined && isReservedOperand(token.value);
 }
 
+export type DefaultSubCommandOptions = {
+  commandName: string;
+  subCommand: string;
+  rootArgs?: ArgsDef;
+  commandValueFlags?: ReadonlySet<string>;
+  isReservedOperand: (value: string) => boolean;
+};
+
+/**
+ * Rewrites `<command> <operand>` to `<command> <subCommand> <operand>` so citty routes a
+ * bare operand to the default subcommand instead of rejecting it as an unknown command.
+ * Reserved operands (real subcommand names) are left untouched. Unlike the `--` passthrough,
+ * this keeps every flag citty-parsed regardless of where it sits relative to the operand.
+ */
+export function normalizeDefaultSubCommandRawArgs(
+  rawArgs: readonly string[],
+  options: DefaultSubCommandOptions,
+): string[] {
+  const commandToken = findFirstPositionalToken(rawArgs, {
+    valueFlags: valueFlagsFor(options.rootArgs ?? {}),
+  });
+  if (!commandToken || commandToken.value !== options.commandName) {
+    return [...rawArgs];
+  }
+
+  const commandArgs = rawArgs.slice(commandToken.index + 1);
+  const operandToken = findFirstPositionalToken(commandArgs, {
+    valueFlags: options.commandValueFlags,
+  });
+  if (!operandToken || options.isReservedOperand(operandToken.value)) {
+    return [...rawArgs];
+  }
+
+  const normalized = [...rawArgs];
+  normalized.splice(commandToken.index + 1, 0, options.subCommand);
+  return normalized;
+}
+
 export function normalizePassthroughCommandRawArgs(
   rawArgs: readonly string[],
   options: PassthroughCommandOptions,

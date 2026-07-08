@@ -161,7 +161,7 @@ STDERR="$("${CLI}" --json query 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 [[ "${EXIT_CODE}" -eq 1 ]] || fail "usage: expected exit 1, got ${EXIT_CODE}"
-pass "usage: query without --statement exits 1"
+pass "usage: query without a statement exits 1"
 
 # ── JSON error shape on failure ──
 setup_mock_http "${WHOAMI_401}"

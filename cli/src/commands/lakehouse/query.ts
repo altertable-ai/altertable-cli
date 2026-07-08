@@ -1,7 +1,9 @@
-import type { ArgsDef } from "citty";
+import type { ArgsDef, CommandDef } from "citty";
 import { optionalStringArg, stringArg } from "@/lib/operation-codec.ts";
+import { CliError } from "@/lib/errors.ts";
 import { defineOperationCommand, type OperationContext } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
+import { normalizeDefaultSubCommandRawArgs, valueFlagsFor } from "@/lib/command-delegation.ts";
 import {
   PAGER_MODE_OPTIONS,
   parseQueryOutputOptions,
@@ -20,7 +22,7 @@ import {
 } from "@/lib/lakehouse-operations.ts";
 
 export const queryRunArgs = {
-  statement: { type: "string", description: "SQL statement to run", required: true },
+  statement: { type: "positional", description: "SQL statement to run", required: false },
   format: {
     type: "enum",
     description: "Output format: human, json, csv, or markdown",
@@ -57,8 +59,22 @@ export const queryRunArgs = {
 
 const queryGroupArgs = {
   ...queryRunArgs,
-  statement: { ...queryRunArgs.statement, required: false },
 } satisfies ArgsDef;
+
+const QUERY_VALUE_FLAGS = valueFlagsFor(queryRunArgs);
+
+export function normalizeQueryInvocatorRawArgs(
+  rawArgs: readonly string[],
+  rootArgs: ArgsDef = {},
+): string[] {
+  return normalizeDefaultSubCommandRawArgs(rawArgs, {
+    commandName: "query",
+    subCommand: "run",
+    rootArgs,
+    commandValueFlags: QUERY_VALUE_FLAGS,
+    isReservedOperand: (value) => QUERY_SUBCOMMAND_NAMES.has(value),
+  });
+}
 
 export type QueryRunInput = LakehouseQueryOperationInput &
   ReturnType<typeof parseQueryOutputOptions>;
@@ -91,13 +107,16 @@ const queryRunCommand = defineOperationCommand<QueryRunInput, LakehouseQueryResu
     name: "run",
     description: "Run a SQL statement.",
     examples: [
-      'altertable query --statement "SELECT * FROM users LIMIT 10"',
-      'altertable query --statement "SELECT 1" --format json',
+      'altertable query "SELECT * FROM users LIMIT 10"',
+      'altertable query "SELECT 1" --format json',
     ],
   },
   args: queryRunArgs,
   parse({ args, rawArgs }) {
-    const statement = stringArg(args, "statement");
+    const statement = optionalStringArg(args, "statement");
+    if (statement === undefined) {
+      throw new CliError('Provide a SQL statement, e.g. altertable query "SELECT 1".');
+    }
     const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, rawArgs);
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     const httpOptions = readTimeoutMs !== undefined ? { readTimeoutMs } : undefined;
@@ -154,21 +173,25 @@ const queryCancelCommand = defineHttpCommand({
   },
 });
 
+const querySubCommands = {
+  run: queryRunCommand,
+  show: queryShowCommand,
+  cancel: queryCancelCommand,
+} satisfies Record<string, CommandDef>;
+
+const QUERY_SUBCOMMAND_NAMES = new Set(Object.keys(querySubCommands));
+
 export const queryCommand = defineGroupCommand({
   meta: {
     name: "query",
     description: "Run SQL queries against the lakehouse.",
     examples: [
-      'altertable query --statement "SELECT * FROM users LIMIT 10"',
-      'altertable query --statement "SELECT 1" --format json',
+      'altertable query "SELECT * FROM users LIMIT 10"',
+      'altertable query "SELECT 1" --format json',
       "altertable query show <query-id>",
     ],
   },
   default: "run",
   args: queryGroupArgs,
-  subCommands: {
-    run: queryRunCommand,
-    show: queryShowCommand,
-    cancel: queryCancelCommand,
-  },
+  subCommands: querySubCommands,
 });

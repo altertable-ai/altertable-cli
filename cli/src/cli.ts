@@ -16,7 +16,7 @@ import { profileCommand } from "@/commands/profile.ts";
 import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
 import { appendCommand } from "@/commands/lakehouse/append.ts";
-import { queryCommand } from "@/commands/lakehouse/query.ts";
+import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
 import { schemaCommand } from "@/commands/lakehouse/schema.ts";
 import { uploadCommand } from "@/commands/lakehouse/upload.ts";
 import { upsertCommand } from "@/commands/lakehouse/upsert.ts";
@@ -113,7 +113,7 @@ export function buildMainCommand(): CommandDef {
         "altertable context",
         "altertable api routes",
         "altertable api GET /environments/production/databases",
-        'altertable query --statement "SELECT 1"',
+        'altertable query "SELECT 1"',
       ],
     },
     args: ROOT_ARGS,
@@ -153,7 +153,10 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS);
+  const rawArgs = normalizeQueryInvocatorRawArgs(
+    normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS),
+    ROOT_ARGS,
+  );
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);

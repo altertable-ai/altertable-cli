@@ -22,6 +22,7 @@ import { httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts"
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
+import { normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',
@@ -357,6 +358,50 @@ describe("query renderers", () => {
   });
 });
 
+describe("normalizeQueryInvocatorRawArgs", () => {
+  test("routes a bare SQL statement to the run subcommand", () => {
+    expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1"])).toEqual([
+      "query",
+      "run",
+      "SELECT 1",
+    ]);
+  });
+
+  test("keeps flags citty-parsed on either side of the statement", () => {
+    expect(normalizeQueryInvocatorRawArgs(["query", "--format", "json", "SELECT 1"])).toEqual([
+      "query",
+      "run",
+      "--format",
+      "json",
+      "SELECT 1",
+    ]);
+    expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1", "--format", "json"])).toEqual([
+      "query",
+      "run",
+      "SELECT 1",
+      "--format",
+      "json",
+    ]);
+  });
+
+  test("leaves real subcommands, flag-only invocations, and other commands untouched", () => {
+    expect(normalizeQueryInvocatorRawArgs(["query", "show", "abc"])).toEqual([
+      "query",
+      "show",
+      "abc",
+    ]);
+    expect(normalizeQueryInvocatorRawArgs(["query", "--format", "json"])).toEqual([
+      "query",
+      "--format",
+      "json",
+    ]);
+    expect(normalizeQueryInvocatorRawArgs(["schema", "analytics"])).toEqual([
+      "schema",
+      "analytics",
+    ]);
+  });
+});
+
 describe("lakehouse command HTTP behavior", () => {
   test("query command sends optional query and session identifiers", async () => {
     writeFileSync(
@@ -370,23 +415,37 @@ describe("lakehouse command HTTP behavior", () => {
       ]),
     );
 
-    await runCommandWithTestRuntime([
-      "query",
-      "--statement",
-      "SELECT 1",
-      "--format",
-      "json",
-      "--query-id",
-      "query-1",
-      "--session-id",
-      "session-1",
-    ]);
+    await runCommandWithTestRuntime(
+      normalizeQueryInvocatorRawArgs([
+        "query",
+        "SELECT 1",
+        "--format",
+        "json",
+        "--query-id",
+        "query-1",
+        "--session-id",
+        "session-1",
+      ]),
+    );
 
     expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({
       statement: "SELECT 1",
       query_id: "query-1",
       session_id: "session-1",
     });
+  });
+
+  test("query runs a positional SQL statement without --statement", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([{ urlPattern: "/query", method: "POST", body: SAMPLE_NDJSON }]),
+    );
+
+    await runCommandWithTestRuntime(
+      normalizeQueryInvocatorRawArgs(["query", "SELECT 1", "--format", "json"]),
+    );
+
+    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({ statement: "SELECT 1" });
   });
 
   test("query subcommands dispatch without requiring --statement", async () => {

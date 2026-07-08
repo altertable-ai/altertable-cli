@@ -13,7 +13,7 @@ import { CliError } from "@/lib/errors.ts";
 
 describe("parseGlobalFlags", () => {
   test("parses --agent", () => {
-    const context = parseGlobalFlags(["--agent", "query", "--statement", "SELECT 1"]);
+    const context = parseGlobalFlags(["--agent", "query", "SELECT 1"]);
     expect(context.agent).toBe(true);
     expect(context.json).toBe(false);
   });

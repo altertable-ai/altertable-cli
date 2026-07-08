@@ -47,7 +47,7 @@ altertable configure --user your_username --password your_password
 altertable context
 
 # 4. Query
-altertable query --statement "SELECT * FROM users LIMIT 10"
+altertable query "SELECT * FROM users LIMIT 10"
 ```
 
 ---
@@ -322,30 +322,30 @@ You can also override endpoints per-command with flags:
 **Query**
 
 ```bash
-altertable query --statement "SELECT * FROM users LIMIT 10"
+altertable query "SELECT * FROM users LIMIT 10"
 
 # Human layout and script-friendly formats
-altertable query --statement "SELECT * FROM events LIMIT 3"
-altertable query --statement "SELECT * FROM events LIMIT 3" --layout auto
-altertable query --statement "SELECT * FROM events LIMIT 3" --layout table
-altertable query --statement "SELECT * FROM events LIMIT 3" --layout line
-altertable query --statement "SELECT * FROM events LIMIT 3" --columns uuid,event,timestamp
-altertable query --statement "SELECT * FROM events LIMIT 3" --max-width 24
+altertable query "SELECT * FROM events LIMIT 3"
+altertable query "SELECT * FROM events LIMIT 3" --layout auto
+altertable query "SELECT * FROM events LIMIT 3" --layout table
+altertable query "SELECT * FROM events LIMIT 3" --layout line
+altertable query "SELECT * FROM events LIMIT 3" --columns uuid,event,timestamp
+altertable query "SELECT * FROM events LIMIT 3" --max-width 24
 
 # Serialized output
-altertable query --statement "SELECT 1" --format csv
-altertable query --statement "SELECT 1" --format json
-altertable query --statement "SELECT 1" --format markdown
+altertable query "SELECT 1" --format csv
+altertable query "SELECT 1" --format json
+altertable query "SELECT 1" --format markdown
 
 # Long results — pipe through a pager
-altertable query --statement "SELECT * FROM big_table" --pager always
-altertable query --statement "SELECT * FROM big_table" --pager never
+altertable query "SELECT * FROM big_table" --pager always
+altertable query "SELECT * FROM big_table" --pager never
 
 # JSON for scripting
-altertable --json query --statement "SELECT 1"
+altertable --json query "SELECT 1"
 
 # Agent-friendly preset (structured JSON, no pager or terminal styling)
-altertable --agent query --statement "SELECT 1"
+altertable --agent query "SELECT 1"
 ```
 
 Use `--format human|json|csv|markdown` for serialized output (default `human`). Human output respects `--layout auto|table|line` (default `auto`), `--columns`, `--max-width`, and `--pager auto|always|never`. `auto` picks a table when it fits and line layout when the table would be too wide. `--format json|csv|markdown` skips pager and layout controls. For machine-readable query output, prefer `--format json` or the global `--agent` preset.
@@ -467,8 +467,8 @@ These flags apply to every command and must be placed before the subcommand:
 Per-request read timeout on `query`, `upload`, and `upsert`:
 
 ```bash
-altertable query --statement "SELECT ..." --read-timeout 180
-altertable --read-timeout 120 query --statement "SELECT ..."
+altertable query "SELECT ..." --read-timeout 180
+altertable --read-timeout 120 query "SELECT ..."
 altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --mode overwrite --format csv --file large.csv
 altertable --connect-timeout 10 upsert --catalog my_cat --schema public --table users --primary-key id --format csv --file large.csv
 ```
