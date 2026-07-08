@@ -7,7 +7,7 @@ Executor-oriented notes for working in the TypeScript CLI subtree.
 ## Scope
 
 - Source: `cli/src/`; entry point: `src/cli.ts`
-- Runtime: [Bun](https://bun.sh) 1.1+
+- Runtime: [Bun](https://bun.sh); version pinned in [../.bun-version](../.bun-version)
 - Full user docs: [README](../README.md)
 
 ## Verification commands
