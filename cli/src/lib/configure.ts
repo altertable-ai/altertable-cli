@@ -1,36 +1,22 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
-import {
-  configDir,
-  configFile,
-  configSet,
-  configUnset,
-  credentialsFile,
-  resolveApiBase,
-  resolveManagementApiBase,
-} from "@/lib/config.ts";
+import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
-  getActiveProfileName,
+  deriveProfileName,
   ensureProfileExists,
   listProfiles,
   profilesDir,
 } from "@/lib/profile.ts";
 import { getCliContext, setCliContext } from "@/context.ts";
-import { secretDelete, secretSet, secretStoreDisplay } from "@/lib/secrets.ts";
+import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   buildConfigureShowData,
-  configureCredentialStatus,
-  formatConfigureAuthenticationLines,
-  formatConfigureEnvOverrideLines,
-  formatConfigureSetupHints,
+  buildConfigureShowView,
+  renderConfigureShowView,
 } from "@/lib/configure-credential-status.ts";
-import {
-  formatTerminalLabelValue,
-  formatTerminalSection,
-  terminalMetadata,
-} from "@/lib/terminal-style.ts";
+import { formatTerminalSection, terminalMetadata } from "@/lib/terminal-style.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";
@@ -46,6 +32,7 @@ export type ConfigureOptions = {
   dataPlaneUrl?: string;
   controlPlaneUrl?: string;
   profile?: string;
+  org?: string;
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
@@ -53,6 +40,33 @@ export type ConfigureOptions = {
   /** Secrets collected via the interactive wizard (not CLI flags). */
   interactive?: boolean;
 };
+
+const AUTO_PROFILE_NAME = "auto";
+
+function markCurrentProfileUpdated(): void {
+  const timestamp = new Date().toISOString();
+  if (!configGet("created_at")) {
+    configSet("created_at", timestamp);
+  }
+  configSet("updated_at", timestamp);
+}
+
+function resolveConfigureProfile(options: ConfigureOptions): string | undefined {
+  const explicitProfile = options.profile;
+  const org = options.org ?? "";
+  const env = options.env ?? "";
+
+  if (explicitProfile && explicitProfile !== AUTO_PROFILE_NAME) {
+    return explicitProfile;
+  }
+  if (explicitProfile === AUTO_PROFILE_NAME && options.interactive && org && env) {
+    return deriveProfileName(org, env);
+  }
+  if (explicitProfile === AUTO_PROFILE_NAME) {
+    throw new CliError("--profile auto is only supported by interactive configure.");
+  }
+  return undefined;
+}
 
 export async function withConfigureProfileContext<T>(
   profileName: string | undefined,
@@ -97,7 +111,7 @@ export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),
 ): Promise<void> {
-  return withConfigureProfileContext(options.profile, async () => {
+  return withConfigureProfileContext(resolveConfigureProfile(options), async () => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -105,6 +119,7 @@ export async function configureRunSet(
     const env = options.env ?? "";
     const dataPlaneUrl = options.dataPlaneUrl ?? "";
     const controlPlaneUrl = options.controlPlaneUrl ?? "";
+    const org = options.org ?? "";
     const allowInsecureHttp = options.allowInsecureHttp ?? false;
 
     const passwordFromArgv =
@@ -176,6 +191,9 @@ export async function configureRunSet(
       configureClearManagementCredentials();
       secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
       configSet("api_key_env", env);
+      if (org) {
+        configSet("organization_slug", org);
+      }
     }
     if (hasToken) {
       configureClearLakehouseCredentials();
@@ -208,6 +226,7 @@ export async function configureRunSet(
     } else if (dataPlaneUrl) {
       sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);
     }
+    markCurrentProfileUpdated();
   });
 }
 
@@ -222,38 +241,9 @@ export function buildConfigureShowDataForProfile(profileOverride?: string) {
 }
 
 function configureRunShowInternal(profileOverride?: string): string {
-  const activeProfile = getActiveProfileName();
-  const displayProfile = profileOverride ?? getCliContext().profile ?? activeProfile;
-  const labelWidth = 17;
-  const indent = "  ";
-
-  const lines = [
-    formatTerminalLabelValue("Config dir:", configDir(), { indent, labelWidth }),
-    formatTerminalLabelValue("Active profile:", displayProfile, { indent, labelWidth }),
-    formatTerminalLabelValue("Secret store:", secretStoreDisplay(), { indent, labelWidth }),
-  ];
-
   return withProfileContextSync(profileOverride ?? getCliContext().profile, () => {
-    lines.push(
-      formatTerminalLabelValue("Data plane:", resolveApiBase(), {
-        indent,
-        labelWidth,
-        linkifyUrls: true,
-      }),
-      formatTerminalLabelValue("Control plane:", resolveManagementApiBase(), {
-        indent,
-        labelWidth,
-        linkifyUrls: true,
-      }),
-      "",
-    );
-
-    const credentialStatus = configureCredentialStatus();
-    lines.push(...formatConfigureAuthenticationLines({ indent, labelWidth }));
-    lines.push(...formatConfigureSetupHints(credentialStatus));
-    lines.push(...formatConfigureEnvOverrideLines(indent, labelWidth));
-
-    return formatTerminalSection(lines);
+    const data = buildConfigureShowData(profileOverride);
+    return formatTerminalSection(renderConfigureShowView(buildConfigureShowView(data)));
   });
 }
 

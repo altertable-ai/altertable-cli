@@ -6,6 +6,7 @@ export type ConfigureWizardScope = "both" | "management" | "lakehouse";
 export type ConfigureWizardOptions = {
   scope?: ConfigureWizardScope;
   profile?: string;
+  org?: string;
   verify?: boolean;
   noVerify?: boolean;
   allowInsecureHttp?: boolean;

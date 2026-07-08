@@ -21,6 +21,7 @@ import {
 const DEFAULT_CONTROL_PLANE_URL = "https://app.altertable.ai";
 const DEFAULT_DATA_PLANE_URL = "https://api.altertable.ai";
 const DEFAULT_SCOPE: ConfigureWizardScope = "both";
+const AUTO_PROFILE_NAME = "auto";
 
 const HIDDEN_PROMPT_HINT = terminalSubtle("(hidden)");
 const SCOPE_SELECT_TITLE = "What to configure?";
@@ -179,6 +180,19 @@ export async function collectManagementCredentials(
   const envDefault = currentEnv || "production";
   const envPrompt = `Environment ${terminalDefaultHint(envDefault)}: `;
   const env = await readLineWithDefault(prompts, envPrompt, envDefault);
+  let org = options.org ?? "";
+  if (!org && options.profile === AUTO_PROFILE_NAME) {
+    const currentOrg = configGet("organization_slug");
+    const orgPrompt = currentOrg
+      ? `Organization slug ${terminalDefaultHint(currentOrg)}: `
+      : `${terminalAccent("Organization slug")}: `;
+    org = currentOrg
+      ? await readLineWithDefault(prompts, orgPrompt, currentOrg)
+      : await prompts.readLine(orgPrompt);
+    if (!org) {
+      throw new CliError("Organization slug is required for --profile auto.");
+    }
+  }
   const apiKey = await readSecretWithOptionalReuse({
     prompts,
     secretKey: "api-key",
@@ -195,6 +209,7 @@ export async function collectManagementCredentials(
   const configureOptions: ConfigureOptions = {
     apiKey,
     env,
+    org,
     profile: options.profile,
     allowInsecureHttp: options.allowInsecureHttp,
   };

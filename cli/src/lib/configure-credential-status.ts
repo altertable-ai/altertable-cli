@@ -1,13 +1,19 @@
 import { configDir, configGet, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
+import {
+  document,
+  renderDisplayDocument,
+  renderDisplayRows,
+  rows,
+  section,
+  text,
+  type DisplayDocument,
+  type DisplayRow,
+} from "@/lib/display-view.ts";
 import { getActiveProfileName } from "@/lib/profile.ts";
 import { secretStoreDisplay } from "@/lib/secrets.ts";
-import {
-  formatTerminalLabelValue,
-  terminalDescription,
-  terminalHighlightCommands,
-} from "@/lib/terminal-style.ts";
+import { terminalDescription, terminalHighlightCommands } from "@/lib/terminal-style.ts";
 import { secretExists } from "@/lib/secrets.ts";
 
 const DETAIL_INDENT = "  ";
@@ -56,6 +62,10 @@ export type ConfigureShowData = {
   overrides: ConfigureShowOverrides;
 };
 
+export type ConfigureShowView = {
+  document: DisplayDocument;
+};
+
 function hasEnvManagementCredentials(): boolean {
   return Boolean(process.env.ALTERTABLE_API_KEY);
 }
@@ -68,8 +78,7 @@ function hasOAuthLogin(): boolean {
   return secretExists("oauth/access-token");
 }
 
-function oauthExpiryDisplay(): string {
-  const raw = configGet("oauth_expiry");
+function timestampMsDisplay(raw: string | undefined): string {
   if (!raw) {
     return "";
   }
@@ -115,7 +124,7 @@ function buildManagementCredential(): ConfigurePlaneCredential {
       source: "stored",
       environment: configGet("api_key_env") || undefined,
       oauth: "set",
-      expires: oauthExpiryDisplay() || undefined,
+      expires: configGet("oauth_expiry") || undefined,
     };
   }
   if (hasStoredManagementCredentials()) {
@@ -138,6 +147,7 @@ function buildLakehouseCredential(): ConfigurePlaneCredential {
         mechanism: "lakehouse_basic_token",
         source: "stored",
         basic_token: "set",
+        expires: configGet("lakehouse_credential_expiry") || undefined,
       };
     }
     return {
@@ -237,146 +247,180 @@ type FormatConfigureAuthenticationOptions = {
   labelWidth?: number;
 };
 
-function pushOAuthManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
-  lines.push(
-    formatTerminalLabelValue("Authentication:", "browser login (OAuth)", { indent, labelWidth }),
-    formatTerminalLabelValue("Environment:", configGet("api_key_env") || "none", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-  );
-  const expires = oauthExpiryDisplay();
-  if (expires) {
-    lines.push(
-      formatTerminalLabelValue("Expires:", expires, {
-        indent: NESTED_INDENT,
-        labelWidth: NESTED_LABEL_WIDTH,
-      }),
-    );
+function organizationDisplay(): string {
+  const organizationSlug = configGet("organization_slug");
+  const organizationName = configGet("organization_name");
+  return organizationName && organizationSlug
+    ? `${organizationName} (${organizationSlug})`
+    : organizationName || organizationSlug;
+}
+
+function managementCredentialRows(credential: ConfigurePlaneCredential): DisplayRow[] {
+  if (!credential.configured) {
+    return [];
   }
-}
-
-function pushStoredManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
-  lines.push(
-    formatTerminalLabelValue("Authentication:", "management API key", { indent, labelWidth }),
-    formatTerminalLabelValue("environment:", configGet("api_key_env"), {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-    formatTerminalLabelValue("api key:", "set", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-  );
-}
-
-function pushEnvManagementAuthLines(lines: string[], indent: string, labelWidth: number): void {
-  const envSlug = process.env.ALTERTABLE_ENV ?? configGet("api_key_env") ?? "unset";
-  lines.push(
-    formatTerminalLabelValue("Authentication:", "management API key (environment)", {
-      indent,
-      labelWidth,
-    }),
-    formatTerminalLabelValue("source:", "ALTERTABLE_API_KEY", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-    formatTerminalLabelValue("environment:", envSlug, {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-  );
-}
-
-function pushStoredLakehouseAuthLines(lines: string[], indent: string, labelWidth: number): void {
-  if (secretExists("lakehouse/basic-token")) {
-    lines.push(
-      formatTerminalLabelValue("Authentication:", "lakehouse Basic token", { indent, labelWidth }),
-      formatTerminalLabelValue("basic token:", "set", {
-        indent: NESTED_INDENT,
-        labelWidth: NESTED_LABEL_WIDTH,
-      }),
-    );
-    return;
+  if (credential.source === "environment") {
+    return [
+      { label: "Authentication:", value: "management API key (environment)" },
+      { label: "source:", value: "ALTERTABLE_API_KEY", level: 1 },
+      { label: "environment:", value: credential.environment ?? "unset", level: 1 },
+    ];
   }
-
-  lines.push(
-    formatTerminalLabelValue("Authentication:", "lakehouse username/password", {
-      indent,
-      labelWidth,
-    }),
-    formatTerminalLabelValue("user:", configGet("user"), {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-    formatTerminalLabelValue("password:", "set", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-  );
+  if (credential.mechanism === "management_oauth") {
+    const rows: DisplayRow[] = [
+      { label: "Authentication:", value: "browser login (OAuth)" },
+      { label: "Environment:", value: credential.environment ?? "none", level: 1 },
+    ];
+    const organization = organizationDisplay();
+    if (organization) {
+      rows.push({ label: "Organization:", value: organization, level: 1 });
+    }
+    const expires = timestampMsDisplay(credential.expires);
+    if (expires) {
+      rows.push({ label: "Expires:", value: expires, level: 1 });
+    }
+    return rows;
+  }
+  return [
+    { label: "Authentication:", value: "management API key" },
+    { label: "environment:", value: credential.environment ?? "", level: 1 },
+    { label: "api key:", value: credential.api_key ?? "set", level: 1 },
+  ];
 }
 
-function pushEnvLakehouseAuthLines(lines: string[], indent: string, labelWidth: number): void {
-  if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
-    lines.push(
-      formatTerminalLabelValue("Authentication:", "lakehouse Basic token (environment)", {
-        indent,
-        labelWidth,
-      }),
-      formatTerminalLabelValue("source:", "ALTERTABLE_BASIC_AUTH_TOKEN", {
-        indent: NESTED_INDENT,
-        labelWidth: NESTED_LABEL_WIDTH,
-      }),
-    );
-    return;
+function lakehouseCredentialRows(credential: ConfigurePlaneCredential): DisplayRow[] {
+  if (!credential.configured) {
+    return [];
   }
+  if (credential.mechanism === "lakehouse_basic_token") {
+    const rows: DisplayRow[] = [
+      {
+        label: "Authentication:",
+        value:
+          credential.source === "environment"
+            ? "lakehouse Basic token (environment)"
+            : "lakehouse Basic token",
+      },
+    ];
+    if (credential.source === "environment") {
+      rows.push({ label: "source:", value: "ALTERTABLE_BASIC_AUTH_TOKEN", level: 1 });
+    } else {
+      rows.push({ label: "basic token:", value: credential.basic_token ?? "set", level: 1 });
+      const expires = timestampMsDisplay(credential.expires);
+      if (expires) {
+        rows.push({ label: "expires:", value: expires, level: 1 });
+      }
+    }
+    return rows;
+  }
+  return [
+    {
+      label: "Authentication:",
+      value:
+        credential.source === "environment"
+          ? "lakehouse username/password (environment)"
+          : "lakehouse username/password",
+    },
+    { label: "user:", value: credential.user ?? "", level: 1 },
+    {
+      label: credential.source === "environment" ? "source:" : "password:",
+      value:
+        credential.source === "environment"
+          ? "ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD"
+          : (credential.password ?? "set"),
+      level: 1,
+    },
+  ];
+}
 
-  lines.push(
-    formatTerminalLabelValue("Authentication:", "lakehouse username/password (environment)", {
-      indent,
-      labelWidth,
-    }),
-    formatTerminalLabelValue("user:", process.env.ALTERTABLE_LAKEHOUSE_USERNAME ?? "", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-    formatTerminalLabelValue("source:", "ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD", {
-      indent: NESTED_INDENT,
-      labelWidth: NESTED_LABEL_WIDTH,
-    }),
-  );
+function configureSummaryRows(data: ConfigureShowData): DisplayRow[] {
+  return [
+    { label: "Config dir:", value: data.config_dir },
+    { label: "Active profile:", value: data.profile },
+    { label: "Secret store:", value: data.secret_store },
+    { label: "Data plane:", value: data.data_plane, linkifyUrls: true },
+    { label: "Control plane:", value: data.control_plane, linkifyUrls: true },
+  ];
+}
+
+function configureOverrideRows(overrides: ConfigureShowOverrides): DisplayRow[] {
+  const rows: DisplayRow[] = [];
+  if (overrides.environment) {
+    rows.push({
+      label: "Environment override:",
+      value: `ALTERTABLE_ENV=${overrides.environment} (stored: ${overrides.stored_environment ?? "none"})`,
+    });
+  }
+  if (overrides.api_key) {
+    rows.push({
+      label: "API key override:",
+      value: "ALTERTABLE_API_KEY is set via environment",
+    });
+  }
+  return rows;
+}
+
+function configureAuthenticationRows(
+  data: ConfigureShowData,
+  planes: readonly ConfigureAuthPlane[] | undefined,
+): DisplayRow[] {
+  const includePlane = (plane: ConfigureAuthPlane): boolean =>
+    planes === undefined || planes.includes(plane);
+  return [
+    ...(includePlane("management") ? managementCredentialRows(data.credentials.management) : []),
+    ...(includePlane("lakehouse") ? lakehouseCredentialRows(data.credentials.lakehouse) : []),
+  ];
+}
+
+export function buildConfigureShowView(
+  data: ConfigureShowData,
+  options: { planes?: ConfigureAuthPlane[] } = {},
+): ConfigureShowView {
+  const authentication = configureAuthenticationRows(data, options.planes);
+  const hints = formatConfigureSetupHints({
+    hasManagement: data.credentials.management.configured,
+    hasLakehouse: data.credentials.lakehouse.configured,
+  });
+  const overrides = configureOverrideRows(data.overrides);
+
+  return {
+    document: document(
+      section(rows(configureSummaryRows(data))),
+      section(
+        rows(authentication),
+        ...(hints.length > 0 ? [text(hints)] : []),
+        ...(overrides.length > 0 ? [rows(overrides)] : []),
+      ),
+    ),
+  };
+}
+
+function renderRows(rows: readonly DisplayRow[], options: FormatConfigureAuthenticationOptions) {
+  return renderDisplayRows(rows, {
+    indent: options.indent ?? DETAIL_INDENT,
+    labelWidth: options.labelWidth ?? DETAIL_LABEL_WIDTH,
+    nestedIndent: NESTED_INDENT,
+    nestedLabelWidth: NESTED_LABEL_WIDTH,
+  });
+}
+
+export function renderConfigureShowView(
+  view: ConfigureShowView,
+  options: FormatConfigureAuthenticationOptions = {},
+): string[] {
+  return renderDisplayDocument(view.document, {
+    indent: options.indent ?? DETAIL_INDENT,
+    labelWidth: options.labelWidth ?? DETAIL_LABEL_WIDTH,
+    nestedIndent: NESTED_INDENT,
+    nestedLabelWidth: NESTED_LABEL_WIDTH,
+  });
 }
 
 export function formatConfigureAuthenticationLines(
   options: FormatConfigureAuthenticationOptions = {},
 ): string[] {
-  const indent = options.indent ?? DETAIL_INDENT;
-  const labelWidth = options.labelWidth ?? DETAIL_LABEL_WIDTH;
-  const includePlane = (plane: ConfigureAuthPlane): boolean =>
-    options.planes === undefined || options.planes.includes(plane);
-
-  const lines: string[] = [];
-
-  if (includePlane("management")) {
-    // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
-    if (hasEnvManagementCredentials()) {
-      pushEnvManagementAuthLines(lines, indent, labelWidth);
-    } else if (hasOAuthLogin()) {
-      pushOAuthManagementAuthLines(lines, indent, labelWidth);
-    } else if (hasStoredManagementCredentials()) {
-      pushStoredManagementAuthLines(lines, indent, labelWidth);
-    }
-  }
-
-  if (includePlane("lakehouse")) {
-    if (hasStoredLakehouseCredentials()) {
-      pushStoredLakehouseAuthLines(lines, indent, labelWidth);
-    } else if (hasEnvLakehouseCredentials()) {
-      pushEnvLakehouseAuthLines(lines, indent, labelWidth);
-    }
-  }
-
-  return lines;
+  const data = buildConfigureShowData();
+  return renderRows(configureAuthenticationRows(data, options.planes), options);
 }
 
 export function formatConfigureSetupHints(status: ConfigureCredentialStatus): string[] {
@@ -414,31 +458,12 @@ export function formatConfigureEnvOverrideLines(
   indent: string = DETAIL_INDENT,
   labelWidth: number = DETAIL_LABEL_WIDTH,
 ): string[] {
-  const lines: string[] = [];
-  const storedApiKeyEnv = configGet("api_key_env");
-  const envOverride = process.env.ALTERTABLE_ENV;
-
-  if (envOverride && envOverride !== storedApiKeyEnv) {
-    const storedLabel = storedApiKeyEnv || "none";
-    lines.push(
-      formatTerminalLabelValue(
-        "Environment override:",
-        `ALTERTABLE_ENV=${envOverride} (stored: ${storedLabel})`,
-        { indent, labelWidth },
-      ),
-    );
-  }
-
-  if (process.env.ALTERTABLE_API_KEY && hasStoredManagementCredentials()) {
-    lines.push(
-      formatTerminalLabelValue("API key override:", "ALTERTABLE_API_KEY is set via environment", {
-        indent,
-        labelWidth,
-      }),
-    );
-  }
-
-  return lines;
+  return renderDisplayRows(configureOverrideRows(buildConfigureShowOverrides()), {
+    indent,
+    labelWidth,
+    nestedIndent: NESTED_INDENT,
+    nestedLabelWidth: NESTED_LABEL_WIDTH,
+  });
 }
 
 export function formatConfigureSessionSummary(configuredPlanes: ConfigureAuthPlane[]): string[] {

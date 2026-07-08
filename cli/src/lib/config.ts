@@ -13,19 +13,8 @@ import {
   unsetProfileConfig,
   writeProfileConfig,
 } from "@/lib/profile.ts";
+import { isProfileScopedConfigKey } from "@/lib/profile-config-keys.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-
-const PROFILE_SCOPED_KEYS = new Set([
-  "user",
-  "api_key_env",
-  "api_base",
-  "management_api_base",
-  "lakehouse_credential_expiry",
-]);
-
-function isProfileScopedKey(key: string): boolean {
-  return PROFILE_SCOPED_KEYS.has(key);
-}
 
 function resolveConfigProfile(override?: string): string {
   return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
@@ -142,7 +131,7 @@ export function kvUnset(filePath: string, key: string): void {
 
 export function configGet(key: string): string {
   ensureProfilesLayout();
-  if (isProfileScopedKey(key)) {
+  if (isProfileScopedConfigKey(key)) {
     return readProfileConfig(resolveConfigProfile(), key);
   }
   return kvGet(configFile(), key);
@@ -150,7 +139,7 @@ export function configGet(key: string): string {
 
 export function configSet(key: string, value: string): void {
   ensureProfilesLayout();
-  if (isProfileScopedKey(key)) {
+  if (isProfileScopedConfigKey(key)) {
     writeProfileConfig(resolveConfigProfile(), key, value);
     try {
       chmodSync(profileConfigFile(resolveConfigProfile()), 0o600);
@@ -171,7 +160,7 @@ export function configSet(key: string, value: string): void {
 
 export function configUnset(key: string): void {
   ensureProfilesLayout();
-  if (isProfileScopedKey(key)) {
+  if (isProfileScopedConfigKey(key)) {
     unsetProfileConfig(resolveConfigProfile(), key);
     return;
   }

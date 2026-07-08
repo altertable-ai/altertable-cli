@@ -28,12 +28,14 @@ import {
   getTerminalWidth,
   getVisibleTextWidth,
 } from "@/lib/terminal-style.ts";
+import { deriveProfileName } from "@/lib/profile.ts";
 
 export type { ConfigurePlaneStatusOptions } from "@/lib/configure-wizard-status.ts";
 export type { ConfigureWizardOptions, ConfigureWizardScope } from "@/lib/configure-wizard-types.ts";
 export { formatConfigurePlaneStatusLine } from "@/lib/configure-wizard-status.ts";
 
 const DEFAULT_SCOPE: ConfigureWizardScope = "both";
+const AUTO_PROFILE_NAME = "auto";
 
 async function saveCredentials(
   configureOptions: ConfigureOptions,
@@ -120,15 +122,31 @@ async function runConfigureWizardInCurrentProfile(
     const scope = await promptConfigureScope(prompts, options.scope ?? DEFAULT_SCOPE);
     const planes = planesForConfigureScope(scope);
     const configuredPlanes: ConfigureAuthPlane[] = [];
+    let activeProfile = options.profile;
+
+    if (activeProfile === AUTO_PROFILE_NAME && !planes.includes("management")) {
+      throw new CliError(
+        "--profile auto requires management configuration so the environment is known.",
+      );
+    }
 
     if (planes.includes("management")) {
-      const managementOptions = await collectManagementCredentials(prompts, options);
+      const managementOptions = await collectManagementCredentials(prompts, {
+        ...options,
+        profile: activeProfile,
+      });
       await saveCredentials(managementOptions, sink);
+      if (activeProfile === AUTO_PROFILE_NAME && managementOptions.org && managementOptions.env) {
+        activeProfile = deriveProfileName(managementOptions.org, managementOptions.env);
+      }
       configuredPlanes.push("management");
     }
 
     if (planes.includes("lakehouse")) {
-      const lakehouseOptions = await collectLakehouseCredentials(prompts, options);
+      const lakehouseOptions = await collectLakehouseCredentials(prompts, {
+        ...options,
+        profile: activeProfile,
+      });
       await saveCredentials(lakehouseOptions, sink);
       configuredPlanes.push("lakehouse");
     }
@@ -152,7 +170,8 @@ async function runConfigureWizardInCurrentProfile(
 }
 
 export async function runConfigureWizard(options: ConfigureWizardOptions = {}): Promise<void> {
-  await withConfigureProfileContext(options.profile, async () => {
+  const contextProfile = options.profile === AUTO_PROFILE_NAME ? undefined : options.profile;
+  await withConfigureProfileContext(contextProfile, async () => {
     await runConfigureWizardInCurrentProfile(options);
   });
 }

@@ -7,8 +7,14 @@ import { configGet } from "@/lib/config.ts";
 import { setCliContext } from "@/context.ts";
 import { parseCallback, buildAuthorizeUrl, startLoopbackServer } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens, getStoredAccessToken, clearOAuthTokens } from "@/lib/oauth-profile.ts";
+import { getActiveProfileName, profileExists } from "@/lib/profile.ts";
 
 let testHome = "";
+const TEST_PRINCIPAL = {
+  type: "User",
+  name: "Test User",
+  email: "test.user@altertable.test",
+} as const;
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-oauth-test-"));
@@ -143,6 +149,7 @@ import {
   assertInteractiveLogin,
   resolveWhoamiEnvironmentSlug,
   applyControlPlaneOverride,
+  storeLoginProfileMetadata,
 } from "@/commands/login.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear } from "@/lib/configure.ts";
@@ -162,6 +169,76 @@ describe("resolveWhoamiEnvironment", () => {
 
   test("returns undefined when no environment is scoped", () => {
     expect(resolveWhoamiEnvironmentSlug({ principal: {}, organization: {} })).toBeUndefined();
+  });
+});
+
+describe("login profile metadata", () => {
+  test("stores environment and organization from whoami", () => {
+    const metadata = storeLoginProfileMetadata(
+      {
+        principal: TEST_PRINCIPAL,
+        organization: { name: "Altertable", slug: "altertable" },
+        authentication_scope: "environment",
+        environment_slug: "production",
+      },
+      {},
+    );
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "altertable_production",
+      profileAction: "created",
+    });
+    expect(profileExists("default")).toBe(true);
+    expect(profileExists("altertable_production")).toBe(true);
+    expect(getActiveProfileName()).toBe("altertable_production");
+    expect(configGet("api_key_env")).toBe("production");
+    expect(configGet("organization_slug")).toBe("altertable");
+    expect(configGet("organization_name")).toBe("Altertable");
+    expect(configGet("principal_name")).toBe("Test User");
+    expect(configGet("principal_email")).toBe("test.user@altertable.test");
+    expect(getStoredAccessToken()).toBe("acc");
+  });
+
+  test("can replace the current profile login session", () => {
+    const metadata = storeLoginProfileMetadata(
+      {
+        principal: TEST_PRINCIPAL,
+        organization: { name: "Altertable", slug: "altertable" },
+        authentication_scope: "environment",
+        environment_slug: "production",
+      },
+      { "replace-profile": true },
+    );
+
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "default",
+      profileAction: "replaced",
+    });
+    expect(profileExists("default")).toBe(true);
+    expect(profileExists("altertable_production")).toBe(false);
+    expect(getActiveProfileName()).toBe("default");
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+    expect(getStoredAccessToken()).toBe("acc");
+  });
+
+  test("stores endpoint overrides after successful login metadata is available", () => {
+    storeLoginProfileMetadata(
+      {
+        principal: {},
+        organization: { name: "Altertable", slug: "altertable" },
+        environment_slug: "production",
+      },
+      {
+        "control-plane-url": "https://app.altertable.test",
+        "data-plane-url": "https://api.altertable.test",
+      },
+    );
+
+    expect(configGet("management_api_base")).toBe("https://app.altertable.test");
+    expect(configGet("api_base")).toBe("https://api.altertable.test");
   });
 });
 

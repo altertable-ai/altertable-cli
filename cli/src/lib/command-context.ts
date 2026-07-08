@@ -4,6 +4,7 @@ import { getCliRuntime } from "@/lib/runtime.ts";
 
 export type AltertableCommandMeta = CommandMeta & {
   examples?: readonly string[];
+  hidden?: boolean;
 };
 
 export type CommandRunContext<T extends ArgsDef = ArgsDef> = CommandContext<T> & {

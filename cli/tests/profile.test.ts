@@ -12,17 +12,24 @@ import {
 } from "@/lib/secrets.ts";
 import {
   DEFAULT_PROFILE_NAME,
+  createProfile,
   deleteProfile,
+  deriveProfileName,
   ensureProfilesLayout,
   getActiveProfileName,
+  inspectProfile,
   listProfiles,
   profileConfigFile,
   profileExists,
+  renameProfile,
   resolveProfileName,
   setActiveProfile,
+  updateProfile,
 } from "@/lib/profile.ts";
+import { promptProfileSwitch } from "@/commands/profile.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
+import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 
 let testHome = "";
 
@@ -77,6 +84,66 @@ describe("resolveProfileName", () => {
 });
 
 describe("profile storage", () => {
+  test("derives safe org_env profile names", () => {
+    expect(deriveProfileName("Acme Inc.", "Production")).toBe("acme-inc_production");
+    expect(deriveProfileName("acme", "prod/eu")).toBe("acme_prod-eu");
+  });
+
+  test("configure writes credentials to an explicit profile", async () => {
+    await configureRunSet({ profile: "acme_production", apiKey: "atm_prod", env: "Production" });
+
+    expect(profileExists("acme_production")).toBe(true);
+    setCliContext({ debug: false, json: false, agent: false, profile: "acme_production" });
+    expect(configGet("api_key_env")).toBe("Production");
+    expect(secretGet("api-key")).toBe("atm_prod");
+    expect(
+      listProfiles().find((profile) => profile.name === "acme_production")?.management_auth,
+    ).toBe("api-key");
+  });
+
+  test("createProfile and updateProfile manage metadata without credentials", () => {
+    const created = createProfile("acme_prod", {
+      organizationSlug: "acme",
+      organizationName: "Acme Inc",
+      environment: "production",
+      description: "Acme production",
+      dataPlane: "https://api.example.com",
+      controlPlane: "https://app.example.com",
+    });
+
+    expect(created.name).toBe("acme_prod");
+    expect(created.status).toBe("partial");
+    expect(created.organization.slug).toBe("acme");
+    expect(created.environment).toBe("production");
+
+    const updated = updateProfile("acme_prod", { description: "Primary prod" });
+    expect(updated.description).toBe("Primary prod");
+    expect(inspectProfile("acme_prod").endpoints.data_plane).toBe("https://api.example.com");
+  });
+
+  test("profile create switches to the created profile", async () => {
+    await configureRunSet({ apiKey: "atm_a", env: "prod" });
+
+    await runCommandWithTestRuntime(["profile", "create", "acme_stage", "--env", "staging"]);
+
+    expect(getActiveProfileName()).toBe("acme_stage");
+  });
+
+  test("inspectProfile reports profile-scoped auth status", async () => {
+    await configureRunSet({ profile: "acme_prod", apiKey: "atm_prod", env: "production" });
+    await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
+    const lakehouseExpiry = Date.now() + 60 * 60 * 1000;
+    setCliContext({ debug: false, json: false, agent: false, profile: "acme_prod" });
+    configSet("lakehouse_credential_expiry", String(lakehouseExpiry));
+
+    const profile = inspectProfile("acme_prod");
+    expect(profile.status).toBe("configured");
+    expect(profile.auth.management).toBe("api_key");
+    expect(profile.auth.lakehouse).toBe("username_password");
+    expect(profile.timestamps.created_at).toBeTruthy();
+    expect(profile.timestamps.lakehouse_expires_at).toBe(new Date(lakehouseExpiry).toISOString());
+  });
+
   test("configure creates implicit profile directories", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
@@ -109,9 +176,16 @@ describe("profile storage", () => {
     expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
   });
 
-  test("deleteProfile refuses to delete the last profile", async () => {
+  test("deleteProfile allows deleting the last inactive profile", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    expect(() => deleteProfile("default")).toThrow("Cannot delete the last profile");
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+    setActiveProfile("staging");
+
+    deleteProfile("default");
+
+    expect(profileExists("default")).toBe(false);
+    expect(profileExists("staging")).toBe(true);
+    expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
   });
 
   test("deleteProfile removes secrets via secretDelete including keychain", async () => {
@@ -151,6 +225,114 @@ describe("profile storage", () => {
     }
   });
 
+  test("renameProfile moves profile config, active profile, and secrets", async () => {
+    await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
+    setActiveProfile("staging");
+
+    renameProfile("staging", "acme_staging");
+
+    expect(profileExists("staging")).toBe(false);
+    expect(profileExists("acme_staging")).toBe(true);
+    expect(getActiveProfileName()).toBe("acme_staging");
+    expect(secretGet("api-key", "acme_staging")).toBe("atm_staging");
+    expect(secretGet("api-key", "staging")).toBe("");
+  });
+
+  test("renameProfile restores the profile directory if keychain secret migration fails", () => {
+    createProfile("staging");
+    const spawnCalls: string[][] = [];
+    setSpawnSyncForTests((_command, args) => {
+      spawnCalls.push([...args]);
+      const account = args[args.indexOf("-a") + 1] ?? "";
+      if (args.includes("help")) {
+        return {
+          status: 0,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      if (args.includes("find-generic-password")) {
+        if (account === "profile/staging/api-key") {
+          return {
+            status: 0,
+            stdout: Buffer.from("atm_staging"),
+            stderr: Buffer.from(""),
+            pid: 0,
+            signal: null,
+            output: [null, Buffer.from("atm_staging"), Buffer.from("")],
+          };
+        }
+        if (account === "profile/staging/lakehouse/password") {
+          return {
+            status: 0,
+            stdout: Buffer.from("secret"),
+            stderr: Buffer.from(""),
+            pid: 0,
+            signal: null,
+            output: [null, Buffer.from("secret"), Buffer.from("")],
+          };
+        }
+        return {
+          status: 1,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      if (
+        args.includes("add-generic-password") &&
+        account === "profile/acme_staging/lakehouse/password"
+      ) {
+        return {
+          status: 1,
+          stdout: Buffer.from(""),
+          stderr: Buffer.from(""),
+          pid: 0,
+          signal: null,
+          output: [null, Buffer.from(""), Buffer.from("")],
+        };
+      }
+      return {
+        status: 0,
+        stdout: Buffer.from(""),
+        stderr: Buffer.from(""),
+        pid: 0,
+        signal: null,
+        output: [null, Buffer.from(""), Buffer.from("")],
+      };
+    });
+
+    const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
+    Object.defineProperty(process, "platform", { value: "darwin" });
+
+    try {
+      process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
+      expect(() => renameProfile("staging", "acme_staging")).toThrow(
+        "Failed to store secret in macOS keychain",
+      );
+      expect(profileExists("staging")).toBe(true);
+      expect(profileExists("acme_staging")).toBe(false);
+      expect(
+        spawnCalls.some(
+          (args) =>
+            args.includes("delete-generic-password") &&
+            args.includes("profile/acme_staging/api-key"),
+        ),
+      ).toBe(true);
+    } finally {
+      if (platformDescriptor) {
+        Object.defineProperty(process, "platform", platformDescriptor);
+      }
+      process.env.ALTERTABLE_SECRET_BACKEND = "file";
+      setSpawnSyncForTests(undefined);
+    }
+  });
+
   test("rejects path traversal profile names", () => {
     expect(() => resolveProfileName("../../outside")).toThrow(ConfigurationError);
     expect(() => setActiveProfile("..")).toThrow(ConfigurationError);
@@ -162,5 +344,34 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "prod-eu", apiKey: "atm_prod", env: "prod" });
     expect(profileExists("staging")).toBe(true);
     expect(profileExists("prod-eu")).toBe(true);
+  });
+
+  test("promptProfileSwitch selects from configured profiles", async () => {
+    await configureRunSet({ apiKey: "atm_a", env: "prod" });
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+
+    const selected = await promptProfileSwitch({
+      writePrompt() {},
+      readLine: async () => "",
+      readPassword: async () => "",
+      readConfirm: async () => true,
+      readSelect: async (title, options, defaultValue) => {
+        expect(title).toBe("Switch profile");
+        expect(defaultValue).toBe("default");
+        expect(options.map((option) => option.value)).toContain("staging");
+        expect(options.find((option) => option.value === "staging")?.label).toContain(
+          "env: staging",
+        );
+        return "staging";
+      },
+    });
+
+    expect(selected).toBe("staging");
+  });
+
+  test("profile status runs without live verification by default", async () => {
+    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
+
+    await runCommandWithTestRuntime(["profile", "status", "--name", "staging"]);
   });
 });

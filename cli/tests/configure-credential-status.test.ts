@@ -103,9 +103,13 @@ describe("OAuth login status", () => {
 
   test("shows browser login (OAuth), not the api-key lines", () => {
     loginViaOAuth();
+    configSet("organization_slug", "altertable");
+    configSet("organization_name", "Altertable");
     const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
     expect(text).toContain("browser login (OAuth)");
     expect(text).toContain("production");
+    expect(text).toContain("Organization:");
+    expect(text).toContain("Altertable (altertable)");
     expect(text).not.toContain("api key:");
     expect(text).not.toContain("management API key");
   });

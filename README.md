@@ -128,10 +128,10 @@ Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable
 
 The CLI talks to two independent APIs with separate auth schemes:
 
-| Plane                    | Purpose                               | Auth           |
-| ------------------------ | ------------------------------------- | -------------- |
-| **Management (control)** | `context`, `catalogs`                 | Bearer API key |
-| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic     |
+| Plane                    | Purpose                               | Auth                    |
+| ------------------------ | ------------------------------------- | ----------------------- |
+| **Management (control)** | `context`, `catalogs`                 | Browser OAuth or API key |
+| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic              |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
@@ -146,6 +146,7 @@ altertable configure lakehouse
 # Non-interactive (scripts/CI)
 altertable configure --api-key atm_xxxx --env production
 altertable configure --user your_username --password your_password
+altertable configure --data-plane-url https://api.example.com
 altertable configure --show
 
 # Verify after flag-based configure
@@ -192,7 +193,7 @@ printf '%s' 'your_password' | altertable configure --user your_username --passwo
 printf '%s' "$KEY" | altertable configure --api-key-stdin --env production
 ```
 
-Plane URLs default to HTTPS. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
+Plane URLs default to HTTPS. `--data-plane-url` can be saved by itself without changing credentials; `--control-plane-url` must be saved with a management credential so failed login/configure attempts do not leave a stale control-plane override. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
 
 Or via environment variables:
 
@@ -219,29 +220,71 @@ Rules for updating credentials:
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
-```bash
-# Set up multiple environments
-altertable configure --profile staging --api-key atm_xxx --env staging
-altertable configure --profile production --api-key atm_yyy --env production
+Profile names can be provided explicitly, or derived from an organization slug and environment as `<org>_<env>`. Derived names are normalized to lowercase safe profile names, for example `Acme` + `Production` becomes `acme_production`.
 
-# Switch active profile
-altertable profile use staging
+```bash
+# Browser login creates or reuses the signed-in org_env profile and switches to it
+altertable login
+
+# Or store the signed-in session in the current profile
+altertable login --replace-profile
+
+# Set up multiple environments with explicit profile names
+altertable configure --profile acme_staging --api-key atm_xxx --env staging
+altertable configure --profile acme_prod --api-key atm_yyy --env production
+
+# Interactive setup can derive the profile after asking for org and env
+altertable configure --profile auto
+
+# Switch the sticky active profile
+altertable profile use acme_staging
+
+# Or choose interactively
+altertable profile switch
 
 # Use a profile for one command
-altertable --profile production context
+altertable --profile acme_production context
+
+# Use a profile for the current shell, including direnv
+eval "$(altertable profile env acme_staging)"
+
+# Or generate a .envrc snippet
+altertable profile direnv acme_staging > .envrc
 
 # Inspect profiles
-export ALTERTABLE_PROFILE=staging
 altertable profile list
-altertable profile show staging
+altertable profile current
+altertable profile status --verify
+altertable profile show --name acme_staging
+```
+
+Advanced profile commands are available for metadata-only profiles, automation, and sharing non-secret configuration:
+
+```bash
+# Create metadata without writing credentials. New profiles become active.
+altertable profile create acme_production --org acme --env production --description "Acme production"
+altertable profile update acme_production --description "Primary production environment"
+
+# Inspect metadata, endpoint overrides, and auth status
+altertable profile status --name acme_staging
+altertable profile status --name acme_staging --verify
+
+# Print a shell snippet for direnv or manual use
+altertable profile env acme_staging
+altertable profile direnv acme_staging
+
+# Rename a profile
+altertable profile rename acme_staging acme_stage
 ```
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
 
-| Scope                              | Keys                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| Global (root `config`)             | `active_profile`, `query_layout`, `query_max_width`, `query_pager`, `update_check_interval` |
-| Profile (`profiles/<name>/config`) | `user`, `api_key_env`, `api_base`, `management_api_base`                                    |
+| Scope                  | Stored there                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| Global root `config`   | Active profile and display/update preferences such as query layout, query width, and update checks |
+| Profile-specific config | Credentials metadata, endpoint overrides, organization/principal metadata, and credential expiry timestamps |
+
+`profile status` shows the profile metadata that is usually useful to humans, including OAuth and auto-provisioned lakehouse credential expiry when present.
 
 ### Credential precedence
 

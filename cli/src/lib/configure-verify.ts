@@ -9,7 +9,7 @@ import type { OperationContext } from "@/lib/operation-command.ts";
 import { runOperationPlan } from "@/lib/operation-effect.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { getActiveProfileName } from "@/lib/profile.ts";
+import { resolveProfileName } from "@/lib/profile.ts";
 
 export { configureCredentialStatus } from "@/lib/configure-credential-status.ts";
 
@@ -98,7 +98,7 @@ export async function configureVerify(
   refreshCliRuntimeContext(getCliContext());
 
   const result: ConfigureVerifyResult = {
-    profile: getActiveProfileName(),
+    profile: resolveProfileName(getCliContext().profile),
     configured: [...planes],
     verified: { management: false, lakehouse: false },
     errors: [],

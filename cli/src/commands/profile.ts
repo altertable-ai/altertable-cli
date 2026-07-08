@@ -1,6 +1,11 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
+import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { configureRunShowForProfile, buildConfigureShowDataForProfile } from "@/lib/configure.ts";
+import type { ConfigureShowData } from "@/lib/configure-credential-status.ts";
+import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
+import { configureVerify } from "@/lib/configure-verify.ts";
+import { defaultConfigurePrompts, type ConfigurePrompts } from "@/lib/configure-prompts.ts";
 import {
   defineGroupCommand,
   defineLocalCommand,
@@ -9,12 +14,28 @@ import {
 import { renderFixedTableSection } from "@/lib/table-format.ts";
 import { formatTerminalUrls } from "@/lib/terminal-style.ts";
 import {
+  formatProfileDirenv,
+  formatProfileEnv,
+  formatProfileInspect,
+  formatProfileStatus,
+  profileShellExports,
+  profileSwitchOption,
+  type ProfileStatusResult,
+} from "@/lib/profile-formatters.ts";
+import {
+  createProfile,
   deleteProfile,
+  deriveProfileName,
   getActiveProfileName,
+  inspectProfile,
   listProfiles,
   profileExists,
+  renameProfile,
   setActiveProfile,
+  updateProfile,
+  type ProfileUpdate,
 } from "@/lib/profile.ts";
+import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 function requireProfileName(name: unknown): string {
   const trimmed = asCliArgString(name).trim();
@@ -22,6 +43,69 @@ function requireProfileName(name: unknown): string {
     throw new CliError("A profile name is required.");
   }
   return trimmed;
+}
+
+function optionalArg(value: unknown): string | undefined {
+  const stringValue = asCliArgString(value).trim();
+  return stringValue || undefined;
+}
+
+function profileNameFromArgs(args: Record<string, unknown>): string {
+  const explicitName = optionalArg(args.name);
+  if (explicitName) {
+    return explicitName;
+  }
+  const org = optionalArg(args.org);
+  const env = optionalArg(args.env);
+  if (org && env) {
+    return deriveProfileName(org, env);
+  }
+  throw new CliError("A profile name is required, or pass --org and --env to derive one.");
+}
+
+function profileUpdateFromArgs(args: Record<string, unknown>): ProfileUpdate {
+  return {
+    organizationSlug: optionalArg(args.org),
+    organizationName: optionalArg(args["org-name"]),
+    environment: optionalArg(args.env),
+    description: optionalArg(args.description),
+    dataPlane: optionalArg(args["data-plane-url"]),
+    controlPlane: optionalArg(args["control-plane-url"]),
+  };
+}
+
+function existingProfileName(name: string): string {
+  if (!profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+  return name;
+}
+
+function profileNameArgOrActive(args: Record<string, unknown>): string {
+  return args.name ? requireProfileName(args.name) : getActiveProfileName();
+}
+
+function configuredVerificationPlanes(configuration: ConfigureShowData): ConfigureAuthPlane[] {
+  const planes: ConfigureAuthPlane[] = [];
+  if (configuration.credentials.management.configured) {
+    planes.push("management");
+  }
+  if (configuration.credentials.lakehouse.configured) {
+    planes.push("lakehouse");
+  }
+  return planes;
+}
+
+export async function promptProfileSwitch(
+  prompts: ConfigurePrompts = defaultConfigurePrompts,
+): Promise<string> {
+  const profiles = listProfiles();
+  const activeProfile = getActiveProfileName();
+  return await prompts.readSelect(
+    "Switch profile",
+    profiles.map(profileSwitchOption),
+    activeProfile,
+  );
 }
 
 const profileListCommand = defineValueCommand({
@@ -36,12 +120,45 @@ const profileListCommand = defineValueCommand({
     const table = renderFixedTableSection(
       profiles,
       [
-        { header: "NAME", cell: (profile) => profile.name, style: "strong" },
-        { header: "ACTIVE", cell: (profile) => (profile.active ? "*" : ""), style: "subtle" },
+        {
+          header: "  NAME",
+          cell: (profile) => `${profile.active ? "✓" : " "} ${profile.name}`,
+          style: "strong",
+        },
+        {
+          header: "ORG",
+          cell: (profile) => profile.organization ?? "",
+          style: "muted",
+        },
+        {
+          header: "PRINCIPAL",
+          cell: (profile) => profile.principal ?? "",
+          style: "muted",
+        },
         {
           header: "ENV",
           cell: (profile) => profile.management_env ?? "",
           style: "muted",
+        },
+        {
+          header: "MGMT",
+          cell: (profile) => profile.management_auth ?? "",
+          style: "string",
+        },
+        {
+          header: "LAKEHOUSE",
+          cell: (profile) => profile.lakehouse_auth ?? "",
+          style: "string",
+        },
+        {
+          header: "OAUTH EXPIRES",
+          cell: (profile) => profile.oauth_expires_at ?? "",
+          style: "muted",
+        },
+        {
+          header: "STATUS",
+          cell: (profile) => profile.status ?? "",
+          style: "accent",
         },
         {
           header: "DATA PLANE",
@@ -59,6 +176,78 @@ const profileListCommand = defineValueCommand({
   },
 });
 
+const profileCreateCommand = defineLocalCommand({
+  id: "profile.create",
+  mutates: true,
+  localConfig: true,
+  output: "normalized",
+  meta: { name: "create", description: "Create an empty profile with metadata" },
+  args: {
+    name: { type: "positional", description: "Profile name", required: false },
+    org: { type: "string", description: "Organization slug" },
+    "org-name": { type: "string", description: "Organization display name" },
+    env: { type: "string", description: "Environment slug" },
+    description: { type: "string", description: "Profile description" },
+    "data-plane-url": { type: "string", description: "Data-plane base URL" },
+    "control-plane-url": { type: "string", description: "Control-plane root URL" },
+  },
+  parse({ args }) {
+    return {
+      name: profileNameFromArgs(args),
+      update: profileUpdateFromArgs(args),
+    };
+  },
+  local(input) {
+    createProfile(input.name, input.update);
+    setActiveProfile(input.name);
+    return inspectProfile(input.name);
+  },
+  present(profile) {
+    return {
+      kind: "normalized",
+      data: { profile },
+      humanText: formatProfileInspect(profile),
+    };
+  },
+});
+
+const profileUpdateCommand = defineLocalCommand({
+  id: "profile.update",
+  mutates: true,
+  localConfig: true,
+  output: "normalized",
+  meta: {
+    name: "update",
+    description: "Update profile metadata and endpoint overrides",
+    hidden: true,
+  },
+  args: {
+    name: { type: "positional", description: "Profile name", required: true },
+    org: { type: "string", description: "Organization slug" },
+    "org-name": { type: "string", description: "Organization display name" },
+    env: { type: "string", description: "Environment slug" },
+    description: { type: "string", description: "Profile description" },
+    "data-plane-url": { type: "string", description: "Data-plane base URL" },
+    "control-plane-url": { type: "string", description: "Control-plane root URL" },
+  },
+  parse({ args }) {
+    return {
+      name: requireProfileName(args.name),
+      update: profileUpdateFromArgs(args),
+    };
+  },
+  local(input) {
+    return updateProfile(input.name, input.update);
+  },
+  present(profile) {
+    return {
+      kind: "normalized",
+      data: { profile },
+      humanText: formatProfileInspect(profile),
+    };
+  },
+});
+
 const profileShowCommand = defineValueCommand({
   id: "profile.show",
   capabilities: ["local-config"],
@@ -68,11 +257,7 @@ const profileShowCommand = defineValueCommand({
     name: { type: "string", description: "Profile name (default: active profile)" },
   },
   parse({ args }) {
-    const profileName = args.name ? requireProfileName(args.name) : getActiveProfileName();
-    if (!profileExists(profileName)) {
-      throw new ConfigurationError(`Profile not found: ${profileName}`);
-    }
-    return profileName;
+    return existingProfileName(profileNameArgOrActive(args));
   },
   value(profileName) {
     const profile = buildConfigureShowDataForProfile(profileName);
@@ -87,19 +272,53 @@ const profileShowCommand = defineValueCommand({
   },
 });
 
-const profileUseCommand = defineLocalCommand({
-  id: "profile.use",
+function createProfileUseCommand(id: string, name: string, hidden = false) {
+  return defineLocalCommand({
+    id,
+    mutates: true,
+    localConfig: true,
+    output: "normalized",
+    meta: { name, description: "Set the active profile", hidden },
+    args: {
+      name: { type: "positional", description: "Profile name", required: true },
+    },
+    parse({ args }) {
+      return requireProfileName(args.name);
+    },
+    local(profileName) {
+      setActiveProfile(profileName);
+      return profileName;
+    },
+    present(profileName) {
+      return {
+        kind: "ack",
+        data: { active_profile: profileName },
+        metadataMessage: `Active profile set to ${profileName}.`,
+      };
+    },
+  });
+}
+
+const profileUseCommand = createProfileUseCommand("profile.use", "use");
+const profileSwitchCommand = defineLocalCommand<string | undefined, string>({
+  id: "profile.switch",
   mutates: true,
   localConfig: true,
   output: "normalized",
-  meta: { name: "use", description: "Set the active profile" },
+  meta: { name: "switch", description: "Interactively switch the active profile" },
   args: {
-    name: { type: "positional", description: "Profile name", required: true },
+    name: { type: "positional", description: "Profile name", required: false },
   },
   parse({ args }) {
-    return requireProfileName(args.name);
+    return args.name ? requireProfileName(args.name) : undefined;
   },
-  local(profileName) {
+  async local(profileName) {
+    if (!profileName) {
+      if (isJsonOutput(getCliContext()) || getCliContext().agent || process.stdin.isTTY !== true) {
+        throw new CliError("Interactive profile switch requires a TTY. Pass a profile name.");
+      }
+      profileName = await promptProfileSwitch();
+    }
     setActiveProfile(profileName);
     return profileName;
   },
@@ -108,6 +327,148 @@ const profileUseCommand = defineLocalCommand({
       kind: "ack",
       data: { active_profile: profileName },
       metadataMessage: `Active profile set to ${profileName}.`,
+    };
+  },
+});
+
+const profileCurrentCommand = defineValueCommand({
+  id: "profile.current",
+  capabilities: ["local-config"],
+  output: "normalized",
+  meta: { name: "current", description: "Show the active profile name" },
+  value() {
+    return getActiveProfileName();
+  },
+  present(profileName) {
+    return {
+      kind: "normalized",
+      data: { active_profile: profileName },
+      humanText: profileName,
+    };
+  },
+});
+
+const profileEnvCommand = defineValueCommand({
+  id: "profile.env",
+  capabilities: ["local-config"],
+  output: "normalized",
+  meta: { name: "env", description: "Print shell exports for a profile" },
+  args: {
+    name: { type: "positional", description: "Profile name (default: active profile)" },
+  },
+  parse({ args }) {
+    return existingProfileName(profileNameArgOrActive(args));
+  },
+  value(profileName) {
+    return profileName;
+  },
+  present(profileName) {
+    const env = profileShellExports(profileName);
+    return {
+      kind: "normalized",
+      data: { profile: profileName, env },
+      humanText: formatProfileEnv(profileName),
+    };
+  },
+});
+
+const profileDirenvCommand = defineValueCommand({
+  id: "profile.direnv",
+  capabilities: ["local-config"],
+  output: "normalized",
+  meta: { name: "direnv", description: "Print a .envrc snippet for a profile" },
+  args: {
+    name: { type: "positional", description: "Profile name (default: active profile)" },
+  },
+  parse({ args }) {
+    return existingProfileName(profileNameArgOrActive(args));
+  },
+  value(profileName) {
+    return profileName;
+  },
+  present(profileName) {
+    const env = profileShellExports(profileName);
+    return {
+      kind: "normalized",
+      data: { profile: profileName, env },
+      humanText: formatProfileDirenv(profileName),
+    };
+  },
+});
+
+const profileStatusCommand = defineLocalCommand<
+  { profileName: string; verify: boolean },
+  ProfileStatusResult
+>({
+  id: "profile.status",
+  localConfig: true,
+  output: "normalized",
+  meta: {
+    name: "status",
+    description: "Show profile auth status and optionally verify credentials",
+  },
+  args: {
+    name: { type: "string", description: "Profile name (default: active profile)" },
+    verify: { type: "boolean", description: "Verify configured credentials with live requests" },
+  },
+  parse({ args }) {
+    return {
+      profileName: profileNameArgOrActive(args),
+      verify: Boolean(args.verify),
+    };
+  },
+  async local(input) {
+    existingProfileName(input.profileName);
+
+    const previous = getCliContext();
+    try {
+      const next = { ...previous, profile: input.profileName };
+      setCliContext(next);
+      refreshCliRuntimeContext(next);
+      const profile = inspectProfile(input.profileName);
+      const configuration = buildConfigureShowDataForProfile(input.profileName);
+      const planes = configuredVerificationPlanes(configuration);
+      const verification = input.verify ? await configureVerify(planes) : undefined;
+      return { profile, configuration, verification };
+    } finally {
+      setCliContext(previous);
+      refreshCliRuntimeContext(previous);
+    }
+  },
+  present(result) {
+    return {
+      kind: "normalized",
+      data: result,
+      humanText: formatProfileStatus(result),
+    };
+  },
+});
+
+const profileRenameCommand = defineLocalCommand({
+  id: "profile.rename",
+  mutates: true,
+  localConfig: true,
+  output: "normalized",
+  meta: { name: "rename", description: "Rename a profile", hidden: true },
+  args: {
+    from: { type: "positional", description: "Current profile name", required: true },
+    to: { type: "positional", description: "New profile name", required: true },
+  },
+  parse({ args }) {
+    return {
+      from: requireProfileName(args.from),
+      to: requireProfileName(args.to),
+    };
+  },
+  local(input) {
+    renameProfile(input.from, input.to);
+    return input;
+  },
+  present(input) {
+    return {
+      kind: "ack",
+      data: { renamed: true, from: input.from, to: input.to },
+      metadataMessage: `Renamed profile ${input.from} to ${input.to}.`,
     };
   },
 });
@@ -149,14 +510,29 @@ export const profileCommand = defineGroupCommand({
     description: "Manage named configuration profiles.",
     examples: [
       "altertable profile list",
-      "altertable profile use staging",
-      "altertable profile show production",
+      "altertable profile create acme_prod --org acme --env production",
+      "altertable profile use acme_prod",
+      "altertable profile switch",
+      "altertable profile current",
+      "altertable profile status --verify",
+      "altertable profile show --name acme_prod",
+      'eval "$(altertable profile env acme_staging)"',
+      "altertable profile direnv acme_staging > .envrc",
+      "altertable --profile acme_staging context",
     ],
   },
   subCommands: {
+    create: profileCreateCommand,
     list: profileListCommand,
     show: profileShowCommand,
+    status: profileStatusCommand,
     use: profileUseCommand,
+    switch: profileSwitchCommand,
+    current: profileCurrentCommand,
+    env: profileEnvCommand,
+    direnv: profileDirenvCommand,
+    update: profileUpdateCommand,
+    rename: profileRenameCommand,
     delete: profileDeleteCommand,
   },
 });
