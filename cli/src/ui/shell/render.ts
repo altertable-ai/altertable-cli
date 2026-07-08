@@ -5,5 +5,8 @@ export function shellExportLine(name: string, value: string): string {
 }
 
 export function renderShellExportView(view: ShellExportView): string {
-  return view.lines.join("\n");
+  return [
+    ...(view.comments ?? []).map((comment) => `# ${comment}`),
+    ...Object.entries(view.env).map(([name, value]) => shellExportLine(name, value)),
+  ].join("\n");
 }

@@ -1,10 +1,11 @@
 import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
 import { chmodSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { getCliContext } from "@/context.ts";
 import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
-import { profileScopedSecretAccount } from "@/features/profile/model.ts";
+import { assertSafeProfileName, resolveProfileName } from "@/lib/profile-store.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -72,7 +73,12 @@ function secretBackend(): SecretBackend {
 }
 
 function resolveSecretAccount(account: string, profileName?: string): string {
-  return profileScopedSecretAccount(account, profileName);
+  if (profileName) {
+    assertSafeProfileName(profileName);
+    return `profile/${profileName}/${account}`;
+  }
+  const profile = resolveProfileName(getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
+  return `profile/${profile}/${account}`;
 }
 
 export type SecretSetOptions = {

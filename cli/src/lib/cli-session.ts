@@ -2,7 +2,7 @@ import type { CliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getLakehouseAuthHeader, getManagementAuthHeader } from "@/lib/auth.ts";
 import { configGet, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
-import { resolveProfileName } from "@/features/profile/model.ts";
+import { resolveProfileName } from "@/lib/profile-store.ts";
 
 export type CliSession = {
   profile: string;

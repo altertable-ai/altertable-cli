@@ -10,7 +10,7 @@ import type { OperationContext } from "@/lib/operation-command.ts";
 import { runOperationPlan } from "@/lib/operation-effect.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { resolveProfileName } from "@/features/profile/model.ts";
+import { resolveProfileName } from "@/lib/profile-store.ts";
 
 export { configureCredentialStatus } from "@/features/configure/model.ts";
 

@@ -1,13 +1,38 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
-import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
-import { getCliContext } from "@/context.ts";
+import { renameSync, rmSync } from "node:fs";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { PROFILE_CONFIG_KEYS, type ProfileConfigKey } from "@/lib/profile-config-keys.ts";
-import { secretDelete, secretExists, secretGet, secretSet } from "@/lib/secrets.ts";
-import { isCliRuntimeReady } from "@/lib/runtime.ts";
+import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
+import {
+  assertSafeProfileName,
+  DEFAULT_PROFILE_NAME,
+  ensureProfileExists,
+  ensureProfilesLayout,
+  getActiveProfileName,
+  listProfileNames,
+  profileConfigFile,
+  profileDir,
+  profileExists,
+  readProfileConfig,
+  readProfileConfigRecord,
+  setActiveProfile,
+  writeProfileConfig,
+} from "@/lib/profile-store.ts";
 
-export const DEFAULT_PROFILE_NAME = "default";
+export {
+  assertSafeProfileName,
+  DEFAULT_PROFILE_NAME,
+  ensureProfileExists,
+  ensureProfilesLayout,
+  getActiveProfileName,
+  moveProfileConfigKey,
+  profileConfigFile,
+  profileExists,
+  profilesDir,
+  readProfileConfig,
+  resolveProfileName,
+  setActiveProfile,
+  writeProfileConfig,
+} from "@/lib/profile-store.ts";
 
 const PROFILE_SECRET_ACCOUNTS = [
   "api-key",
@@ -113,47 +138,8 @@ const LAKEHOUSE_AUTH_LABELS = {
   none: "none",
 } as const satisfies Record<ProfileLakehouseAuth, string>;
 
-export function profilesDir(): string {
-  return join(configDir(), "profiles");
-}
-
-const SAFE_PROFILE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
 const PROFILE_NAME_PART_PATTERN = /[^a-z0-9._-]+/g;
 const PROFILE_NAME_SEPARATOR_PATTERN = /[._-]{2,}/g;
-
-export function assertSafeProfileName(name: string): void {
-  if (name.length === 0) {
-    throw new ConfigurationError("Profile name cannot be empty.");
-  }
-  if (name === "." || name === "..") {
-    throw new ConfigurationError(`Invalid profile name: ${name}`);
-  }
-  if (name.includes("/") || name.includes("\\") || name.includes(sep)) {
-    throw new ConfigurationError(`Invalid profile name: ${name}`);
-  }
-  if (!SAFE_PROFILE_NAME_PATTERN.test(name)) {
-    throw new ConfigurationError(
-      `Invalid profile name: ${name}. Use only letters, digits, dots, underscores, and hyphens.`,
-    );
-  }
-
-  const resolvedProfileDir = resolve(join(profilesDir(), name));
-  const resolvedProfilesRoot = resolve(profilesDir());
-  const profilesRootPrefix = resolvedProfilesRoot.endsWith(sep)
-    ? resolvedProfilesRoot
-    : `${resolvedProfilesRoot}${sep}`;
-  if (
-    resolvedProfileDir !== resolvedProfilesRoot &&
-    !resolvedProfileDir.startsWith(profilesRootPrefix)
-  ) {
-    throw new ConfigurationError(`Invalid profile name: ${name}`);
-  }
-}
-
-function profileDir(name: string): string {
-  assertSafeProfileName(name);
-  return join(profilesDir(), name);
-}
 
 function normalizeProfileNamePart(value: string): string {
   return value
@@ -180,17 +166,6 @@ export function deriveProfileName(org: string, env: string): string {
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function readProfileConfigRecord(name: string): Record<ProfileConfigKey, string | undefined> {
-  const config = Object.fromEntries(PROFILE_CONFIG_KEYS.map((key) => [key, undefined])) as Record<
-    ProfileConfigKey,
-    string | undefined
-  >;
-  for (const key of PROFILE_CONFIG_KEYS) {
-    config[key] = kvGet(profileConfigFile(name), key) || undefined;
-  }
-  return config;
 }
 
 function writeProfileUpdate(name: string, update: ProfileUpdate): void {
@@ -252,69 +227,10 @@ function profilePrincipalSummary(
   return config.principal_name;
 }
 
-export function profileConfigFile(name: string): string {
-  return join(profileDir(name), "config");
-}
-
-export function profileExists(name: string): boolean {
-  return existsSync(profileDir(name));
-}
-
-export function ensureProfilesLayout(): void {
-  if (!existsSync(profilesDir())) {
-    mkdirSync(profileDir(DEFAULT_PROFILE_NAME), { recursive: true });
-  }
-  if (kvGet(configFile(), "active_profile").length === 0) {
-    kvSet(configFile(), "active_profile", DEFAULT_PROFILE_NAME);
-  }
-}
-
-export function getActiveProfileName(): string {
-  ensureProfilesLayout();
-  const active = kvGet(configFile(), "active_profile");
-  if (active.length > 0 && profileExists(active)) {
-    return active;
-  }
-  return DEFAULT_PROFILE_NAME;
-}
-
-export function setActiveProfile(name: string): void {
-  assertSafeProfileName(name);
-  ensureProfilesLayout();
-  if (!profileExists(name)) {
-    throw new ConfigurationError(`Profile not found: ${name}`);
-  }
-  kvSet(configFile(), "active_profile", name);
-}
-
-export function resolveProfileName(override?: string): string {
-  ensureProfilesLayout();
-
-  const explicit = override ?? process.env.ALTERTABLE_PROFILE ?? "";
-
-  if (explicit.length > 0) {
-    assertSafeProfileName(explicit);
-    if (!profileExists(explicit)) {
-      throw new ConfigurationError(`Profile not found: ${explicit}`);
-    }
-    return explicit;
-  }
-
-  return getActiveProfileName();
-}
-
 export function listProfiles(): ProfileSummary[] {
   ensureProfilesLayout();
   const active = getActiveProfileName();
-
-  if (!existsSync(profilesDir())) {
-    return [{ name: DEFAULT_PROFILE_NAME, active: true }];
-  }
-
-  const names = readdirSync(profilesDir(), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
+  const names = listProfileNames();
 
   if (names.length === 0) {
     return [{ name: DEFAULT_PROFILE_NAME, active: active === DEFAULT_PROFILE_NAME }];
@@ -417,45 +333,6 @@ export function updateProfile(name: string, update: ProfileUpdate): ProfileInspe
   return inspectProfile(name);
 }
 
-function moveProfileSecrets(
-  sourceProfile: string,
-  targetProfile: string,
-  secretKeys: readonly string[],
-): void {
-  const prepared: Array<{ secretKey: string; targetValue: string }> = [];
-
-  try {
-    for (const secretKey of secretKeys) {
-      const sourceValue = secretGet(secretKey, sourceProfile);
-      if (sourceValue.length === 0) {
-        continue;
-      }
-      prepared.push({
-        secretKey,
-        targetValue: secretGet(secretKey, targetProfile),
-      });
-      secretSet(secretKey, sourceValue, targetProfile);
-    }
-  } catch (error) {
-    for (const entry of prepared.toReversed()) {
-      try {
-        if (entry.targetValue.length > 0) {
-          secretSet(entry.secretKey, entry.targetValue, targetProfile);
-        } else {
-          secretDelete(entry.secretKey, targetProfile);
-        }
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
-      }
-    }
-    throw error;
-  }
-
-  for (const { secretKey } of prepared) {
-    secretDelete(secretKey, sourceProfile);
-  }
-}
-
 export function renameProfile(source: string, target: string): void {
   assertSafeProfileName(source);
   assertSafeProfileName(target);
@@ -507,36 +384,4 @@ export function deleteProfile(name: string): void {
   }
 
   rmSync(profileDir(name), { recursive: true, force: true });
-}
-
-export function profileScopedSecretAccount(account: string, profileName?: string): string {
-  if (profileName) {
-    assertSafeProfileName(profileName);
-    return `profile/${profileName}/${account}`;
-  }
-  const contextProfile = isCliRuntimeReady() ? getCliContext().profile : undefined;
-  const profile = resolveProfileName(contextProfile ?? process.env.ALTERTABLE_PROFILE);
-  return `profile/${profile}/${account}`;
-}
-
-export function readProfileConfig(profileName: string, key: string): string {
-  return kvGet(profileConfigFile(profileName), key);
-}
-
-export function writeProfileConfig(profileName: string, key: string, value: string): void {
-  assertSafeProfileName(profileName);
-  mkdirSync(profileDir(profileName), { recursive: true });
-  kvSet(profileConfigFile(profileName), key, value);
-}
-
-export function unsetProfileConfig(profileName: string, key: string): void {
-  kvUnset(profileConfigFile(profileName), key);
-}
-
-export function ensureProfileExists(name: string): void {
-  assertSafeProfileName(name);
-  ensureProfilesLayout();
-  if (!profileExists(name)) {
-    mkdirSync(profileDir(name), { recursive: true });
-  }
 }

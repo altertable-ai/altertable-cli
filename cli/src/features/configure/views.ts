@@ -1,11 +1,9 @@
-import { configGet } from "@/lib/config.ts";
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
 import {
   type ConfigureCredentialStatus,
   type ConfigurePlaneCredential,
   type ConfigureShowData,
   type ConfigureShowOverrides,
-  buildConfigureShowData,
 } from "@/features/configure/model.ts";
 import {
   document,
@@ -34,15 +32,18 @@ function timestampMsDisplay(raw: string | undefined): string {
   return Number.isNaN(ms) ? "" : new Date(ms).toLocaleString();
 }
 
-function organizationDisplay(): string {
-  const organizationSlug = configGet("organization_slug");
-  const organizationName = configGet("organization_name");
+function organizationDisplay(organization: ConfigureShowData["organization"]): string {
+  const organizationSlug = organization.slug;
+  const organizationName = organization.name;
   return organizationName && organizationSlug
     ? `${organizationName} (${organizationSlug})`
-    : organizationName || organizationSlug;
+    : (organizationName ?? organizationSlug ?? "");
 }
 
-function managementCredentialRows(credential: ConfigurePlaneCredential): DisplayRow[] {
+function managementCredentialRows(
+  credential: ConfigurePlaneCredential,
+  organization: ConfigureShowData["organization"],
+): DisplayRow[] {
   if (!credential.configured) {
     return [];
   }
@@ -58,9 +59,9 @@ function managementCredentialRows(credential: ConfigurePlaneCredential): Display
       { label: "Authentication:", value: "browser login (OAuth)" },
       { label: "Environment:", value: credential.environment ?? "none", level: 1 },
     ];
-    const organization = organizationDisplay();
-    if (organization) {
-      rows.push({ label: "Organization:", value: organization, level: 1 });
+    const displayOrganization = organizationDisplay(organization);
+    if (displayOrganization) {
+      rows.push({ label: "Organization:", value: displayOrganization, level: 1 });
     }
     const expires = timestampMsDisplay(credential.expires);
     if (expires) {
@@ -154,7 +155,9 @@ export function configureAuthenticationRows(
   const includePlane = (plane: ConfigureAuthPlane): boolean =>
     planes === undefined || planes.includes(plane);
   return [
-    ...(includePlane("management") ? managementCredentialRows(data.credentials.management) : []),
+    ...(includePlane("management")
+      ? managementCredentialRows(data.credentials.management, data.organization)
+      : []),
     ...(includePlane("lakehouse") ? lakehouseCredentialRows(data.credentials.lakehouse) : []),
   ];
 }
@@ -209,10 +212,4 @@ export function buildConfigureShowView(
       ),
     ),
   };
-}
-
-export function buildConfigureAuthenticationView(
-  options: ConfigureAuthenticationViewOptions = {},
-): DisplayRow[] {
-  return configureAuthenticationRows(buildConfigureShowData(), options.planes);
 }

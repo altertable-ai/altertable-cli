@@ -1,9 +1,3 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { chmodSync } from "node:fs";
-import { dirname } from "node:path";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { randomBytes } from "node:crypto";
 import { getCliContext } from "@/context.ts";
 import {
   ensureProfilesLayout,
@@ -12,122 +6,24 @@ import {
   resolveProfileName,
   unsetProfileConfig,
   writeProfileConfig,
-} from "@/features/profile/model.ts";
+} from "@/lib/profile-store.ts";
+import {
+  chmodConfigFile,
+  configDir,
+  configFile,
+  credentialsFile,
+  kvGet,
+  kvSet,
+  kvUnset,
+} from "@/lib/config-files.ts";
 import { isProfileScopedConfigKey } from "@/lib/profile-config-keys.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 
+export { configDir, configFile, credentialsFile, kvGet, kvSet, kvUnset };
+
 function resolveConfigProfile(override?: string): string {
   return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
-}
-
-function trim(value: string): string {
-  return value.trim();
-}
-
-export function configDir(): string {
-  const override = process.env.ALTERTABLE_CONFIG_HOME;
-  if (override) {
-    return override;
-  }
-  const xdg = process.env.XDG_CONFIG_HOME ?? join(process.env.HOME ?? "", ".config");
-  return join(xdg, "altertable");
-}
-
-export function configFile(): string {
-  return join(configDir(), "config");
-}
-
-export function credentialsFile(): string {
-  return join(configDir(), "credentials");
-}
-
-export function kvGet(filePath: string, key: string): string {
-  try {
-    const content = readFileSync(filePath, "utf8");
-    for (const line of content.split("\n")) {
-      if (line === "" || line.startsWith("#")) {
-        continue;
-      }
-      const eqIndex = line.indexOf("=");
-      if (eqIndex === -1) {
-        continue;
-      }
-      const lineKey = trim(line.slice(0, eqIndex));
-      if (lineKey === key) {
-        return trim(line.slice(eqIndex + 1));
-      }
-    }
-  } catch {
-    return "";
-  }
-  return "";
-}
-
-export function kvSet(filePath: string, key: string, value: string): void {
-  mkdirSync(dirname(filePath), { recursive: true });
-  const tmpPath = join(tmpdir(), `altertable-kv-${randomBytes(8).toString("hex")}`);
-  let found = false;
-  let lines: string[] = [];
-
-  try {
-    lines = readFileSync(filePath, "utf8").split("\n");
-  } catch {
-    lines = [];
-  }
-
-  const output: string[] = [];
-  for (const line of lines) {
-    if (line === "" && output.length === 0 && lines.length === 1) {
-      continue;
-    }
-    const eqIndex = line.indexOf("=");
-    const lineKey = eqIndex === -1 ? trim(line) : trim(line.slice(0, eqIndex));
-    if (lineKey === key) {
-      output.push(`${key}=${value}`);
-      found = true;
-    } else {
-      output.push(line);
-    }
-  }
-
-  if (!found) {
-    output.push(`${key}=${value}`);
-  }
-
-  writeFileSync(
-    tmpPath,
-    output
-      .filter((line, index, array) => {
-        if (index === array.length - 1 && line === "") {
-          return false;
-        }
-        return true;
-      })
-      .join("\n") + (output.length > 0 ? "\n" : ""),
-    { mode: 0o600 },
-  );
-  renameSync(tmpPath, filePath);
-}
-
-export function kvUnset(filePath: string, key: string): void {
-  try {
-    const lines = readFileSync(filePath, "utf8").split("\n");
-    const tmpPath = join(tmpdir(), `altertable-kv-${randomBytes(8).toString("hex")}`);
-    const output: string[] = [];
-    for (const line of lines) {
-      const eqIndex = line.indexOf("=");
-      const lineKey = eqIndex === -1 ? trim(line) : trim(line.slice(0, eqIndex));
-      if (lineKey === key) {
-        continue;
-      }
-      output.push(line);
-    }
-    writeFileSync(tmpPath, output.join("\n"), { mode: 0o600 });
-    renameSync(tmpPath, filePath);
-  } catch {
-    // file does not exist
-  }
 }
 
 export function configGet(key: string): string {
@@ -142,21 +38,13 @@ export function configSet(key: string, value: string): void {
   ensureProfilesLayout();
   if (isProfileScopedConfigKey(key)) {
     writeProfileConfig(resolveConfigProfile(), key, value);
-    try {
-      chmodSync(profileConfigFile(resolveConfigProfile()), 0o600);
-    } catch {
-      // best effort
-    }
+    chmodConfigFile(profileConfigFile(resolveConfigProfile()));
     return;
   }
 
   const filePath = configFile();
   kvSet(filePath, key, value);
-  try {
-    chmodSync(filePath, 0o600);
-  } catch {
-    // best effort
-  }
+  chmodConfigFile(filePath);
 }
 
 export function configUnset(key: string): void {

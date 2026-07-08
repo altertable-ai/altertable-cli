@@ -1,12 +1,8 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import {
-  deriveProfileName,
-  ensureProfileExists,
-  listProfiles,
-  profilesDir,
-} from "@/features/profile/model.ts";
+import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
+import { ensureProfileExists, profilesDir } from "@/lib/profile-store.ts";
 import { getCliContext, setCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";

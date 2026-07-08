@@ -1,6 +1,6 @@
 import { configDir, configGet, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
-import { getActiveProfileName } from "@/features/profile/model.ts";
+import { getActiveProfileName } from "@/lib/profile-store.ts";
 import { secretStoreDisplay } from "@/lib/secrets.ts";
 import { secretExists } from "@/lib/secrets.ts";
 
@@ -36,6 +36,10 @@ export type ConfigureShowData = {
   profile: string;
   config_dir: string;
   secret_store: string;
+  organization: {
+    slug?: string;
+    name?: string;
+  };
   data_plane: string;
   control_plane: string;
   credentials: {
@@ -171,6 +175,10 @@ export function buildConfigureShowData(profileOverride?: string): ConfigureShowD
     profile: displayProfile,
     config_dir: configDir(),
     secret_store: secretStoreDisplay(),
+    organization: {
+      slug: configGet("organization_slug") || undefined,
+      name: configGet("organization_name") || undefined,
+    },
     data_plane: resolveApiBase(),
     control_plane: resolveManagementApiBase(),
     credentials: {

@@ -1,11 +1,6 @@
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
 import { buildConfigureShowData } from "@/features/configure/model.ts";
-import {
-  buildConfigureAuthenticationView,
-  configureOverrideRows,
-  configureSetupHintLines,
-  type ConfigureShowView,
-} from "@/features/configure/views.ts";
+import { configureAuthenticationRows, type ConfigureShowView } from "@/features/configure/views.ts";
 import { renderDocument, renderRows } from "@/ui/renderers/terminal.ts";
 import {
   nestedIndent,
@@ -47,25 +42,10 @@ export function renderConfigureShowView(
 export function formatConfigureAuthenticationLines(
   options: FormatConfigureAuthenticationOptions = {},
 ): string[] {
-  return renderConfigureRows(buildConfigureAuthenticationView(options), options);
-}
-
-export function formatConfigureSetupHints(
-  status: Parameters<typeof configureSetupHintLines>[0],
-): string[] {
-  return configureSetupHintLines(status);
-}
-
-export function formatConfigureEnvOverrideLines(
-  indent: string = TERMINAL_INDENT,
-  labelWidth: number = TERMINAL_LABEL_WIDTH,
-): string[] {
-  return renderRows(configureOverrideRows(buildConfigureShowData().overrides), {
-    indent,
-    labelWidth,
-    nestedIndent: nestedIndent(indent),
-    nestedLabelWidth: TERMINAL_NESTED_LABEL_WIDTH,
-  });
+  return renderConfigureRows(
+    configureAuthenticationRows(buildConfigureShowData(), options.planes),
+    options,
+  );
 }
 
 export function formatConfigureSessionSummary(configuredPlanes: ConfigureAuthPlane[]): string[] {

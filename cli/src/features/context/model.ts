@@ -7,7 +7,7 @@ import {
   type ConfigureShowData,
 } from "@/features/configure/model.ts";
 import type { WhoamiResponse } from "@/features/management/model.ts";
-import { ensureProfileExists } from "@/features/profile/model.ts";
+import { ensureProfileExists } from "@/lib/profile-store.ts";
 
 function withProfileContextSync<T>(profileName: string | undefined, run: () => T): T {
   if (!profileName) {

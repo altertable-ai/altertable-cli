@@ -1,8 +1,5 @@
 import type { ActiveContext } from "@/features/context/model.ts";
-import {
-  formatConfigureEnvOverrideLines,
-  formatConfigureSetupHints,
-} from "@/features/configure/render.ts";
+import { configureOverrideRows, configureSetupHintLines } from "@/features/configure/views.ts";
 import {
   document,
   rows,
@@ -12,7 +9,6 @@ import {
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
-import { TERMINAL_INDENT, TERMINAL_LABEL_WIDTH } from "@/ui/terminal/spacing.ts";
 import { terminalHighlightCommands, terminalNotConfiguredStatus } from "@/ui/terminal/styles.ts";
 
 export type ActiveContextSummaryView = {
@@ -136,11 +132,12 @@ export function buildActiveContextSummaryView(context: ActiveContext): ActiveCon
 }
 
 export function buildActiveContextDetailsView(context: ActiveContext): ActiveContextDetailsView {
-  const hints = formatConfigureSetupHints(context.credentialStatus);
-  const overrides = formatConfigureEnvOverrideLines(TERMINAL_INDENT, TERMINAL_LABEL_WIDTH);
+  const hints = configureSetupHintLines(context.credentialStatus);
+  const overrides = configureOverrideRows(context.overrides);
   const detailBlocks = [
     rows(contextDetailRows(context)),
-    ...(hints.length > 0 || overrides.length > 0 ? [text(["", ...hints, ...overrides])] : []),
+    ...(hints.length > 0 ? [text(["", ...hints])] : []),
+    ...(overrides.length > 0 ? [rows(overrides)] : []),
   ];
 
   return {
