@@ -17,7 +17,8 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 - `append` — insert rows (async or `--sync`)
 - `upload` — bulk file ingest with streaming upload support
 - `query show` and `query cancel` — inspect and cancel running queries
-- `append task` — poll append task status
+- `append status` — poll append task status
+- `schema` — list schemas, tables, and columns in a lakehouse catalog
 
 #### Management (control plane)
 
@@ -31,7 +32,10 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 
 - Dual-plane auth: management API key (Bearer) and lakehouse credentials (HTTP Basic)
 - `configure` — interactive wizard or flag-based credential setup, with optional verification
+- `login` and `logout` — browser-based OAuth authentication with profile-aware token storage
+- Automatic lakehouse credential provisioning for OAuth sessions
 - Named profiles with `profile use`, `profile list`, `profile show`, and `profile delete`
+- Advanced profile workflows including `profile current`, `profile status`, `profile switch`, `profile env`, `profile direnv`, `profile create`, `profile update`, and `profile rename`
 - Environment variable overrides for credentials and endpoints
 
 #### Developer experience
@@ -41,4 +45,11 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 - Stable exit codes and structured error envelopes
 - `--debug` with verbose HTTP logging
 - Configurable connect and read timeouts (`--connect-timeout`, `--read-timeout`, per-command `--read-timeout`)
+- `update` — origin-aware update checks and self-install flows
 - Self-contained release binaries for macOS (arm64, x64) and Linux (x64, arm64), plus a Bun JS bundle
+
+### Changed
+
+- Release automation publishes the npm package with provenance, attests GitHub release assets, and builds against a pinned Bun runtime.
+- CI smoke-tests all released native binary targets, including macOS arm64 and x64.
+- Supply-chain checks include Dependabot, CodeQL, and pull-request dependency review.

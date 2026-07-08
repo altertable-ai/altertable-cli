@@ -2,6 +2,10 @@
 
 The CLI is a TypeScript project in `cli/`, run via Bun.
 
+The Bun runtime used by contributors, CI, and release builds is pinned in [`.bun-version`](.bun-version) and mirrored by `packageManager` in `cli/package.json`.
+
+GitHub Actions use the Node.js LTS version pinned in [`.node-version`](.node-version).
+
 ```bash
 cd cli
 bun install
@@ -75,13 +79,13 @@ The CLI version comes from `cli/src/version.ts` (`altertable --version`). [relea
 On push to `main`, `.github/workflows/release-please.yml`:
 
 1. Opens or merges a release-please PR that bumps version and changelog.
-2. When a release is created, builds `cli/dist/cli.js`, compiles four native binaries, copies the bundle to `dist/altertable-cli.js`, writes `dist/checksums.txt` (SHA-256 for every asset), and uploads all files to the GitHub Release.
+2. When a release is created, builds `cli/dist/cli.js`, compiles four native binaries, copies the bundle to `dist/altertable-cli.js`, writes `dist/checksums.txt` (SHA-256 for every asset), attests release assets, uploads all files to the GitHub Release, and publishes `@altertable/cli` to npm with provenance.
 
-CI (`.github/workflows/test.yml`) runs the same `bun run build`, `bun run pack:check`, and native compile smoke tests so release artifacts are verified before merge.
+CI (`.github/workflows/test.yml`) runs the same `bun run build`, `bun run pack:check`, and native compile smoke tests for Linux and macOS release targets so release artifacts are verified before merge.
 
 ### npm publish
 
-The `@altertable/cli` package is published to npm on each release. Install globally with `npm install -g @altertable/cli` (requires Bun 1.1+ at runtime).
+The `@altertable/cli` package is published to npm on each release by `.github/workflows/release-please.yml` using the `NPM_TOKEN` repository secret and npm provenance. Install globally with `npm install -g @altertable/cli`; npm installs require Bun at runtime, while prebuilt binaries do not.
 
 ### Update installer
 
