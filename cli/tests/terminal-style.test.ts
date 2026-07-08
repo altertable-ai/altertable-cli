@@ -288,8 +288,9 @@ describe("terminal-style", () => {
 
   test("formatCommandExamplesSection renders EXAMPLES header", () => {
     enableTerminalColorForTests();
-    const section = formatCommandExamplesSection(['altertable query --statement "SELECT 1"']);
+    const section = formatCommandExamplesSection(['altertable query "SELECT 1"']);
     expect(section).toContain("EXAMPLES");
-    expect(section).toContain("altertable query --statement");
+    expect(section).toContain("altertable query");
+    expect(section).toContain('"SELECT 1"');
   });
 });

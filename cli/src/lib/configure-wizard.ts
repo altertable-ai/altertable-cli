@@ -71,7 +71,7 @@ function writeOutro(sink: OutputSink, configuredPlanes: ConfigureAuthPlane[]): v
     nextCommands.push(terminalAccent("altertable context"));
   }
   if (configuredPlanes.includes("lakehouse")) {
-    nextCommands.push(terminalAccent('altertable query --statement "SELECT 1"'));
+    nextCommands.push(terminalAccent('altertable query "SELECT 1"'));
   }
 
   const nextLine = formatNextCommandsLine(nextCommands);

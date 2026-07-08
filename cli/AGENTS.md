@@ -128,7 +128,7 @@ altertable
 └── completion
 ```
 
-`query` exposes `run` as its Citty default leaf. Prefer the public form `altertable query --statement "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape.
+`query` exposes `run` as its Citty default leaf and takes the SQL statement as a bare positional. Prefer the public form `altertable query "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape. A bare statement is routed to `run` by `normalizeQueryInvocatorRawArgs` in `bootstrap`, mirroring the `api` command's rawArgs rewrite.
 
 ## Cookbook
 

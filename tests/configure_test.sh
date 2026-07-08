@@ -140,7 +140,7 @@ rm -rf "${TEST_HOME}/profiles"
 "${CLI}" configure --user alice --password secret >/dev/null 2>&1
 setup_http_log
 setup_mock_http "${QUERY_MOCK}"
-"${CLI}" query --statement "SELECT 1" >/dev/null 2>&1
+"${CLI}" query "SELECT 1" >/dev/null 2>&1
 assert_http_log_auth_redacted "auth: stored lakehouse credentials"
 STORED_BASIC_TOKEN="$(printf '%s' 'alice:secret' | base64 | tr -d '\n')"
 assert_http_log_has_no_secrets "auth: stored lakehouse credentials" "secret" "${STORED_BASIC_TOKEN}"
@@ -151,7 +151,7 @@ pass "commands authenticate with stored lakehouse credentials"
 setup_http_log
 setup_mock_http "${QUERY_MOCK}"
 ALTERTABLE_LAKEHOUSE_USERNAME=envuser ALTERTABLE_LAKEHOUSE_PASSWORD=envpass \
-  "${CLI}" query --statement "SELECT 1" >/dev/null 2>&1
+  "${CLI}" query "SELECT 1" >/dev/null 2>&1
 assert_http_log_auth_redacted "auth: env vars should beat stored creds"
 ENV_BASIC_TOKEN="$(printf '%s' 'envuser:envpass' | base64 | tr -d '\n')"
 assert_http_log_has_no_secrets "auth: env vars should beat stored creds" "secret" "${ENV_BASIC_TOKEN}"
@@ -169,7 +169,7 @@ echo "${ERR}" | grep -q 'too open' || fail "expected a 'too open' error, got '${
 pass "--show refuses a credentials file looser than 600"
 setup_http_log
 setup_mock_http "${QUERY_MOCK}"
-if "${CLI}" query --statement "SELECT 1" >/dev/null 2>&1; then fail "query should refuse a 644 credentials file"; fi
+if "${CLI}" query "SELECT 1" >/dev/null 2>&1; then fail "query should refuse a 644 credentials file"; fi
 teardown_mock_http
 teardown_http_log
 pass "commands refuse to use a credentials file looser than 600"
@@ -239,14 +239,14 @@ rm -rf "${TEST_HOME}/profiles"
 "${CLI}" configure --user u --password p --data-plane-url http://127.0.0.1:1111 >/dev/null 2>&1
 setup_http_log
 setup_mock_http "${QUERY_MOCK}"
-ALTERTABLE_API_BASE=http://127.0.0.1:2222 "${CLI}" query --statement "SELECT 1" >/dev/null 2>&1
+ALTERTABLE_API_BASE=http://127.0.0.1:2222 "${CLI}" query "SELECT 1" >/dev/null 2>&1
 URL="$(http_log_url)"
 teardown_mock_http
 teardown_http_log
 [[ "${URL}" == "http://127.0.0.1:2222/query" ]] || fail "endpoints: ALTERTABLE_API_BASE should beat stored api_base, got '${URL}'"
 setup_http_log
 setup_mock_http "${QUERY_MOCK}"
-"${CLI}" query --statement "SELECT 1" >/dev/null 2>&1
+"${CLI}" query "SELECT 1" >/dev/null 2>&1
 URL="$(http_log_url)"
 teardown_mock_http
 teardown_http_log
