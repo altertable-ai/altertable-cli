@@ -1,7 +1,8 @@
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
 import {
   type ConfigureCredentialStatus,
-  type ConfigurePlaneCredential,
+  type ConfigureLakehouseCredential,
+  type ConfigureManagementCredential,
   type ConfigureShowData,
   type ConfigureShowOverrides,
 } from "@/features/configure/model.ts";
@@ -15,10 +16,6 @@ import {
 } from "@/ui/document.ts";
 import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
 import { terminalDescription, terminalHighlightCommands } from "@/ui/terminal/styles.ts";
-
-export type ConfigureShowView = {
-  document: DisplayDocument;
-};
 
 export type ConfigureAuthenticationViewOptions = {
   planes?: ConfigureAuthPlane[];
@@ -41,7 +38,7 @@ function organizationDisplay(organization: ConfigureShowData["organization"]): s
 }
 
 function managementCredentialRows(
-  credential: ConfigurePlaneCredential,
+  credential: ConfigureManagementCredential,
   organization: ConfigureShowData["organization"],
 ): DisplayRow[] {
   if (!credential.configured) {
@@ -76,7 +73,7 @@ function managementCredentialRows(
   ];
 }
 
-function lakehouseCredentialRows(credential: ConfigurePlaneCredential): DisplayRow[] {
+function lakehouseCredentialRows(credential: ConfigureLakehouseCredential): DisplayRow[] {
   if (!credential.configured) {
     return [];
   }
@@ -194,7 +191,7 @@ export function configureSetupHintLines(status: ConfigureCredentialStatus): stri
 export function buildConfigureShowView(
   data: ConfigureShowData,
   options: ConfigureAuthenticationViewOptions = {},
-): ConfigureShowView {
+): DisplayDocument {
   const authentication = configureAuthenticationRows(data, options.planes);
   const hints = configureSetupHintLines({
     hasManagement: data.credentials.management.configured,
@@ -202,14 +199,12 @@ export function buildConfigureShowView(
   });
   const overrides = configureOverrideRows(data.overrides);
 
-  return {
-    document: document(
-      section(rows(configureSummaryRows(data))),
-      section(
-        rows(authentication),
-        ...(hints.length > 0 ? [text(hints)] : []),
-        ...(overrides.length > 0 ? [rows(overrides)] : []),
-      ),
+  return document(
+    section(rows(configureSummaryRows(data))),
+    section(
+      rows(authentication),
+      ...(hints.length > 0 ? [text(hints)] : []),
+      ...(overrides.length > 0 ? [rows(overrides)] : []),
     ),
-  };
+  );
 }

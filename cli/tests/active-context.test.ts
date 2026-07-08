@@ -85,7 +85,7 @@ describe("active context formatters", () => {
       await configureRunSet({ apiKey: "atm_test", env: "production" });
 
       const view = buildActiveContextSummaryView(buildActiveContext());
-      const [summarySection] = view.document.sections;
+      const [summarySection] = view.sections;
       const [summaryBlock] = summarySection?.blocks ?? [];
 
       expect(summaryBlock?.kind).toBe("table");
@@ -117,7 +117,7 @@ describe("active context formatters", () => {
           organization: { name: "Acme", slug: "acme" },
         }),
       );
-      const [detailSection] = view.document.sections;
+      const [detailSection] = view.sections;
       const [detailBlock] = detailSection?.blocks ?? [];
 
       expect(detailBlock?.kind).toBe("rows");

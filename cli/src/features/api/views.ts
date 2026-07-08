@@ -9,14 +9,6 @@ import {
 } from "@/ui/document.ts";
 import { terminalAccent } from "@/ui/terminal/styles.ts";
 
-export type ApiOperationDetailsView = {
-  document: DisplayDocument;
-};
-
-export type ApiRoutesView = {
-  document: DisplayDocument;
-};
-
 export type ApiRoutesViewOptions = {
   emptyMessage?: string;
   terminalWidth?: number;
@@ -35,53 +27,47 @@ function apiOperationRows(operation: ApiOperationDetails): DisplayRow[] {
   ];
 }
 
-export function buildApiOperationDetailsView(
-  operation: ApiOperationDetails,
-): ApiOperationDetailsView {
-  return {
-    document: document(section(rows(apiOperationRows(operation)))),
-  };
+export function buildApiOperationDetailsView(operation: ApiOperationDetails): DisplayDocument {
+  return document(section(rows(apiOperationRows(operation))));
 }
 
 export function buildApiRoutesView(
   routeRows: readonly ApiRouteRow[],
   options: ApiRoutesViewOptions = {},
-): ApiRoutesView {
-  return {
-    document: document(
-      section(
-        table({
-          rows: routeRows,
-          columns: [
-            {
-              header: "METHOD",
-              cell: (row) => row.method,
-              style: "httpMethod",
-            },
-            {
-              header: "PATH",
-              cell: (row) => row.path,
-              style: "foreground",
-            },
-            {
-              header: "OPERATION",
-              cell: (row) => row.operationId,
-              style: "subtle",
-            },
-            {
-              header: "SUMMARY",
-              cell: (row) => row.summary,
-              style: "muted",
-            },
-          ],
-          emptyMessage: options.emptyMessage ?? "No operations found.",
-          options: {
-            terminalWidth: options.terminalWidth,
-            horizontalScroll: true,
-            groupBy: (row) => row.path.split("/").filter(Boolean)[0] ?? "",
+): DisplayDocument {
+  return document(
+    section(
+      table({
+        rows: routeRows,
+        columns: [
+          {
+            header: "METHOD",
+            cell: (row) => row.method,
+            style: "httpMethod",
           },
-        }),
-      ),
+          {
+            header: "PATH",
+            cell: (row) => row.path,
+            style: "foreground",
+          },
+          {
+            header: "OPERATION",
+            cell: (row) => row.operationId,
+            style: "subtle",
+          },
+          {
+            header: "SUMMARY",
+            cell: (row) => row.summary,
+            style: "muted",
+          },
+        ],
+        emptyMessage: options.emptyMessage ?? "No operations found.",
+        options: {
+          terminalWidth: options.terminalWidth,
+          horizontalScroll: true,
+          groupBy: (row) => row.path.split("/").filter(Boolean)[0] ?? "",
+        },
+      }),
     ),
-  };
+  );
 }

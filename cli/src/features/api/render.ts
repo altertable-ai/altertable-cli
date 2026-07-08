@@ -11,7 +11,7 @@ type ApiRoutesRenderOptions = {
 
 export function formatApiOperationDetails(operation: ApiOperationDetails): string {
   return formatTerminalSection(
-    renderDocument(buildApiOperationDetailsView(operation).document, {
+    renderDocument(buildApiOperationDetailsView(operation), {
       labelWidth: API_DETAILS_LABEL_WIDTH,
     }),
   );
@@ -30,7 +30,7 @@ export function renderApiRoutesTable(
     buildApiRoutesView(rows, {
       emptyMessage,
       terminalWidth: options.terminalWidth,
-    }).document,
+    }),
   ).join("\n");
 }
 
@@ -38,5 +38,5 @@ export function renderApiRoutesTableSection(
   rows: readonly ApiRouteRow[],
   emptyMessage = "No operations found.",
 ): string {
-  return formatTerminalSection(renderDocument(buildApiRoutesView(rows, { emptyMessage }).document));
+  return formatTerminalSection(renderDocument(buildApiRoutesView(rows, { emptyMessage })));
 }

@@ -1,6 +1,7 @@
 import type { ConfigureAuthPlane } from "@/lib/configure-verify.ts";
 import { buildConfigureShowData } from "@/features/configure/model.ts";
-import { configureAuthenticationRows, type ConfigureShowView } from "@/features/configure/views.ts";
+import { configureAuthenticationRows } from "@/features/configure/views.ts";
+import type { DisplayDocument } from "@/ui/document.ts";
 import { renderDocument, renderRows } from "@/ui/renderers/terminal.ts";
 import {
   nestedIndent,
@@ -28,10 +29,10 @@ function renderConfigureRows(
 }
 
 export function renderConfigureShowView(
-  view: ConfigureShowView,
+  document: DisplayDocument,
   options: FormatConfigureAuthenticationOptions = {},
 ): string[] {
-  return renderDocument(view.document, {
+  return renderDocument(document, {
     indent: options.indent ?? TERMINAL_INDENT,
     labelWidth: options.labelWidth ?? TERMINAL_LABEL_WIDTH,
     nestedIndent: nestedIndent(options.indent),

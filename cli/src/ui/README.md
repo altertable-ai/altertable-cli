@@ -10,7 +10,7 @@ The CLI UI layer is a small platform for declarative terminal output.
 - `ui/renderers/*` turns display data into concrete output.
 - `ui/terminal/*` owns terminal mechanics: ANSI styles, links, visible width, spacing, and tables.
 - `ui/shell/*` owns shell snippet data and rendering.
-- `features/*/views.ts` builds feature-specific display data.
+- `features/*/views.ts` builds feature-specific `DisplayDocument` data.
 - `features/*/render.ts` renders feature display data for terminal output.
 - `features/*/model.ts` owns feature data models and data assembly.
 

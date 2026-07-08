@@ -42,7 +42,8 @@ function resolveEnvironment(showData: ConfigureShowData): string | undefined {
   if (envOverride && envOverride.length > 0) {
     return envOverride;
   }
-  return showData.credentials.management.environment;
+  const managementCredential = showData.credentials.management;
+  return managementCredential.configured ? managementCredential.environment : undefined;
 }
 
 export function buildActiveContext(profileOverride?: string): ActiveContext {

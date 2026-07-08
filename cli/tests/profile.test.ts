@@ -172,7 +172,7 @@ describe("profile storage", () => {
   test("profile list view describes table columns declaratively", async () => {
     await configureRunSet({ profile: "acme_prod", org: "acme", apiKey: "atm_prod", env: "prod" });
     const view = buildProfileListView(listProfiles());
-    const [section] = view.document.sections;
+    const [section] = view.sections;
     const [block] = section?.blocks ?? [];
 
     expect(block?.kind).toBe("table");
@@ -200,7 +200,7 @@ describe("profile storage", () => {
     });
 
     const view = buildProfileInspectView(inspectProfile("acme_prod"));
-    const [section] = view.document.sections;
+    const [section] = view.sections;
     const [block] = section?.blocks ?? [];
 
     expect(block?.kind).toBe("rows");

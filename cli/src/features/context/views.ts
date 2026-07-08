@@ -11,14 +11,6 @@ import {
 } from "@/ui/document.ts";
 import { terminalHighlightCommands, terminalNotConfiguredStatus } from "@/ui/terminal/styles.ts";
 
-export type ActiveContextSummaryView = {
-  document: DisplayDocument;
-};
-
-export type ActiveContextDetailsView = {
-  document: DisplayDocument;
-};
-
 type ContextSummaryRow = {
   profile: string;
   environment: string;
@@ -93,7 +85,7 @@ function contextDetailRows(context: ActiveContext): DisplayRow[] {
   ];
 }
 
-export function buildActiveContextSummaryView(context: ActiveContext): ActiveContextSummaryView {
+export function buildActiveContextSummaryView(context: ActiveContext): DisplayDocument {
   const summaryBlocks = [
     table({
       rows: [contextSummaryRow(context)],
@@ -126,12 +118,10 @@ export function buildActiveContextSummaryView(context: ActiveContext): ActiveCon
       : []),
   ];
 
-  return {
-    document: document(section(...summaryBlocks)),
-  };
+  return document(section(...summaryBlocks));
 }
 
-export function buildActiveContextDetailsView(context: ActiveContext): ActiveContextDetailsView {
+export function buildActiveContextDetailsView(context: ActiveContext): DisplayDocument {
   const hints = configureSetupHintLines(context.credentialStatus);
   const overrides = configureOverrideRows(context.overrides);
   const detailBlocks = [
@@ -140,7 +130,5 @@ export function buildActiveContextDetailsView(context: ActiveContext): ActiveCon
     ...(overrides.length > 0 ? [rows(overrides)] : []),
   ];
 
-  return {
-    document: document(section(...detailBlocks)),
-  };
+  return document(section(...detailBlocks));
 }

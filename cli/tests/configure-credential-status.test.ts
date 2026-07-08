@@ -186,7 +186,7 @@ describe("buildConfigureShowData", () => {
     configSet("api_key_env", "production");
 
     const view = buildConfigureShowView(buildConfigureShowData());
-    const [summary, authentication] = view.document.sections;
+    const [summary, authentication] = view.sections;
     const [summaryRows] = summary?.blocks ?? [];
     const [authenticationRows] = authentication?.blocks ?? [];
 

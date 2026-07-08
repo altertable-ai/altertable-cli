@@ -9,22 +9,52 @@ export type ConfigureCredentialStatus = {
   hasLakehouse: boolean;
 };
 
-export type ConfigurePlaneCredential = {
-  configured: boolean;
-  mechanism?:
-    | "management_api_key"
-    | "management_oauth"
-    | "lakehouse_basic_token"
-    | "lakehouse_username_password";
+type UnconfiguredCredential = {
+  configured: false;
+};
+
+type ConfigureManagementApiKeyCredential = {
+  configured: true;
+  mechanism: "management_api_key";
   source?: "stored" | "environment";
   environment?: string;
-  user?: string;
   api_key?: "set";
+};
+
+type ConfigureManagementOAuthCredential = {
+  configured: true;
+  mechanism: "management_oauth";
+  source: "stored";
+  environment?: string;
   oauth?: "set";
   expires?: string;
-  password?: "set";
-  basic_token?: "set";
 };
+
+export type ConfigureManagementCredential =
+  | UnconfiguredCredential
+  | ConfigureManagementApiKeyCredential
+  | ConfigureManagementOAuthCredential;
+
+type ConfigureLakehouseBasicTokenCredential = {
+  configured: true;
+  mechanism: "lakehouse_basic_token";
+  source?: "stored" | "environment";
+  basic_token?: "set";
+  expires?: string;
+};
+
+type ConfigureLakehouseUsernamePasswordCredential = {
+  configured: true;
+  mechanism: "lakehouse_username_password";
+  source?: "stored" | "environment";
+  user?: string;
+  password?: "set";
+};
+
+export type ConfigureLakehouseCredential =
+  | UnconfiguredCredential
+  | ConfigureLakehouseBasicTokenCredential
+  | ConfigureLakehouseUsernamePasswordCredential;
 
 export type ConfigureShowOverrides = {
   environment?: string;
@@ -43,8 +73,8 @@ export type ConfigureShowData = {
   data_plane: string;
   control_plane: string;
   credentials: {
-    management: ConfigurePlaneCredential;
-    lakehouse: ConfigurePlaneCredential;
+    management: ConfigureManagementCredential;
+    lakehouse: ConfigureLakehouseCredential;
   };
   overrides: ConfigureShowOverrides;
 };
@@ -82,7 +112,7 @@ export function configureCredentialStatus(): ConfigureCredentialStatus {
   };
 }
 
-function buildManagementCredential(): ConfigurePlaneCredential {
+function buildManagementCredential(): ConfigureManagementCredential {
   // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
   if (hasEnvManagementCredentials()) {
     return {
@@ -114,7 +144,7 @@ function buildManagementCredential(): ConfigurePlaneCredential {
   return { configured: false };
 }
 
-function buildLakehouseCredential(): ConfigurePlaneCredential {
+function buildLakehouseCredential(): ConfigureLakehouseCredential {
   if (hasStoredLakehouseCredentials()) {
     if (secretExists("lakehouse/basic-token")) {
       return {
