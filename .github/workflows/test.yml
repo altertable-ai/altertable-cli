@@ -31,7 +31,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -121,10 +121,18 @@ jobs:
           - target: bun-linux-arm64
             artifact: altertable-linux-arm64
             runs-on: ubuntu-24.04-arm
+          - target: bun-darwin-arm64
+            artifact: altertable-darwin-arm64
+            runs-on: macos-14
+          - target: bun-darwin-x64
+            artifact: altertable-darwin-x64
+            runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
       - name: Install and build
         run: |

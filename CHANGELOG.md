@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `login` and `logout` for browser-based OAuth authentication with profile-aware token storage.
+- Automatic lakehouse credential provisioning for OAuth sessions.
+- `schema` for listing schemas, tables, and columns in a lakehouse catalog.
+- `update` for origin-aware update checks and self-install flows.
+- Advanced profile workflows including `profile current`, `profile status`, `profile switch`, `profile env`, `profile direnv`, `profile create`, `profile update`, and `profile rename`.
+
+### Changed
+
+- Release automation now publishes the npm package with provenance, attests GitHub release assets, and builds against a pinned Bun runtime.
+- CI now smoke-tests all released native binary targets, including macOS arm64 and x64.
+- Supply-chain checks now include Dependabot, CodeQL, and pull-request dependency review.
+
 ## [1.0.0] - 2026-06-26
 
 First public release of the Altertable CLI — a TypeScript/Bun command-line tool for the Altertable data platform: lakehouse data plane and management REST API.
@@ -17,7 +33,7 @@ First public release of the Altertable CLI — a TypeScript/Bun command-line too
 - `append` — insert rows (async or `--sync`)
 - `upload` — bulk file ingest with streaming upload support
 - `query show` and `query cancel` — inspect and cancel running queries
-- `append task` — poll append task status
+- `append status` — poll append task status
 
 #### Management (control plane)
 
