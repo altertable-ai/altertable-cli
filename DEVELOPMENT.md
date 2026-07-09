@@ -74,6 +74,8 @@ chmod +x ../dist/altertable-linux-x64
 
 The CLI version comes from `cli/src/version.ts` (`altertable --version`). [release-please](https://github.com/googleapis/release-please) bumps `cli/package.json`, `cli/src/version.ts`, and `.release-please-manifest.json` on release PRs. Do not edit the version in one file without updating the others.
 
+The initial release is bootstrapped with `release-as: 1.0.0` and a `0.0.0` release-please manifest baseline so the first automated GitHub/npm release is `v1.0.0`. Remove `release-as` from `release-please-config.json` after that release PR is merged; subsequent releases should be versioned from conventional commits.
+
 ## Release workflow
 
 On push to `main`, `.github/workflows/release-please.yml`:
