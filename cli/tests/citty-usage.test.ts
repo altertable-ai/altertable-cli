@@ -15,15 +15,6 @@ import {
   type TerminalTestState,
 } from "@tests/terminal-test-utils.ts";
 
-const TERMINAL_CONTROL_PATTERN = new RegExp(
-  `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
-  "g",
-);
-
-function visibleTerminalText(text: string): string {
-  return text.replace(TERMINAL_CONTROL_PATTERN, "");
-}
-
 describe("formatCommandExamplesSection", () => {
   test("returns empty string when there are no examples", () => {
     expect(formatCommandExamplesSection([])).toBe("");
