@@ -1,6 +1,5 @@
 import { renderUsage, type ArgsDef, type CommandDef } from "citty";
 import type { AltertableCommandMeta } from "@/lib/command-context.ts";
-import { tryFormatActiveContextSummary } from "@/features/profile/render.ts";
 import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 
 function toArray<T>(value: T | T[] | undefined): T[] {
