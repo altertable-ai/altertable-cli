@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getBootstrapCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
-import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 import { secretGet } from "@/lib/secrets.ts";
 

@@ -7,12 +7,12 @@ import {
   configureCredentialStatus,
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
-} from "@/features/configure/model.ts";
-import { buildConfigureShowView } from "@/features/configure/views.ts";
+} from "@/features/profile/model.ts";
+import { buildConfigureShowView } from "@/features/profile/views.ts";
 import {
   formatConfigureAuthenticationLines,
   formatConfigureSessionSummary,
-} from "@/features/configure/render.ts";
+} from "@/features/profile/render.ts";
 import { secretSet } from "@/lib/secrets.ts";
 import { configSet } from "@/lib/config.ts";
 

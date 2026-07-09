@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createCliSession } from "@/lib/cli-session.ts";
-import { configureRunSet } from "@/lib/configure.ts";
+import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 

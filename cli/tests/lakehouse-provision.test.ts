@@ -120,7 +120,7 @@ describe("lakehouse credential auto-provisioning", () => {
 
     await expectRejection(
       sendLakehouseRequest(),
-      "Stored lakehouse credential expiry is corrupted. Run 'altertable configure --clear' and try again.",
+      "Stored lakehouse credential expiry is corrupted. Run 'altertable logout' and try again.",
     );
     expect(existsSync(logFile)).toBe(false);
   });

@@ -7,9 +7,9 @@ import { getCliContext, setCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { buildConfigureShowData } from "@/features/configure/model.ts";
-import { buildConfigureShowView } from "@/features/configure/views.ts";
-import { renderConfigureShowView } from "@/features/configure/render.ts";
+import { buildConfigureShowData } from "@/features/profile/model.ts";
+import { buildConfigureShowView } from "@/features/profile/views.ts";
+import { renderConfigureShowView } from "@/features/profile/render.ts";
 import { formatTerminalSection, terminalMetadata } from "@/ui/terminal/styles.ts";
 
 const ARGV_SECRET_WARNING =
@@ -30,7 +30,6 @@ export type ConfigureOptions = {
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
-  verify?: boolean;
   /** Secrets collected via the interactive wizard (not CLI flags). */
   interactive?: boolean;
 };
@@ -222,10 +221,6 @@ export async function configureRunSet(
     }
     markCurrentProfileUpdated();
   });
-}
-
-export function configureRunShowForProfile(profileName: string): string {
-  return configureRunShowInternal(profileName);
 }
 
 export function buildConfigureShowDataForProfile(profileOverride?: string) {

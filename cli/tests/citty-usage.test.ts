@@ -6,7 +6,7 @@ import { buildMainCommand } from "@/cli.ts";
 import { getBootstrapCliContext } from "@/context.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/citty-usage.ts";
-import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 import {

@@ -1,10 +1,18 @@
 import { renameSync, rmSync } from "node:fs";
+import { configDir, configGet, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
+import { getCliContext, setCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import type { ProfileConfigKey } from "@/lib/profile-config-keys.ts";
-import { moveProfileSecrets, secretDelete, secretExists } from "@/lib/secrets.ts";
+import type { WhoamiResponse } from "@/features/management/model.ts";
+import {
+  moveProfileSecrets,
+  secretDelete,
+  secretExists,
+  secretStoreDisplay,
+} from "@/lib/secrets.ts";
 import {
   assertSafeProfileName,
   DEFAULT_PROFILE_NAME,
+  type ProfileConfigKey,
   ensureProfileExists,
   ensureProfilesLayout,
   getActiveProfileName,
@@ -53,7 +61,6 @@ export type ProfileSummary = {
   organization?: string;
   management_env?: string;
   principal?: string;
-  description?: string;
   management_auth?: string;
   lakehouse_auth?: string;
   oauth_expires_at?: string;
@@ -70,7 +77,6 @@ export type ProfileUpdate = {
   principalEmail?: string;
   principalSlug?: string;
   environment?: string;
-  description?: string;
   dataPlane?: string;
   controlPlane?: string;
 };
@@ -90,7 +96,6 @@ export type ProfileInspect = {
     slug?: string;
   };
   environment?: string;
-  description?: string;
   endpoints: {
     data_plane?: string;
     control_plane?: string;
@@ -119,7 +124,6 @@ const PROFILE_UPDATE_CONFIG_KEYS = {
   principalEmail: "principal_email",
   principalSlug: "principal_slug",
   environment: "api_key_env",
-  description: "description",
   dataPlane: "api_base",
   controlPlane: "management_api_base",
 } as const satisfies Record<keyof ProfileUpdate, ProfileConfigKey>;
@@ -242,7 +246,6 @@ export function listProfiles(): ProfileSummary[] {
       organization: snapshot.config.organization_slug,
       management_env: snapshot.config.api_key_env,
       principal: profilePrincipalSummary(snapshot.config),
-      description: snapshot.config.description,
       management_auth: profileManagementAuthSummary(snapshot.auth),
       lakehouse_auth: profileLakehouseAuthSummary(snapshot.auth),
       oauth_expires_at: parseTimestampMs(snapshot.config.oauth_expiry),
@@ -289,7 +292,6 @@ export function inspectProfile(name: string): ProfileInspect {
       slug: config.principal_slug,
     },
     environment: config.api_key_env,
-    description: config.description,
     endpoints: {
       data_plane: config.api_base,
       control_plane: config.management_api_base,
@@ -306,7 +308,7 @@ export function inspectProfile(name: string): ProfileInspect {
   };
 }
 
-export function createProfile(name: string, update: ProfileUpdate = {}): ProfileInspect {
+export function createEmptyProfile(name: string): ProfileInspect {
   assertSafeProfileName(name);
   ensureProfilesLayout();
   if (profileExists(name)) {
@@ -316,7 +318,6 @@ export function createProfile(name: string, update: ProfileUpdate = {}): Profile
   const createdAt = nowIso();
   writeProfileConfig(name, "created_at", createdAt);
   writeProfileConfig(name, "updated_at", createdAt);
-  writeProfileUpdate(name, update);
   return inspectProfile(name);
 }
 
@@ -382,4 +383,336 @@ export function deleteProfile(name: string): void {
   }
 
   rmSync(profileDir(name), { recursive: true, force: true });
+}
+
+export type ConfigureCredentialStatus = {
+  hasManagement: boolean;
+  hasLakehouse: boolean;
+};
+
+type UnconfiguredCredential = {
+  configured: false;
+};
+
+type ConfigureManagementApiKeyCredential = {
+  configured: true;
+  mechanism: "management_api_key";
+  source?: "stored" | "environment";
+  environment?: string;
+  api_key?: "set";
+};
+
+type ConfigureManagementOAuthCredential = {
+  configured: true;
+  mechanism: "management_oauth";
+  source: "stored";
+  environment?: string;
+  oauth?: "set";
+  expires?: string;
+};
+
+export type ConfigureManagementCredential =
+  | UnconfiguredCredential
+  | ConfigureManagementApiKeyCredential
+  | ConfigureManagementOAuthCredential;
+
+type ConfigureLakehouseBasicTokenCredential = {
+  configured: true;
+  mechanism: "lakehouse_basic_token";
+  source?: "stored" | "environment";
+  basic_token?: "set";
+  expires?: string;
+};
+
+type ConfigureLakehouseUsernamePasswordCredential = {
+  configured: true;
+  mechanism: "lakehouse_username_password";
+  source?: "stored" | "environment";
+  user?: string;
+  password?: "set";
+};
+
+export type ConfigureLakehouseCredential =
+  | UnconfiguredCredential
+  | ConfigureLakehouseBasicTokenCredential
+  | ConfigureLakehouseUsernamePasswordCredential;
+
+export type ConfigureShowOverrides = {
+  environment?: string;
+  stored_environment?: string | null;
+  api_key?: boolean;
+};
+
+export type ConfigureShowData = {
+  profile: string;
+  config_dir: string;
+  config_file: string;
+  secret_store: string;
+  organization: {
+    slug?: string;
+    name?: string;
+  };
+  data_plane: string;
+  control_plane: string;
+  credentials: {
+    management: ConfigureManagementCredential;
+    lakehouse: ConfigureLakehouseCredential;
+  };
+  overrides: ConfigureShowOverrides;
+};
+
+function hasEnvManagementCredentials(): boolean {
+  return Boolean(process.env.ALTERTABLE_API_KEY);
+}
+
+function hasStoredManagementCredentials(): boolean {
+  return secretExists("api-key");
+}
+
+function hasOAuthLogin(): boolean {
+  return secretExists("oauth/access-token");
+}
+
+function hasEnvLakehouseCredentials(): boolean {
+  if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
+    return true;
+  }
+  return Boolean(
+    process.env.ALTERTABLE_LAKEHOUSE_USERNAME && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD,
+  );
+}
+
+function hasStoredLakehouseCredentials(): boolean {
+  return secretExists("lakehouse/basic-token") || secretExists("lakehouse/password");
+}
+
+export function configureCredentialStatus(): ConfigureCredentialStatus {
+  return {
+    hasManagement:
+      hasStoredManagementCredentials() || hasEnvManagementCredentials() || hasOAuthLogin(),
+    hasLakehouse: hasStoredLakehouseCredentials() || hasEnvLakehouseCredentials(),
+  };
+}
+
+function buildManagementCredential(): ConfigureManagementCredential {
+  // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
+  if (hasEnvManagementCredentials()) {
+    return {
+      configured: true,
+      mechanism: "management_api_key",
+      source: "environment",
+      environment: process.env.ALTERTABLE_ENV ?? configGet("api_key_env") ?? undefined,
+    };
+  }
+  if (hasOAuthLogin()) {
+    return {
+      configured: true,
+      mechanism: "management_oauth",
+      source: "stored",
+      environment: configGet("api_key_env") || undefined,
+      oauth: "set",
+      expires: configGet("oauth_expiry") || undefined,
+    };
+  }
+  if (hasStoredManagementCredentials()) {
+    return {
+      configured: true,
+      mechanism: "management_api_key",
+      source: "stored",
+      environment: configGet("api_key_env") || undefined,
+      api_key: "set",
+    };
+  }
+  return { configured: false };
+}
+
+function buildLakehouseCredential(): ConfigureLakehouseCredential {
+  if (hasStoredLakehouseCredentials()) {
+    if (secretExists("lakehouse/basic-token")) {
+      return {
+        configured: true,
+        mechanism: "lakehouse_basic_token",
+        source: "stored",
+        basic_token: "set",
+        expires: configGet("lakehouse_credential_expiry") || undefined,
+      };
+    }
+    return {
+      configured: true,
+      mechanism: "lakehouse_username_password",
+      source: "stored",
+      user: configGet("user") || undefined,
+      password: "set",
+    };
+  }
+  if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
+    return {
+      configured: true,
+      mechanism: "lakehouse_basic_token",
+      source: "environment",
+    };
+  }
+  const envUser = process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
+  if (envUser && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD) {
+    return {
+      configured: true,
+      mechanism: "lakehouse_username_password",
+      source: "environment",
+      user: envUser,
+    };
+  }
+  return { configured: false };
+}
+
+function buildConfigureShowOverrides(): ConfigureShowOverrides {
+  const overrides: ConfigureShowOverrides = {};
+  const storedApiKeyEnv = configGet("api_key_env");
+  const envOverride = process.env.ALTERTABLE_ENV;
+
+  if (envOverride && envOverride !== storedApiKeyEnv) {
+    overrides.environment = envOverride;
+    overrides.stored_environment = storedApiKeyEnv || null;
+  }
+  if (process.env.ALTERTABLE_API_KEY && hasStoredManagementCredentials()) {
+    overrides.api_key = true;
+  }
+  return overrides;
+}
+
+export function buildConfigureShowData(profileOverride?: string): ConfigureShowData {
+  const activeProfile = getActiveProfileName();
+  const displayProfile = profileOverride ?? getCliContext().profile ?? activeProfile;
+
+  return {
+    profile: displayProfile,
+    config_dir: configDir(),
+    config_file: profileConfigFile(displayProfile),
+    secret_store: secretStoreDisplay(),
+    organization: {
+      slug: configGet("organization_slug") || undefined,
+      name: configGet("organization_name") || undefined,
+    },
+    data_plane: resolveApiBase(),
+    control_plane: resolveManagementApiBase(),
+    credentials: {
+      management: buildManagementCredential(),
+      lakehouse: buildLakehouseCredential(),
+    },
+    overrides: buildConfigureShowOverrides(),
+  };
+}
+
+export function managementPlaneStatusDetail(): string | null {
+  if (hasEnvManagementCredentials()) {
+    return "via ALTERTABLE_API_KEY";
+  }
+  if (hasOAuthLogin()) {
+    const env = configGet("api_key_env");
+    return env ? `OAuth login (${env})` : "OAuth login";
+  }
+  if (!hasStoredManagementCredentials()) {
+    return null;
+  }
+  return configGet("api_key_env") || "unknown";
+}
+
+export function lakehousePlaneStatusDetail(): string | null {
+  if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
+    return "via ALTERTABLE_BASIC_AUTH_TOKEN";
+  }
+  const envUser = process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
+  if (envUser && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD) {
+    return envUser;
+  }
+  if (!hasStoredLakehouseCredentials()) {
+    return null;
+  }
+  if (secretExists("lakehouse/basic-token")) {
+    return "basic token";
+  }
+  return configGet("user") || "unknown";
+}
+
+function withProfileContextSync<T>(profileName: string | undefined, run: () => T): T {
+  if (!profileName) {
+    return run();
+  }
+  ensureProfileExists(profileName);
+  const previous = getCliContext();
+  setCliContext({ ...previous, profile: profileName });
+  try {
+    return run();
+  } finally {
+    setCliContext(previous);
+  }
+}
+
+export type ActiveContext = {
+  profile: string;
+  environment?: string;
+  data_plane: string;
+  control_plane: string;
+  management: string | null;
+  lakehouse: string | null;
+  credentialStatus: ReturnType<typeof configureCredentialStatus>;
+  credentials: ConfigureShowData["credentials"];
+  overrides: ConfigureShowData["overrides"];
+  principal?: WhoamiResponse["principal"];
+  organization?: WhoamiResponse["organization"];
+};
+
+function resolveEnvironment(showData: ConfigureShowData): string | undefined {
+  const envOverride = process.env.ALTERTABLE_ENV;
+  if (envOverride && envOverride.length > 0) {
+    return envOverride;
+  }
+  const managementCredential = showData.credentials.management;
+  return managementCredential.configured ? managementCredential.environment : undefined;
+}
+
+export function buildActiveContext(profileOverride?: string): ActiveContext {
+  const profile = profileOverride ?? getCliContext().profile;
+
+  return withProfileContextSync(profile, () => {
+    const showData = buildConfigureShowData(profileOverride);
+    const credentialStatus = configureCredentialStatus();
+
+    return {
+      profile: showData.profile,
+      environment: resolveEnvironment(showData),
+      data_plane: showData.data_plane,
+      control_plane: showData.control_plane,
+      management: managementPlaneStatusDetail(),
+      lakehouse: lakehousePlaneStatusDetail(),
+      credentialStatus,
+      credentials: showData.credentials,
+      overrides: showData.overrides,
+    };
+  });
+}
+
+export function withAuthenticatedIdentity(
+  context: ActiveContext,
+  whoami: WhoamiResponse,
+): ActiveContext {
+  return {
+    ...context,
+    principal: whoami.principal,
+    organization: whoami.organization,
+  };
+}
+
+export function activeContextToJson(context: ActiveContext): Record<string, unknown> {
+  return {
+    profile: context.profile,
+    environment: context.environment ?? null,
+    data_plane: context.data_plane,
+    control_plane: context.control_plane,
+    management: context.management,
+    lakehouse: context.lakehouse,
+    credentials: context.credentials,
+    overrides: context.overrides,
+    ...(context.principal !== undefined ? { principal: context.principal } : {}),
+    ...(context.organization !== undefined ? { organization: context.organization } : {}),
+  };
 }

@@ -24,24 +24,24 @@ WHOAMI_500='[{"urlPattern":"/whoami","method":"GET","status":500,"body":"{\"erro
 
 # ── Success ──
 setup_mock_http "${WHOAMI_OK}"
-if ! OUT="$("${CLI}" --json context 2>/dev/null)"; then
-  fail "success: --json context should exit 0"
+if ! OUT="$("${CLI}" --json api GET /whoami 2>/dev/null)"; then
+  fail "success: --json api GET /whoami should exit 0"
 fi
 teardown_mock_http
 echo "${OUT}" | jq -e '.principal.name == "Jane"' >/dev/null || fail "success: expected JSON principal"
-pass "success: --json context exits 0"
+pass "success: --json api GET /whoami exits 0"
 
 # ── Auth (401 → exit 2) ──
 setup_mock_http "${WHOAMI_401}"
 set +e
-STDERR="$("${CLI}" --json context 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json api GET /whoami 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 teardown_mock_http
 [[ "${EXIT_CODE}" -eq 2 ]] || fail "auth: expected exit 2, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 2 and .code == "auth_failed"' >/dev/null \
   || fail "auth: stderr should be JSON error envelope, got '${STDERR}'"
-pass "auth: --json context exits 2 with JSON error on stderr"
+pass "auth: --json api GET /whoami exits 2 with JSON error on stderr"
 
 # ── Not found (404 → exit 4) ──
 setup_mock_http "${ENV_404}"
@@ -58,14 +58,14 @@ pass "not found: api GET missing connection exits 4"
 # ── Forbidden (403 → exit 3) ──
 setup_mock_http "${WHOAMI_403}"
 set +e
-STDERR="$("${CLI}" --json context 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json api GET /whoami 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 teardown_mock_http
 [[ "${EXIT_CODE}" -eq 3 ]] || fail "forbidden: expected exit 3, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 3 and .code == "forbidden"' >/dev/null \
   || fail "forbidden: stderr should be JSON error envelope, got '${STDERR}'"
-pass "forbidden: --json context exits 3"
+pass "forbidden: --json api GET /whoami exits 3"
 
 # ── Conflict (409 → exit 5) ──
 setup_mock_http "${ENV_409}"
@@ -82,14 +82,14 @@ pass "conflict: api POST /service_accounts exits 5 on 409"
 # ── Rate limit (429 → exit 7) ──
 setup_mock_http "${RATE_429}"
 set +e
-STDERR="$("${CLI}" --json context 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json api GET /whoami 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 teardown_mock_http
 [[ "${EXIT_CODE}" -eq 7 ]] || fail "rate limit: expected exit 7, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 7 and .code == "rate_limited"' >/dev/null \
   || fail "rate limit: expected JSON error, got '${STDERR}'"
-pass "rate limit: --json context exits 7 on 429"
+pass "rate limit: --json api GET /whoami exits 7 on 429"
 
 # ── Configuration (missing credentials → exit 10) ──
 CONFIG_HOME="$(mktemp -d)"
@@ -124,26 +124,26 @@ pass "validation: api POST /service_accounts exits 6 on 422"
 # ── Server error (500 → exit 8) ──
 setup_mock_http "${WHOAMI_500}"
 set +e
-STDERR="$("${CLI}" --json context 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json api GET /whoami 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 teardown_mock_http
 [[ "${EXIT_CODE}" -eq 8 ]] || fail "server error: expected exit 8, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 8 and .code == "server_error"' >/dev/null \
   || fail "server error: expected JSON error, got '${STDERR}'"
-pass "server error: --json context exits 8 on 500"
+pass "server error: --json api GET /whoami exits 8 on 500"
 
 # ── Network (unreachable host → exit 9) ──
 export ALTERTABLE_MANAGEMENT_API_BASE="http://127.0.0.1:1"
 set +e
-STDERR="$("${CLI}" --json context 2>&1 >/dev/null)"
+STDERR="$("${CLI}" --json api GET /whoami 2>&1 >/dev/null)"
 EXIT_CODE=$?
 set -e
 unset ALTERTABLE_MANAGEMENT_API_BASE
 [[ "${EXIT_CODE}" -eq 9 ]] || fail "network: expected exit 9, got ${EXIT_CODE}"
 echo "${STDERR}" | jq -e '.error == true and .exit_code == 9 and .code == "network_error"' >/dev/null \
   || fail "network: expected JSON error, got '${STDERR}'"
-pass "network: --json context exits 9 on unreachable host"
+pass "network: --json api GET /whoami exits 9 on unreachable host"
 
 # ── Profile show missing (ConfigurationError → exit 10) ──
 set +e
@@ -166,7 +166,7 @@ pass "usage: query without a statement exits 1"
 # ── JSON error shape on failure ──
 setup_mock_http "${WHOAMI_401}"
 set +e
-"${CLI}" --json context >/dev/null 2> /tmp/at_script_err.json
+"${CLI}" --json api GET /whoami >/dev/null 2> /tmp/at_script_err.json
 EXIT_CODE=$?
 set -e
 teardown_mock_http
@@ -179,7 +179,7 @@ pass "json error shape: failed --json call emits parseable JSON on stderr"
 # ── stdout empty on failure ──
 setup_mock_http "${WHOAMI_401}"
 set +e
-STDOUT="$("${CLI}" --json context 2>/dev/null)"
+STDOUT="$("${CLI}" --json api GET /whoami 2>/dev/null)"
 EXIT_CODE=$?
 set -e
 teardown_mock_http

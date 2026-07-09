@@ -20,7 +20,7 @@ function storedLakehouseCredentialsExpired(): boolean {
   const expiry = Number(raw);
   if (Number.isNaN(expiry)) {
     throw new CliError(
-      "Stored lakehouse credential expiry is corrupted. Run 'altertable configure --clear' and try again.",
+      "Stored lakehouse credential expiry is corrupted. Run 'altertable logout' and try again.",
       { exitCode: EXIT_CONFIG },
     );
   }
@@ -66,7 +66,7 @@ export function getLakehouseAuthHeader(): string {
   }
 
   throw new ConfigurationError(
-    "No credentials. Run 'altertable configure' or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+    "No credentials. Run 'altertable profile --configure' or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
   );
 }
 
@@ -103,7 +103,7 @@ export function getManagementAuthHeader(): string {
   const key = secretGet("api-key");
   if (!key) {
     throw new ConfigurationError(
-      "No management credentials. Run 'altertable login', 'altertable configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
+      "No management credentials. Run 'altertable login', 'altertable profile --configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
     );
   }
   return `Authorization: Bearer ${key}`;
@@ -117,7 +117,7 @@ export function requireManagementEnv(): string {
   const env = managementEnv();
   if (!env) {
     throw new ConfigurationError(
-      "No environment set. Run 'altertable configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
+      "No environment set. Run 'altertable profile --configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
     );
   }
   return env;

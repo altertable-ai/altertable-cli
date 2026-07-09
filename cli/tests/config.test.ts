@@ -30,7 +30,7 @@ import {
   configureRunSet,
   configureRunShow,
   buildConfigureShowDataForProfile,
-} from "@/lib/configure.ts";
+} from "@/lib/profile-configure-core.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
@@ -174,23 +174,23 @@ describe("configure show", () => {
   test("shows hint when only management credentials are configured", async () => {
     await configureRunSet({ apiKey: "atm_test", env: "development" });
     const output = configureRunShow();
-    expect(output).toContain("altertable configure lakehouse");
+    expect(output).toContain("altertable profile --configure --scope lakehouse");
     expect(output).toContain("lakehouse query");
   });
 
   test("shows hint when only lakehouse credentials are configured", async () => {
     await configureRunSet({ user: "alice", password: "lakehouse-secret" });
     const output = configureRunShow();
-    expect(output).toContain("altertable configure management");
-    expect(output).toContain("context");
+    expect(output).toContain("altertable profile --configure --scope management");
+    expect(output).toContain("profile show");
   });
 
   test("shows two-step setup hint when no credentials are configured", () => {
     configureClearAll();
     const output = configureRunShow();
     expect(output).toContain("No credentials configured");
-    expect(output).toContain("altertable configure management");
-    expect(output).toContain("altertable configure lakehouse");
+    expect(output).toContain("altertable profile --configure --scope management");
+    expect(output).toContain("altertable profile --configure --scope lakehouse");
   });
 
   test("shows environment override when ALTERTABLE_ENV differs from stored", async () => {
