@@ -4,14 +4,12 @@ import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
-import { localPlan, runOperationEffect } from "@/lib/operation-effect.ts";
+import { localPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
 import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import {
-  buildManagementCatalogRows,
-  managementCatalogConnectionsOperation,
+  fetchManagementCatalogRows,
   managementCatalogCreateOperation,
-  managementCatalogDatabasesOperation,
   type ManagementCatalogCreateInput,
   type ManagementCatalogCreateResult,
 } from "@/lib/management-operations.ts";
@@ -80,17 +78,7 @@ const catalogsListCommand = defineOperationCommand({
   },
   run(_input, context) {
     const env = requireManagementEnv();
-    return localPlan(async () => {
-      const databasesResponse = await runOperationEffect(
-        managementCatalogDatabasesOperation.effect(env, context),
-        context,
-      );
-      const connectionsResponse = await runOperationEffect(
-        managementCatalogConnectionsOperation.effect(env, context),
-        context,
-      );
-      return buildManagementCatalogRows([databasesResponse, connectionsResponse]);
-    });
+    return localPlan(() => fetchManagementCatalogRows(env, context));
   },
   present(rows) {
     const summary = formatCatalogsSummary(rows);
