@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock } from "./mock-http.ts";
 
@@ -17,10 +17,6 @@ describe("lakehouse command routing", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
-  });
-
-  beforeEach(async () => {
-    await workspace.resetNetwork();
   });
 
   test("append defaults to the run command", async () => {

@@ -59,6 +59,12 @@ export type TestWorkspace = {
   chmodFile: (path: string, mode: number) => Promise<void>;
 };
 
+const activeWorkspaces = new Set<TestWorkspace>();
+
+export async function resetTestWorkspaceNetwork(): Promise<void> {
+  await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.resetNetwork()));
+}
+
 export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorkspace> {
   const root = await mkdtemp(join(tmpdir(), "altertable-cli-test-"));
   const configHome = join(root, "config");
@@ -73,13 +79,14 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
     ...env,
   };
 
-  return {
+  const workspace: TestWorkspace = {
     root,
     configHome,
     configFile,
     credentialsFile,
     defaultProfileConfig,
     async cleanup() {
+      activeWorkspaces.delete(workspace);
       await rm(root, { force: true, recursive: true });
     },
     async resetConfig() {
@@ -150,6 +157,9 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       await chmod(path, mode);
     },
   };
+
+  activeWorkspaces.add(workspace);
+  return workspace;
 }
 
 export async function runShellCommand(

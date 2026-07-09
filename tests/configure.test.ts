@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, whoamiMock } from "./mock-http.ts";
 
@@ -18,10 +18,6 @@ describe("altertable configure", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
-  });
-
-  beforeEach(async () => {
-    await workspace.resetNetwork();
   });
 
   test("stores lakehouse, basic-token, and management credentials", async () => {

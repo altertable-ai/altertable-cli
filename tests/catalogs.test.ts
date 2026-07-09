@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { catalogsMock, jsonMock } from "./mock-http.ts";
 
@@ -15,10 +15,6 @@ describe("altertable catalogs", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
-  });
-
-  beforeEach(async () => {
-    await workspace.resetNetwork();
   });
 
   test("create rejects non-altertable engines", async () => {
