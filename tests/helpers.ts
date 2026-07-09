@@ -42,6 +42,7 @@ export type TestWorkspace = {
   defaultProfileConfig: string;
   cleanup: () => Promise<void>;
   resetConfig: () => Promise<void>;
+  resetNetwork: () => Promise<void>;
   runCommand: (command: string, options?: RunOptions) => Promise<CommandResult>;
   setupHttpLog: () => Promise<void>;
   setupMockHttp: (mocks: MockHttpResponse[] | string) => Promise<void>;
@@ -85,6 +86,12 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       await rm(configFile, { force: true });
       await rm(credentialsFile, { force: true });
       await rm(join(configHome, "profiles"), { force: true, recursive: true });
+    },
+    async resetNetwork() {
+      delete baseEnv.ALTERTABLE_HTTP_LOG;
+      delete baseEnv.ALTERTABLE_MOCK_HTTP_FILE;
+      await writeFile(httpLogFile, "");
+      await rm(mockHttpFile, { force: true });
     },
     async runCommand(command, options = {}) {
       return runShellCommand(command, {

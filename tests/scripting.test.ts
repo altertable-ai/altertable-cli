@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, whoamiMock } from "./mock-http.ts";
 
@@ -24,6 +24,10 @@ describe("scriptable exit codes and JSON errors", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
+  });
+
+  beforeEach(async () => {
+    await workspace.resetNetwork();
   });
 
   test("--json context exits 0 and prints structured success JSON", async () => {

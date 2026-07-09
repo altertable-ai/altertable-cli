@@ -55,20 +55,21 @@ run_step "openapi drift check" git diff --exit-code src/generated/openapi-types.
 run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip
 
+cd "${REPO_ROOT}"
+run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
+
 if [[ "${QUICK}" == true ]]; then
   echo "✓ verify passed"
   exit 0
 fi
 
+cd "${REPO_ROOT}/cli"
 run_step "build" bun run build
 run_step "pack:check" bun run pack:check
 
 chmod +x "${REPO_ROOT}/bin/altertable"
 run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
-
-cd "${REPO_ROOT}"
-run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
@@ -17,6 +17,10 @@ describe("lakehouse integration flows", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
+  });
+
+  beforeEach(async () => {
+    await workspace.resetNetwork();
   });
 
   test("upload, upsert, query formats, append, and debug behave against the mock lakehouse", async () => {

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
@@ -15,6 +15,10 @@ describe("altertable context", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
+  });
+
+  beforeEach(async () => {
+    await workspace.resetNetwork();
   });
 
   test("formats a User principal", async () => {

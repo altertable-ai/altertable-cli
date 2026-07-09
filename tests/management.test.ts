@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestEnv, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, textMock, whoamiMock } from "./mock-http.ts";
 
@@ -15,6 +15,10 @@ describe("management API user flows", () => {
 
   afterAll(async () => {
     await workspace.cleanup();
+  });
+
+  beforeEach(async () => {
+    await workspace.resetNetwork();
   });
 
   test("uses stored Bearer credentials against the default base URL", async () => {
