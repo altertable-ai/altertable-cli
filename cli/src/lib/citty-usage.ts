@@ -1,7 +1,5 @@
 import { renderUsage, type ArgsDef, type CommandDef } from "citty";
-import { getCliContext, isJsonOutput } from "@/context.ts";
 import type { AltertableCommandMeta } from "@/lib/command-context.ts";
-import { tryFormatActiveContextSummary } from "@/features/context/render.ts";
 import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 
 function toArray<T>(value: T | T[] | undefined): T[] {
@@ -138,7 +136,6 @@ async function commandForVisibleUsage(command: CommandDef): Promise<CommandDef> 
   };
 }
 
-const ROOT_COMMAND_NAME = "altertable";
 const ANSI_FOREGROUND_RESET = `${String.fromCharCode(27)}[39m`;
 
 // Citty appends " (commandName)" to meta.description; the USAGE line already names the command.
@@ -154,71 +151,17 @@ function stripCittyDescriptionSuffix(usage: string): string {
   return `${strippedFirstLine}${hasColorReset ? ANSI_FOREGROUND_RESET : ""}${rest}`;
 }
 
-function shouldShowActiveContextOnUsage(meta: AltertableCommandMeta): boolean {
-  if (meta.name !== ROOT_COMMAND_NAME) {
-    return false;
-  }
-  if (isJsonOutput(getCliContext())) {
-    return false;
-  }
-  if (process.stdout?.isTTY !== true) {
-    return false;
-  }
-  return true;
-}
-
-function findUsageSectionStart(usage: string): number {
-  const usageMarker = "USAGE";
-  let sectionStart = usage.indexOf("\n\n");
-
-  while (sectionStart !== -1) {
-    let cursor = sectionStart + 2;
-
-    while (usage[cursor] === "\u001b") {
-      const escapeEnd = usage.indexOf("m", cursor);
-      if (escapeEnd === -1) {
-        break;
-      }
-      cursor = escapeEnd + 1;
-    }
-
-    if (usage.startsWith(usageMarker, cursor)) {
-      return sectionStart;
-    }
-
-    sectionStart = usage.indexOf("\n\n", sectionStart + 2);
-  }
-
-  return -1;
-}
-
-function insertActiveContextIntoUsage(usage: string, contextSummary: string): string {
-  if (contextSummary.length === 0) {
-    return usage;
-  }
-  const usageSectionStart = findUsageSectionStart(usage);
-  if (usageSectionStart === -1) {
-    return `${usage}${contextSummary}`;
-  }
-  return `${usage.slice(0, usageSectionStart)}${contextSummary}${usage.slice(usageSectionStart)}`;
-}
-
 export async function renderAltertableUsage(
   command: CommandDef,
   parent?: CommandDef,
 ): Promise<string> {
   const usageCommand = await commandForVisibleUsage(command);
   const usage = stripCittyDescriptionSuffix(await renderUsage(usageCommand, parent));
-  const meta = await resolveCommandMeta(command);
-  const contextSummary = shouldShowActiveContextOnUsage(meta)
-    ? tryFormatActiveContextSummary(getCliContext().profile)
-    : "";
-  const usageWithContext = insertActiveContextIntoUsage(usage, contextSummary);
   const examplesSection = formatCommandExamplesSection(await resolveCommandExamples(command));
   if (examplesSection.length === 0) {
-    return usageWithContext;
+    return usage;
   }
-  return `${usageWithContext}${examplesSection}`;
+  return `${usage}${examplesSection}`;
 }
 
 export async function showAltertableUsage(command: CommandDef, parent?: CommandDef): Promise<void> {

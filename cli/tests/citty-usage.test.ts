@@ -104,31 +104,6 @@ describe("renderAltertableUsage active context", () => {
     delete process.env.ALTERTABLE_SECRET_BACKEND;
   });
 
-  test("shows active context on root help when stdout is a TTY", async () => {
-    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    process.env.ALTERTABLE_CONFIG_HOME = testHome;
-    process.env.ALTERTABLE_SECRET_BACKEND = "file";
-
-    const runtime = createCliRuntime(getBootstrapCliContext());
-    await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({
-        apiKey: "atm_test",
-        env: "production",
-      });
-      setCliRuntime(runtime);
-      const usage = await renderAltertableUsage(buildMainCommand());
-      const visibleUsage = visibleTerminalText(usage);
-      expect(visibleUsage).toContain("PROFILE");
-      expect(usage).toContain("production");
-      expect(usage).not.toContain("(altertable");
-      expect(visibleUsage).toMatch(/\n  PROFILE/);
-      const profileIndex = visibleUsage.indexOf("PROFILE");
-      const usageIndex = visibleUsage.indexOf("USAGE");
-      expect(profileIndex).toBeGreaterThan(-1);
-      expect(usageIndex).toBeGreaterThan(profileIndex);
-    });
-  });
-
   test("omits active context on subcommand help", async () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     process.env.ALTERTABLE_CONFIG_HOME = testHome;
