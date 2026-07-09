@@ -10,7 +10,10 @@ import {
 } from "@/lib/operation-command-builders.ts";
 import { localPlan, noopPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
-import { defaultConfigurePrompts, type ConfigurePrompts } from "@/lib/configure-prompts.ts";
+import {
+  defaultConfigurePrompts,
+  type ConfigurePrompts,
+} from "@/lib/profile-configure-interactive.ts";
 import { document, rows, section, text } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import {
