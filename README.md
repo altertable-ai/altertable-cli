@@ -37,14 +37,14 @@ Query and manage your Altertable data platform from the terminal.
 npm install -g @altertable/cli
 
 # 2. Configure credentials
-altertable configure
+altertable profile --configure
 
 # Or non-interactive (CI/scripts):
-altertable configure --api-key atm_xxxx --env production
-altertable configure --user your_username --password your_password
+altertable profile --configure --api-key atm_xxxx --env production
+altertable profile --configure --user your_username --password your_password
 
 # 3. Verify (optional — the wizard verifies by default)
-altertable context
+altertable profile show
 
 # 4. Query
 altertable query "SELECT * FROM users LIMIT 10"
@@ -128,40 +128,40 @@ Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable
 
 The CLI talks to two independent APIs with separate auth schemes:
 
-| Plane                    | Purpose                               | Auth                    |
-| ------------------------ | ------------------------------------- | ----------------------- |
-| **Management (control)** | `context`, `catalogs`                 | Browser OAuth or API key |
-| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic              |
+| Plane                    | Purpose                               | Auth                     |
+| ------------------------ | ------------------------------------- | ------------------------ |
+| **Management (control)** | `profile show`, `catalogs`            | Browser OAuth or API key |
+| **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic               |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
 
 ```bash
 # Interactive wizard (TTY) — configures management and lakehouse
-altertable configure
+altertable profile --configure
 
 # Plane-specific wizards
-altertable configure management
-altertable configure lakehouse
+altertable profile --configure --scope management
+altertable profile --configure --scope lakehouse
 
 # Non-interactive (scripts/CI)
-altertable configure --api-key atm_xxxx --env production
-altertable configure --user your_username --password your_password
-altertable configure --data-plane-url https://api.example.com
-altertable configure --show
+altertable profile --configure --api-key atm_xxxx --env production
+altertable profile --configure --user your_username --password your_password
+altertable profile --configure --data-plane-url https://api.example.com
+altertable profile show
 
-# Verify after flag-based configure
-altertable configure --api-key atm_xxxx --env production --verify
+# Verify stored credentials
+altertable profile status
 ```
 
-Passing `--user` and `--api-key` in a single invocation is not allowed. Run two separate `configure` calls — one per plane.
+Passing `--user` and `--api-key` in a single invocation is not allowed. Run two separate `profile --configure` calls — one per plane.
 
 ### Management API key
 
 ```bash
-altertable configure --api-key atm_xxxx --env production
+altertable profile --configure --api-key atm_xxxx --env production
 
 # Pipe the key from a secret store
-printf '%s' "$KEY" | altertable configure --api-key-stdin --env production
+printf '%s' "$KEY" | altertable profile --configure --api-key-stdin --env production
 ```
 
 Or via environment variables:
@@ -177,20 +177,20 @@ Sign in interactively with your browser instead of pasting an API key:
 
 ```bash
 altertable login          # opens your browser, stores an OAuth session
-altertable logout         # clears stored credentials (alias for configure --clear)
+altertable logout         # clears stored credentials and settings for all profiles
 ```
 
 ### Lakehouse credentials
 
 ```bash
-altertable configure --user your_username --password your_password
+altertable profile --configure --user your_username --password your_password
 ```
 
 Prefer reading secrets from stdin to avoid exposing them in process listings:
 
 ```bash
-printf '%s' 'your_password' | altertable configure --user your_username --password-stdin
-printf '%s' "$KEY" | altertable configure --api-key-stdin --env production
+printf '%s' 'your_password' | altertable profile --configure --user your_username --password-stdin
+printf '%s' "$KEY" | altertable profile --configure --api-key-stdin --env production
 ```
 
 Plane URLs default to HTTPS. `--data-plane-url` can be saved by itself without changing credentials; `--control-plane-url` must be saved with a management credential so failed login/configure attempts do not leave a stale control-plane override. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
@@ -210,11 +210,11 @@ export ALTERTABLE_LAKEHOUSE_PASSWORD="your_password"
 
 Rules for updating credentials:
 
-- Separate `configure` invocations — lakehouse and management credentials coexist in the active profile.
-- Within one `configure` invocation — only one plane may be written.
+- Separate `profile --configure` invocations — lakehouse and management credentials coexist in the active profile.
+- Within one `profile --configure` invocation — only one plane may be written.
 - Within the same plane — a new value replaces the previous one.
 - Environment variables override stored credentials when set.
-- `altertable configure --clear` removes **both** planes and resets endpoint overrides.
+- `altertable logout` removes **both** planes and resets endpoint overrides for all profiles.
 
 ### Profiles
 
@@ -230,11 +230,8 @@ altertable login
 altertable login --replace-profile
 
 # Set up multiple environments with explicit profile names
-altertable configure --profile acme_staging --api-key atm_xxx --env staging
-altertable configure --profile acme_prod --api-key atm_yyy --env production
-
-# Interactive setup can derive the profile after asking for org and env
-altertable configure --profile auto
+altertable profile create acme_staging --api-key atm_xxx --env staging
+altertable profile create acme_prod --api-key atm_yyy --env production
 
 # Switch the sticky active profile
 altertable profile use acme_staging
@@ -243,7 +240,7 @@ altertable profile use acme_staging
 altertable profile switch
 
 # Use a profile for one command
-altertable --profile acme_production context
+altertable --profile acme_production profile show
 
 # Use a profile for the current shell, including direnv
 eval "$(altertable profile env acme_staging)"
@@ -254,20 +251,15 @@ altertable profile direnv acme_staging > .envrc
 # Inspect profiles
 altertable profile list
 altertable profile current
-altertable profile status --verify
+altertable profile status
 altertable profile show --name acme_staging
 ```
 
-Advanced profile commands are available for metadata-only profiles, automation, and sharing non-secret configuration:
+Advanced profile commands manage endpoint overrides and inspect existing profiles:
 
 ```bash
-# Create metadata without writing credentials. New profiles become active.
-altertable profile create acme_production --org acme --env production --description "Acme production"
-altertable profile update acme_production --description "Primary production environment"
-
-# Inspect metadata, endpoint overrides, and auth status
+# Verify credentials and show the profile (identity + credential details)
 altertable profile status --name acme_staging
-altertable profile status --name acme_staging --verify
 
 # Print a shell snippet for direnv or manual use
 altertable profile env acme_staging
@@ -279,12 +271,12 @@ altertable profile rename acme_staging acme_stage
 
 Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var → `active_profile` config → `default`.
 
-| Scope                  | Stored there                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------- |
-| Global root `config`   | Active profile and display/update preferences such as query layout, query width, and update checks |
+| Scope                   | Stored there                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Global root `config`    | Active profile and display/update preferences such as query layout, query width, and update checks          |
 | Profile-specific config | Credentials metadata, endpoint overrides, organization/principal metadata, and credential expiry timestamps |
 
-`profile status` shows the profile metadata that is usually useful to humans, including OAuth and auto-provisioned lakehouse credential expiry when present.
+`profile status` runs live credential verification and then renders `profile show` (identity and credential details, including OAuth and auto-provisioned lakehouse credential expiry when present) followed by the verification result. `profile show --config` additionally prints the config dir, profile config file, and secret store paths.
 
 ### Credential precedence
 
@@ -381,7 +373,7 @@ altertable append status <append-id>
 Product-level commands stay at the top level. The full management REST surface is available via `altertable api` (HTTP invoker):
 
 ```bash
-altertable context
+altertable profile show
 altertable catalogs list
 altertable catalogs create --engine altertable --name "My Catalog"
 
@@ -434,20 +426,23 @@ altertable completion install zsh
 altertable completion install fish
 ```
 
-For manual installs, generate the script without writing files:
+If you need a manual install, generate the script without writing files:
 
 ```bash
 # bash
-altertable completion bash > ~/.local/share/bash-completion/completions/altertable
+altertable completion generate bash > ~/.local/share/bash-completion/completions/altertable
 
 # zsh
-altertable completion zsh > ~/.local/share/zsh/site-functions/_altertable
+altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertable
 
 # fish
-altertable completion fish > ~/.config/fish/completions/altertable.fish
+altertable completion generate fish > ~/.config/fish/completions/altertable.fish
 ```
 
-Omit the shell name and the CLI detects it from `$SHELL`. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
+The compatibility aliases `altertable completion bash`, `altertable completion zsh`, and
+`altertable completion fish` also print raw scripts. Running `altertable completion`
+in an interactive terminal opens a small menu; in non-interactive terminals it prints
+usage guidance. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
 
 ---
 
@@ -487,7 +482,7 @@ With `--json`, success stdout follows one of three contracts:
 
 1. **Raw API** — verbatim API response body (most `api *` commands).
 2. **Normalized query** — `{ metadata, columns, rows }` from `query --format json`, `query --json`, or `altertable --agent query` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, environment, principal, … }` from `context --json`.
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ cli_config, profile, details }` from `profile show --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 
@@ -512,7 +507,7 @@ Human mode defaults management list/get output to tables unless `--format` is se
 JSON error objects on stderr have the following fields: `error` (always `true`), `code` (stable snake_case identifier), `message`, `exit_code`, and optional `details` and `status`.
 
 ```bash
-if ! out=$(altertable --json context 2>err.json); then
+if ! out=$(altertable --json profile show 2>err.json); then
   code=$(jq -r .exit_code err.json)
   msg=$(jq -r .message err.json)
   echo "Failed ($code): $msg" >&2

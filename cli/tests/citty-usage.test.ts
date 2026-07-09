@@ -6,7 +6,7 @@ import { buildMainCommand } from "@/cli.ts";
 import { getBootstrapCliContext } from "@/context.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/citty-usage.ts";
-import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { formatCommandExamplesSection } from "@/ui/terminal/styles.ts";
 import {
@@ -14,15 +14,6 @@ import {
   snapshotTerminalState,
   type TerminalTestState,
 } from "@tests/terminal-test-utils.ts";
-
-const TERMINAL_CONTROL_PATTERN = new RegExp(
-  `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
-  "g",
-);
-
-function visibleTerminalText(text: string): string {
-  return text.replace(TERMINAL_CONTROL_PATTERN, "");
-}
 
 describe("formatCommandExamplesSection", () => {
   test("returns empty string when there are no examples", () => {
@@ -102,31 +93,6 @@ describe("renderAltertableUsage active context", () => {
     rmSync(testHome, { recursive: true, force: true });
     delete process.env.ALTERTABLE_CONFIG_HOME;
     delete process.env.ALTERTABLE_SECRET_BACKEND;
-  });
-
-  test("shows active context on root help when stdout is a TTY", async () => {
-    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    process.env.ALTERTABLE_CONFIG_HOME = testHome;
-    process.env.ALTERTABLE_SECRET_BACKEND = "file";
-
-    const runtime = createCliRuntime(getBootstrapCliContext());
-    await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({
-        apiKey: "atm_test",
-        env: "production",
-      });
-      setCliRuntime(runtime);
-      const usage = await renderAltertableUsage(buildMainCommand());
-      const visibleUsage = visibleTerminalText(usage);
-      expect(visibleUsage).toContain("PROFILE");
-      expect(usage).toContain("production");
-      expect(usage).not.toContain("(altertable");
-      expect(visibleUsage).toMatch(/\n  PROFILE/);
-      const profileIndex = visibleUsage.indexOf("PROFILE");
-      const usageIndex = visibleUsage.indexOf("USAGE");
-      expect(profileIndex).toBeGreaterThan(-1);
-      expect(usageIndex).toBeGreaterThan(profileIndex);
-    });
   });
 
   test("omits active context on subcommand help", async () => {

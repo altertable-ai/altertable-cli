@@ -47,6 +47,7 @@ cd "${REPO_ROOT}/cli"
 
 run_step "install deps" bun install --frozen-lockfile
 run_step "typecheck" bun run typecheck
+run_step "top-level test typecheck" ./node_modules/.bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
 run_step "generate (openapi)" bun run generate
@@ -54,11 +55,15 @@ run_step "openapi drift check" git diff --exit-code src/generated/openapi-types.
 run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip
 
+cd "${REPO_ROOT}"
+run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
+
 if [[ "${QUICK}" == true ]]; then
   echo "✓ verify passed"
   exit 0
 fi
 
+cd "${REPO_ROOT}/cli"
 run_step "build" bun run build
 run_step "pack:check" bun run pack:check
 
@@ -66,14 +71,9 @@ chmod +x "${REPO_ROOT}/bin/altertable"
 run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
 
-cd "${REPO_ROOT}"
-for script in configure management context catalogs lakehouse scripting profile; do
-  run_step "tests/${script}_test.sh" "./tests/${script}_test.sh"
-done
-
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server
-  run_step "tests/integration_test.sh" "./tests/integration_test.sh"
+  run_step "top-level integration JS tests" bun test "${REPO_ROOT}/tests/integration.e2e.ts"
 fi
 
 echo "✓ verify passed"

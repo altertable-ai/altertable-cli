@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { getLoginLakehouseCredentials, type LakehouseCredentials } from "@/lib/auth.ts";
-import { configureVerify } from "@/lib/configure-verify.ts";
+import { configureVerify } from "@/lib/profile-status.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import { stringArg } from "@/lib/operation-codec.ts";

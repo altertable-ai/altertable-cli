@@ -2,12 +2,10 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { configureRunSet } from "@/lib/configure.ts";
-import { configureVerify } from "@/lib/configure-verify.ts";
-import { configureRunVerifyIfRequested } from "@/lib/configure-wizard.ts";
+import { configureRunSet } from "@/lib/profile-configure-core.ts";
+import { configureVerify } from "@/lib/profile-status.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
-import { CliError } from "@/lib/errors.ts";
 
 let testHome = "";
 let mockFile = "";
@@ -16,7 +14,7 @@ const WHOAMI_BODY =
   '{"principal":{"type":"User","name":"Jane","email":"j@x.io"},"organization":{"name":"Acme","slug":"acme"}}';
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-configure-verify-test-"));
+  testHome = mkdtempSync(join(tmpdir(), "altertable-profile-status-test-"));
   mockFile = join(testHome, "mocks.json");
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
@@ -76,59 +74,6 @@ describe("configureVerify", () => {
       expect(result.verified.management).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]?.plane).toBe("management");
-    });
-  });
-});
-
-describe("configureRunVerifyIfRequested", () => {
-  test("writes JSON result when verify flag is set", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([{ urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY }]),
-    );
-
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-    const stdout: string[] = [];
-    runtime.output.writeJson = (data) => {
-      stdout.push(JSON.stringify(data));
-    };
-
-    await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({ apiKey: "atm_test", env: "prod" });
-      refreshCliRuntimeContext(runtime.context);
-
-      await configureRunVerifyIfRequested({
-        verify: true,
-        configuredPlanes: ["management"],
-        sink: runtime.output,
-      });
-    });
-
-    expect(stdout.length).toBe(1);
-    const parsed = JSON.parse(stdout[0] ?? "{}") as { verified: { management: boolean } };
-    expect(parsed.verified.management).toBe(true);
-  });
-
-  test("throws when verification fails", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        { urlPattern: "/query", method: "POST", status: 401, body: '{"error":"unauthorized"}' },
-      ]),
-    );
-
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({ user: "alice", password: "bad" });
-      refreshCliRuntimeContext(runtime.context);
-
-      return expect(
-        configureRunVerifyIfRequested({
-          verify: true,
-          configuredPlanes: ["lakehouse"],
-          sink: runtime.output,
-        }),
-      ).rejects.toThrow(CliError);
     });
   });
 });

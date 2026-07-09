@@ -1,6 +1,7 @@
 import { getCliContext } from "@/context.ts";
 import {
   ensureProfilesLayout,
+  isProfileScopedConfigKey,
   profileConfigFile,
   readProfileConfig,
   resolveProfileName,
@@ -16,7 +17,6 @@ import {
   kvSet,
   kvUnset,
 } from "@/lib/config-files.ts";
-import { isProfileScopedConfigKey } from "@/lib/profile-config-keys.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 

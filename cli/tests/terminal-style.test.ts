@@ -136,7 +136,9 @@ describe("terminal-style", () => {
     expect(terminalDefaultHint("production")).toBe("[production]");
     expect(terminalTableHeader("method")).toBe("METHOD");
     expect(formatTerminalLabelValue("Path:", "/whoami")).toContain("Path:");
-    expect(terminalHighlightCommands("run altertable context")).toContain("altertable context");
+    expect(terminalHighlightCommands("run altertable profile show")).toContain(
+      "altertable profile show",
+    );
     expect(formatTerminalSection(["User: alice"])).toBe("User: alice");
     expect(terminalLabel("Config dir:")).toBe("Config dir:");
   });

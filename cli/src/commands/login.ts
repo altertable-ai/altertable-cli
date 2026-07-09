@@ -8,9 +8,9 @@ import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import type { WhoamiResponse } from "@/features/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
-import { configureRunClear } from "@/lib/configure.ts";
+import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import {
-  createProfile,
+  createEmptyProfile,
   deriveProfileName,
   profileExists,
   resolveProfileName,
@@ -27,7 +27,7 @@ function isInteractiveTerminal(): boolean {
 export function assertInteractiveLogin(): void {
   if (isJsonOutput(getCliContext()) || !isInteractiveTerminal()) {
     throw new ConfigurationError(
-      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\nFor headless setups use 'altertable configure --api-key atm_xxx --env <name>'.",
+      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\nFor headless setups use 'altertable profile --configure --api-key atm_xxx --env <name>'.",
     );
   }
 }
@@ -68,7 +68,7 @@ function selectLoginProfile(
   if (profileExists(targetProfile)) {
     profileAction = "reused";
   } else {
-    createProfile(targetProfile);
+    createEmptyProfile(targetProfile);
     profileAction = "created";
   }
   setActiveProfile(targetProfile);
@@ -220,7 +220,7 @@ export const logoutCommand = defineLocalCommand({
   output: "none",
   meta: {
     name: "logout",
-    description: "Remove stored credentials for all profiles (alias for 'configure --clear').",
+    description: "Remove stored credentials and settings for all profiles.",
     examples: ["altertable logout"],
   },
   local: (_input, { sink }) => {

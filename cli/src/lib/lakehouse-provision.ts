@@ -70,7 +70,7 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
   const principal = whoami.principal;
   if (!principal?.id || principal.type !== "User") {
     throw new ConfigurationError(
-      "Cannot auto-create lakehouse credentials for a non-user identity. Run 'altertable configure'.",
+      "Cannot auto-create lakehouse credentials for a non-user identity. Run 'altertable profile --configure'.",
     );
   }
 
