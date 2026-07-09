@@ -66,7 +66,7 @@ export function getLakehouseAuthHeader(): string {
   }
 
   throw new ConfigurationError(
-    "No credentials. Run 'altertable profile --configure' or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+    "No credentials. Run 'altertable login', 'altertable profile --configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
   );
 }
 

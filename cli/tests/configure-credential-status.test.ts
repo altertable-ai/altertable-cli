@@ -181,7 +181,7 @@ describe("buildConfigureShowData", () => {
     expect(JSON.stringify(data)).not.toContain("atm_override");
   });
 
-  test("configure show view separates summary and authentication sections", () => {
+  test("buildConfigureShowView separates summary and authentication sections", () => {
     secretSet("api-key", "atm_test");
     configSet("api_key_env", "production");
 
