@@ -10,7 +10,6 @@ describe("profile switching", () => {
   });
 
   beforeEach(async () => {
-    await workspace.resetConfig();
     await seedAcmeProfiles(workspace);
   });
 

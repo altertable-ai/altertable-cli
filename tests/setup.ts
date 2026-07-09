@@ -1,8 +1,8 @@
 import { afterAll, beforeEach } from "bun:test";
-import { cleanupTestWorkspaces, resetTestWorkspaceNetwork } from "./helpers.ts";
+import { cleanupTestWorkspaces, resetTestWorkspaces } from "./helpers.ts";
 
 beforeEach(async () => {
-  await resetTestWorkspaceNetwork();
+  await resetTestWorkspaces();
 });
 
 afterAll(async () => {

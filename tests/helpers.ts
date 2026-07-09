@@ -43,6 +43,7 @@ export type TestWorkspace = {
   cleanup: () => Promise<void>;
   resetConfig: () => Promise<void>;
   resetNetwork: () => Promise<void>;
+  configureStoredManagementCredential: () => Promise<void>;
   runCommand: (command: string, options?: RunOptions) => Promise<CommandResult>;
   setupHttpLog: () => Promise<void>;
   setupMockHttp: (mocks: MockHttpResponse[] | string) => Promise<void>;
@@ -63,6 +64,11 @@ const activeWorkspaces = new Set<TestWorkspace>();
 
 export async function resetTestWorkspaceNetwork(): Promise<void> {
   await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.resetNetwork()));
+}
+
+export async function resetTestWorkspaces(): Promise<void> {
+  await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.resetConfig()));
+  await resetTestWorkspaceNetwork();
 }
 
 export async function cleanupTestWorkspaces(): Promise<void> {
@@ -103,6 +109,12 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       delete baseEnv.ALTERTABLE_MOCK_HTTP_FILE;
       await writeFile(httpLogFile, "");
       await rm(mockHttpFile, { force: true });
+    },
+    async configureStoredManagementCredential() {
+      const result = await workspace.runCommand("altertable configure --api-key atm_stored --env production");
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to configure stored management credential:\n${result.stderr}`);
+      }
     },
     async runCommand(command, options = {}) {
       return runShellCommand(command, {
