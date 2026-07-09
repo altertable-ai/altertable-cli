@@ -19,7 +19,6 @@ import {
 } from "@/features/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import type { DisplayDocument } from "@/ui/document.ts";
 import { renderDocument, renderDocumentText, renderRows } from "@/ui/renderers/terminal.ts";
 import {
   nestedIndent,
@@ -60,18 +59,6 @@ function renderConfigureRows(
   options: FormatConfigureAuthenticationOptions,
 ): string[] {
   return renderRows(rows, {
-    indent: options.indent ?? TERMINAL_INDENT,
-    labelWidth: options.labelWidth ?? TERMINAL_LABEL_WIDTH,
-    nestedIndent: nestedIndent(options.indent),
-    nestedLabelWidth: TERMINAL_NESTED_LABEL_WIDTH,
-  });
-}
-
-export function renderConfigureShowView(
-  document: DisplayDocument,
-  options: FormatConfigureAuthenticationOptions = {},
-): string[] {
-  return renderDocument(document, {
     indent: options.indent ?? TERMINAL_INDENT,
     labelWidth: options.labelWidth ?? TERMINAL_LABEL_WIDTH,
     nestedIndent: nestedIndent(options.indent),

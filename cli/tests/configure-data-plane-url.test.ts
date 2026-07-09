@@ -30,7 +30,7 @@ afterEach(async () => {
   delete process.env.ALTERTABLE_SECRET_BACKEND;
 });
 
-describe("configure --data-plane-url alone", () => {
+describe("profile --configure --data-plane-url alone", () => {
   test("sets api_base and nothing else", async () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "staging" });

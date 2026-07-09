@@ -484,7 +484,7 @@ export const profileCommand = defineLocalCommand<Record<string, unknown>, void>(
       "altertable profile --configure --api-key atm_xxx --env production",
       "altertable profile --configure --scope lakehouse",
       "altertable profile list",
-      "altertable profile create acme_prod --org acme --env production",
+      "altertable profile create acme_prod --api-key atm_xxx --env production",
       "altertable profile use acme_prod",
       "altertable profile switch",
       "altertable profile status",

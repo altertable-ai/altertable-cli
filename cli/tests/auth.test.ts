@@ -35,7 +35,7 @@ describe("auth", () => {
   test("getLakehouseAuthHeader throws ConfigurationError when credentials are missing", () => {
     expect(() => getLakehouseAuthHeader()).toThrow(ConfigurationError);
     expect(() => getLakehouseAuthHeader()).toThrow(
-      "No credentials. Run 'altertable profile --configure' or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+      "No credentials. Run 'altertable login', 'altertable profile --configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
     );
   });
 

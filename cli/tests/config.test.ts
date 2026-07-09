@@ -24,14 +24,7 @@ import {
 } from "@/lib/secrets.ts";
 import { CliError } from "@/lib/errors.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import {
-  configureClearAll,
-  configureRunClear,
-  configureRunSet,
-  configureRunShow,
-  buildConfigureShowDataForProfile,
-} from "@/lib/profile-configure-core.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
+import { configureRunClear, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
@@ -139,100 +132,7 @@ describe("secrets", () => {
   });
 });
 
-describe("configure show", () => {
-  test("masks secrets in show output", () => {
-    configSet("user", "alice");
-    secretSet("lakehouse/password", "secret");
-    const output = configureRunShow();
-    expect(output).toContain("alice");
-    expect(output).toContain("password:");
-    expect(output).toContain("set");
-    expect(output).not.toContain("secret");
-  });
-
-  test("shows empty state after clear", () => {
-    configureClearAll();
-    expect(configureRunShow()).toContain("No credentials configured");
-  });
-
-  test("shows lakehouse and management credentials together", async () => {
-    await configureRunSet({ user: "alice", password: "lakehouse-secret" });
-    await configureRunSet({ apiKey: "atm_test", env: "development" });
-
-    const output = configureRunShow();
-    expect(output).toContain("Authentication:");
-    expect(output).toContain("management API key");
-    expect(output).toContain("environment:");
-    expect(output).toContain("development");
-    expect(output).toContain("lakehouse username/password");
-    expect(output).toContain("user:");
-    expect(output).toContain("alice");
-    expect(output).not.toContain("lakehouse-secret");
-    expect(output).not.toContain("atm_test");
-  });
-
-  test("shows hint when only management credentials are configured", async () => {
-    await configureRunSet({ apiKey: "atm_test", env: "development" });
-    const output = configureRunShow();
-    expect(output).toContain("altertable profile --configure --scope lakehouse");
-    expect(output).toContain("lakehouse query");
-  });
-
-  test("shows hint when only lakehouse credentials are configured", async () => {
-    await configureRunSet({ user: "alice", password: "lakehouse-secret" });
-    const output = configureRunShow();
-    expect(output).toContain("altertable profile --configure --scope management");
-    expect(output).toContain("profile show");
-  });
-
-  test("shows two-step setup hint when no credentials are configured", () => {
-    configureClearAll();
-    const output = configureRunShow();
-    expect(output).toContain("No credentials configured");
-    expect(output).toContain("altertable profile --configure --scope management");
-    expect(output).toContain("altertable profile --configure --scope lakehouse");
-  });
-
-  test("shows environment override when ALTERTABLE_ENV differs from stored", async () => {
-    await configureRunSet({ apiKey: "atm_test", env: "production" });
-    process.env.ALTERTABLE_ENV = "staging";
-    const output = configureRunShow();
-    expect(output).toContain("Environment override:");
-    expect(output).toContain("ALTERTABLE_ENV=staging (stored: production)");
-    expect(output).not.toContain("atm_test");
-  });
-
-  test("shows API key override line without printing the secret", async () => {
-    await configureRunSet({ apiKey: "atm_test", env: "production" });
-    process.env.ALTERTABLE_API_KEY = "atm_override_secret";
-    const output = configureRunShow();
-    expect(output).toContain("API key override:");
-    expect(output).toContain("ALTERTABLE_API_KEY is set via environment");
-    expect(output).not.toContain("atm_override_secret");
-    expect(output).not.toContain("atm_test");
-  });
-
-  test("emits structured configuration envelope in json mode", async () => {
-    await configureRunSet({ apiKey: "atm_test", env: "production" });
-    const stdout: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-    runtime.output.writeJson = (data) => {
-      stdout.push(JSON.stringify(data, null, 2));
-    };
-    await runWithCliRuntime(runtime, async () => {
-      await writeCommandOutput({
-        kind: "normalized",
-        data: { configuration: buildConfigureShowDataForProfile() },
-        humanText: configureRunShow(),
-      });
-    });
-    const parsed = JSON.parse(stdout[0] ?? "{}") as {
-      configuration?: { credentials?: { management?: { api_key?: string } } };
-    };
-    expect(parsed.configuration?.credentials?.management?.api_key).toBe("set");
-    expect(stdout[0]).not.toContain("atm_test");
-  });
-
+describe("profile --configure credential accumulation", () => {
   test("preserves management credentials when updating lakehouse credentials", async () => {
     await configureRunSet({ apiKey: "atm_test", env: "development" });
     await configureRunSet({ user: "alice", password: "lakehouse-secret" });
@@ -260,7 +160,7 @@ describe("configure show", () => {
   });
 });
 
-describe("configure validation", () => {
+describe("profile --configure validation", () => {
   test("rejects mixing lakehouse and management credentials in one invocation", async () => {
     return expect(
       configureRunSet({ user: "u", password: "p", apiKey: "atm_x", env: "prod" }),
@@ -286,7 +186,7 @@ describe("configure validation", () => {
   });
 });
 
-describe("configure clear", () => {
+describe("configureRunClear", () => {
   test("configureRunClear removes root config and credentials files", async () => {
     await configureRunSet({ user: "alice", password: "lakehouse-secret" });
     configureRunClear();
@@ -343,7 +243,7 @@ describe("url policy", () => {
   });
 });
 
-describe("configure argv secrets", () => {
+describe("profile --configure argv secrets", () => {
   test("warns when password is passed on argv", async () => {
     const stderr: string[] = [];
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
