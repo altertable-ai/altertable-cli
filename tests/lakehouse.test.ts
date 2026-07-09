@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { jsonMock } from "./mock-http.ts";
 
 const appendId = "11111111-2222-3333-4444-555555555555";
 
@@ -20,7 +21,7 @@ describe("lakehouse command routing", () => {
 
   test("append defaults to the run command", async () => {
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp([{ urlPattern: "/append", method: "POST", body: JSON.stringify({ ok: true, task_id: appendId }) }]);
+    await workspace.setupMockHttp([jsonMock("POST", "/append", { ok: true, task_id: appendId })]);
 
     const result = await workspace.runCommand("altertable append --catalog memory --schema main --table users --data '{\"id\":1}'");
 
@@ -32,9 +33,7 @@ describe("lakehouse command routing", () => {
 
   test("append status fetches status without append-run flags", async () => {
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp([
-      { urlPattern: `/tasks/${appendId}`, method: "GET", body: JSON.stringify({ task_id: appendId, status: "completed" }) },
-    ]);
+    await workspace.setupMockHttp([jsonMock("GET", `/tasks/${appendId}`, { task_id: appendId, status: "completed" })]);
 
     const result = await workspace.runCommand(`altertable append status ${appendId}`);
 

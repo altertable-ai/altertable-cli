@@ -34,7 +34,7 @@ describe("altertable catalogs", () => {
     expect(await workspace.httpLogValue("URL")).toBe("https://app.altertable.ai/rest/v1/environments/production/databases");
     expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
     expect(await workspace.readHttpLog()).not.toContain("atm_test");
-    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ engine: "altertable", name: "My Cat" });
+    expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ engine: "altertable", name: "My Cat" });
     expect(result.stdout).toContain('Created catalog "My Cat"');
   });
 

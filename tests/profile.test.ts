@@ -1,27 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-
-const whoamiStaging = [
-  {
-    urlPattern: "/whoami",
-    method: "GET",
-    body: JSON.stringify({
-      principal: { type: "User", name: "Staging", email: "s@x.io" },
-      organization: { name: "Acme", slug: "acme" },
-    }),
-  },
-];
-
-const whoamiProduction = [
-  {
-    urlPattern: "/whoami",
-    method: "GET",
-    body: JSON.stringify({
-      principal: { type: "User", name: "Production", email: "p@x.io" },
-      organization: { name: "Acme", slug: "acme" },
-    }),
-  },
-];
+import { whoamiMock } from "./mock-http.ts";
 
 describe("profile switching", () => {
   let workspace: TestWorkspace;
@@ -56,12 +35,12 @@ describe("profile switching", () => {
   });
 
   test("active profile and --profile flag select different identities", async () => {
-    await workspace.setupMockHttp(whoamiStaging);
+    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Staging", email: "s@x.io" }));
     let result = await workspace.runCommand("altertable context");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Staging");
 
-    await workspace.setupMockHttp(whoamiProduction);
+    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Production", email: "p@x.io" }));
     result = await workspace.runCommand("altertable --profile acme_production context");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Production");

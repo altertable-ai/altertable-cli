@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createTestWorkspace, writeWorkspaceFile, type TestWorkspace } from "./helpers.ts";
+import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
 const API_BASE = "http://0.0.0.0:15000";
@@ -20,13 +20,13 @@ describe("lakehouse integration flows", () => {
   });
 
   test("upload, upsert, query formats, append, and debug behave against the mock lakehouse", async () => {
-    const uploadFile = await writeWorkspaceFile(workspace, "upload.csv", "id,name\n1,Alice\n2,Bob\n");
+    const uploadFile = await workspace.writeFile("upload.csv", "id,name\n1,Alice\n2,Bob\n");
     let result = await workspace.runCommand(
       `altertable upload --catalog memory --schema main --table cli_test --mode overwrite --format csv --file "${uploadFile}"`,
     );
     expect(result.exitCode).toBe(0);
 
-    const upsertFile = await writeWorkspaceFile(workspace, "upsert.csv", "id,name\n2,Bobby\n");
+    const upsertFile = await workspace.writeFile("upsert.csv", "id,name\n2,Bobby\n");
     result = await workspace.runCommand(
       `altertable upsert --catalog memory --schema main --table cli_test --primary-key id --format csv --file "${upsertFile}"`,
     );
@@ -96,7 +96,7 @@ describe("lakehouse integration flows", () => {
     );
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).ok).toBe(true);
-    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ id: 3, name: "Charlie" });
+    expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ id: 3, name: "Charlie" });
 
     result = await workspace.runCommand('altertable --json query --statement "SELECT COUNT(*) AS n FROM cli_test"');
     expect(result.exitCode).toBe(0);
@@ -108,7 +108,7 @@ describe("lakehouse integration flows", () => {
     );
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).ok).toBe(true);
-    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual([
+    expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual([
       { id: 4, name: "Delta" },
       { id: 5, name: "Echo" },
     ]);

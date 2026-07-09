@@ -1,6 +1,8 @@
+type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
 export type MockHttpResponse = {
   urlPattern: string;
-  method: string;
+  method: HttpMethod;
   status?: number;
   body: string;
 };
@@ -15,7 +17,7 @@ type Organization = {
 };
 
 export function jsonMock(
-  method: string,
+  method: HttpMethod,
   urlPattern: string,
   body: unknown,
   status?: number,
@@ -29,7 +31,7 @@ export function jsonMock(
 }
 
 export function textMock(
-  method: string,
+  method: HttpMethod,
   urlPattern: string,
   body: string,
   status?: number,

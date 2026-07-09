@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { fileExists, createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, whoamiMock } from "./mock-http.ts";
 
 const queryMock = [jsonMock("POST", "/query", {})];
@@ -128,7 +128,7 @@ describe("altertable configure", () => {
   test("refuses credentials files looser than 600", async () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable configure --user u --password p")).exitCode).toBe(0);
-    await workspace.chmod(workspace.credentialsFile, 0o644);
+    await workspace.chmodFile(workspace.credentialsFile, 0o644);
 
     let result = await workspace.runCommand("altertable configure --show");
     expect(result.exitCode).not.toBe(0);
@@ -138,7 +138,7 @@ describe("altertable configure", () => {
     result = await workspace.runCommand('altertable query --statement "SELECT 1"');
     expect(result.exitCode).not.toBe(0);
 
-    await workspace.chmod(workspace.credentialsFile, 0o600);
+    await workspace.chmodFile(workspace.credentialsFile, 0o600);
     expect((await workspace.runCommand("altertable configure --show")).exitCode).toBe(0);
   });
 
@@ -147,8 +147,8 @@ describe("altertable configure", () => {
     expect((await workspace.runCommand("altertable configure --user u --password p")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable configure --clear")).exitCode).toBe(0);
 
-    expect(await fileExists(workspace.configFile)).toBe(false);
-    expect(await fileExists(workspace.credentialsFile)).toBe(false);
+    expect(await workspace.fileExists(workspace.configFile)).toBe(false);
+    expect(await workspace.fileExists(workspace.credentialsFile)).toBe(false);
     expect((await workspace.runCommand("altertable configure --show")).stdout).toContain("No credentials configured");
   });
 

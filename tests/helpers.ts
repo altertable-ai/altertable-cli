@@ -2,12 +2,26 @@ import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { MockHttpResponse } from "./mock-http.ts";
 
 const testsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = dirname(testsDir);
 
 type EnvValue = string | undefined;
-type TestEnv = Record<string, EnvValue>;
+type TestEnvName =
+  | "ALTERTABLE_API_BASE"
+  | "ALTERTABLE_API_KEY"
+  | "ALTERTABLE_BASIC_AUTH_TOKEN"
+  | "ALTERTABLE_CONFIG_HOME"
+  | "ALTERTABLE_ENV"
+  | "ALTERTABLE_HTTP_LOG"
+  | "ALTERTABLE_LAKEHOUSE_PASSWORD"
+  | "ALTERTABLE_LAKEHOUSE_USERNAME"
+  | "ALTERTABLE_MANAGEMENT_API_BASE"
+  | "ALTERTABLE_MOCK_HTTP_FILE"
+  | "ALTERTABLE_PROFILE"
+  | "ALTERTABLE_SECRET_BACKEND";
+export type TestEnv = Partial<Record<TestEnvName, EnvValue>>;
 
 type RunOptions = {
   env?: TestEnv;
@@ -26,19 +40,22 @@ export type TestWorkspace = {
   configFile: string;
   credentialsFile: string;
   defaultProfileConfig: string;
-  env: TestEnv;
   cleanup: () => Promise<void>;
   resetConfig: () => Promise<void>;
   runCommand: (command: string, options?: RunOptions) => Promise<CommandResult>;
   setupHttpLog: () => Promise<void>;
-  setupMockHttp: (mocks: unknown) => Promise<void>;
+  setupMockHttp: (mocks: MockHttpResponse[] | string) => Promise<void>;
   clearMockHttp: () => void;
   readFile: (path: string) => Promise<string>;
+  writeFile: (name: string, content: string) => Promise<string>;
+  appendFile: (path: string, content: string) => Promise<void>;
+  fileExists: (path: string) => Promise<boolean>;
   readHttpLog: () => Promise<string>;
   httpLogValues: (key: string) => Promise<string[]>;
   httpLogValue: (key: string) => Promise<string | undefined>;
+  httpLogJsonValue: (key: string) => Promise<unknown>;
   fileMode: (path: string) => Promise<string>;
-  chmod: (path: string, mode: number) => Promise<void>;
+  chmodFile: (path: string, mode: number) => Promise<void>;
 };
 
 export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorkspace> {
@@ -61,7 +78,6 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
     configFile,
     credentialsFile,
     defaultProfileConfig,
-    env: baseEnv,
     async cleanup() {
       await rm(root, { force: true, recursive: true });
     },
@@ -90,6 +106,19 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
     async readFile(path) {
       return Bun.file(path).text();
     },
+    async writeFile(name, content) {
+      const path = join(root, name);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, content);
+      return path;
+    },
+    async appendFile(path, content) {
+      const previous = await Bun.file(path).text();
+      await writeFile(path, previous + content);
+    },
+    async fileExists(path) {
+      return await Bun.file(path).exists();
+    },
     async readHttpLog() {
       return Bun.file(httpLogFile).text();
     },
@@ -97,14 +126,20 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       return readHttpLogValues(httpLogFile, key);
     },
     async httpLogValue(key) {
-      const values = await readHttpLogValues(httpLogFile, key);
-      return values.at(-1);
+      return readLastHttpLogValue(httpLogFile, key);
+    },
+    async httpLogJsonValue(key) {
+      const value = await readLastHttpLogValue(httpLogFile, key);
+      if (value === undefined) {
+        throw new Error(`No ${key}= entry found in HTTP log`);
+      }
+      return JSON.parse(value);
     },
     async fileMode(path) {
       const info = await stat(path);
       return (info.mode & 0o777).toString(8);
     },
-    async chmod(path, mode) {
+    async chmodFile(path, mode) {
       await chmod(path, mode);
     },
   };
@@ -160,10 +195,6 @@ function buildEnv(overrides: TestEnv = {}): Record<string, string> {
   return env;
 }
 
-export async function fileExists(path: string): Promise<boolean> {
-  return await Bun.file(path).exists();
-}
-
 async function readHttpLogValues(path: string, key: string): Promise<string[]> {
   const prefix = `${key}=`;
   const log = await Bun.file(path).text();
@@ -173,18 +204,7 @@ async function readHttpLogValues(path: string, key: string): Promise<string[]> {
     .map((line) => line.slice(prefix.length));
 }
 
-export async function appendFile(path: string, content: string): Promise<void> {
-  const previous = await Bun.file(path).text();
-  await writeFile(path, previous + content);
-}
-
-export async function writeWorkspaceFile(
-  workspace: TestWorkspace,
-  name: string,
-  content: string,
-): Promise<string> {
-  const path = join(workspace.root, name);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, content);
-  return path;
+async function readLastHttpLogValue(path: string, key: string): Promise<string | undefined> {
+  const values = await readHttpLogValues(path, key);
+  return values.at(-1);
 }

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { appendFile, createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { createTestWorkspace, type TestEnv, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, textMock, whoamiMock } from "./mock-http.ts";
 
 describe("management API user flows", () => {
@@ -47,7 +47,7 @@ describe("management API user flows", () => {
   });
 
   test("stored and trailing-slash management roots resolve to /rest/v1", async () => {
-    await appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
+    await workspace.appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
     expect((await workspace.runCommand("altertable context", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
@@ -99,16 +99,15 @@ describe("management API user flows", () => {
 
   test("api POST supports gh-style fields for service accounts and databases", async () => {
     expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
-    workspace.env.ALTERTABLE_API_KEY = "atm_test";
-    workspace.env.ALTERTABLE_ENV = "production";
+    const env = { ALTERTABLE_API_KEY: "atm_test", ALTERTABLE_ENV: "production" } satisfies TestEnv;
 
     await workspace.setupHttpLog();
     await workspace.setupMockHttp([
       jsonMock("POST", "/service_accounts", { service_account: { id: "sa_1", label: "CI Bot", slug: "ci-bot" } }),
     ]);
-    let result = await workspace.runCommand('altertable api POST /service_accounts -f "label=CI Bot"');
+    let result = await workspace.runCommand('altertable api POST /service_accounts -f "label=CI Bot"', { env });
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ label: "CI Bot" });
+    expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ label: "CI Bot" });
     expect(result.stdout).toContain("CI Bot");
 
     await workspace.setupHttpLog();
@@ -117,9 +116,9 @@ describe("management API user flows", () => {
         database: { id: "db_1", name: "Analytics", slug: "analytics", catalog: "analytics" },
       }),
     ]);
-    result = await workspace.runCommand("altertable api POST /environments/production/databases -f name=Analytics");
+    result = await workspace.runCommand("altertable api POST /environments/production/databases -f name=Analytics", { env });
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ name: "Analytics" });
+    expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ name: "Analytics" });
     expect(result.stdout).toContain("Analytics");
   });
 
