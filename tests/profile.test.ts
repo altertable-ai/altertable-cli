@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
@@ -7,10 +7,11 @@ describe("profile switching", () => {
 
   beforeAll(async () => {
     workspace = await createTestWorkspace({ ALTERTABLE_API_KEY: undefined, ALTERTABLE_ENV: undefined });
-    expect((await workspace.runCommand("altertable profile create acme_staging --org acme --env staging")).exitCode).toBe(0);
-    expect((await workspace.runCommand("altertable configure --profile acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
-    expect((await workspace.runCommand("altertable profile create acme_production --org acme --env production")).exitCode).toBe(0);
-    expect((await workspace.runCommand("altertable configure --profile acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
+  });
+
+  beforeEach(async () => {
+    await workspace.resetConfig();
+    await seedAcmeProfiles(workspace);
   });
 
   test("profile list shows configured org/env profiles", async () => {
@@ -31,6 +32,7 @@ describe("profile switching", () => {
   });
 
   test("active profile and --profile flag select different identities", async () => {
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Staging", email: "s@x.io" }));
     let result = await workspace.runCommand("altertable context");
     expect(result.exitCode).toBe(0);
@@ -43,6 +45,7 @@ describe("profile switching", () => {
   });
 
   test("rename carries the active profile", async () => {
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable profile rename acme_staging acme_stage")).exitCode).toBe(0);
     const result = await workspace.runCommand("altertable profile current");
 
@@ -72,3 +75,10 @@ describe("profile switching", () => {
     expect(result.stdout.trim()).toBe('export ALTERTABLE_PROFILE="globex_dev"');
   });
 });
+
+async function seedAcmeProfiles(workspace: TestWorkspace): Promise<void> {
+  expect((await workspace.runCommand("altertable profile create acme_staging --org acme --env staging")).exitCode).toBe(0);
+  expect((await workspace.runCommand("altertable configure --profile acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
+  expect((await workspace.runCommand("altertable profile create acme_production --org acme --env production")).exitCode).toBe(0);
+  expect((await workspace.runCommand("altertable configure --profile acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
+}

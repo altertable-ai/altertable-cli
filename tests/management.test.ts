@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestEnv, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, textMock, whoamiMock } from "./mock-http.ts";
 
@@ -13,8 +13,12 @@ describe("management API user flows", () => {
     });
   });
 
+  beforeEach(async () => {
+    await workspace.resetConfig();
+  });
+
   test("uses stored Bearer credentials against the default base URL", async () => {
-    expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
+    await configureStoredManagementCredential(workspace);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
@@ -27,6 +31,7 @@ describe("management API user flows", () => {
   });
 
   test("environment API key and management root override stored values", async () => {
+    await configureStoredManagementCredential(workspace);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
@@ -43,6 +48,7 @@ describe("management API user flows", () => {
   });
 
   test("stored and trailing-slash management roots resolve to /rest/v1", async () => {
+    await configureStoredManagementCredential(workspace);
     await workspace.appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
@@ -62,6 +68,7 @@ describe("management API user flows", () => {
   });
 
   test("renders friendly management HTTP errors without leaking HTML", async () => {
+    await configureStoredManagementCredential(workspace);
     await workspace.setupMockHttp([textMock("GET", "/whoami", "<html><body>Internal Server Error</body></html>", 500)]);
     let result = await workspace.runCommand("altertable context");
     expect(result.exitCode).toBe(8);
@@ -81,8 +88,6 @@ describe("management API user flows", () => {
   });
 
   test("context works locally without credentials, but raw API requires them", async () => {
-    expect((await workspace.runCommand("altertable configure --clear")).exitCode).toBe(0);
-
     const context = await workspace.runCommand("altertable context");
     expect(context.exitCode).toBe(0);
     expect(context.stdout).toContain("Profile:");
@@ -94,7 +99,7 @@ describe("management API user flows", () => {
   });
 
   test("api POST supports gh-style fields for service accounts and databases", async () => {
-    expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
+    await configureStoredManagementCredential(workspace);
     const env = { ALTERTABLE_API_KEY: "atm_test", ALTERTABLE_ENV: "production" } satisfies TestEnv;
 
     await workspace.setupHttpLog();
@@ -119,6 +124,7 @@ describe("management API user flows", () => {
   });
 
   test("credential creation human output omits one-time passwords", async () => {
+    await configureStoredManagementCredential(workspace);
     await workspace.setupMockHttp([
       jsonMock("POST", "/users/user_1/environments/production/credentials", {
         credential: { id: "cred_1", label: "default", username: "user_123" },
@@ -133,3 +139,7 @@ describe("management API user flows", () => {
     expect(result.stdout).not.toContain("secret-once");
   });
 });
+
+async function configureStoredManagementCredential(workspace: TestWorkspace): Promise<void> {
+  expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
+}

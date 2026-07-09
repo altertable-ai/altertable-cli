@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile as appendFsFile, chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -131,8 +131,8 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       return path;
     },
     async appendFile(path, content) {
-      const previous = await Bun.file(path).text();
-      await writeFile(path, previous + content);
+      await mkdir(dirname(path), { recursive: true });
+      await appendFsFile(path, content);
     },
     async fileExists(path) {
       return await Bun.file(path).exists();
