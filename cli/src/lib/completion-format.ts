@@ -205,7 +205,8 @@ export function formatBashCompletion(spec: CompletionNode): string {
   const nestedCases = formatBashNestedCases(collectCompletionContexts(spec), spec.flags);
 
   return `# altertable bash completion
-# Install: altertable completion bash > ~/.local/share/bash-completion/completions/altertable
+# Preferred install: altertable completion install bash
+# Manual install: altertable completion generate bash > ~/.local/share/bash-completion/completions/altertable
 
 _altertable_complete_flag_value() {
   local previousWord="\${COMP_WORDS[COMP_CWORD - 1]}"
@@ -316,7 +317,8 @@ export function formatZshCompletion(spec: CompletionNode): string {
 
   return `#compdef altertable
 # altertable zsh completion
-# Install: altertable completion zsh > ~/.local/share/zsh/site-functions/_altertable
+# Preferred install: altertable completion install zsh
+# Manual install: altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertable
 
 _altertable() {
   _arguments \\
@@ -373,7 +375,8 @@ export function formatFishCompletion(spec: CompletionNode): string {
   }
 
   return `# altertable fish completion
-# Install: altertable completion fish > ~/.config/fish/completions/altertable.fish
+# Preferred install: altertable completion install fish
+# Manual install: altertable completion generate fish > ~/.config/fish/completions/altertable.fish
 
 ${rootFlagLines}
 complete -c ${FISH_BINARY_NAME} -f -n "__fish_use_subcommand" -a "${topLevelCommands}"
