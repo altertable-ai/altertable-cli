@@ -67,6 +67,8 @@ run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
 
 cd "${REPO_ROOT}"
+run_step "top-level JS tests" bun test tests/*.test.ts
+
 for script in configure management context catalogs lakehouse scripting profile; do
   run_step "tests/${script}_test.sh" "./tests/${script}_test.sh"
 done
