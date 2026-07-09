@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock } from "./mock-http.ts";
 
@@ -13,10 +13,6 @@ describe("lakehouse command routing", () => {
       ALTERTABLE_LAKEHOUSE_USERNAME: "testuser",
       ALTERTABLE_LAKEHOUSE_PASSWORD: "testpass",
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("append defaults to the run command", async () => {

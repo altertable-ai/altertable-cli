@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
@@ -11,10 +11,6 @@ describe("profile switching", () => {
     expect((await workspace.runCommand("altertable configure --profile acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable profile create acme_production --org acme --env production")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable configure --profile acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("profile list shows configured org/env profiles", async () => {

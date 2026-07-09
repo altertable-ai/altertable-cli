@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestEnv, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, textMock, whoamiMock } from "./mock-http.ts";
 
@@ -11,10 +11,6 @@ describe("management API user flows", () => {
       ALTERTABLE_ENV: undefined,
       ALTERTABLE_MANAGEMENT_API_BASE: undefined,
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("uses stored Bearer credentials against the default base URL", async () => {

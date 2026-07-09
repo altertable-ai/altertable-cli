@@ -65,6 +65,10 @@ export async function resetTestWorkspaceNetwork(): Promise<void> {
   await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.resetNetwork()));
 }
 
+export async function cleanupTestWorkspaces(): Promise<void> {
+  await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.cleanup()));
+}
+
 export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorkspace> {
   const root = await mkdtemp(join(tmpdir(), "altertable-cli-test-"));
   const configHome = join(root, "config");

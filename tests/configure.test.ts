@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, whoamiMock } from "./mock-http.ts";
 
@@ -14,10 +14,6 @@ describe("altertable configure", () => {
       ALTERTABLE_BASIC_AUTH_TOKEN: undefined,
       ALTERTABLE_API_BASE: undefined,
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("stores lakehouse, basic-token, and management credentials", async () => {

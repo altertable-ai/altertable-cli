@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock, whoamiMock } from "./mock-http.ts";
 
@@ -20,10 +20,6 @@ describe("scriptable exit codes and JSON errors", () => {
       ALTERTABLE_API_KEY: "atm_test",
       ALTERTABLE_ENV: "production",
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("--json context exits 0 and prints structured success JSON", async () => {

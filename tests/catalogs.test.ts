@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { catalogsMock, jsonMock } from "./mock-http.ts";
 
@@ -11,10 +11,6 @@ describe("altertable catalogs", () => {
       ALTERTABLE_ENV: "production",
       ALTERTABLE_MANAGEMENT_API_BASE: undefined,
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("create rejects non-altertable engines", async () => {

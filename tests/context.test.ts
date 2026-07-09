@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { whoamiMock } from "./mock-http.ts";
 
@@ -11,10 +11,6 @@ describe("altertable context", () => {
       ALTERTABLE_ENV: undefined,
       ALTERTABLE_MANAGEMENT_API_BASE: undefined,
     });
-  });
-
-  afterAll(async () => {
-    await workspace.cleanup();
   });
 
   test("formats a User principal", async () => {
