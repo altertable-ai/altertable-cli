@@ -18,7 +18,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable context");
+    const result = await workspace.runCommand("altertable profile show");
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
@@ -31,7 +31,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable context", {
+    const result = await workspace.runCommand("altertable profile show", {
       env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:9" },
     });
 
@@ -48,14 +48,14 @@ describe("management API user flows", () => {
     await workspace.appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
-    expect((await workspace.runCommand("altertable context", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable profile show", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:7/rest/v1/whoami");
 
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
     expect(
       (
-        await workspace.runCommand("altertable context", {
+        await workspace.runCommand("altertable profile show", {
           env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:8/" },
         })
       ).exitCode,
@@ -66,25 +66,25 @@ describe("management API user flows", () => {
   test("renders friendly management HTTP errors without leaking HTML", async () => {
     await workspace.configureStoredManagementCredential();
     await workspace.setupMockHttp([textMock("GET", "/whoami", "<html><body>Internal Server Error</body></html>", 500)]);
-    let result = await workspace.runCommand("altertable context");
+    let result = await workspace.runCommand("altertable api GET /whoami");
     expect(result.exitCode).toBe(8);
     expect(result.stderr).toContain("Server error (500)");
     expect(result.stderr).not.toContain("<html>");
 
     await workspace.setupMockHttp([jsonMock("GET", "/whoami", { error: { message: "invalid api key" } }, 401)]);
-    result = await workspace.runCommand("altertable context");
+    result = await workspace.runCommand("altertable api GET /whoami");
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("Authentication failed (401)");
     expect(result.stderr).toContain("invalid api key");
 
     await workspace.setupMockHttp([jsonMock("GET", "/whoami", { error: { code: "not_found" } }, 404)]);
-    result = await workspace.runCommand("altertable context");
+    result = await workspace.runCommand("altertable api GET /whoami");
     expect(result.exitCode).toBe(4);
     expect(result.stderr).toContain("Not found (404)");
   });
 
   test("context works locally without credentials, but raw API requires them", async () => {
-    const context = await workspace.runCommand("altertable context");
+    const context = await workspace.runCommand("altertable profile show");
     expect(context.exitCode).toBe(0);
     expect(context.stdout).toContain("Profile:");
     expect(context.stdout).toContain("No credentials configured");

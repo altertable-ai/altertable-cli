@@ -111,7 +111,7 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       await rm(mockHttpFile, { force: true });
     },
     async configureStoredManagementCredential() {
-      const result = await workspace.runCommand("altertable configure --api-key atm_stored --env production");
+      const result = await workspace.runCommand("altertable profile --configure --api-key atm_stored --env production");
       if (result.exitCode !== 0) {
         throw new Error(`Failed to configure stored management credential:\n${result.stderr}`);
       }

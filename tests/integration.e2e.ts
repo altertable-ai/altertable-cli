@@ -28,42 +28,42 @@ describe("lakehouse integration flows", () => {
     );
     expect(result.exitCode).toBe(0);
 
-    result = await workspace.runCommand('altertable --json query --statement "SELECT * FROM cli_test WHERE id = 2"');
+    result = await workspace.runCommand('altertable --json query "SELECT * FROM cli_test WHERE id = 2"');
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).rows[0][1]).toBe("Bobby");
 
-    result = await workspace.runCommand('altertable query --statement "SELECT * FROM cli_test ORDER BY id"');
+    result = await workspace.runCommand('altertable query "SELECT * FROM cli_test ORDER BY id"');
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("id");
     expect(result.stdout).toContain("Alice");
 
-    result = await workspace.runCommand('altertable query --statement "SELECT * FROM cli_test ORDER BY id" --format csv');
+    result = await workspace.runCommand('altertable query "SELECT * FROM cli_test ORDER BY id" --format csv');
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("id,name");
     expect(result.stdout).toContain("1,Alice");
 
-    result = await workspace.runCommand('altertable --json query --statement "SELECT * FROM cli_test ORDER BY id"');
+    result = await workspace.runCommand('altertable --json query "SELECT * FROM cli_test ORDER BY id"');
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).columns[0]).toBe("id");
     expect(JSON.parse(result.stdout).rows[0][1]).toBe("Alice");
 
-    result = await workspace.runCommand('altertable --agent query --statement "SELECT * FROM cli_test ORDER BY id"');
+    result = await workspace.runCommand('altertable --agent query "SELECT * FROM cli_test ORDER BY id"');
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).columns[0]).toBe("id");
 
-    result = await workspace.runCommand('altertable --agent query --statement "SELECT 1" --layout table');
+    result = await workspace.runCommand('altertable --agent query "SELECT 1" --layout table');
     expect(result.exitCode).not.toBe(0);
 
     await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Agent User", email: "agent@x.io" }));
-    result = await workspace.runCommand("altertable --agent context", { env: { ALTERTABLE_API_KEY: "atm_test" } });
+    result = await workspace.runCommand("altertable --agent profile show", { env: { ALTERTABLE_API_KEY: "atm_test" } });
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout).principal.email).toBe("agent@x.io");
+    expect(JSON.parse(result.stdout).profile.user.email).toBe("agent@x.io");
     workspace.clearMockHttp();
 
     const queryId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
     const sessionId = "b2c3d4e5-f6a7-8901-bcde-f12345678901";
     result = await workspace.runCommand(
-      `altertable query --statement "SELECT 42 AS answer" --query-id ${queryId} --session-id ${sessionId}`,
+      `altertable query "SELECT 42 AS answer" --query-id ${queryId} --session-id ${sessionId}`,
     );
     expect(result.exitCode).toBe(0);
 
@@ -74,7 +74,7 @@ describe("lakehouse integration flows", () => {
     const cancelQueryId = "c3d4e5f6-a7b8-9012-cdef-123456789012";
     const cancelSessionId = "d4e5f6a7-b8c9-0123-defa-234567890123";
     result = await workspace.runCommand(
-      `altertable query --statement "SELECT 1" --query-id ${cancelQueryId} --session-id ${cancelSessionId}`,
+      `altertable query "SELECT 1" --query-id ${cancelQueryId} --session-id ${cancelSessionId}`,
     );
     expect(result.exitCode).toBe(0);
 
@@ -94,7 +94,7 @@ describe("lakehouse integration flows", () => {
     expect(JSON.parse(result.stdout).ok).toBe(true);
     expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ id: 3, name: "Charlie" });
 
-    result = await workspace.runCommand('altertable --json query --statement "SELECT COUNT(*) AS n FROM cli_test"');
+    result = await workspace.runCommand('altertable --json query "SELECT COUNT(*) AS n FROM cli_test"');
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).rows[0][0]).toBe(3);
 
@@ -109,7 +109,7 @@ describe("lakehouse integration flows", () => {
       { id: 5, name: "Echo" },
     ]);
 
-    result = await workspace.runCommand('altertable --json query --statement "SELECT COUNT(*) AS n FROM cli_test"');
+    result = await workspace.runCommand('altertable --json query "SELECT COUNT(*) AS n FROM cli_test"');
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).rows[0][0]).toBe(5);
 
@@ -121,12 +121,12 @@ describe("lakehouse integration flows", () => {
     expect(JSON.parse(result.stdout).ok).toBe(true);
     expect((await workspace.httpLogValue("URL")) ?? "").toContain("sync=true");
 
-    result = await workspace.runCommand('altertable --debug query --statement "SELECT 1" --format json');
+    result = await workspace.runCommand('altertable --debug query "SELECT 1" --format json');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[DEBUG]");
     expect(result.stderr).toContain("Request: POST");
 
-    result = await workspace.runCommand('altertable query --debug --statement "SELECT 1" --format json');
+    result = await workspace.runCommand('altertable --debug query "SELECT 1" --format json');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[DEBUG]");
     expect(result.stderr).toContain("Request: POST");

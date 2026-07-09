@@ -22,23 +22,23 @@ describe("scriptable exit codes and JSON errors", () => {
     });
   });
 
-  test("--json context exits 0 and prints structured success JSON", async () => {
+  test("--json profile show exits 0 and prints structured success JSON", async () => {
     await workspace.setupMockHttp(whoamiMock());
-    const result = await workspace.runCommand("altertable --json context");
+    const result = await workspace.runCommand("altertable --json profile show");
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-    expect(JSON.parse(result.stdout).principal.name).toBe("Jane");
+    expect(JSON.parse(result.stdout).profile.user.name).toBe("Jane");
   });
 
   test.each([
-    ["auth", statusMocks.auth, "altertable --json context", 2, "auth_failed"],
+    ["auth", statusMocks.auth, "altertable --json api GET /whoami", 2, "auth_failed"],
     ["not found", statusMocks.missing, "altertable --json api GET /environments/production/connections/missing", 4, undefined],
-    ["forbidden", statusMocks.forbidden, "altertable --json context", 3, "forbidden"],
+    ["forbidden", statusMocks.forbidden, "altertable --json api GET /whoami", 3, "forbidden"],
     ["conflict", statusMocks.conflict, "altertable --json api POST /service_accounts -f label=dup", 5, "conflict"],
-    ["rate limit", statusMocks.rate, "altertable --json context", 7, "rate_limited"],
+    ["rate limit", statusMocks.rate, "altertable --json api GET /whoami", 7, "rate_limited"],
     ["validation", statusMocks.validation, "altertable --json api POST /service_accounts -f label=bad", 6, "validation_error"],
-    ["server error", statusMocks.server, "altertable --json context", 8, "server_error"],
+    ["server error", statusMocks.server, "altertable --json api GET /whoami", 8, "server_error"],
   ])("%s failure emits JSON error envelope", async (_name, mock, command, exitCode, code) => {
     await workspace.setupMockHttp(mock);
     const result = await workspace.runCommand(command);
@@ -64,7 +64,7 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test("network errors exit 9 with network_error", async () => {
-    const result = await workspace.runCommand("altertable --json context", {
+    const result = await workspace.runCommand("altertable --json api GET /whoami", {
       env: { ALTERTABLE_MANAGEMENT_API_BASE: "http://127.0.0.1:1", ALTERTABLE_MOCK_HTTP_FILE: undefined },
     });
 
