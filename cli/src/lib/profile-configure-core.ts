@@ -23,7 +23,6 @@ export type ConfigureOptions = {
   dataPlaneUrl?: string;
   controlPlaneUrl?: string;
   profile?: string;
-  org?: string;
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
@@ -109,7 +108,6 @@ export async function configureRunSet(
     const env = options.env ?? "";
     const dataPlaneUrl = options.dataPlaneUrl ?? "";
     const controlPlaneUrl = options.controlPlaneUrl ?? "";
-    const org = options.org ?? "";
     const allowInsecureHttp = options.allowInsecureHttp ?? false;
 
     const passwordFromArgv =
@@ -143,18 +141,19 @@ export async function configureRunSet(
       apiKey = (await Bun.stdin.text()).replace(/\n$/, "");
     }
 
-    const hasLakehouse = Boolean(user || password);
-    const hasToken = Boolean(basicToken);
+    const hasLakehouseCredentials = Boolean(user || password);
+    const hasLakehouseBasicToken = Boolean(basicToken);
     const hasApiKey = Boolean(apiKey);
-    const lakehouseMechanismCount = Number(hasLakehouse) + Number(hasToken);
-    const hasAnyCredential = hasLakehouse || hasToken || hasApiKey;
+    const lakehouseMechanismCount =
+      Number(hasLakehouseCredentials) + Number(hasLakehouseBasicToken);
+    const hasAnyCredential = hasLakehouseCredentials || hasLakehouseBasicToken || hasApiKey;
 
     if (lakehouseMechanismCount > 1) {
       throw new CliError(
         "Choose a single lakehouse authentication mechanism: --user/--password or --basic-token.",
       );
     }
-    if (hasApiKey && (hasLakehouse || hasToken)) {
+    if (hasApiKey && (hasLakehouseCredentials || hasLakehouseBasicToken)) {
       throw new CliError(
         "Choose a single authentication mechanism per configure invocation: lakehouse credentials or --api-key.",
       );
@@ -170,7 +169,7 @@ export async function configureRunSet(
         "Nothing to configure. Use --user/--password, --basic-token, or --api-key --env <name>.",
       );
     }
-    if (hasLakehouse && (!user || !password)) {
+    if (hasLakehouseCredentials && (!user || !password)) {
       throw new CliError("--user and --password must be provided together.");
     }
     if (hasApiKey && !env) {
@@ -181,14 +180,11 @@ export async function configureRunSet(
       configureClearManagementCredentials();
       secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
       configSet("api_key_env", env);
-      if (org) {
-        configSet("organization_slug", org);
-      }
     }
-    if (hasToken) {
+    if (hasLakehouseBasicToken) {
       configureClearLakehouseCredentials();
       secretSet("lakehouse/basic-token", basicToken);
-    } else if (hasLakehouse) {
+    } else if (hasLakehouseCredentials) {
       configureClearLakehouseCredentials();
       configSet("user", user);
       secretSet("lakehouse/password", password, undefined, { fromArgv: passwordFromArgv });
@@ -209,9 +205,9 @@ export async function configureRunSet(
 
     if (hasApiKey) {
       sink.writeMetadata([terminalMetadata(`Saved management API key for environment ${env}.`)]);
-    } else if (hasToken) {
+    } else if (hasLakehouseBasicToken) {
       sink.writeMetadata([terminalMetadata("Saved lakehouse Basic token.")]);
-    } else if (hasLakehouse) {
+    } else if (hasLakehouseCredentials) {
       sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
     } else if (dataPlaneUrl) {
       sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);

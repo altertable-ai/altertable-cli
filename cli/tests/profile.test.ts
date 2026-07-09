@@ -33,13 +33,10 @@ import {
   buildProfileInspectView,
   buildProfileListView,
   buildProfileShellExportView,
-  profileShowToJson,
   profileStatusToJson,
-  type ProfileShowResult,
   type ProfileStatusResult,
 } from "@/features/profile/views.ts";
-import { formatProfileShow, formatProfileStatus } from "@/features/profile/render.ts";
-import { buildConfigureShowData } from "@/features/profile/model.ts";
+import { formatProfileInspect, formatProfileStatus } from "@/features/profile/render.ts";
 import { runProfileConfigure } from "@/lib/profile-configure.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { createCliTestRuntime, runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
@@ -480,97 +477,52 @@ describe("profile --configure dispatch", () => {
 });
 
 describe("profile show view", () => {
-  function showResult(identity?: ProfileShowResult["identity"]): ProfileShowResult {
-    return { configuration: buildConfigureShowData(), identity };
-  }
-
-  test("renders profile identity and credentials without config paths by default", async () => {
+  test("renders the stored profile's auth, environment, and config file", async () => {
     await configureRunSet({ apiKey: "atm_show", env: "production" });
 
-    const output = formatProfileShow(
-      showResult({
-        principal: { type: "User", name: "Ada Lovelace", email: "ada@example.com" },
-        organization: { name: "Acme", slug: "acme" },
-      }),
-    );
+    const output = formatProfileInspect(inspectProfile(getActiveProfileName()));
 
-    expect(output).toContain("Ada Lovelace <ada@example.com>");
-    expect(output).toContain("Acme (acme)");
-    expect(output).toContain("Data plane:");
-    expect(output).toContain("management API key");
+    expect(output).toContain("Management auth");
+    expect(output).toContain("api_key");
+    expect(output).toContain("Environment");
     expect(output).toContain("production");
+    expect(output).toContain("Config file");
     expect(output).not.toContain("atm_show");
-    expect(output).not.toContain("Config dir:");
-    expect(output).not.toContain("Secret store:");
   });
 
-  test("--config includes CLI config paths", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
+  test("marks an unconfigured profile as empty with no auth", () => {
+    const output = formatProfileInspect(inspectProfile(getActiveProfileName()));
 
-    const output = formatProfileShow(showResult(), { config: true });
-
-    expect(output).toContain("Config dir:");
-    expect(output).toContain("Profile config file:");
-    expect(output).toContain("Secret store:");
-  });
-
-  test("falls back to 'not set' identity when whoami is unavailable", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
-
-    const output = formatProfileShow(showResult());
-
-    expect(output).toContain("User:");
-    expect(output).toContain("not set");
-  });
-
-  test("json envelope groups cli_config, profile, and details", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
-
-    const json = profileShowToJson(
-      showResult({ principal: { name: "Ada" }, organization: { slug: "acme" } }),
-    );
-
-    expect(json.cli_config).toBeDefined();
-    expect((json.profile as { name: string }).name).toBe(getActiveProfileName());
-    expect((json.profile as { environment: string }).environment).toBe("production");
-    expect(
-      (json.details as { credentials: { management: { configured: boolean } } }).credentials
-        .management.configured,
-    ).toBe(true);
+    expect(output).toContain("Status");
+    expect(output).toContain("empty");
+    expect(output).toContain("none");
   });
 });
 
 describe("profile status view", () => {
-  function statusResult(
-    verification: ProfileStatusResult["verification"],
-    identity?: ProfileStatusResult["identity"],
-  ): ProfileStatusResult {
-    return { configuration: buildConfigureShowData(), identity, verification };
+  function statusResult(verification: ProfileStatusResult["verification"]): ProfileStatusResult {
+    return { profile: inspectProfile(getActiveProfileName()), verification };
   }
 
-  test("renders profile show plus a verification section", async () => {
+  test("renders the inspect view plus a verification section", async () => {
     await configureRunSet({ apiKey: "atm_status", env: "production" });
 
     const output = formatProfileStatus(
-      statusResult(
-        {
-          profile: getActiveProfileName(),
-          configured: ["management"],
-          verified: { management: true, lakehouse: false },
-          errors: [],
-        },
-        { principal: { name: "Ada" }, organization: { slug: "acme" } },
-      ),
+      statusResult({
+        profile: getActiveProfileName(),
+        configured: ["management"],
+        verified: { management: true, lakehouse: false },
+        errors: [],
+      }),
     );
 
-    expect(output).toContain("management API key");
+    expect(output).toContain("Management auth");
     expect(output).toContain("Verification:");
     expect(output).toContain("Management:");
     expect(output).toContain("verified");
-    expect(output).not.toContain("Config dir:");
   });
 
-  test("json envelope includes the verification result", async () => {
+  test("json envelope includes the profile and verification result", async () => {
     await configureRunSet({ apiKey: "atm_status", env: "production" });
 
     const json = profileStatusToJson(
@@ -583,6 +535,6 @@ describe("profile status view", () => {
     );
 
     expect((json.verification as { configured: string[] }).configured).toEqual(["management"]);
-    expect(json.cli_config).toBeDefined();
+    expect((json.profile as { name: string }).name).toBe(getActiveProfileName());
   });
 });

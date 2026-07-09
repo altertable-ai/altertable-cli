@@ -10,9 +10,11 @@ import type { WhoamiResponse } from "@/features/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import {
+  assertProfileHasNoEnvCredentials,
   createEmptyProfile,
   deriveProfileName,
   profileExists,
+  profileHasAnyAuthConfigured,
   resolveProfileName,
   setActiveProfile,
   updateProfile,
@@ -57,6 +59,15 @@ function selectLoginProfile(
   const currentProfile = resolveProfileName(getCliContext().profile);
   if (replaceCurrentProfile) {
     return { profileName: currentProfile, profileAction: "replaced" };
+  }
+
+  // Sign into the current profile while it has no credentials of its own yet — a
+  // fresh `default` or a just-created empty profile. Only branch to a new profile
+  // once the current one is already authenticated, so a second login doesn't
+  // clobber an existing session. (Env credentials never reach here — login is
+  // refused up front while they are set.)
+  if (!profileHasAnyAuthConfigured(currentProfile)) {
+    return { profileName: currentProfile, profileAction: "unchanged" };
   }
 
   const targetProfile = loginProfileName(whoami, environment, currentProfile);
@@ -155,6 +166,7 @@ async function fetchLoginWhoami(oauthResponse: TokenResponse): Promise<WhoamiRes
 }
 
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
+  assertProfileHasNoEnvCredentials("altertable login");
   assertInteractiveLogin();
   applyControlPlaneOverride(args);
 

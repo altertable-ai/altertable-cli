@@ -24,7 +24,10 @@ import {
 } from "@/lib/secrets.ts";
 import { CliError } from "@/lib/errors.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import { configureRunClear, configureRunSet } from "@/lib/profile-configure-core.ts";
+import {
+  configureRunClear,
+  configureRunSet,
+} from "@/lib/profile-configure-core.ts";
 import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 

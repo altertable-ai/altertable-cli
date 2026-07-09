@@ -5,6 +5,12 @@ import { ConfigurationError } from "@/lib/errors.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
 
+// Reserved pseudo-profile: the identity in effect when credentials come from
+// environment variables rather than a stored profile. Never a real directory.
+export const FROM_ENV_PSEUDOPROFILE_NAME = "_from_env";
+
+const RESERVED_PROFILE_NAMES = new Set<string>([FROM_ENV_PSEUDOPROFILE_NAME]);
+
 export const PROFILE_CONFIG_KEYS = [
   "user",
   "api_key_env",
@@ -51,6 +57,9 @@ export function assertSafeProfileName(name: string): void {
     throw new ConfigurationError(
       `Invalid profile name: ${name}. Use only letters, digits, dots, underscores, and hyphens.`,
     );
+  }
+  if (RESERVED_PROFILE_NAMES.has(name)) {
+    throw new ConfigurationError(`Profile name is reserved: ${name}`);
   }
 
   const resolvedProfileDir = resolve(join(profilesDir(), name));
