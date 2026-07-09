@@ -127,7 +127,7 @@ altertable
 │   └── GET | POST | PATCH | DELETE | PUT  (HTTP invoker also supports `api /whoami`, `api -X GET /path`)
 └── completion
     ├── install [bash|fish|zsh]
-    ├── generate bash|fish|zsh
+    ├── generate [bash|fish|zsh]
     └── bash|fish|zsh  (raw script compatibility aliases)
 ```
 

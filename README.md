@@ -434,7 +434,7 @@ altertable completion install zsh
 altertable completion install fish
 ```
 
-For manual installs, generate the script without writing files:
+If you need a manual install, generate the script without writing files:
 
 ```bash
 # bash

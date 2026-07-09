@@ -313,7 +313,7 @@ describe("completion command", () => {
     const output = await runCompletionParentJson(["completion"]);
     expect(JSON.parse(output)).toMatchObject({
       install: "altertable completion install",
-      generate: "altertable completion generate zsh",
+      manual: "altertable completion generate zsh",
     });
   });
 
@@ -327,9 +327,11 @@ describe("completion command", () => {
     expect(visibleTerminalText(output)).toContain("Shell completion installed");
   });
 
-  test("interactive completion can print selected shell script", async () => {
-    const output = await runInteractiveCompletion("generate-zsh");
-    expect(output).toContain("#compdef altertable");
+  test("interactive completion shows manual commands without printing a script", async () => {
+    const output = await runInteractiveCompletion("help");
+    const visibleOutput = visibleTerminalText(output);
+    expect(visibleOutput).toContain("altertable completion generate zsh");
+    expect(visibleOutput).not.toContain("#compdef altertable");
   });
 
   test("install writes fish completion without startup file changes", async () => {

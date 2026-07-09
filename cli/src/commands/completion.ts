@@ -3,8 +3,12 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { defineLocalCommand, defineOutputCommand } from "@/lib/operation-command-builders.ts";
-import { localPlan, noopPlan, outputPlan } from "@/lib/operation-effect.ts";
+import {
+  defineGroupCommand,
+  defineLocalCommand,
+  defineOutputCommand,
+} from "@/lib/operation-command-builders.ts";
+import { localPlan, noopPlan } from "@/lib/operation-effect.ts";
 import { CliError } from "@/lib/errors.ts";
 import { defaultConfigurePrompts, type ConfigurePrompts } from "@/lib/configure-prompts.ts";
 import { document, rows, section, text } from "@/ui/document.ts";
@@ -42,7 +46,7 @@ type CompletionInstallInput = {
   explicitShell?: SupportedShell;
   updateRc: boolean;
 };
-type CompletionRootAction =
+type CompletionRootInput =
   | {
       kind: "delegated";
     }
@@ -50,15 +54,11 @@ type CompletionRootAction =
       kind: "help";
     }
   | {
-      kind: "generate";
-      shell: SupportedShell;
-    }
-  | {
       kind: "install";
       shell?: SupportedShell;
       updateRc: boolean;
     };
-type CompletionRootResult =
+type CompletionRootOutput =
   | {
       kind: "help";
     }
@@ -66,15 +66,22 @@ type CompletionRootResult =
       kind: "install";
       result: InstallResult;
     }
-  | void;
+  | undefined;
 type CompletionCommandOptions = {
   prompts?: ConfigurePrompts;
 };
+type CompletionPromptChoice = "install" | "install-bash" | "install-zsh" | "install-fish" | "help";
 
 const SUPPORTED_SHELLS = ["bash", "zsh", "fish"] as const;
 const START_MARKER = "# >>> altertable completion >>>";
 const END_MARKER = "# <<< altertable completion <<<";
 const COMPLETION_DOCS_URL = "https://github.com/altertable-ai/altertable-cli#shell-completion";
+const COMPLETION_GUIDANCE = {
+  install: "altertable completion install",
+  installShell: "altertable completion install zsh",
+  manual: "altertable completion generate zsh",
+  docs: COMPLETION_DOCS_URL,
+};
 
 function isSupportedShell(shell: string): shell is SupportedShell {
   return SUPPORTED_SHELLS.includes(shell as SupportedShell);
@@ -272,12 +279,12 @@ function formatCompletionHelpMessage(): string {
       section(
         text([terminalAccent("Shell completion")]),
         rows([
-          { label: "Install:", value: "altertable completion install" },
-          { label: "Install shell:", value: "altertable completion install zsh" },
-          { label: "Generate:", value: "altertable completion generate zsh" },
+          { label: "Install:", value: COMPLETION_GUIDANCE.install },
+          { label: "Install shell:", value: COMPLETION_GUIDANCE.installShell },
+          { label: "Manual:", value: COMPLETION_GUIDANCE.manual },
           {
             label: "Docs:",
-            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_GUIDANCE.docs})`),
           },
         ]),
       ),
@@ -286,49 +293,41 @@ function formatCompletionHelpMessage(): string {
   );
 }
 
-function completionHelpData(): Record<string, string> {
-  return {
-    install: "altertable completion install",
-    installShell: "altertable completion install zsh",
-    generate: "altertable completion generate zsh",
-    docs: COMPLETION_DOCS_URL,
-  };
-}
-
-async function promptCompletionAction(prompts: ConfigurePrompts): Promise<CompletionRootAction> {
-  const selected = await prompts.readSelect(
+async function promptCompletionInput(prompts: ConfigurePrompts): Promise<CompletionRootInput> {
+  const selected = (await prompts.readSelect(
     "Shell completion",
     [
       { value: "install", label: "Install for current shell" },
       { value: "install-bash", label: "Install for bash" },
       { value: "install-zsh", label: "Install for zsh" },
       { value: "install-fish", label: "Install for fish" },
-      { value: "generate-bash", label: "Print bash script" },
-      { value: "generate-zsh", label: "Print zsh script" },
-      { value: "generate-fish", label: "Print fish script" },
+      { value: "help", label: "Show manual install commands" },
     ],
     "install",
     { leadingNewline: false },
-  );
+  )) as CompletionPromptChoice;
 
-  if (selected === "install") {
-    return { kind: "install", updateRc: true };
+  switch (selected) {
+    case "install":
+      return { kind: "install", updateRc: true };
+    case "install-bash":
+      return { kind: "install", shell: "bash", updateRc: true };
+    case "install-zsh":
+      return { kind: "install", shell: "zsh", updateRc: true };
+    case "install-fish":
+      return { kind: "install", shell: "fish", updateRc: true };
+    case "help":
+      return { kind: "help" };
   }
-
-  const [kind, shell] = selected.split("-");
-  if ((kind === "install" || kind === "generate") && shell && isSupportedShell(shell)) {
-    return { kind, shell, updateRc: true };
-  }
-
-  throw new CliError(`Unexpected completion selection: ${selected}`);
 }
 
 function createShellCompletionCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
+  id = `completion.${shell}`,
 ): CommandDef {
   return defineOutputCommand({
-    id: `completion.${shell}`,
+    id,
     capabilities: ["raw-stdout"],
     output: "raw-api",
     meta: {
@@ -379,10 +378,7 @@ function createInstallShellCommand(
 }
 
 function createGenerateCommand(getRootCommand: GetRootCommand): CommandDef {
-  return defineOperationCommand<CompletionRootAction, CompletionRootResult>({
-    id: "completion.generate",
-    capabilities: ["raw-stdout"],
-    catalog: { effects: ["output", "value"], output: "raw-api" },
+  return defineGroupCommand({
     meta: {
       name: "generate",
       description: "Generate a shell completion script.",
@@ -392,9 +388,9 @@ function createGenerateCommand(getRootCommand: GetRootCommand): CommandDef {
       ],
     },
     subCommands: {
-      bash: createShellCompletionCommand("bash", getRootCommand),
-      fish: createShellCompletionCommand("fish", getRootCommand),
-      zsh: createShellCompletionCommand("zsh", getRootCommand),
+      bash: createShellCompletionCommand("bash", getRootCommand, "completion.generate.bash"),
+      fish: createShellCompletionCommand("fish", getRootCommand, "completion.generate.fish"),
+      zsh: createShellCompletionCommand("zsh", getRootCommand, "completion.generate.zsh"),
     },
   });
 }
@@ -460,7 +456,7 @@ export function createCompletionCommand(
     },
   });
 
-  return defineOperationCommand({
+  return defineOperationCommand<CompletionRootInput, CompletionRootOutput>({
     id: "completion",
     capabilities: ["raw-stdout", "local-file-write"],
     catalog: { effects: ["local", "output", "value"], mutates: true, output: "human" },
@@ -480,13 +476,13 @@ export function createCompletionCommand(
       install: installCommand,
       zsh: createShellCompletionCommand("zsh", getRootCommand),
     },
-    async parse({ rawArgs, runtime, sink }): Promise<CompletionRootAction> {
+    async parse({ rawArgs, runtime, sink }): Promise<CompletionRootInput> {
       if (rawArgs.some((arg) => arg === "install" || arg === "generate" || isSupportedShell(arg))) {
         return { kind: "delegated" };
       }
 
       if (process.stdin.isTTY === true && !runtime.context.agent && !sink.json) {
-        return await promptCompletionAction(prompts);
+        return await promptCompletionInput(prompts);
       }
 
       return { kind: "help" };
@@ -497,17 +493,10 @@ export function createCompletionCommand(
       }
 
       if (action.kind === "help") {
-        return localPlan<CompletionRootResult>(() => ({ kind: "help" }));
+        return localPlan<CompletionRootOutput>(() => ({ kind: "help" }));
       }
 
-      if (action.kind === "generate") {
-        return outputPlan({
-          kind: "raw_api",
-          body: formatCompletionScript(action.shell, getRootCommand()),
-        });
-      }
-
-      return localPlan<CompletionRootResult>(async () => {
+      return localPlan<CompletionRootOutput>(async () => {
         const shell = action.shell ?? resolveShell(undefined);
         const script = formatCompletionScript(shell, getRootCommand());
         const result = await installCompletion(shell, script, {
@@ -531,7 +520,7 @@ export function createCompletionCommand(
       }
 
       if (sink.json) {
-        sink.writeJson(completionHelpData());
+        sink.writeJson(COMPLETION_GUIDANCE);
         return;
       }
 
