@@ -62,7 +62,7 @@ export type TestWorkspace = {
 
 const activeWorkspaces = new Set<TestWorkspace>();
 
-export async function resetActiveWorkspacesBeforeTest(): Promise<void> {
+export async function resetActiveWorkspaces(): Promise<void> {
   await Promise.all(
     Array.from(activeWorkspaces, async (workspace) => {
       await workspace.resetConfig();
@@ -71,7 +71,7 @@ export async function resetActiveWorkspacesBeforeTest(): Promise<void> {
   );
 }
 
-export async function deleteActiveWorkspacesAfterSuite(): Promise<void> {
+export async function deleteActiveWorkspaces(): Promise<void> {
   await Promise.all(Array.from(activeWorkspaces, (workspace) => workspace.cleanup()));
 }
 
