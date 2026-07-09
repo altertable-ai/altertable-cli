@@ -5,8 +5,9 @@ import { join } from "node:path";
 import type { CommandDef } from "citty";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
+import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
-import { CliError } from "@/lib/errors.ts";
+import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 const TERMINAL_CONTROL_PATTERN = new RegExp(
   `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
@@ -57,8 +58,22 @@ function setTestHome(): string {
   return testHome;
 }
 
-async function runCompletion(getRootCommand: () => CommandDef, shell?: string): Promise<string> {
-  const completionCommand = createCompletionCommand(getRootCommand);
+function createMockPrompts(selection: string): ConfigurePrompts {
+  return {
+    writePrompt() {},
+    readLine: async () => "",
+    readPassword: async () => "",
+    readSelect: async () => selection,
+    readConfirm: async () => true,
+  };
+}
+
+async function runCompletion(
+  getRootCommand: () => CommandDef,
+  shell?: string,
+  prompts?: ConfigurePrompts,
+): Promise<string> {
+  const completionCommand = createCompletionCommand(getRootCommand, { prompts });
   const supportedShells = new Set(["bash", "zsh", "fish"]);
   const command =
     shell === undefined || !supportedShells.has(shell)
@@ -82,6 +97,62 @@ async function runCompletion(getRootCommand: () => CommandDef, shell?: string): 
     console.log = originalLog;
   }
   return output;
+}
+
+async function runCompletionGenerate(shell: string): Promise<string> {
+  const completionCommand = createCompletionCommand(() => minimalRootCommand);
+  const generateCommand = (completionCommand.subCommands as Record<string, CommandDef> | undefined)
+    ?.generate;
+  const command = (generateCommand?.subCommands as Record<string, CommandDef> | undefined)?.[shell];
+  if (!command?.run) {
+    throw new Error("missing completion generate command");
+  }
+
+  let output = "";
+  const originalLog = console.log;
+  console.log = (value?: unknown) => {
+    if (typeof value === "string") {
+      output += value;
+    }
+  };
+  try {
+    await command.run({
+      args: {},
+      rawArgs: ["completion", "generate", shell],
+    } as never);
+  } finally {
+    console.log = originalLog;
+  }
+  return output;
+}
+
+async function runCompletionParent(rawArgs: string[]): Promise<string> {
+  const completionCommand = createCompletionCommand(() => minimalRootCommand);
+  if (!completionCommand.run) {
+    throw new Error("missing completion command");
+  }
+
+  let output = "";
+  const originalLog = console.log;
+  console.log = (value?: unknown) => {
+    if (typeof value === "string") {
+      output += value;
+    }
+  };
+  try {
+    await completionCommand.run({
+      args: {},
+      rawArgs,
+    } as never);
+  } finally {
+    console.log = originalLog;
+  }
+  return output;
+}
+
+async function runCompletionParentJson(rawArgs: string[]): Promise<string> {
+  const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+  return await runWithCliRuntime(runtime, () => runCompletionParent(rawArgs));
 }
 
 async function runCompletionInstall(shell?: string, noRc = false): Promise<string> {
@@ -118,16 +189,19 @@ async function runCompletionInstall(shell?: string, noRc = false): Promise<strin
   return output;
 }
 
-async function runCompletionWithShellEnv(shellPath: string | undefined): Promise<string> {
+async function runInteractiveCompletion(selection: string, shellPath?: string): Promise<string> {
   const originalShell = process.env.SHELL;
+  const originalIsTTY = process.stdin.isTTY;
   if (shellPath) {
     process.env.SHELL = shellPath;
   } else {
     delete process.env.SHELL;
   }
+  Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
   try {
-    return await runCompletion(() => minimalRootCommand);
+    return await runCompletion(() => minimalRootCommand, undefined, createMockPrompts(selection));
   } finally {
+    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
     if (originalShell) {
       process.env.SHELL = originalShell;
     } else {
@@ -214,13 +288,50 @@ describe("completion command", () => {
     expect(output).toContain("-l field");
   });
 
-  test("defaults to detected shell", async () => {
-    const output = await runCompletionWithShellEnv("/opt/homebrew/bin/fish");
+  test("generate command writes explicit shell output", async () => {
+    const output = await runCompletionGenerate("fish");
     expect(output).toContain("altertable fish completion");
+    expect(output).toContain("altertable completion generate fish");
   });
 
-  test("missing shell and unsupported environment throws CliError", async () => {
-    return expect(runCompletionWithShellEnv(undefined)).rejects.toThrow(CliError);
+  test("parent completion does not print help after delegated subcommands", async () => {
+    const output = await runCompletionParent(["completion", "generate", "fish"]);
+    expect(output).toBe("");
+  });
+
+  test("bare completion shows guidance without dumping a script", async () => {
+    const output = await runCompletion(() => minimalRootCommand);
+    const visibleOutput = visibleTerminalText(output);
+    expect(visibleOutput).toContain("Shell completion");
+    expect(visibleOutput).toContain("altertable completion install");
+    expect(visibleOutput).toContain("altertable completion generate zsh");
+    expect(visibleOutput).not.toContain("altertable fish completion");
+    expect(visibleOutput).not.toContain("_altertable_completions");
+  });
+
+  test("bare completion emits guidance as json in json mode", async () => {
+    const output = await runCompletionParentJson(["completion"]);
+    expect(JSON.parse(output)).toMatchObject({
+      install: "altertable completion install",
+      manual: "altertable completion generate zsh",
+    });
+  });
+
+  test("interactive completion can install detected shell", async () => {
+    const home = setTestHome();
+    const output = await runInteractiveCompletion("install", "/opt/homebrew/bin/fish");
+    const completionPath = join(home, ".config", "fish", "completions", "altertable.fish");
+
+    expect(existsSync(completionPath)).toBe(true);
+    expect(readFileSync(completionPath, "utf8")).toContain("altertable fish completion");
+    expect(visibleTerminalText(output)).toContain("Shell completion installed");
+  });
+
+  test("interactive completion shows manual commands without printing a script", async () => {
+    const output = await runInteractiveCompletion("help");
+    const visibleOutput = visibleTerminalText(output);
+    expect(visibleOutput).toContain("altertable completion generate zsh");
+    expect(visibleOutput).not.toContain("#compdef altertable");
   });
 
   test("install writes fish completion without startup file changes", async () => {
