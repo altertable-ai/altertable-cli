@@ -73,6 +73,28 @@ describe("profile switching", () => {
     result = await workspace.runCommand("altertable profile list");
     expect(result.stdout).not.toContain("globex_dev");
   });
+
+  // Environment credentials pin the identity to `_from_env`, so login and profile
+  // switching are disabled — they would only mutate stored state the env overrides.
+  test("environment credentials disable login and profile switching", async () => {
+    const login = await workspace.runCommand("altertable login", {
+      env: { ALTERTABLE_API_KEY: "atm_env" },
+    });
+    expect(login.exitCode).not.toBe(0);
+    expect(login.stderr).toContain("disabled while credentials come from the environment");
+
+    const use = await workspace.runCommand("altertable profile use acme_staging", {
+      env: { ALTERTABLE_API_KEY: "atm_env" },
+    });
+    expect(use.exitCode).not.toBe(0);
+    expect(use.stderr).toContain("disabled while credentials come from the environment");
+
+    const switched = await workspace.runCommand("altertable profile switch acme_staging", {
+      env: { ALTERTABLE_LAKEHOUSE_USERNAME: "u", ALTERTABLE_LAKEHOUSE_PASSWORD: "p" },
+    });
+    expect(switched.exitCode).not.toBe(0);
+    expect(switched.stderr).toContain("disabled while credentials come from the environment");
+  });
 });
 
 async function seedAcmeProfiles(workspace: TestWorkspace): Promise<void> {

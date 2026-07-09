@@ -12,6 +12,7 @@ import {
 import {
   assertSafeProfileName,
   DEFAULT_PROFILE_NAME,
+  FROM_ENV_PSEUDOPROFILE_NAME,
   type ProfileConfigKey,
   ensureProfileExists,
   ensureProfilesLayout,
@@ -21,6 +22,7 @@ import {
   profileDir,
   profileExists,
   readProfileConfigRecord,
+  resolveProfileName,
   setActiveProfile,
   writeProfileConfig,
 } from "@/lib/profile-store.ts";
@@ -30,6 +32,7 @@ export {
   DEFAULT_PROFILE_NAME,
   ensureProfileExists,
   ensureProfilesLayout,
+  FROM_ENV_PSEUDOPROFILE_NAME,
   getActiveProfileName,
   profileConfigFile,
   profileExists,
@@ -194,6 +197,11 @@ function profileAuth(name: string): ProfileAuth {
         ? "username_password"
         : "none",
   };
+}
+
+export function profileHasAnyAuthConfigured(name: string): boolean {
+  const auth = profileAuth(name);
+  return auth.management !== "none" || auth.lakehouse !== "none";
 }
 
 function readProfileSnapshot(name: string): ProfileSnapshot {
@@ -484,6 +492,34 @@ function hasEnvLakehouseCredentials(): boolean {
 
 function hasStoredLakehouseCredentials(): boolean {
   return secretExists("lakehouse/basic-token") || secretExists("lakehouse/password");
+}
+
+export function hasCredentialsThroughEnv(): boolean {
+  return hasEnvManagementCredentials() || hasEnvLakehouseCredentials();
+}
+
+/**
+ * The profile identity currently in effect. Normally the active stored profile,
+ * but environment credentials override any stored profile for the whole process,
+ * so they surface as the reserved `_from_env` pseudo-profile.
+ */
+export function resolveActiveProfileName(): string {
+  return hasCredentialsThroughEnv()
+    ? FROM_ENV_PSEUDOPROFILE_NAME
+    : resolveProfileName(getCliContext().profile);
+}
+
+/**
+ * Guard for commands that mutate stored-profile state (login, switching). While
+ * credentials come from the environment there is no stored profile to act on —
+ * the env vars pin the identity and would override any change — so refuse.
+ */
+export function assertProfileHasNoEnvCredentials(action: string): void {
+  if (resolveActiveProfileName() === FROM_ENV_PSEUDOPROFILE_NAME) {
+    throw new ConfigurationError(
+      `${action} is disabled while credentials come from the environment. Unset ALTERTABLE_API_KEY / ALTERTABLE_BASIC_AUTH_TOKEN / ALTERTABLE_LAKEHOUSE_USERNAME / ALTERTABLE_LAKEHOUSE_PASSWORD to manage stored profiles.`,
+    );
+  }
 }
 
 export function configureCredentialStatus(): ConfigureCredentialStatus {

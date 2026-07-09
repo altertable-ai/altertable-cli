@@ -6,6 +6,7 @@ import {
   buildConfigureShowData,
   configureCredentialStatus,
   type ConfigureShowData,
+  type ProfileInspect,
 } from "@/features/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
@@ -42,6 +43,7 @@ import {
 } from "@/features/profile/render.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
 import {
+  assertProfileHasNoEnvCredentials,
   createEmptyProfile,
   deleteProfile,
   getActiveProfileName,
@@ -186,7 +188,7 @@ async function fetchProfileIdentity(
 
 const profileShowCommand = defineLocalCommand<
   { profileName: string; config: boolean },
-  ProfileShowResult & { config: boolean }
+  ProfileInspect
 >({
   id: "profile.show",
   localConfig: true,
@@ -208,17 +210,13 @@ const profileShowCommand = defineLocalCommand<
       config: Boolean(args.config),
     };
   },
-  async local(input, context) {
+  async local(input) {
     const previous = getCliContext();
     try {
       const next = { ...previous, profile: input.profileName };
       setCliContext(next);
       refreshCliRuntimeContext(next);
-      const configuration = buildConfigureShowData();
-      const identity = configureCredentialStatus().hasManagement
-        ? await fetchProfileIdentity(context)
-        : undefined;
-      return { configuration, identity, config: input.config };
+      return inspectProfile(input.profileName);
     } finally {
       setCliContext(previous);
       refreshCliRuntimeContext(previous);
@@ -227,8 +225,8 @@ const profileShowCommand = defineLocalCommand<
   present(result) {
     return {
       kind: "normalized",
-      data: profileShowToJson(result),
-      humanText: formatProfileShow(result, { config: result.config }),
+      data: { profile: result },
+      humanText: formatProfileInspect(result),
     };
   },
 });
@@ -247,6 +245,7 @@ function createProfileUseCommand(id: string, name: string, hidden = false) {
       return requireProfileName(args.name);
     },
     local(profileName) {
+      assertProfileHasNoEnvCredentials("Switching profiles");
       setActiveProfile(profileName);
       return profileName;
     },
@@ -274,6 +273,7 @@ const profileSwitchCommand = defineLocalCommand<string | undefined, string>({
     return args.name ? requireProfileName(args.name) : undefined;
   },
   async local(profileName) {
+    assertProfileHasNoEnvCredentials("Switching profiles");
     if (!profileName) {
       if (isJsonOutput(getCliContext()) || getCliContext().agent || process.stdin.isTTY !== true) {
         throw new CliError("Interactive profile switch requires a TTY. Pass a profile name.");

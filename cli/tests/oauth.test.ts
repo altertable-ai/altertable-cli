@@ -7,7 +7,9 @@ import { configGet } from "@/lib/config.ts";
 import { setCliContext } from "@/context.ts";
 import { parseCallback, buildAuthorizeUrl, startLoopbackServer } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens, getStoredAccessToken, clearOAuthTokens } from "@/lib/oauth-profile.ts";
-import { getActiveProfileName, profileExists } from "@/lib/profile-store.ts";
+import { getActiveProfileName, profileExists, setActiveProfile } from "@/lib/profile-store.ts";
+import { createEmptyProfile } from "@/features/profile/model.ts";
+import { secretSet } from "@/lib/secrets.ts";
 
 let testHome = "";
 const TEST_PRINCIPAL = {
@@ -29,6 +31,10 @@ afterEach(() => {
   delete process.env.ALTERTABLE_SECRET_BACKEND;
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
   delete process.env.ALTERTABLE_ALLOW_INSECURE_HTTP;
+  delete process.env.ALTERTABLE_API_KEY;
+  delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
+  delete process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
+  delete process.env.ALTERTABLE_LAKEHOUSE_PASSWORD;
 });
 
 describe("resolveOAuthBase", () => {
@@ -151,6 +157,10 @@ import {
   applyControlPlaneOverride,
   storeLoginProfileMetadata,
 } from "@/commands/login.ts";
+import {
+  assertProfileHasNoEnvCredentials,
+  resolveActiveProfileName,
+} from "@/features/profile/model.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
@@ -173,17 +183,41 @@ describe("resolveWhoamiEnvironment", () => {
 });
 
 describe("login profile metadata", () => {
-  test("stores environment and organization from whoami", () => {
-    const metadata = storeLoginProfileMetadata(
-      {
-        principal: TEST_PRINCIPAL,
-        organization: { name: "Altertable", slug: "altertable" },
-        authentication_scope: "environment",
-        environment_slug: "production",
-      },
-      {},
-    );
+  const WHOAMI = {
+    principal: TEST_PRINCIPAL,
+    organization: { name: "Altertable", slug: "altertable" },
+    authentication_scope: "environment",
+    environment_slug: "production",
+  } as const;
+
+  // `altertable login` on a fresh install signs into the unauthenticated `default`
+  // profile and stores the whoami identity there, rather than deriving a new one.
+  test("lands in the current default profile when it is unauthenticated", () => {
+    const metadata = storeLoginProfileMetadata(WHOAMI, {});
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "default",
+      profileAction: "unchanged",
+    });
+    expect(getActiveProfileName()).toBe("default");
+    expect(profileExists("altertable_production")).toBe(false);
+    expect(configGet("api_key_env")).toBe("production");
+    expect(configGet("organization_slug")).toBe("altertable");
+    expect(configGet("organization_name")).toBe("Altertable");
+    expect(configGet("principal_name")).toBe("Test User");
+    expect(configGet("principal_email")).toBe("test.user@altertable.test");
+    expect(getStoredAccessToken()).toBe("acc");
+  });
+
+  // A second `altertable login` must not clobber the now-authenticated `default`;
+  // it derives and switches to a fresh profile instead.
+  test("creates a separate profile when the current one is already authenticated", () => {
+    storeLoginProfileMetadata(WHOAMI, {});
+    storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 });
+
+    const metadata = storeLoginProfileMetadata(WHOAMI, {});
 
     expect(metadata).toEqual({
       environment: "production",
@@ -193,12 +227,69 @@ describe("login profile metadata", () => {
     expect(profileExists("default")).toBe(true);
     expect(profileExists("altertable_production")).toBe(true);
     expect(getActiveProfileName()).toBe("altertable_production");
-    expect(configGet("api_key_env")).toBe("production");
-    expect(configGet("organization_slug")).toBe("altertable");
-    expect(configGet("organization_name")).toBe("Altertable");
-    expect(configGet("principal_name")).toBe("Test User");
-    expect(configGet("principal_email")).toBe("test.user@altertable.test");
-    expect(getStoredAccessToken()).toBe("acc");
+  });
+
+  // `altertable profile create new` (which switches to `new`) followed by
+  // `altertable login` signs into `new`, since it has not been configured yet.
+  test("lands in a freshly created, unconfigured profile", () => {
+    createEmptyProfile("new");
+    setActiveProfile("new");
+
+    const metadata = storeLoginProfileMetadata(WHOAMI, {});
+
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "new",
+      profileAction: "unchanged",
+    });
+    expect(getActiveProfileName()).toBe("new");
+    expect(profileExists("altertable_production")).toBe(false);
+  });
+
+  // Lakehouse-only credentials still count as "authenticated" — a login must not
+  // overwrite them, so it branches to a new profile.
+  test("treats a profile with only lakehouse credentials as authenticated", () => {
+    secretSet("lakehouse/password", "s_lake");
+
+    const metadata = storeLoginProfileMetadata(WHOAMI, {});
+
+    expect(metadata).toEqual({
+      environment: "production",
+      profileName: "altertable_production",
+      profileAction: "created",
+    });
+    expect(getActiveProfileName()).toBe("altertable_production");
+  });
+
+  // Credentials supplied via environment variables aren't a stored profile; the
+  // active identity is the reserved `_from_env` pseudo-profile.
+  test("resolves the active identity to reserved _from_env when a credential env var is set", () => {
+    expect(resolveActiveProfileName()).toBe("default");
+
+    process.env.ALTERTABLE_API_KEY = "atm_env";
+    expect(resolveActiveProfileName()).toBe("_from_env");
+    delete process.env.ALTERTABLE_API_KEY;
+
+    process.env.ALTERTABLE_BASIC_AUTH_TOKEN = "dG9rZW4=";
+    expect(resolveActiveProfileName()).toBe("_from_env");
+    delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
+
+    process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "u";
+    process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "p";
+    expect(resolveActiveProfileName()).toBe("_from_env");
+  });
+
+  // Environment credentials pin the identity, so stored-profile controls (login,
+  // switching) are locked while they are set.
+  test("locks stored-profile controls while credentials come from the environment", () => {
+    expect(() => assertProfileHasNoEnvCredentials("altertable login")).not.toThrow();
+
+    process.env.ALTERTABLE_API_KEY = "atm_env";
+    expect(() => assertProfileHasNoEnvCredentials("altertable login")).toThrow(ConfigurationError);
+  });
+
+  test("_from_env is a reserved profile name that cannot be created", () => {
+    expect(() => createEmptyProfile("_from_env")).toThrow();
   });
 
   test("can replace the current profile login session", () => {
