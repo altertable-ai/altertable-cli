@@ -23,9 +23,9 @@ describe("parseGlobalFlags", () => {
     expect(context.profile).toBe("staging");
   });
 
-  test("ignores configure --profile when parsing early global flags", () => {
+  test("ignores profile --profile when parsing early global flags", () => {
     const context = parseGlobalFlags([
-      "configure",
+      "profile",
       "--profile",
       "production",
       "--api-key",
@@ -37,12 +37,12 @@ describe("parseGlobalFlags", () => {
   });
 
   test("parses global --profile before a subcommand", () => {
-    const context = parseGlobalFlags(["--profile", "staging", "context"]);
+    const context = parseGlobalFlags(["--profile", "staging", "catalogs"]);
     expect(context.profile).toBe("staging");
   });
 
   test("parses --no-color", () => {
-    const context = parseGlobalFlags(["--no-color", "context"]);
+    const context = parseGlobalFlags(["--no-color", "catalogs"]);
     expect(context.noColor).toBe(true);
   });
 

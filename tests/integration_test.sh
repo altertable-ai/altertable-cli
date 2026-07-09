@@ -67,11 +67,11 @@ pass "query --agent rejects human-only --layout flag"
 # ── management --agent (structured output contract) ──
 export ALTERTABLE_API_KEY=atm_test
 setup_mock_http '[{"urlPattern":"/whoami","method":"GET","body":"{\"principal\":{\"type\":\"User\",\"name\":\"Agent User\",\"email\":\"agent@x.io\"},\"organization\":{\"name\":\"Acme\",\"slug\":\"acme\"}}"}]'
-RESP=$("${CLI}" --agent context 2>/dev/null)
+RESP=$("${CLI}" --agent profile show 2>/dev/null)
 teardown_mock_http
 unset ALTERTABLE_API_KEY
-[[ $(echo "${RESP}" | jq -r '.principal.email') == "agent@x.io" ]] || fail "context --agent: expected agent@x.io principal email"
-pass "context --agent returns structured session JSON on integration mock"
+[[ $(echo "${RESP}" | jq -r '.profile.user.email') == "agent@x.io" ]] || fail "profile show --agent: expected agent@x.io principal email"
+pass "profile show --agent returns structured session JSON on integration mock"
 
 # ── query with explicit query_id (used by query show / query cancel) ────────────
 

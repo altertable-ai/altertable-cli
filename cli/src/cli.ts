@@ -10,10 +10,8 @@ import {
 } from "@/context.ts";
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
-import { configureCommand } from "@/commands/configure.ts";
 import { loginCommand, logoutCommand } from "@/commands/login.ts";
 import { profileCommand } from "@/commands/profile.ts";
-import { contextCommand } from "@/commands/context.ts";
 import { catalogsCommand } from "@/commands/catalogs.ts";
 import { duckdbCommand } from "@/commands/duckdb.ts";
 import { appendCommand } from "@/commands/lakehouse/append.ts";
@@ -89,11 +87,9 @@ export function buildMainCommand(): CommandDef {
   const completionCommand = createCompletionCommand(() => mainCommand);
 
   const topLevelCommands: Record<string, CommandDef> = {
-    configure: configureCommand,
     login: loginCommand,
     logout: logoutCommand,
     profile: profileCommand,
-    context: contextCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
     schema: schemaCommand,
@@ -111,8 +107,8 @@ export function buildMainCommand(): CommandDef {
       name: "altertable",
       description: `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
       examples: [
-        "altertable configure",
-        "altertable context",
+        "altertable profile --configure",
+        "altertable profile show",
         "altertable api routes",
         "altertable api GET /environments/production/databases",
         'altertable query "SELECT 1"',

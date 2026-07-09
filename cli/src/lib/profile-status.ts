@@ -12,7 +12,7 @@ import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { resolveProfileName } from "@/lib/profile-store.ts";
 
-export { configureCredentialStatus } from "@/features/configure/model.ts";
+export { configureCredentialStatus } from "@/features/profile/model.ts";
 
 export type ConfigureAuthPlane = "management" | "lakehouse";
 
@@ -124,7 +124,7 @@ export async function configureVerify(
 export function formatConfigureVerifyRemediation(plane: ConfigureAuthPlane): string {
   if (plane === "management") {
     const env = configGet("api_key_env") || "<name>";
-    return `Check your API key and environment. Run: altertable configure management or altertable configure --api-key atm_xxx --env ${env}`;
+    return `Check your API key and environment. Run: altertable profile --configure --scope management or altertable profile --configure --api-key atm_xxx --env ${env}`;
   }
-  return "Check your lakehouse username and password. Run: altertable configure lakehouse or altertable configure --user <u> --password <p>";
+  return "Check your lakehouse username and password. Run: altertable profile --configure --scope lakehouse or altertable profile --configure --user <u> --password <p>";
 }

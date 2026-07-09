@@ -108,8 +108,8 @@ Keep updater tests hermetic. Use fake `fetch` implementations and temp executabl
 ## Local deployment endpoints
 
 ```bash
-altertable configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
-altertable configure --user u --password p --data-plane-url http://localhost:15000
+altertable profile --configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
+altertable profile --configure --user u --password p --data-plane-url http://localhost:15000
 export ALTERTABLE_MANAGEMENT_API_BASE="http://localhost:13000"
 export ALTERTABLE_API_BASE="http://localhost:15000"
 ```

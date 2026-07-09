@@ -84,13 +84,13 @@ jobs:
           bin/altertable --version
           bin/altertable --help
 
-      - name: Run configure tests
+      - name: Run profile configure tests
         run: ./tests/configure_test.sh
 
       - name: Run management tests
         run: ./tests/management_test.sh
 
-      - name: Run context tests
+      - name: Run profile show tests
         run: ./tests/context_test.sh
 
       - name: Run catalogs tests

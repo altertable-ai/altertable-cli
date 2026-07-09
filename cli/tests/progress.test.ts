@@ -34,6 +34,16 @@ describe("shouldShowProgress", () => {
 });
 
 describe("formatUploadProgress", () => {
+  const originalStderrIsTTY = process.stderr.isTTY;
+
+  afterEach(() => {
+    Object.defineProperty(process.stderr, "isTTY", {
+      value: originalStderrIsTTY,
+      configurable: true,
+    });
+    setCliContext({ debug: false, json: false, agent: false });
+  });
+
   test("shows percent for partial upload", () => {
     expect(formatUploadProgress(512, 1024)).toContain("50");
     expect(formatUploadProgress(512, 1024)).toContain("512/1024");

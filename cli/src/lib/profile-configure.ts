@@ -1,26 +1,24 @@
+import type { ArgsDef } from "citty";
 import {
   configureRunSet,
   withConfigureProfileContext,
   type ConfigureOptions,
-} from "@/lib/configure.ts";
-import { ConfigurePromptCancelled, defaultConfigurePrompts } from "@/lib/configure-prompts.ts";
-import { formatConfigureSessionSummary } from "@/features/configure/render.ts";
-import {
-  configureVerify,
-  formatConfigureVerifyRemediation,
-  type ConfigureAuthPlane,
-  type ConfigureVerifyResult,
-} from "@/lib/configure-verify.ts";
-import { ConfigurationError, CliError, EXIT_CONFIG } from "@/lib/errors.ts";
+} from "@/lib/profile-configure-core.ts";
+import { formatConfigureSessionSummary } from "@/features/profile/render.ts";
+import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
+import { ConfigurationError, CliError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput } from "@/context.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   collectLakehouseCredentials,
   collectManagementCredentials,
+  ConfigurePromptCancelled,
+  defaultConfigurePrompts,
   planesForConfigureScope,
   promptConfigureScope,
-} from "@/lib/configure-wizard-collect.ts";
-import type { ConfigureWizardOptions, ConfigureWizardScope } from "@/lib/configure-wizard-types.ts";
+  type ConfigureWizardOptions,
+  type ConfigureWizardScope,
+} from "@/lib/profile-configure-interactive.ts";
 import {
   terminalAccent,
   terminalMetadata,
@@ -31,10 +29,6 @@ import {
 import { deriveProfileName } from "@/features/profile/model.ts";
 import { document, section, text } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
-
-export type { ConfigurePlaneStatusOptions } from "@/lib/configure-wizard-status.ts";
-export type { ConfigureWizardOptions, ConfigureWizardScope } from "@/lib/configure-wizard-types.ts";
-export { formatConfigurePlaneStatusLine } from "@/lib/configure-wizard-status.ts";
 
 const DEFAULT_SCOPE: ConfigureWizardScope = "both";
 const AUTO_PROFILE_NAME = "auto";
@@ -68,7 +62,7 @@ function writeOutro(sink: OutputSink, configuredPlanes: ConfigureAuthPlane[]): v
   const nextCommands: string[] = [];
 
   if (configuredPlanes.includes("management")) {
-    nextCommands.push(terminalAccent("altertable context"));
+    nextCommands.push(terminalAccent("altertable profile show"));
   }
   if (configuredPlanes.includes("lakehouse")) {
     nextCommands.push(terminalAccent('altertable query "SELECT 1"'));
@@ -78,31 +72,11 @@ function writeOutro(sink: OutputSink, configuredPlanes: ConfigureAuthPlane[]): v
   sink.writeMetadata(["", ...summaryLines, "", nextLine, ""]);
 }
 
-async function resolveVerifyPreference(
-  prompts: NonNullable<ConfigureWizardOptions["prompts"]>,
-  options: ConfigureWizardOptions,
-): Promise<boolean> {
-  if (options.noVerify) {
-    return false;
-  }
-  if (options.verify) {
-    return true;
-  }
-  return await prompts.readConfirm("Verify credentials?", true);
-}
-
-function throwVerifyFailure(result: ConfigureVerifyResult): void {
-  const lines = result.errors.map(
-    (error) => `${error.plane}: ${error.message}. ${formatConfigureVerifyRemediation(error.plane)}`,
-  );
-  throw new CliError(lines.join("\n"), { exitCode: EXIT_CONFIG });
-}
-
 export function configureNonTtyErrorMessage(): string {
   return (
     "Interactive configure requires a TTY. Examples:\n" +
-    "  altertable configure --api-key atm_xxx --env production\n" +
-    "  printf '%s' \"$PASS\" | altertable configure --user alice --password-stdin"
+    "  altertable profile --configure --api-key atm_xxx --env production\n" +
+    "  printf '%s' \"$PASS\" | altertable profile --configure --user alice --password-stdin"
   );
 }
 
@@ -155,14 +129,6 @@ async function runConfigureWizardInCurrentProfile(
       configuredPlanes.push("lakehouse");
     }
 
-    const shouldVerify = await resolveVerifyPreference(prompts, options);
-    if (shouldVerify) {
-      const verifyResult = await configureVerify(configuredPlanes);
-      if (verifyResult.errors.length > 0) {
-        throwVerifyFailure(verifyResult);
-      }
-    }
-
     writeOutro(sink, configuredPlanes);
   } catch (error) {
     if (error instanceof ConfigurePromptCancelled) {
@@ -180,46 +146,6 @@ export async function runConfigureWizard(options: ConfigureWizardOptions = {}): 
   });
 }
 
-export type ConfigureFlagVerifyOptions = {
-  verify?: boolean;
-  configuredPlanes: ConfigureAuthPlane[];
-  sink: OutputSink;
-};
-
-export async function configureRunVerifyIfRequested(
-  options: ConfigureFlagVerifyOptions,
-): Promise<ConfigureVerifyResult | undefined> {
-  if (!options.verify) {
-    return undefined;
-  }
-
-  const result = await configureVerify(options.configuredPlanes);
-  if (options.sink.json) {
-    options.sink.writeJson(result);
-  }
-
-  if (result.errors.length > 0) {
-    throwVerifyFailure(result);
-  }
-
-  return result;
-}
-
-export function configuredPlanesFromOptions(options: ConfigureOptions): ConfigureAuthPlane[] {
-  const planes: ConfigureAuthPlane[] = [];
-  const hasLakehouse = Boolean(
-    options.user || options.password || options.basicToken || options.passwordStdin,
-  );
-  const hasApiKey = Boolean(options.apiKey || options.apiKeyStdin);
-  if (hasApiKey) {
-    planes.push("management");
-  }
-  if (hasLakehouse) {
-    planes.push("lakehouse");
-  }
-  return planes;
-}
-
 export function hasConfigureCredentialFlags(options: ConfigureOptions): boolean {
   return (
     Boolean(options.user) ||
@@ -232,4 +158,104 @@ export function hasConfigureCredentialFlags(options: ConfigureOptions): boolean 
     Boolean(options.dataPlaneUrl) ||
     Boolean(options.controlPlaneUrl)
   );
+}
+
+export type ConfigureCommandArgs = {
+  user?: string;
+  password?: string;
+  "basic-token"?: string;
+  "api-key"?: string;
+  env?: string;
+  "password-stdin"?: boolean;
+  "api-key-stdin"?: boolean;
+  "data-plane-url"?: string;
+  "control-plane-url"?: string;
+  "allow-insecure-http"?: boolean;
+  scope?: string;
+};
+
+/** Credential/endpoint flags shared by `profile --configure`; spread into the profile command args. */
+export const configureArgs = {
+  user: { type: "string", description: "Lakehouse username (global)" },
+  password: { type: "string", description: "Lakehouse password (global)" },
+  "basic-token": { type: "string", description: "Pre-encoded HTTP Basic token" },
+  "api-key": { type: "string", description: "Management API key for the --env environment" },
+  env: {
+    type: "string",
+    description: "Target environment (management API keys are per-environment)",
+  },
+  "password-stdin": { type: "boolean", description: "Read the lakehouse password from stdin" },
+  "api-key-stdin": { type: "boolean", description: "Read the management API key from stdin" },
+  "data-plane-url": {
+    type: "string",
+    description:
+      "Data-plane base URL; can be set alone or with a credential (default: https://api.altertable.ai)",
+  },
+  "control-plane-url": {
+    type: "string",
+    description:
+      "Control-plane server root; the CLI appends /rest/v1 (default: https://app.altertable.ai)",
+  },
+  "allow-insecure-http": {
+    type: "boolean",
+    description: "Allow http:// URLs other than localhost (not recommended)",
+  },
+  scope: {
+    type: "enum",
+    options: ["management", "lakehouse"],
+    description: "Limit the interactive wizard to one plane (default: both)",
+  },
+} satisfies ArgsDef;
+
+function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
+  return {
+    user: args.user,
+    password: args.password,
+    basicToken: args["basic-token"],
+    apiKey: args["api-key"],
+    env: args.env,
+    passwordStdin: args["password-stdin"],
+    apiKeyStdin: args["api-key-stdin"],
+    dataPlaneUrl: args["data-plane-url"],
+    controlPlaneUrl: args["control-plane-url"],
+    allowInsecureHttp: args["allow-insecure-http"],
+  };
+}
+
+function resolveWizardScope(scope: string | undefined): ConfigureWizardScope {
+  if (scope === "management" || scope === "lakehouse" || scope === "both") {
+    return scope;
+  }
+  if (!scope) {
+    return "both";
+  }
+  throw new CliError(`Invalid --scope "${scope}". Use management or lakehouse.`);
+}
+
+/**
+ * Apply `profile --configure`: non-interactive when credential/endpoint flags are
+ * present, otherwise the interactive wizard (optionally scoped to one plane).
+ * Verification is not part of configure; use `altertable profile status`.
+ */
+export async function runProfileConfigure(
+  args: ConfigureCommandArgs,
+  sink: OutputSink,
+): Promise<void> {
+  const options = buildConfigureOptions(args);
+
+  if (hasConfigureCredentialFlags(options)) {
+    if (args.scope) {
+      throw new CliError(
+        "--scope only applies to the interactive wizard, not flag-based configure.",
+      );
+    }
+    await configureRunSet(options, sink);
+    return;
+  }
+
+  await runConfigureWizard({
+    scope: resolveWizardScope(args.scope),
+    allowInsecureHttp: options.allowInsecureHttp,
+    sink,
+  });
 }

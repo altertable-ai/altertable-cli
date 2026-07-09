@@ -7,17 +7,17 @@ import {
   activeContextToJson,
   buildActiveContext,
   withAuthenticatedIdentity,
-} from "@/features/context/model.ts";
+} from "@/features/profile/model.ts";
 import {
   buildActiveContextDetailsView,
   buildActiveContextSummaryView,
-} from "@/features/context/views.ts";
+} from "@/features/profile/views.ts";
 import {
   formatActiveContextDetails,
   formatActiveContextSummary,
   tryFormatActiveContextSummary,
-} from "@/features/context/render.ts";
-import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+} from "@/features/profile/render.ts";
+import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 let testHome = "";
@@ -57,7 +57,7 @@ describe("active context formatters", () => {
       expect(summary).toContain("PROFILE");
       expect(summary).toMatch(/\n  PROFILE/);
       expect(summary).toContain("not set");
-      expect(summary).toContain("altertable configure");
+      expect(summary).toContain("altertable profile --configure");
     });
   });
 

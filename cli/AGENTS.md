@@ -90,27 +90,27 @@ Shell tests from repo root:
 | `tests/*.test.ts`                     | Bun unit tests under `cli/tests/`                          |
 | `../tests/*_test.sh`                  | Shell tests at repo root                                   |
 
-**Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/configure.ts`, `lib/query-format.ts`, `lib/api-http.ts`.
+**Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `lib/api-http.ts`.
 
-| Module                                | Role                                                         |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `commands/lakehouse.ts`               | Data-plane commands (query, upload, append, …)               |
-| `commands/api.ts`                     | Management HTTP invoker (`api GET /path`), spec, routes      |
-| `lib/api-http.ts`                     | HTTP invoker logic for `api`                                 |
-| `lib/api-body.ts`                     | `--body`, `@file`, `-f key=value` body builders              |
-| `lib/configure.ts`                    | Credential store (`configureRunSet`, show, clear)            |
-| `lib/configure-credential-status.ts`  | Credential presence (stored + env) for wizard intro and show |
-| `lib/configure-wizard.ts`             | Interactive configure wizard                                 |
-| `lib/configure-prompts.ts`            | TTY prompt primitives for configure wizard                   |
-| `lib/configure-verify.ts`             | Post-configure credential verification                       |
-| `commands/configure.ts`, `profile.ts` | Credential/config command wiring                             |
-| `lib/lakehouse-client.ts`             | Lakehouse HTTP + query rendering                             |
-| `lib/http.ts`                         | Shared HTTP transport, logging, mock file support            |
-| `lib/management-transport.ts`         | Management API HTTP transport                                |
-| `lib/management-formatters.ts`        | Human formatters for identity and `catalogs`                 |
-| `lib/catalog-rows.ts`                 | Catalog list row builder for `catalogs list`                 |
-| `lib/errors.ts`                       | Exit codes, `CliError`, JSON error envelope                  |
-| `lib/completion-spec.ts`              | Walks Citty tree for shell completion                        |
+| Module                                 | Role                                                                             |
+| -------------------------------------- | -------------------------------------------------------------------------------- |
+| `commands/lakehouse.ts`                | Data-plane commands (query, upload, append, …)                                   |
+| `commands/api.ts`                      | Management HTTP invoker (`api GET /path`), spec, routes                          |
+| `lib/api-http.ts`                      | HTTP invoker logic for `api`                                                     |
+| `lib/api-body.ts`                      | `--body`, `@file`, `-f key=value` body builders                                  |
+| `lib/profile-configure-core.ts`        | Credential store (`configureRunSet`, show, clear)                                |
+| `lib/profile-configure.ts`             | `profile --configure` dispatch (flags vs wizard, `--scope`) + interactive wizard |
+| `lib/profile-configure-interactive.ts` | Wizard prompts + credential collection                                           |
+| `lib/profile-status.ts`                | Post-configure credential verification (`configureVerify`)                       |
+| `features/profile/model.ts`            | Profile store/inspect + credential presence (stored + env)                       |
+| `commands/profile.ts`                  | Profile subcommands, `profile --configure`, `profile show`                       |
+| `lib/lakehouse-client.ts`              | Lakehouse HTTP + query rendering                                                 |
+| `lib/http.ts`                          | Shared HTTP transport, logging, mock file support                                |
+| `lib/management-transport.ts`          | Management API HTTP transport                                                    |
+| `lib/management-formatters.ts`         | Human formatters for identity and `catalogs`                                     |
+| `lib/catalog-rows.ts`                  | Catalog list row builder for `catalogs list`                                     |
+| `lib/errors.ts`                        | Exit codes, `CliError`, JSON error envelope                                      |
+| `lib/completion-spec.ts`               | Walks Citty tree for shell completion                                            |
 
 ## Command tree
 
@@ -118,7 +118,7 @@ Source of truth: `src/cli.ts` + `commands/api.ts`. Verify with `bin/altertable -
 
 ```
 altertable
-├── configure (management, lakehouse), profile, context, catalogs
+├── profile (--configure [--scope management|lakehouse], show, list, use, …), catalogs
 ├── query (run, show, cancel)
 ├── append (run, task), upload
 ├── api
@@ -142,7 +142,7 @@ altertable
 6. Add unit test in `cli/tests/`; shell test in `tests/` if integration-worthy
 7. Flags on command `args` are picked up by `completion-spec.ts` — run completion tests after structural changes
 
-Minimal pattern (from `context.ts`):
+Minimal pattern (management HTTP command):
 
 ```typescript
 import { defineAltertableCommand } from "@/lib/command-context.ts";
