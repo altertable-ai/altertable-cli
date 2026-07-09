@@ -103,7 +103,7 @@ describe("profile storage", () => {
     expect(deriveProfileName("acme", "prod/eu")).toBe("acme_prod-eu");
   });
 
-  test("configure writes credentials to an explicit profile", async () => {
+  test("profile --configure writes credentials to an explicit profile", async () => {
     await configureRunSet({ profile: "acme_production", apiKey: "atm_prod", env: "Production" });
 
     expect(profileExists("acme_production")).toBe(true);
@@ -165,7 +165,7 @@ describe("profile storage", () => {
     expect(profile.timestamps.lakehouse_expires_at).toBe(new Date(lakehouseExpiry).toISOString());
   });
 
-  test("configure creates implicit profile directories", async () => {
+  test("profile --configure creates implicit profile directories", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
