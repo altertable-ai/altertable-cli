@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { jsonMock, whoamiMock } from "./mock-http.ts";
 
-const whoamiOk = [{ urlPattern: "/whoami", method: "GET", body: JSON.stringify({ principal: { type: "User", name: "Jane", email: "j@x.io" }, organization: { name: "Acme", slug: "acme" } }) }];
 const statusMocks = {
-  auth: [{ urlPattern: "/whoami", method: "GET", status: 401, body: JSON.stringify({ error: "invalid key" }) }],
-  forbidden: [{ urlPattern: "/whoami", method: "GET", status: 403, body: JSON.stringify({ error: "forbidden" }) }],
-  rate: [{ urlPattern: "/whoami", method: "GET", status: 429, body: JSON.stringify({ error: "rate limited" }) }],
-  server: [{ urlPattern: "/whoami", method: "GET", status: 500, body: JSON.stringify({ error: "internal server error" }) }],
-  missing: [{ urlPattern: "/environments/production/connections/missing", method: "GET", status: 404, body: JSON.stringify({ error: "not found" }) }],
-  conflict: [{ urlPattern: "/service_accounts", method: "POST", status: 409, body: JSON.stringify({ error: "conflict" }) }],
-  validation: [{ urlPattern: "/service_accounts", method: "POST", status: 422, body: JSON.stringify({ error: "validation failed" }) }],
+  auth: [jsonMock("GET", "/whoami", { error: "invalid key" }, 401)],
+  forbidden: [jsonMock("GET", "/whoami", { error: "forbidden" }, 403)],
+  rate: [jsonMock("GET", "/whoami", { error: "rate limited" }, 429)],
+  server: [jsonMock("GET", "/whoami", { error: "internal server error" }, 500)],
+  missing: [jsonMock("GET", "/environments/production/connections/missing", { error: "not found" }, 404)],
+  conflict: [jsonMock("POST", "/service_accounts", { error: "conflict" }, 409)],
+  validation: [jsonMock("POST", "/service_accounts", { error: "validation failed" }, 422)],
 };
 
 describe("scriptable exit codes and JSON errors", () => {
@@ -27,7 +27,7 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test("--json context exits 0 and prints structured success JSON", async () => {
-    await workspace.setupMockHttp(whoamiOk);
+    await workspace.setupMockHttp(whoamiMock());
     const result = await workspace.runCommand("altertable --json context");
 
     expect(result.exitCode).toBe(0);

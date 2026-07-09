@@ -1,23 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-
-const catalogsMock = [
-  {
-    urlPattern: "/environments/production/databases",
-    method: "POST",
-    body: JSON.stringify({ database: { name: "My Cat", slug: "my-cat", engine: "altertable", catalog: "my_cat" } }),
-  },
-  {
-    urlPattern: "/environments/production/databases",
-    method: "GET",
-    body: JSON.stringify({ databases: [{ name: "My Cat", slug: "my-cat", engine: "altertable", catalog: "my_cat" }] }),
-  },
-  {
-    urlPattern: "/environments/production/connections",
-    method: "GET",
-    body: JSON.stringify({ connections: [{ name: "Prod PG", slug: "prod-pg", engine: "postgres", catalog: "prod_pg" }] }),
-  },
-];
+import { catalogsMock, jsonMock } from "./mock-http.ts";
 
 describe("altertable catalogs", () => {
   let workspace: TestWorkspace;
@@ -42,7 +25,7 @@ describe("altertable catalogs", () => {
 
   test("create posts to databases with the expected payload and confirmation", async () => {
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp(catalogsMock);
+    await workspace.setupMockHttp(catalogsMock());
 
     const result = await workspace.runCommand('altertable catalogs create --engine altertable --name "My Cat"');
 
@@ -65,7 +48,7 @@ describe("altertable catalogs", () => {
 
   test("list calls databases then connections and renders databases first", async () => {
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp(catalogsMock);
+    await workspace.setupMockHttp(catalogsMock());
 
     const result = await workspace.runCommand("altertable catalogs list");
     const urls = await workspace.httpLogValues("URL");
@@ -77,7 +60,7 @@ describe("altertable catalogs", () => {
   });
 
   test("--agent returns a structured catalogs envelope", async () => {
-    await workspace.setupMockHttp(catalogsMock);
+    await workspace.setupMockHttp(catalogsMock());
     const result = await workspace.runCommand("altertable --agent catalogs list");
 
     expect(result.exitCode).toBe(0);
@@ -85,18 +68,7 @@ describe("altertable catalogs", () => {
   });
 
   test("databases always render as altertable engine while connections preserve theirs", async () => {
-    await workspace.setupMockHttp([
-      {
-        urlPattern: "/environments/production/databases",
-        method: "GET",
-        body: JSON.stringify({ databases: [{ name: "My Cat", slug: "my-cat", engine: "postgres", catalog: "my_cat" }] }),
-      },
-      {
-        urlPattern: "/environments/production/connections",
-        method: "GET",
-        body: JSON.stringify({ connections: [{ name: "Prod PG", slug: "prod-pg", engine: "postgres", catalog: "prod_pg" }] }),
-      },
-    ]);
+    await workspace.setupMockHttp(catalogsMock({ databaseEngine: "postgres", includeCreate: false }));
 
     const result = await workspace.runCommand("altertable catalogs list");
 
@@ -107,7 +79,7 @@ describe("altertable catalogs", () => {
 
   test("list hard-fails when a management request fails", async () => {
     await workspace.setupMockHttp([
-      { urlPattern: "/environments/production/databases", method: "GET", status: 404, body: JSON.stringify({ error: { code: "not_found" } }) },
+      jsonMock("GET", "/environments/production/databases", { error: { code: "not_found" } }, 404),
     ]);
 
     const result = await workspace.runCommand("altertable catalogs list");

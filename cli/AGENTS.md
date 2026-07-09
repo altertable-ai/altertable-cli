@@ -34,8 +34,8 @@ bun run knip
 Top-level black-box tests from repo root:
 
 ```bash
-bash -c 'mapfile -t tests < <(find "$PWD/tests" -maxdepth 1 -name "*.test.ts" | sort); bun test "${tests[@]}"'
-bun test tests/integration.e2e.ts
+bun test "$PWD"/tests/*.test.ts
+bun test "$PWD"/tests/integration.e2e.ts
 ```
 
 ## Architecture

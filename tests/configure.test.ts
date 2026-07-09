@@ -1,18 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { fileExists, createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { jsonMock, whoamiMock } from "./mock-http.ts";
 
-const whoamiMock = [
-  {
-    urlPattern: "/whoami",
-    method: "GET",
-    body: JSON.stringify({
-      principal: { type: "User", name: "Jane", email: "j@x.io" },
-      organization: { name: "Acme", slug: "acme" },
-    }),
-  },
-];
-
-const queryMock = [{ urlPattern: "/query", method: "POST", body: "{}" }];
+const queryMock = [jsonMock("POST", "/query", {})];
 
 describe("altertable configure", () => {
   let workspace: TestWorkspace;
@@ -100,7 +90,7 @@ describe("altertable configure", () => {
   test("--verify checks management credentials after save", async () => {
     await workspace.resetConfig();
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp(whoamiMock);
+    await workspace.setupMockHttp(whoamiMock());
 
     const result = await workspace.runCommand(
       "altertable configure --api-key atm_x --env prod --control-plane-url http://localhost:13000 --verify",
@@ -190,7 +180,7 @@ describe("altertable configure", () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable configure --api-key atm_x --env prod --control-plane-url http://localhost:13000")).exitCode).toBe(0);
     await workspace.setupHttpLog();
-    await workspace.setupMockHttp(whoamiMock);
+    await workspace.setupMockHttp(whoamiMock());
     expect((await workspace.runCommand("altertable context")).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:13000/rest/v1/whoami");
 

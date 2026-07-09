@@ -68,8 +68,7 @@ run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
 
 cd "${REPO_ROOT}"
-mapfile -t TOP_LEVEL_JS_TESTS < <(find "${REPO_ROOT}/tests" -maxdepth 1 -name '*.test.ts' | sort)
-run_step "top-level JS tests" bun test "${TOP_LEVEL_JS_TESTS[@]}"
+run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server

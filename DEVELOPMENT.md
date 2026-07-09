@@ -144,7 +144,7 @@ See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented
 Top-level black-box tests (configure, management, context, catalogs, lakehouse routing, scripting, profiles):
 
 ```bash
-bash -c 'mapfile -t tests < <(find "$PWD/tests" -maxdepth 1 -name "*.test.ts" | sort); bun test "${tests[@]}"'
+bun test "$PWD"/tests/*.test.ts
 ```
 
 ### Shell completion
@@ -157,7 +157,7 @@ Integration tests against the mock server:
 docker run -d --rm --name at-mock -p 15000:15000 \
   -e ALTERTABLE_MOCK_USERS=testuser:testpass \
   ghcr.io/altertable-ai/altertable-mock:latest
-bun test tests/integration.e2e.ts
+bun test "$PWD"/tests/integration.e2e.ts
 docker stop at-mock
 ```
 

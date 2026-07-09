@@ -1,27 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-
-const userPrincipalMock = [
-  {
-    urlPattern: "/whoami",
-    method: "GET",
-    body: JSON.stringify({
-      principal: { type: "User", name: "Jane Doe", email: "jane@x.io" },
-      organization: { name: "Acme", slug: "acme" },
-    }),
-  },
-];
-
-const serviceAccountPrincipalMock = [
-  {
-    urlPattern: "/whoami",
-    method: "GET",
-    body: JSON.stringify({
-      principal: { type: "ServiceAccount", name: "ci-bot", slug: "ci-bot" },
-      organization: { name: "Acme", slug: "acme" },
-    }),
-  },
-];
+import { whoamiMock } from "./mock-http.ts";
 
 describe("altertable context", () => {
   let workspace: TestWorkspace;
@@ -39,7 +18,7 @@ describe("altertable context", () => {
   });
 
   test("formats a User principal", async () => {
-    await workspace.setupMockHttp(userPrincipalMock);
+    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Jane Doe", email: "jane@x.io" }));
     const result = await workspace.runCommand("altertable context");
 
     expect(result.exitCode).toBe(0);
@@ -52,7 +31,7 @@ describe("altertable context", () => {
   });
 
   test("--no-color emits plain text without ANSI styling", async () => {
-    await workspace.setupMockHttp(userPrincipalMock);
+    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Jane Doe", email: "jane@x.io" }));
     const result = await workspace.runCommand("altertable --no-color context");
 
     expect(result.exitCode).toBe(0);
@@ -61,7 +40,7 @@ describe("altertable context", () => {
   });
 
   test("--agent returns structured session JSON", async () => {
-    await workspace.setupMockHttp(userPrincipalMock);
+    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Jane Doe", email: "jane@x.io" }));
     const result = await workspace.runCommand("altertable --agent context");
 
     expect(result.exitCode).toBe(0);
@@ -72,7 +51,7 @@ describe("altertable context", () => {
   });
 
   test("formats a ServiceAccount principal", async () => {
-    await workspace.setupMockHttp(serviceAccountPrincipalMock);
+    await workspace.setupMockHttp(whoamiMock({ type: "ServiceAccount", name: "ci-bot", slug: "ci-bot" }));
     const result = await workspace.runCommand("altertable context");
 
     expect(result.exitCode).toBe(0);
