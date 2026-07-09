@@ -22,8 +22,9 @@ developer laptops, CI jobs, and agent workflows.
 
 #### Installation, updates, and automation
 
-- npm package `@altertable/cli` with an `altertable` executable backed by a Bun bundle.
+- Primary installer at `install.altertable.ai` for the default CLI install path.
 - Prebuilt release binaries for macOS Apple Silicon, macOS Intel, Linux x64, and Linux ARM64, plus `checksums.txt`.
+- npm package `@altertable/cli` with an `altertable` executable backed by a Bun bundle.
 - `altertable update` with npm and GitHub release discovery, automatic update notices, cache controls, and origin-aware install flows for package-manager and native binary installs.
 - Global flags for automation and diagnostics: `--json`, `--agent`, `--debug`, `--no-color`, `--profile`, `--connect-timeout`, and `--read-timeout`.
 - Shell completion generation and installers for bash, zsh, and fish.
