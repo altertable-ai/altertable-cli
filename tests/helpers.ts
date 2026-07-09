@@ -98,7 +98,12 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
         .map((line) => line.slice(prefix.length));
     },
     async httpLogValue(key) {
-      const values = await this.httpLogValues(key);
+      const prefix = `${key}=`;
+      const log = await Bun.file(httpLogFile).text();
+      const values = log
+        .split("\n")
+        .filter((line) => line.startsWith(prefix))
+        .map((line) => line.slice(prefix.length));
       return values.at(-1);
     },
     async fileMode(path) {

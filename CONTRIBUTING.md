@@ -54,7 +54,7 @@ Avoid adding compatibility wrappers that both build and execute requests. If a s
 ## Tests
 
 - Unit tests: `cd cli && bun test`
-- Top-level black-box tests: `bun test tests/*.test.ts`
+- Top-level black-box tests: `bash -c 'mapfile -t tests < <(find "$PWD/tests" -maxdepth 1 -name "*.test.ts" | sort); bun test "${tests[@]}"'`
 - Integration tests (requires mock server): `bun test tests/integration.e2e.ts`
 
 ## Pull Requests

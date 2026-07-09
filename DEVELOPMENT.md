@@ -144,7 +144,7 @@ See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented
 Top-level black-box tests (configure, management, context, catalogs, lakehouse routing, scripting, profiles):
 
 ```bash
-bun test tests/*.test.ts
+bash -c 'mapfile -t tests < <(find "$PWD/tests" -maxdepth 1 -name "*.test.ts" | sort); bun test "${tests[@]}"'
 ```
 
 ### Shell completion

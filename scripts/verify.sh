@@ -47,6 +47,7 @@ cd "${REPO_ROOT}/cli"
 
 run_step "install deps" bun install --frozen-lockfile
 run_step "typecheck" bun run typecheck
+run_step "top-level test typecheck" ./node_modules/.bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
 run_step "generate (openapi)" bun run generate
