@@ -2,14 +2,9 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { ConfigurePrompts } from "@/lib/configure-prompts.ts";
-import {
-  configuredPlanesFromOptions,
-  formatConfigurePlaneStatusLine,
-  hasConfigureCredentialFlags,
-  runConfigureWizard,
-} from "@/lib/configure-wizard.ts";
-import { configureRunSet, withConfigureProfileContext } from "@/lib/configure.ts";
+import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
+import { hasConfigureCredentialFlags, runConfigureWizard } from "@/lib/profile-configure.ts";
+import { configureRunSet, withConfigureProfileContext } from "@/lib/profile-configure-core.ts";
 import { configGet } from "@/lib/config.ts";
 import { secretGet } from "@/lib/secrets.ts";
 import { setCliContext } from "@/context.ts";
@@ -55,7 +50,7 @@ function createMockPrompts(responses: {
 }
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-configure-wizard-test-"));
+  testHome = mkdtempSync(join(tmpdir(), "altertable-profile-configure-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
   setCliContext({ debug: false, json: false, agent: false });
@@ -72,40 +67,6 @@ describe("configure wizard helpers", () => {
     expect(hasConfigureCredentialFlags({ user: "u" })).toBe(true);
     expect(hasConfigureCredentialFlags({ apiKeyStdin: true })).toBe(true);
     expect(hasConfigureCredentialFlags({})).toBe(false);
-  });
-
-  test("configuredPlanesFromOptions maps flags to planes", () => {
-    expect(configuredPlanesFromOptions({ apiKey: "k", env: "prod" })).toEqual(["management"]);
-    expect(configuredPlanesFromOptions({ user: "u", password: "p" })).toEqual(["lakehouse"]);
-  });
-
-  test("formatConfigurePlaneStatusLine keeps short details inline", () => {
-    const output = formatConfigurePlaneStatusLine("management", "production", {
-      terminalWidth: 80,
-    });
-
-    expect(output).toContain("management");
-    expect(output).toContain("production");
-    expect(output.split("\n")).toHaveLength(1);
-  });
-
-  test("formatConfigurePlaneStatusLine stacks long details on narrow terminals", () => {
-    const detail = "u_francois_francois_test_7b61c0";
-    const output = formatConfigurePlaneStatusLine("lakehouse", detail, { terminalWidth: 40 });
-
-    const lines = output.split("\n");
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toContain("lakehouse");
-    expect(lines[0]).not.toContain(detail);
-    expect(lines[1]).toContain(detail);
-  });
-
-  test("formatConfigurePlaneStatusLine truncates very long stacked details", () => {
-    const detail = "u_francois_francois_test_7b61c0_with_extra_suffix";
-    const output = formatConfigurePlaneStatusLine("lakehouse", detail, { terminalWidth: 20 });
-
-    expect(output).toContain("…");
-    expect(output.split("\n")).toHaveLength(2);
   });
 });
 
@@ -125,7 +86,6 @@ describe("runConfigureWizard", () => {
       await runWithCliRuntime(runtime, async () => {
         await runConfigureWizard({
           scope: "management",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });
@@ -154,7 +114,6 @@ describe("runConfigureWizard", () => {
       await runWithCliRuntime(runtime, async () => {
         await runConfigureWizard({
           scope: "lakehouse",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });
@@ -190,7 +149,6 @@ describe("runConfigureWizard", () => {
         await runConfigureWizard({
           scope: "lakehouse",
           profile: "target",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });
@@ -222,7 +180,6 @@ describe("runConfigureWizard", () => {
         await runConfigureWizard({
           scope: "both",
           profile: "auto",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });
@@ -261,7 +218,6 @@ describe("runConfigureWizard", () => {
       await runWithCliRuntime(runtime, async () => {
         await runConfigureWizard({
           scope: "lakehouse",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });
@@ -289,7 +245,6 @@ describe("runConfigureWizard", () => {
       await runWithCliRuntime(runtime, async () => {
         await runConfigureWizard({
           scope: "management",
-          noVerify: true,
           prompts,
           sink: runtime.output,
         });

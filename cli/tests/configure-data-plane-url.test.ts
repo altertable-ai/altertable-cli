@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getBootstrapCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
-import { configureClearAll, configureRunSet } from "@/lib/configure.ts";
+import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 import { secretGet } from "@/lib/secrets.ts";
 
@@ -30,7 +30,7 @@ afterEach(async () => {
   delete process.env.ALTERTABLE_SECRET_BACKEND;
 });
 
-describe("configure --data-plane-url alone", () => {
+describe("profile --configure --data-plane-url alone", () => {
   test("sets api_base and nothing else", async () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "staging" });

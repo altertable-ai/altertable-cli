@@ -1,31 +1,44 @@
-import type { ConfigureShowData } from "@/features/configure/model.ts";
 import {
+  type ConfigureAuthPlane,
   type ConfigureVerifyResult,
   formatConfigureVerifyRemediation,
-} from "@/lib/configure-verify.ts";
-import type { ConfigureSelectOption } from "@/lib/configure-prompts.ts";
+} from "@/lib/profile-status.ts";
+import type { ConfigureSelectOption } from "@/lib/profile-configure-interactive.ts";
 import {
   document,
   rows,
   section,
   table,
   text,
+  type DisplayBlock,
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
-import { formatTerminalUrls, terminalAccent } from "@/ui/terminal/styles.ts";
-import type { ProfileInspect, ProfileSummary } from "@/features/profile/model.ts";
+import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
+import {
+  formatTerminalUrls,
+  terminalAccent,
+  terminalDescription,
+  terminalHighlightCommands,
+  terminalNotConfiguredStatus,
+  terminalStrong,
+} from "@/ui/terminal/styles.ts";
+import type { WhoamiResponse } from "@/features/management/model.ts";
+import type {
+  ActiveContext,
+  ConfigureCredentialStatus,
+  ConfigureLakehouseCredential,
+  ConfigureManagementCredential,
+  ConfigureShowData,
+  ConfigureShowOverrides,
+  ProfileInspect,
+  ProfileSummary,
+} from "@/features/profile/model.ts";
 import type { ShellExportView } from "@/ui/shell/model.ts";
 
 const ACTIVE_PROFILE_MARK = "✓";
 const INACTIVE_PROFILE_MARK = " ";
 const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
-
-export type ProfileStatusResult = {
-  profile: ProfileInspect;
-  configuration: ConfigureShowData;
-  verification?: ConfigureVerifyResult;
-};
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
   return [
@@ -34,7 +47,6 @@ function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
     { label: "Principal", value: formatProfilePrincipal(profile) },
     { label: "Organization", value: profile.organization.slug ?? "not set" },
     { label: "Environment", value: profile.environment ?? "not set" },
-    { label: "Description", value: profile.description ?? "not set" },
     { label: "Management auth", value: profile.auth.management },
     { label: "Lakehouse auth", value: profile.auth.lakehouse },
     { label: "OAuth expires", value: profile.timestamps.oauth_expires_at ?? "not set" },
@@ -72,91 +84,6 @@ function formatProfilePrincipal(profile: ProfileInspect): string {
       : profile.principal.slug;
   }
   return profile.principal.name ?? "not set";
-}
-
-function credentialDetail(parts: readonly string[]): string {
-  return parts.filter(Boolean).join(", ");
-}
-
-function formatManagementCredentialDetail(
-  credential: ConfigureShowData["credentials"]["management"],
-): string {
-  if (!credential.configured) {
-    return "not configured";
-  }
-  if (credential.mechanism === "management_oauth") {
-    return credentialDetail([
-      "management_oauth",
-      credential.source ? `source: ${credential.source}` : "",
-      credential.environment ? `env: ${credential.environment}` : "",
-      credential.expires ? `expires: ${credential.expires}` : "",
-    ]);
-  }
-  return credentialDetail([
-    credential.mechanism,
-    credential.source ? `source: ${credential.source}` : "",
-    credential.environment ? `env: ${credential.environment}` : "",
-  ]);
-}
-
-function formatLakehouseCredentialDetail(
-  credential: ConfigureShowData["credentials"]["lakehouse"],
-): string {
-  if (!credential.configured) {
-    return "not configured";
-  }
-  if (credential.mechanism === "lakehouse_basic_token") {
-    return credentialDetail([
-      "lakehouse_basic_token",
-      credential.source ? `source: ${credential.source}` : "",
-      credential.expires ? `expires: ${credential.expires}` : "",
-    ]);
-  }
-  return credentialDetail([
-    credential.mechanism,
-    credential.source ? `source: ${credential.source}` : "",
-    credential.user ? `user: ${credential.user}` : "",
-  ]);
-}
-
-function formatVerificationStatus(result: ConfigureVerifyResult | undefined): string {
-  if (!result) {
-    return "not run";
-  }
-  if (result.configured.length === 0) {
-    return "nothing configured";
-  }
-  if (result.errors.length === 0) {
-    return "verified";
-  }
-  const failed = result.errors.map((error) => error.plane).join(", ");
-  return `failed (${failed})`;
-}
-
-export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
-  const statusRows: DisplayRow[] = [
-    { label: "Verification", value: formatVerificationStatus(result.verification) },
-    {
-      label: "Management",
-      value: formatManagementCredentialDetail(result.configuration.credentials.management),
-    },
-    {
-      label: "Lakehouse",
-      value: formatLakehouseCredentialDetail(result.configuration.credentials.lakehouse),
-    },
-    { label: "Control plane", value: result.configuration.control_plane, linkifyUrls: true },
-    { label: "Data plane", value: result.configuration.data_plane, linkifyUrls: true },
-  ];
-  const errors =
-    result.verification?.errors.map(
-      (error) =>
-        `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
-    ) ?? [];
-
-  return document(
-    section(rows(profileInspectRows(result.profile))),
-    section(rows(statusRows), ...(errors.length > 0 ? [text(errors)] : [])),
-  );
 }
 
 export function buildProfileListView(profiles: readonly ProfileSummary[]): DisplayDocument {
@@ -244,4 +171,522 @@ export function buildProfileDirenvView(profileName: string): ShellExportView {
     ...buildProfileShellExportView(profileName),
     comments: ["Generated by: altertable profile direnv"],
   };
+}
+
+export type ProfileShowResult = {
+  configuration: ConfigureShowData;
+  identity?: WhoamiResponse;
+};
+
+function whoamiPrincipalValue(
+  identity: WhoamiResponse | undefined,
+  configuration: ConfigureShowData,
+): string {
+  const principal = identity?.principal;
+  if (principal?.type === "ServiceAccount") {
+    return `${principal.name ?? ""} (${principal.slug ?? ""})`;
+  }
+  if (principal?.email) {
+    return principal.name ? `${principal.name} <${principal.email}>` : principal.email;
+  }
+  if (principal?.name) {
+    return principal.name;
+  }
+  return lakehouseUserValue(configuration) ?? terminalNotConfiguredStatus();
+}
+
+function whoamiOrganizationValue(
+  identity: WhoamiResponse | undefined,
+  configuration: ConfigureShowData,
+): string {
+  const organization = identity?.organization;
+  if (organization?.name && organization?.slug) {
+    return `${organization.name} (${organization.slug})`;
+  }
+  if (organization?.name || organization?.slug) {
+    return organization.name ?? organization.slug ?? "";
+  }
+  const configured = configuration.organization;
+  if (configured.name && configured.slug) {
+    return `${configured.name} (${configured.slug})`;
+  }
+  return configured.name ?? configured.slug ?? terminalNotConfiguredStatus();
+}
+
+function managementEnvironmentValue(configuration: ConfigureShowData): string | undefined {
+  const credential = configuration.credentials.management;
+  return credential.configured ? credential.environment : undefined;
+}
+
+function lakehouseUserValue(configuration: ConfigureShowData): string | undefined {
+  const credential = configuration.credentials.lakehouse;
+  return credential.configured && credential.mechanism === "lakehouse_username_password"
+    ? credential.user
+    : undefined;
+}
+
+function profileEnvironmentValue(configuration: ConfigureShowData): string {
+  return (
+    managementEnvironmentValue(configuration) ??
+    process.env.ALTERTABLE_ENV ??
+    terminalNotConfiguredStatus()
+  );
+}
+
+function cliConfigRows(configuration: ConfigureShowData): DisplayRow[] {
+  return [
+    { label: "Config dir:", value: configuration.config_dir },
+    { label: "Profile config file:", value: configuration.config_file },
+    { label: "Secret store:", value: configuration.secret_store },
+  ];
+}
+
+function principalLabel(identity: WhoamiResponse | undefined): string {
+  return identity?.principal?.type === "ServiceAccount" ? "Service account:" : "User:";
+}
+
+function profileIdentityRows(result: ProfileShowResult): DisplayRow[] {
+  return [
+    { label: "Profile:", value: terminalStrong(result.configuration.profile) },
+    { label: "Environment:", value: profileEnvironmentValue(result.configuration) },
+    {
+      label: principalLabel(result.identity),
+      value: whoamiPrincipalValue(result.identity, result.configuration),
+    },
+    {
+      label: "Organization:",
+      value: whoamiOrganizationValue(result.identity, result.configuration),
+    },
+  ];
+}
+
+function profileDetailBlocks(configuration: ConfigureShowData): DisplayBlock[] {
+  const blocks: DisplayBlock[] = [
+    rows([
+      { label: "Data plane:", value: configuration.data_plane, linkifyUrls: true },
+      { label: "Control plane:", value: configuration.control_plane, linkifyUrls: true },
+      ...configureAuthenticationRows(configuration, undefined),
+    ]),
+  ];
+  const hints = configureSetupHintLines({
+    hasManagement: configuration.credentials.management.configured,
+    hasLakehouse: configuration.credentials.lakehouse.configured,
+  });
+  if (hints.length > 0) {
+    blocks.push(text(hints));
+  }
+  const overrides = configureOverrideRows(configuration.overrides);
+  if (overrides.length > 0) {
+    blocks.push(rows(overrides));
+  }
+  return blocks;
+}
+
+export type ProfileShowViewOptions = {
+  /** Include the CLI config paths section (config dir, profile config file, secret store). */
+  config?: boolean;
+};
+
+export function buildProfileShowView(
+  result: ProfileShowResult,
+  options: ProfileShowViewOptions = {},
+): DisplayDocument {
+  return document(
+    ...(options.config ? [section(rows(cliConfigRows(result.configuration)))] : []),
+    section(rows(profileIdentityRows(result))),
+    section(...profileDetailBlocks(result.configuration)),
+  );
+}
+
+export type ProfileStatusResult = ProfileShowResult & {
+  verification: ConfigureVerifyResult;
+};
+
+function verificationPlaneLabel(plane: ConfigureAuthPlane): string {
+  return plane === "management" ? "Management:" : "Lakehouse:";
+}
+
+function verificationSummary(result: ConfigureVerifyResult): string {
+  if (result.configured.length === 0) {
+    return "no credentials configured";
+  }
+  if (result.errors.length === 0) {
+    return "verified";
+  }
+  return `failed (${result.errors.map((error) => error.plane).join(", ")})`;
+}
+
+function verificationRows(result: ConfigureVerifyResult): DisplayRow[] {
+  const summary: DisplayRow = { label: "Verification:", value: verificationSummary(result) };
+  const planes: DisplayRow[] = result.configured.map((plane) => ({
+    label: verificationPlaneLabel(plane),
+    value: result.verified[plane] ? "verified" : "failed",
+    level: 1,
+  }));
+  return [summary, ...planes];
+}
+
+export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
+  const errors = result.verification.errors.map(
+    (error) =>
+      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
+  );
+  return document(
+    ...buildProfileShowView(result).sections,
+    section(
+      rows(verificationRows(result.verification)),
+      ...(errors.length > 0 ? [text(errors)] : []),
+    ),
+  );
+}
+
+export function profileShowToJson(result: ProfileShowResult): Record<string, unknown> {
+  const environment =
+    managementEnvironmentValue(result.configuration) ?? process.env.ALTERTABLE_ENV ?? null;
+  return {
+    cli_config: {
+      config_dir: result.configuration.config_dir,
+      config_file: result.configuration.config_file,
+      secret_store: result.configuration.secret_store,
+    },
+    profile: {
+      name: result.configuration.profile,
+      environment,
+      user: result.identity?.principal ?? null,
+      organization: result.identity?.organization ?? null,
+    },
+    details: {
+      data_plane: result.configuration.data_plane,
+      control_plane: result.configuration.control_plane,
+      credentials: result.configuration.credentials,
+      overrides: result.configuration.overrides,
+    },
+  };
+}
+
+export function profileStatusToJson(result: ProfileStatusResult): Record<string, unknown> {
+  return {
+    ...profileShowToJson(result),
+    verification: {
+      configured: result.verification.configured,
+      verified: result.verification.verified,
+      errors: result.verification.errors,
+    },
+  };
+}
+
+export type ConfigureAuthenticationViewOptions = {
+  planes?: ConfigureAuthPlane[];
+};
+
+function timestampMsDisplay(raw: string | undefined): string {
+  if (!raw) {
+    return "";
+  }
+  const ms = Number.parseInt(raw, 10);
+  return Number.isNaN(ms) ? "" : new Date(ms).toLocaleString();
+}
+
+function organizationDisplay(organization: ConfigureShowData["organization"]): string {
+  const organizationSlug = organization.slug;
+  const organizationName = organization.name;
+  return organizationName && organizationSlug
+    ? `${organizationName} (${organizationSlug})`
+    : (organizationName ?? organizationSlug ?? "");
+}
+
+function managementCredentialRows(
+  credential: ConfigureManagementCredential,
+  organization: ConfigureShowData["organization"],
+): DisplayRow[] {
+  if (!credential.configured) {
+    return [];
+  }
+  if (credential.source === "environment") {
+    return [
+      { label: "Authentication:", value: "management API key (environment)" },
+      { label: "source:", value: "ALTERTABLE_API_KEY", level: 1 },
+      { label: "environment:", value: credential.environment ?? "unset", level: 1 },
+    ];
+  }
+  if (credential.mechanism === "management_oauth") {
+    const rows: DisplayRow[] = [
+      { label: "Authentication:", value: "browser login (OAuth)" },
+      { label: "Environment:", value: credential.environment ?? "none", level: 1 },
+    ];
+    const displayOrganization = organizationDisplay(organization);
+    if (displayOrganization) {
+      rows.push({ label: "Organization:", value: displayOrganization, level: 1 });
+    }
+    const expires = timestampMsDisplay(credential.expires);
+    if (expires) {
+      rows.push({ label: "Expires:", value: expires, level: 1 });
+    }
+    return rows;
+  }
+  return [
+    { label: "Authentication:", value: "management API key" },
+    { label: "environment:", value: credential.environment ?? "", level: 1 },
+    { label: "api key:", value: credential.api_key ?? "set", level: 1 },
+  ];
+}
+
+function lakehouseCredentialRows(credential: ConfigureLakehouseCredential): DisplayRow[] {
+  if (!credential.configured) {
+    return [];
+  }
+  if (credential.mechanism === "lakehouse_basic_token") {
+    const rows: DisplayRow[] = [
+      {
+        label: "Authentication:",
+        value:
+          credential.source === "environment"
+            ? "lakehouse Basic token (environment)"
+            : "lakehouse Basic token",
+      },
+    ];
+    if (credential.source === "environment") {
+      rows.push({ label: "source:", value: "ALTERTABLE_BASIC_AUTH_TOKEN", level: 1 });
+    } else {
+      rows.push({ label: "basic token:", value: credential.basic_token ?? "set", level: 1 });
+      const expires = timestampMsDisplay(credential.expires);
+      if (expires) {
+        rows.push({ label: "expires:", value: expires, level: 1 });
+      }
+    }
+    return rows;
+  }
+  return [
+    {
+      label: "Authentication:",
+      value:
+        credential.source === "environment"
+          ? "lakehouse username/password (environment)"
+          : "lakehouse username/password",
+    },
+    { label: "user:", value: credential.user ?? "", level: 1 },
+    {
+      label: credential.source === "environment" ? "source:" : "password:",
+      value:
+        credential.source === "environment"
+          ? "ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD"
+          : (credential.password ?? "set"),
+      level: 1,
+    },
+  ];
+}
+
+function configureSummaryRows(data: ConfigureShowData): DisplayRow[] {
+  return [
+    { label: "Config dir:", value: data.config_dir },
+    { label: "Active profile:", value: data.profile },
+    { label: "Secret store:", value: data.secret_store },
+    { label: "Data plane:", value: data.data_plane, linkifyUrls: true },
+    { label: "Control plane:", value: data.control_plane, linkifyUrls: true },
+  ];
+}
+
+export function configureOverrideRows(overrides: ConfigureShowOverrides): DisplayRow[] {
+  const rows: DisplayRow[] = [];
+  if (overrides.environment) {
+    rows.push({
+      label: "Environment override:",
+      value: `ALTERTABLE_ENV=${overrides.environment} (stored: ${overrides.stored_environment ?? "none"})`,
+    });
+  }
+  if (overrides.api_key) {
+    rows.push({
+      label: "API key override:",
+      value: "ALTERTABLE_API_KEY is set via environment",
+    });
+  }
+  return rows;
+}
+
+export function configureAuthenticationRows(
+  data: ConfigureShowData,
+  planes: readonly ConfigureAuthPlane[] | undefined,
+): DisplayRow[] {
+  const includePlane = (plane: ConfigureAuthPlane): boolean =>
+    planes === undefined || planes.includes(plane);
+  return [
+    ...(includePlane("management")
+      ? managementCredentialRows(data.credentials.management, data.organization)
+      : []),
+    ...(includePlane("lakehouse") ? lakehouseCredentialRows(data.credentials.lakehouse) : []),
+  ];
+}
+
+export function configureSetupHintLines(status: ConfigureCredentialStatus): string[] {
+  if (!status.hasManagement && !status.hasLakehouse) {
+    return [
+      terminalDescription(
+        `${TERMINAL_INDENT}No credentials configured. Run: altertable profile --configure`,
+      ),
+      terminalHighlightCommands(
+        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope management' (or 'altertable profile --configure --api-key atm_xxx --env <name>') for management commands, then 'altertable profile --configure --scope lakehouse' (or 'altertable profile --configure --user <u> --password <p>') for lakehouse queries.`,
+      ),
+    ];
+  }
+
+  if (status.hasManagement && !status.hasLakehouse) {
+    return [
+      terminalHighlightCommands(
+        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope lakehouse' or 'altertable profile --configure --user <u> --password <p>' for lakehouse query, upload, upsert, and append commands.`,
+      ),
+    ];
+  }
+
+  if (status.hasLakehouse && !status.hasManagement) {
+    return [
+      terminalHighlightCommands(
+        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope management' or 'altertable profile --configure --api-key atm_xxx --env <name>' for profile show, catalogs, and other management commands.`,
+      ),
+    ];
+  }
+
+  return [];
+}
+
+export function buildConfigureShowView(
+  data: ConfigureShowData,
+  options: ConfigureAuthenticationViewOptions = {},
+): DisplayDocument {
+  const authentication = configureAuthenticationRows(data, options.planes);
+  const hints = configureSetupHintLines({
+    hasManagement: data.credentials.management.configured,
+    hasLakehouse: data.credentials.lakehouse.configured,
+  });
+  const overrides = configureOverrideRows(data.overrides);
+
+  return document(
+    section(rows(configureSummaryRows(data))),
+    section(
+      rows(authentication),
+      ...(hints.length > 0 ? [text(hints)] : []),
+      ...(overrides.length > 0 ? [rows(overrides)] : []),
+    ),
+  );
+}
+
+type ContextSummaryRow = {
+  profile: string;
+  environment: string;
+  management: string;
+  lakehouse: string;
+};
+
+function formatConfiguredValue(detail: string | null | undefined): string {
+  if (detail === null || detail === undefined || detail.length === 0) {
+    return terminalNotConfiguredStatus();
+  }
+  return detail;
+}
+
+function plainStatus(detail: string | null | undefined): string {
+  if (detail === null || detail === undefined || detail.length === 0) {
+    return "not set";
+  }
+  return detail;
+}
+
+function formatStatusCell(value: string): string {
+  if (value === "not set") {
+    return terminalNotConfiguredStatus();
+  }
+  return value;
+}
+
+function contextSummaryRow(context: ActiveContext): ContextSummaryRow {
+  return {
+    profile: context.profile,
+    environment: plainStatus(context.environment),
+    management: plainStatus(context.management),
+    lakehouse: plainStatus(context.lakehouse),
+  };
+}
+
+function identityRows(context: ActiveContext): DisplayRow[] {
+  if (context.principal !== undefined || context.organization !== undefined) {
+    const principal = context.principal ?? {};
+    const organization = context.organization ?? {};
+    const identity: DisplayRow[] = [];
+    if (principal.type === "ServiceAccount") {
+      identity.push({
+        label: "Service account:",
+        value: `${principal.name ?? ""} (${principal.slug ?? ""})`,
+      });
+    } else if (principal.email) {
+      identity.push({ label: "User:", value: `${principal.name ?? ""} <${principal.email}>` });
+    } else if (principal.name) {
+      identity.push({ label: "User:", value: principal.name });
+    }
+    if (organization.name || organization.slug) {
+      identity.push({
+        label: "Organization:",
+        value: `${organization.name ?? ""} (${organization.slug ?? ""})`,
+      });
+    }
+    return identity;
+  }
+  return [];
+}
+
+function contextDetailRows(context: ActiveContext): DisplayRow[] {
+  return [
+    { label: "Profile:", value: context.profile },
+    { label: "Environment:", value: formatConfiguredValue(context.environment) },
+    ...identityRows(context),
+    { label: "Data plane:", value: context.data_plane, linkifyUrls: true },
+    { label: "Control plane:", value: context.control_plane, linkifyUrls: true },
+    { label: "Lakehouse:", value: formatConfiguredValue(context.lakehouse) },
+  ];
+}
+
+export function buildActiveContextSummaryView(context: ActiveContext): DisplayDocument {
+  const summaryBlocks = [
+    table({
+      rows: [contextSummaryRow(context)],
+      columns: [
+        {
+          header: "PROFILE",
+          cell: (entry) => formatStatusCell(entry.profile),
+          style: "strong",
+        },
+        {
+          header: "ENV",
+          cell: (entry) => formatStatusCell(entry.environment),
+          style: "accent",
+        },
+        {
+          header: "MGMT",
+          cell: (entry) => formatStatusCell(entry.management),
+          style: "muted",
+        },
+        {
+          header: "LAKEHOUSE",
+          cell: (entry) => formatStatusCell(entry.lakehouse),
+          style: "string",
+          flex: true,
+        },
+      ],
+    }),
+    ...(!context.credentialStatus.hasManagement && !context.credentialStatus.hasLakehouse
+      ? [text([terminalHighlightCommands("Hint: run `altertable profile --configure`")])]
+      : []),
+  ];
+
+  return document(section(...summaryBlocks));
+}
+
+export function buildActiveContextDetailsView(context: ActiveContext): DisplayDocument {
+  const hints = configureSetupHintLines(context.credentialStatus);
+  const overrides = configureOverrideRows(context.overrides);
+  const detailBlocks = [
+    rows(contextDetailRows(context)),
+    ...(hints.length > 0 ? [text(["", ...hints])] : []),
+    ...(overrides.length > 0 ? [rows(overrides)] : []),
+  ];
+
+  return document(section(...detailBlocks));
 }

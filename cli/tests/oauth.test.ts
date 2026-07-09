@@ -152,7 +152,7 @@ import {
   storeLoginProfileMetadata,
 } from "@/commands/login.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { configureRunClear } from "@/lib/configure.ts";
+import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 
 describe("resolveWhoamiEnvironment", () => {

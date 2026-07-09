@@ -41,6 +41,9 @@ jobs:
         run: bun run typecheck
         working-directory: cli
 
+      - name: Typecheck top-level tests
+        run: ./cli/node_modules/.bin/tsc -p tsconfig.tests.json
+
       - name: Lint
         run: bun run lint
         working-directory: cli
@@ -84,29 +87,11 @@ jobs:
           bin/altertable --version
           bin/altertable --help
 
-      - name: Run configure tests
-        run: ./tests/configure_test.sh
+      - name: Run top-level CLI behavior tests
+        run: bun test "$PWD"/tests/*.test.ts
 
-      - name: Run management tests
-        run: ./tests/management_test.sh
-
-      - name: Run context tests
-        run: ./tests/context_test.sh
-
-      - name: Run catalogs tests
-        run: ./tests/catalogs_test.sh
-
-      - name: Run lakehouse tests
-        run: ./tests/lakehouse_test.sh
-
-      - name: Run scripting tests
-        run: ./tests/scripting_test.sh
-
-      - name: Run profile tests
-        run: ./tests/profile_test.sh
-
-      - name: Run integration tests
-        run: ./tests/integration_test.sh
+      - name: Run lakehouse integration tests
+        run: bun test "$PWD"/tests/integration.e2e.ts
 
   compile:
     name: Compile binaries (${{ matrix.artifact }})

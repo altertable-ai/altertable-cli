@@ -2,7 +2,7 @@ import { defineHttpOperation } from "@/lib/http-operation.ts";
 import { buildCatalogRowsFromResponses } from "@/lib/catalog-rows.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { type WhoamiResponse } from "@/features/management/model.ts";
-import { type ActiveContext, withAuthenticatedIdentity } from "@/features/context/model.ts";
+import { type ActiveContext, withAuthenticatedIdentity } from "@/features/profile/model.ts";
 import type { CatalogRow } from "@/features/management/model.ts";
 
 export type ManagementCatalogCreateInput = {

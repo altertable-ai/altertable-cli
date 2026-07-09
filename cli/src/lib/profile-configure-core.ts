@@ -7,10 +7,7 @@ import { getCliContext, setCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { buildConfigureShowData } from "@/features/configure/model.ts";
-import { buildConfigureShowView } from "@/features/configure/views.ts";
-import { renderConfigureShowView } from "@/features/configure/render.ts";
-import { formatTerminalSection, terminalMetadata } from "@/ui/terminal/styles.ts";
+import { terminalMetadata } from "@/ui/terminal/styles.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";
@@ -30,7 +27,6 @@ export type ConfigureOptions = {
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
-  verify?: boolean;
   /** Secrets collected via the interactive wizard (not CLI flags). */
   interactive?: boolean;
 };
@@ -222,41 +218,6 @@ export async function configureRunSet(
     }
     markCurrentProfileUpdated();
   });
-}
-
-export function configureRunShowForProfile(profileName: string): string {
-  return configureRunShowInternal(profileName);
-}
-
-export function buildConfigureShowDataForProfile(profileOverride?: string) {
-  return withProfileContextSync(profileOverride ?? getCliContext().profile, () =>
-    buildConfigureShowData(profileOverride),
-  );
-}
-
-function configureRunShowInternal(profileOverride?: string): string {
-  return withProfileContextSync(profileOverride ?? getCliContext().profile, () => {
-    const data = buildConfigureShowData(profileOverride);
-    return formatTerminalSection(renderConfigureShowView(buildConfigureShowView(data)));
-  });
-}
-
-function withProfileContextSync<T>(profileName: string | undefined, run: () => T): T {
-  if (!profileName) {
-    return run();
-  }
-  ensureProfileExists(profileName);
-  const previous = getCliContext();
-  setCliContext({ ...previous, profile: profileName });
-  try {
-    return run();
-  } finally {
-    setCliContext(previous);
-  }
-}
-
-export function configureRunShow(): string {
-  return configureRunShowInternal();
 }
 
 export function configureRunClear(sink: OutputSink = getOutputSink()): void {
