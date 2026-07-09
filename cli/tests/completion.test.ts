@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { CommandDef } from "citty";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion.ts";
-import type { ConfigurePrompts } from "@/lib/configure-prompts.ts";
+import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
