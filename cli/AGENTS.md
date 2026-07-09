@@ -17,7 +17,7 @@ Preferred — from repo root:
 ```bash
 ./scripts/verify.sh --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
 ./scripts/verify.sh            # full gate (mirrors CI minus native compile)
-./scripts/verify.sh --integration   # + integration_test.sh (mock at :15000)
+./scripts/verify.sh --integration   # + tests/integration.e2e.ts (mock at :15000)
 ```
 
 Manual equivalents from `cli/`:
@@ -31,16 +31,11 @@ bun run test:coverage
 bun run knip
 ```
 
-Shell tests from repo root:
+Top-level black-box tests from repo root:
 
 ```bash
-./tests/configure_test.sh
-./tests/management_test.sh
-./tests/context_test.sh
-./tests/catalogs_test.sh
-./tests/scripting_test.sh
-./tests/profile_test.sh
-./tests/integration_test.sh
+bun test "$PWD"/tests/*.test.ts
+bun test "$PWD"/tests/integration.e2e.ts
 ```
 
 ## Architecture
@@ -88,7 +83,8 @@ Shell tests from repo root:
 | `src/generated/openapi-types.ts`      | Generated — run `bun run generate` after OpenAPI changes   |
 | `src/generated/openapi-operations.ts` | Generated operation index for `api routes`                 |
 | `tests/*.test.ts`                     | Bun unit tests under `cli/tests/`                          |
-| `../tests/*_test.sh`                  | Shell tests at repo root                                   |
+| `../tests/*.test.ts`                  | Black-box end-user CLI tests at repo root                  |
+| `../tests/integration.e2e.ts`         | Mock-server lakehouse integration test                     |
 
 **Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `lib/api-http.ts`.
 
@@ -139,7 +135,7 @@ altertable
 3. Pass `sink` from `run({ sink })` to `writeCommandOutput` or plane-specific wrappers (`writeManagementOutput`, `writeLakehouseOutput`)
 4. Management plane: `managementRequest()` from `lib/management-transport.ts`
 5. Lakehouse plane: functions from `lib/lakehouse-client.ts`
-6. Add unit test in `cli/tests/`; shell test in `tests/` if integration-worthy
+6. Add unit test in `cli/tests/`; black-box test in `tests/` if integration-worthy
 7. Flags on command `args` are picked up by `completion-spec.ts` — run completion tests after structural changes
 
 Minimal pattern (management HTTP command):
@@ -175,7 +171,7 @@ Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder 
 ### Recipe C — Change exit codes or JSON errors
 
 1. Edit `src/lib/errors.ts` only
-2. Update `cli/tests/errors.test.ts` and `tests/scripting_test.sh`
+2. Update `cli/tests/errors.test.ts` and `tests/scripting.test.ts`
 3. Update README scripting table — do not renumber existing codes
 
 ## Testing guide
@@ -184,7 +180,7 @@ Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder 
 | -------------------- | ------------------------------------------------------------------------- |
 | lib pure function    | `cd cli && bun test path/to.test.ts`                                      |
 | command validation   | `commands-*.test.ts` pattern                                              |
-| HTTP behavior        | mock file via `ALTERTABLE_MOCK_HTTP_FILE` (see `tests/utils.sh`)          |
+| HTTP behavior        | mock file via `ALTERTABLE_MOCK_HTTP_FILE` (see `tests/helpers.ts`)        |
 | end-to-end lakehouse | `./scripts/verify.sh --integration`                                       |
 | completion structure | `bun test cli/tests/completion-spec.test.ts cli/tests/completion.test.ts` |
 
@@ -192,14 +188,14 @@ Test env vars: `ALTERTABLE_CONFIG_HOME`, `ALTERTABLE_SECRET_BACKEND=file`, `ALTE
 
 Lakehouse endpoint coverage: [DEVELOPMENT.md spec conformance table](../DEVELOPMENT.md#cli-spec-conformance-lakehouse).
 
-Example mock HTTP test pattern: `cli/tests/lakehouse.test.ts` sets `ALTERTABLE_MOCK_HTTP_FILE`. Shell offline pattern: `tests/whoami_test.sh`.
+Example mock HTTP test pattern: `cli/tests/lakehouse.test.ts` sets `ALTERTABLE_MOCK_HTTP_FILE`. Root black-box tests use `tests/helpers.ts`.
 
 ## Invariants (do not break)
 
 - Exit codes 0–10 stable (`errors.ts`)
 - `--json`: success stdout, error stderr JSON envelope
 - Dual-plane configure: one authentication mechanism per flag-based invocation; the interactive wizard may configure both planes in one session
-- HTTP log redaction in tests (`assert_http_log_auth_redacted` in `tests/utils.sh`)
+- HTTP log redaction in tests (`setupHttpLog` / `readHttpLog` in `tests/helpers.ts`)
 - `bin/altertable` launcher unchanged
 - No raw `console.log` in commands except `completion.ts`
 
