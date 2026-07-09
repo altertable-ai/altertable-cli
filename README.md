@@ -9,6 +9,7 @@ Query and manage your Altertable data platform from the terminal.
 
 - [Quick start](#quick-start)
 - [Installation](#installation)
+  - [Install script](#install-script)
   - [npm](#npm)
   - [Prebuilt binaries](#prebuilt-binaries)
   - [From source](#from-source)
@@ -34,7 +35,7 @@ Query and manage your Altertable data platform from the terminal.
 
 ```bash
 # 1. Install
-npm install -g @altertable/cli
+curl -fsSL https://install.altertable.ai | sh
 
 # 2. Configure credentials
 altertable profile --configure
@@ -53,6 +54,14 @@ altertable query "SELECT * FROM users LIMIT 10"
 ---
 
 ## Installation
+
+### Install script
+
+Recommended for most users:
+
+```bash
+curl -fsSL https://install.altertable.ai | sh
+```
 
 ### npm
 
