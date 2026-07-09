@@ -5,51 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-06-26
+## [1.0.0] - 2026-07-09
 
-First public release of the Altertable CLI — a TypeScript/Bun command-line tool for the Altertable data platform: lakehouse data plane and management REST API.
+First public release of the Altertable CLI: a production-ready terminal for querying
+Altertable lakehouses, managing control-plane resources, and operating reliably from
+developer laptops, CI jobs, and agent workflows.
+
+### Highlights
+
+- One CLI for both Altertable planes: lakehouse SQL/data movement and management REST operations.
+- Profile-first authentication with browser OAuth, API keys, lakehouse credentials, and explicit environment targeting.
+- Human-friendly output by default, with stable JSON envelopes and `--agent` mode for automation.
+- Self-update, shell completion, prebuilt release binaries, npm provenance, release asset checksums, and supply-chain attestation from day one.
 
 ### Added
 
+#### Installation, updates, and automation
+
+- npm package `@altertable/cli` with an `altertable` executable backed by a Bun bundle.
+- Prebuilt release binaries for macOS Apple Silicon, macOS Intel, Linux x64, and Linux ARM64, plus `checksums.txt`.
+- `altertable update` with npm and GitHub release discovery, automatic update notices, cache controls, and origin-aware install flows for package-manager and native binary installs.
+- Global flags for automation and diagnostics: `--json`, `--agent`, `--debug`, `--no-color`, `--profile`, `--connect-timeout`, and `--read-timeout`.
+- Shell completion generation and installers for bash, zsh, and fish.
+- Stable process exit codes, structured error envelopes, URL linkification, terminal styling controls, and pager-aware human output.
+
+#### Profiles, configuration, and authentication
+
+- `profile --configure` interactive wizard and non-interactive flags for setting management API keys, lakehouse credentials, endpoint overrides, and environment names.
+- Browser OAuth login with PKCE via `login`, profile-aware token storage, `logout`, and automatic lakehouse credential provisioning for OAuth sessions.
+- Dual-plane credential model: management API keys or OAuth Bearer tokens for the control plane, and HTTP Basic credentials for lakehouse APIs.
+- Named profiles with `profile create`, `profile list`, `profile show`, `profile status`, `profile use`, `profile switch`, `profile current`, `profile env`, `profile direnv`, `profile rename`, and `profile delete`.
+- Profile selection precedence for one-off commands, shell environments, and persisted active profiles.
+- Secret input from stdin for API keys and passwords, macOS Keychain support when available, and file-backed credential storage with restricted permissions otherwise.
+- HTTPS-by-default endpoint policy with explicit localhost support and `--allow-insecure-http` for intentional HTTP overrides.
+
 #### Lakehouse (data plane)
 
-- `query` — run SQL with human layout (`--layout auto|table|line`), serialized output (`--format human|json|csv|markdown`), column selection, max width, and pager controls
-- `append` — insert rows (async or `--sync`)
-- `upload` — bulk file ingest with streaming upload support
-- `query show` and `query cancel` — inspect and cancel running queries
-- `append status` — poll append task status
-- `schema` — list schemas, tables, and columns in a lakehouse catalog
+- `query` for running SQL with positional statements, human layouts (`auto`, `table`, `line`), serialized output (`human`, `json`, `csv`, `markdown`), column selection, max-width controls, query IDs, session IDs, and pager controls.
+- `query show` and `query cancel` for inspecting and cancelling running queries.
+- `append` and `append status` for inserting JSON rows asynchronously or synchronously and polling append task state.
+- `upload` for streaming local files into tables with create, append, and overwrite modes.
+- `upsert` for file-based primary-key matching and row replacement.
+- `schema` for listing schemas, tables, views, and columns in a lakehouse catalog.
+- `duckdb` for opening a local DuckDB shell attached to an Altertable lakehouse catalog.
+- Streaming NDJSON response handling, readable table rendering, line-layout fallback, markdown output, CSV output, and timeout controls tuned for long-running data operations.
 
 #### Management (control plane)
 
-- `context` — show active profile, environment, and authenticated identity
-- `catalogs` — list and create catalogs
-- `api` — HTTP invoker for the management REST API (`api <METHOD> /path`, bare paths default to `GET`, parameters infer `POST`, `-X/--method` overrides the method, `-f/--raw-field` for string parameters, `-F/--field` for typed parameters)
-- `api routes` — list operations from the bundled OpenAPI spec; `api routes <operationId>` shows one route with path parameters
-- `api spec` — print the bundled management OpenAPI specification (YAML or `--json`)
-
-#### Configuration and authentication
-
-- Dual-plane auth: management API key (Bearer) and lakehouse credentials (HTTP Basic)
-- `configure` — interactive wizard or flag-based credential setup, with optional verification
-- `login` and `logout` — browser-based OAuth authentication with profile-aware token storage
-- Automatic lakehouse credential provisioning for OAuth sessions
-- Named profiles with `profile use`, `profile list`, `profile show`, and `profile delete`
-- Advanced profile workflows including `profile current`, `profile status`, `profile switch`, `profile env`, `profile direnv`, `profile create`, `profile update`, and `profile rename`
-- Environment variable overrides for credentials and endpoints
-
-#### Developer experience
-
-- Shell completion for bash, zsh, and fish (commands, subcommands, and leaf-command flags)
-- Global `--json` and `--agent` presets for structured output and scripting
-- Stable exit codes and structured error envelopes
-- `--debug` with verbose HTTP logging
-- Configurable connect and read timeouts (`--connect-timeout`, `--read-timeout`, per-command `--read-timeout`)
-- `update` — origin-aware update checks and self-install flows
-- Self-contained release binaries for macOS (arm64, x64) and Linux (x64, arm64), plus a Bun JS bundle
+- `profile show` and `profile status` for the active context, environment, authenticated identity, credential state, endpoint overrides, and verification results.
+- `catalogs list` and `catalogs create` for managing Altertable catalogs in the current environment.
+- `api` management REST invoker with method subcommands, bare-path `GET`, inferred `POST` when fields or bodies are supplied, `-X/--method` overrides, typed `-F/--field`, raw `-f/--raw-field`, JSON bodies, file bodies, stdin bodies, and environment path substitution.
+- `api routes` for discovering operations from the bundled OpenAPI spec, including operation-specific route details and path parameters.
+- `api spec` for printing the bundled management OpenAPI document as YAML or JSON.
+- Generated OpenAPI operation metadata and conformance tests to keep CLI routing aligned with the shipped management API spec.
 
 ### Changed
 
-- Release automation publishes the npm package with provenance, attests GitHub release assets, and builds against a pinned Bun runtime.
-- CI smoke-tests all released native binary targets, including macOS arm64 and x64.
-- Supply-chain checks include Dependabot, CodeQL, and pull-request dependency review.
+- Release automation publishes the npm package with provenance, attests GitHub release assets, uploads checksummed binaries, and builds against a pinned Bun runtime.
+- CI runs type checking, linting, formatting, OpenAPI generation drift checks, unit tests with coverage, package dry-run checks, and native binary smoke tests for released targets.
+- Supply-chain coverage includes Dependabot, CodeQL, dependency review, pinned GitHub Actions, and release asset attestations.
