@@ -32,6 +32,7 @@ export type TestWorkspace = {
   runCommand: (command: string, options?: RunOptions) => Promise<CommandResult>;
   setupHttpLog: () => Promise<void>;
   setupMockHttp: (mocks: unknown) => Promise<void>;
+  clearMockHttp: () => void;
   readFile: (path: string) => Promise<string>;
   readHttpLog: () => Promise<string>;
   httpLogValues: (key: string) => Promise<string[]>;
@@ -83,6 +84,9 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       await writeFile(mockHttpFile, typeof mocks === "string" ? mocks : JSON.stringify(mocks));
       baseEnv.ALTERTABLE_MOCK_HTTP_FILE = mockHttpFile;
     },
+    clearMockHttp() {
+      delete baseEnv.ALTERTABLE_MOCK_HTTP_FILE;
+    },
     async readFile(path) {
       return Bun.file(path).text();
     },
@@ -90,20 +94,10 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       return Bun.file(httpLogFile).text();
     },
     async httpLogValues(key) {
-      const prefix = `${key}=`;
-      const log = await Bun.file(httpLogFile).text();
-      return log
-        .split("\n")
-        .filter((line) => line.startsWith(prefix))
-        .map((line) => line.slice(prefix.length));
+      return readHttpLogValues(httpLogFile, key);
     },
     async httpLogValue(key) {
-      const prefix = `${key}=`;
-      const log = await Bun.file(httpLogFile).text();
-      const values = log
-        .split("\n")
-        .filter((line) => line.startsWith(prefix))
-        .map((line) => line.slice(prefix.length));
+      const values = await readHttpLogValues(httpLogFile, key);
       return values.at(-1);
     },
     async fileMode(path) {
@@ -168,6 +162,15 @@ function buildEnv(overrides: TestEnv = {}): Record<string, string> {
 
 export async function fileExists(path: string): Promise<boolean> {
   return await Bun.file(path).exists();
+}
+
+async function readHttpLogValues(path: string, key: string): Promise<string[]> {
+  const prefix = `${key}=`;
+  const log = await Bun.file(path).text();
+  return log
+    .split("\n")
+    .filter((line) => line.startsWith(prefix))
+    .map((line) => line.slice(prefix.length));
 }
 
 export async function appendFile(path: string, content: string): Promise<void> {
