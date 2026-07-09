@@ -438,16 +438,19 @@ For manual installs, generate the script without writing files:
 
 ```bash
 # bash
-altertable completion bash > ~/.local/share/bash-completion/completions/altertable
+altertable completion generate bash > ~/.local/share/bash-completion/completions/altertable
 
 # zsh
-altertable completion zsh > ~/.local/share/zsh/site-functions/_altertable
+altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertable
 
 # fish
-altertable completion fish > ~/.config/fish/completions/altertable.fish
+altertable completion generate fish > ~/.config/fish/completions/altertable.fish
 ```
 
-Omit the shell name and the CLI detects it from `$SHELL`. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
+The compatibility aliases `altertable completion bash`, `altertable completion zsh`, and
+`altertable completion fish` also print raw scripts. Running `altertable completion`
+in an interactive terminal opens a small menu; in non-interactive terminals it prints
+usage guidance. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
 
 ---
 
