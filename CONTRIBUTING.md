@@ -54,8 +54,8 @@ Avoid adding compatibility wrappers that both build and execute requests. If a s
 ## Tests
 
 - Unit tests: `cd cli && bun test`
-- Shell tests (offline): `./tests/configure_test.sh`, `./tests/management_test.sh`, `./tests/context_test.sh`, `./tests/catalogs_test.sh`, `./tests/scripting_test.sh`, `./tests/profile_test.sh`
-- Integration tests (requires mock server): `./tests/integration_test.sh`
+- Top-level black-box tests: `bun test tests/*.test.ts`
+- Integration tests (requires mock server): `bun test tests/integration.e2e.ts`
 
 ## Pull Requests
 

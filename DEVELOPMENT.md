@@ -133,23 +133,18 @@ From repo root, one script mirrors CI (minus native binary compile):
 
 ```bash
 ./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, openapi drift
-./scripts/verify.sh                # + build, pack:check, shell offline tests
-./scripts/verify.sh --integration  # + integration_test.sh (requires mock at :15000)
+./scripts/verify.sh                # + build, pack:check, top-level black-box tests
+./scripts/verify.sh --integration  # + tests/integration.e2e.ts (requires mock at :15000)
 ```
 
 See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented docs.
 
 ## Tests
 
-Offline tests (configure, management, context, catalogs):
+Top-level black-box tests (configure, management, context, catalogs, lakehouse routing, scripting, profiles):
 
 ```bash
-./tests/configure_test.sh
-./tests/management_test.sh
-./tests/context_test.sh
-./tests/catalogs_test.sh
-./tests/scripting_test.sh
-./tests/profile_test.sh
+bun test tests/*.test.ts
 ```
 
 ### Shell completion
@@ -162,7 +157,7 @@ Integration tests against the mock server:
 docker run -d --rm --name at-mock -p 15000:15000 \
   -e ALTERTABLE_MOCK_USERS=testuser:testpass \
   ghcr.io/altertable-ai/altertable-mock:latest
-./tests/integration_test.sh
+bun test tests/integration.e2e.ts
 docker stop at-mock
 ```
 
@@ -177,11 +172,11 @@ cd cli && bun run test:coverage
 
 When bumping the `specs/` submodule, extend the mapped tests before merge.
 
-| Spec requirement            | CLI surface                         | Unit tests                       | Shell/integration     |
+| Spec requirement            | CLI surface                         | Unit tests                       | Black-box/integration |
 | --------------------------- | ----------------------------------- | -------------------------------- | --------------------- |
-| POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration_test.sh` |
-| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration_test.sh` |
-| GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration_test.sh` |
-| POST /append + GET /tasks   | `append`, `append status`           | `lakehouse.test.ts`              | `integration_test.sh` |
-| POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration_test.sh` |
-| POST /upsert                | `upsert`                            | `lakehouse.test.ts`              | `integration_test.sh` |
+| POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration.e2e.ts`  |
+| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /append + GET /tasks   | `append`, `append status`           | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /upsert                | `upsert`                            | `lakehouse.test.ts`              | `integration.e2e.ts`  |

@@ -1,0 +1,145 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { appendFile, createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+
+const whoamiMock = [
+  {
+    urlPattern: "/whoami",
+    method: "GET",
+    body: JSON.stringify({
+      principal: { type: "User", name: "Jane", email: "j@x.io" },
+      organization: { name: "Acme", slug: "acme" },
+    }),
+  },
+];
+
+describe("management API user flows", () => {
+  let workspace: TestWorkspace;
+
+  beforeAll(async () => {
+    workspace = await createTestWorkspace({
+      ALTERTABLE_API_KEY: undefined,
+      ALTERTABLE_ENV: undefined,
+      ALTERTABLE_MANAGEMENT_API_BASE: undefined,
+    });
+  });
+
+  afterAll(async () => {
+    await workspace.cleanup();
+  });
+
+  test("uses stored Bearer credentials against the default base URL", async () => {
+    expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp(whoamiMock);
+
+    const result = await workspace.runCommand("altertable context");
+
+    expect(result.exitCode).toBe(0);
+    expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
+    expect(await workspace.readHttpLog()).not.toContain("atm_stored");
+    expect(await workspace.httpLogValue("URL")).toBe("https://app.altertable.ai/rest/v1/whoami");
+  });
+
+  test("environment API key and management root override stored values", async () => {
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp(whoamiMock);
+
+    const result = await workspace.runCommand("altertable context", {
+      env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:9" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
+    const log = await workspace.readHttpLog();
+    expect(log).not.toContain("atm_env");
+    expect(log).not.toContain("atm_stored");
+    expect(await workspace.httpLogValue("URL")).toBe("http://localhost:9/rest/v1/whoami");
+  });
+
+  test("stored and trailing-slash management roots resolve to /rest/v1", async () => {
+    await appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp(whoamiMock);
+    expect((await workspace.runCommand("altertable context", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
+    expect(await workspace.httpLogValue("URL")).toBe("http://localhost:7/rest/v1/whoami");
+
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp(whoamiMock);
+    expect(
+      (
+        await workspace.runCommand("altertable context", {
+          env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:8/" },
+        })
+      ).exitCode,
+    ).toBe(0);
+    expect(await workspace.httpLogValue("URL")).toBe("http://localhost:8/rest/v1/whoami");
+  });
+
+  test("renders friendly management HTTP errors without leaking HTML", async () => {
+    await workspace.setupMockHttp([{ urlPattern: "/whoami", method: "GET", status: 500, body: "<html><body>Internal Server Error</body></html>" }]);
+    let result = await workspace.runCommand("altertable context");
+    expect(result.exitCode).toBe(8);
+    expect(result.stderr).toContain("Server error (500)");
+    expect(result.stderr).not.toContain("<html>");
+
+    await workspace.setupMockHttp([{ urlPattern: "/whoami", method: "GET", status: 401, body: JSON.stringify({ error: { message: "invalid api key" } }) }]);
+    result = await workspace.runCommand("altertable context");
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Authentication failed (401)");
+    expect(result.stderr).toContain("invalid api key");
+
+    await workspace.setupMockHttp([{ urlPattern: "/whoami", method: "GET", status: 404, body: JSON.stringify({ error: { code: "not_found" } }) }]);
+    result = await workspace.runCommand("altertable context");
+    expect(result.exitCode).toBe(4);
+    expect(result.stderr).toContain("Not found (404)");
+  });
+
+  test("context works locally without credentials, but raw API requires them", async () => {
+    expect((await workspace.runCommand("altertable configure --clear")).exitCode).toBe(0);
+
+    const context = await workspace.runCommand("altertable context");
+    expect(context.exitCode).toBe(0);
+    expect(context.stdout).toContain("Profile:");
+    expect(context.stdout).toContain("No credentials configured");
+
+    const api = await workspace.runCommand("altertable api GET /whoami");
+    expect(api.exitCode).toBe(10);
+    expect(api.stderr).toContain("No management credentials");
+  });
+
+  test("api POST supports gh-style fields for service accounts and databases", async () => {
+    expect((await workspace.runCommand("altertable configure --api-key atm_stored --env production")).exitCode).toBe(0);
+    workspace.env.ALTERTABLE_API_KEY = "atm_test";
+    workspace.env.ALTERTABLE_ENV = "production";
+
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp([{ urlPattern: "/service_accounts", method: "POST", body: JSON.stringify({ service_account: { id: "sa_1", label: "CI Bot", slug: "ci-bot" } }) }]);
+    let result = await workspace.runCommand('altertable api POST /service_accounts -f "label=CI Bot"');
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ label: "CI Bot" });
+    expect(result.stdout).toContain("CI Bot");
+
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp([{ urlPattern: "/environments/production/databases", method: "POST", body: JSON.stringify({ database: { id: "db_1", name: "Analytics", slug: "analytics", catalog: "analytics" } }) }]);
+    result = await workspace.runCommand("altertable api POST /environments/production/databases -f name=Analytics");
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse((await workspace.httpLogValue("PAYLOAD")) ?? "")).toEqual({ name: "Analytics" });
+    expect(result.stdout).toContain("Analytics");
+  });
+
+  test("credential creation human output omits one-time passwords", async () => {
+    await workspace.setupMockHttp([
+      {
+        urlPattern: "/users/user_1/environments/production/credentials",
+        method: "POST",
+        body: JSON.stringify({ credential: { id: "cred_1", label: "default", username: "user_123" }, password: "secret-once" }),
+      },
+    ]);
+
+    const result = await workspace.runCommand("altertable api POST /users/user_1/environments/production/credentials -f label=default");
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("default");
+    expect(result.stdout).not.toContain("secret-once");
+  });
+});

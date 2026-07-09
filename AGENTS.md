@@ -4,7 +4,7 @@ Executor-oriented router for agents working in this repository. User-facing docs
 
 ## What this repo is
 
-Altertable CLI — a TypeScript/Bun command-line tool for querying and managing the Altertable data platform. Source lives in `cli/`; shell integration tests in `tests/`; API specs in the `specs/` git submodule.
+Altertable CLI — a TypeScript/Bun command-line tool for querying and managing the Altertable data platform. Source lives in `cli/`; black-box Bun tests in `tests/`; API specs in the `specs/` git submodule.
 
 ## Where to work
 
@@ -12,7 +12,7 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 |------|--------------|
 | `cli/src/` | CLI commands, HTTP clients, formatting, config |
 | `cli/tests/` | Bun unit tests for CLI logic |
-| `tests/` | Shell integration/offline tests |
+| `tests/` | Black-box end-user CLI tests run through `bin/altertable` |
 | `specs/` | Client API specs (submodule — read-only from this repo) |
 | `bin/altertable` | Dev launcher — do not edit |
 

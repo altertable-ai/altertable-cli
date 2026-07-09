@@ -40,7 +40,7 @@ describe("altertable context", () => {
 
   test("formats a User principal", async () => {
     await workspace.setupMockHttp(userPrincipalMock);
-    const result = await workspace.run(["context"]);
+    const result = await workspace.runCommand("altertable context");
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
@@ -53,7 +53,7 @@ describe("altertable context", () => {
 
   test("--no-color emits plain text without ANSI styling", async () => {
     await workspace.setupMockHttp(userPrincipalMock);
-    const result = await workspace.run(["--no-color", "context"]);
+    const result = await workspace.runCommand("altertable --no-color context");
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).not.toMatch(/\x1B/);
@@ -62,7 +62,7 @@ describe("altertable context", () => {
 
   test("--agent returns structured session JSON", async () => {
     await workspace.setupMockHttp(userPrincipalMock);
-    const result = await workspace.run(["--agent", "context"]);
+    const result = await workspace.runCommand("altertable --agent context");
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
@@ -73,7 +73,7 @@ describe("altertable context", () => {
 
   test("formats a ServiceAccount principal", async () => {
     await workspace.setupMockHttp(serviceAccountPrincipalMock);
-    const result = await workspace.run(["context"]);
+    const result = await workspace.runCommand("altertable context");
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Service account:");

@@ -67,15 +67,12 @@ run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
 run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
 
 cd "${REPO_ROOT}"
-run_step "top-level JS tests" bun test tests/*.test.ts
-
-for script in configure management context catalogs lakehouse scripting profile; do
-  run_step "tests/${script}_test.sh" "./tests/${script}_test.sh"
-done
+mapfile -t TOP_LEVEL_JS_TESTS < <(find "${REPO_ROOT}/tests" -maxdepth 1 -name '*.test.ts' | sort)
+run_step "top-level JS tests" bun test "${TOP_LEVEL_JS_TESTS[@]}"
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server
-  run_step "tests/integration_test.sh" "./tests/integration_test.sh"
+  run_step "top-level integration JS tests" bun test "${REPO_ROOT}/tests/integration.e2e.ts"
 fi
 
 echo "✓ verify passed"
