@@ -44,11 +44,20 @@ describe("management API user flows", () => {
   });
 
   test("stored and trailing-slash management roots resolve to /rest/v1", async () => {
-    await workspace.configureStoredManagementCredential();
-    await workspace.appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
+    await workspace.resetConfig();
+    // Store the control-plane root on the profile itself. Stored roots resolve
+    // only through the stored credential — an env API key would isolate to
+    // `_from_env` and ignore the stored management_api_base.
+    expect(
+      (
+        await workspace.runCommand(
+          "altertable profile --configure --api-key atm_stored --env production --control-plane-url http://localhost:7",
+        )
+      ).exitCode,
+    ).toBe(0);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
-    expect((await workspace.runCommand("altertable api GET /whoami", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable api GET /whoami")).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:7/rest/v1/whoami");
 
     await workspace.setupHttpLog();

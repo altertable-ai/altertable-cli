@@ -185,10 +185,16 @@ describe("altertable profile --configure", () => {
     expect((await workspace.runCommand("altertable profile --configure --user u --password p --data-plane-url http://127.0.0.1:1111")).exitCode).toBe(0);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(queryMock);
+    // An env data-plane URL isolates to `_from_env`, so credentials must also come
+    // from the environment; the stored data-plane root is not consulted.
     expect(
       (
         await workspace.runCommand('altertable query "SELECT 1"', {
-          env: { ALTERTABLE_API_BASE: "http://127.0.0.1:2222" },
+          env: {
+            ALTERTABLE_API_BASE: "http://127.0.0.1:2222",
+            ALTERTABLE_LAKEHOUSE_USERNAME: "u",
+            ALTERTABLE_LAKEHOUSE_PASSWORD: "p",
+          },
         })
       ).exitCode,
     ).toBe(0);

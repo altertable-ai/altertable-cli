@@ -18,7 +18,9 @@ import {
 import {
   assertSafeProfileName,
   DEFAULT_PROFILE_NAME,
+  envConfigMode,
   FROM_ENV_PSEUDOPROFILE_NAME,
+  isFromEnvProfile,
   type ProfileConfigKey,
   ensureProfileExists,
   ensureProfilesLayout,
@@ -37,8 +39,10 @@ export {
   DEFAULT_PROFILE_NAME,
   ensureProfileExists,
   ensureProfilesLayout,
+  envConfigMode,
   FROM_ENV_PSEUDOPROFILE_NAME,
   getActiveProfileName,
+  isFromEnvProfile,
   profileConfigFile,
   profileExists,
   profilesDir,
@@ -279,7 +283,42 @@ function parseTimestampMs(raw: string | undefined): string | undefined {
   return new Date(timestamp).toISOString();
 }
 
+function envLakehouseAuthKind(): ProfileLakehouseAuth {
+  if (process.env.ALTERTABLE_BASIC_AUTH_TOKEN) {
+    return "basic_token";
+  }
+  if (process.env.ALTERTABLE_LAKEHOUSE_USERNAME && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD) {
+    return "username_password";
+  }
+  return "none";
+}
+
+// The `_from_env` identity has no stored directory, so build its inspection view
+// from the environment variables in effect rather than reading disk.
+function inspectFromEnvProfile(): ProfileInspect {
+  const management: ProfileManagementAuth = hasEnvManagementCredentials() ? "api_key" : "none";
+  const lakehouse = envLakehouseAuthKind();
+  return {
+    name: FROM_ENV_PSEUDOPROFILE_NAME,
+    active: true,
+    config_file: "environment variables",
+    organization: {},
+    principal: {},
+    environment: process.env.ALTERTABLE_ENV || undefined,
+    endpoints: {
+      data_plane: process.env.ALTERTABLE_API_BASE || undefined,
+      control_plane: process.env.ALTERTABLE_MANAGEMENT_API_BASE || undefined,
+    },
+    auth: { management, lakehouse },
+    status: management !== "none" || lakehouse !== "none" ? "configured" : "empty",
+    timestamps: {},
+  };
+}
+
 export function inspectProfile(name: string): ProfileInspect {
+  if (isFromEnvProfile(name)) {
+    return inspectFromEnvProfile();
+  }
   assertSafeProfileName(name);
   ensureProfilesLayout();
   if (!profileExists(name)) {
@@ -501,32 +540,56 @@ function hasStoredLakehouseCredentials(profileName: string): boolean {
   );
 }
 
-export function hasCredentialsThroughEnv(): boolean {
-  return hasEnvManagementCredentials() || hasEnvLakehouseCredentials();
-}
-
 /**
  * The profile identity currently in effect. Normally the active stored profile,
- * but environment credentials override any stored profile for the whole process,
- * so they surface as the reserved `_from_env` pseudo-profile.
+ * but env configuration isolates the identity to the reserved `_from_env`
+ * pseudo-profile (see `envConfigMode`).
  */
 export function resolveActiveProfileName(): string {
-  return hasCredentialsThroughEnv()
-    ? FROM_ENV_PSEUDOPROFILE_NAME
-    : resolveWorkingProfile(getCliContext().profile);
+  return resolveWorkingProfile(getCliContext().profile);
+}
+
+const ENV_CONFIG_VARS: ReadonlyArray<{ name: string; secret: boolean }> = [
+  { name: "ALTERTABLE_API_KEY", secret: true },
+  { name: "ALTERTABLE_BASIC_AUTH_TOKEN", secret: true },
+  { name: "ALTERTABLE_LAKEHOUSE_USERNAME", secret: false },
+  { name: "ALTERTABLE_LAKEHOUSE_PASSWORD", secret: true },
+  { name: "ALTERTABLE_ENV", secret: false },
+  { name: "ALTERTABLE_API_BASE", secret: false },
+  { name: "ALTERTABLE_MANAGEMENT_API_BASE", secret: false },
+];
+
+/** The profile-configuring env vars currently set, with secrets masked. */
+export function configuredEnvConfig(): Array<{ name: string; display: string }> {
+  return ENV_CONFIG_VARS.flatMap(({ name, secret }) => {
+    const value = process.env[name];
+    if (!value) {
+      return [];
+    }
+    return [{ name, display: secret ? "set (hidden)" : value }];
+  });
 }
 
 /**
- * Guard for commands that mutate stored-profile state (login, switching). While
- * credentials come from the environment there is no stored profile to act on —
- * the env vars pin the identity and would override any change — so refuse.
+ * Guard for commands that mutate stored-profile state (login, switching,
+ * create/delete/rename, configure). While the CLI is configured through
+ * environment variables the active identity is the synthetic `_from_env`
+ * profile — there is no stored profile to act on and the env vars would override
+ * any change — so refuse and show what's configured.
  */
-export function assertProfileHasNoEnvCredentials(action: string): void {
-  if (resolveActiveProfileName() === FROM_ENV_PSEUDOPROFILE_NAME) {
-    throw new ConfigurationError(
-      `${action} is disabled while credentials come from the environment. Unset ALTERTABLE_API_KEY / ALTERTABLE_BASIC_AUTH_TOKEN / ALTERTABLE_LAKEHOUSE_USERNAME / ALTERTABLE_LAKEHOUSE_PASSWORD to manage stored profiles.`,
-    );
+export function assertNoEnvConfigMode(): void {
+  if (!envConfigMode()) {
+    return;
   }
+  const lines = configuredEnvConfig().map(({ name, display }) => `  ${name.padEnd(32)} ${display}`);
+  throw new ConfigurationError(
+    [
+      "Profile management commands aren't available when configuring through environment variables.",
+      "",
+      "Currently configured:",
+      ...lines,
+    ].join("\n"),
+  );
 }
 
 export function configureCredentialStatus(profileName: string): ConfigureCredentialStatus {

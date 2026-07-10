@@ -22,12 +22,14 @@ describe("scriptable exit codes and JSON errors", () => {
     });
   });
 
+  // The workspace is configured through env vars (ALTERTABLE_API_KEY/ENV), so the
+  // active identity is the reserved `_from_env` pseudo-profile.
   test("--json profile show exits 0 and prints structured success JSON", async () => {
     const result = await workspace.runCommand("altertable --json profile show");
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-    expect(JSON.parse(result.stdout).profile.name).toBe("default");
+    expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
   });
 
   test.each([

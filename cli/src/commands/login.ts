@@ -13,7 +13,7 @@ import type { WhoamiResponse } from "@/features/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import {
-  assertProfileHasNoEnvCredentials,
+  assertNoEnvConfigMode,
   createEmptyProfile,
   deriveProfileName,
   profileExists,
@@ -189,7 +189,7 @@ export function sameWhoamiContext(a: WhoamiResponse, b: WhoamiResponse): boolean
 }
 
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
-  assertProfileHasNoEnvCredentials("altertable login");
+  assertNoEnvConfigMode();
   assertInteractiveLogin();
   applyControlPlaneOverride(args);
 

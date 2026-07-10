@@ -29,11 +29,13 @@ import {
 } from "@/features/profile/render.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
 import {
-  assertProfileHasNoEnvCredentials,
+  assertNoEnvConfigMode,
   createEmptyProfile,
   deleteProfile,
+  envConfigMode,
   getActiveProfileName,
   inspectProfile,
+  isFromEnvProfile,
   listProfiles,
   profileExists,
   renameProfile,
@@ -55,10 +57,24 @@ function optionalArg(value: unknown): string | undefined {
 }
 
 function existingProfileName(name: string): string {
-  if (!profileExists(name)) {
+  // `_from_env` is a valid read target (rendered from env vars) only while env
+  // config is actually in effect; it has no stored directory, so otherwise the
+  // name resolves to nothing.
+  const resolvable = isFromEnvProfile(name) ? envConfigMode() : profileExists(name);
+  if (!resolvable) {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
   return name;
+}
+
+// env/direnv export a selectable profile name; `_from_env` isn't one.
+function requireStoredProfileForExport(name: string): string {
+  if (isFromEnvProfile(name)) {
+    throw new CliError(
+      "The active identity is configured through environment variables; there is no stored profile to export. Pass a profile name.",
+    );
+  }
+  return existingProfileName(name);
 }
 
 function profileNameArgOrActive(args: Record<string, unknown>): string {
@@ -130,6 +146,7 @@ const profileCreateCommand = defineLocalCommand({
     };
   },
   async local(input, context) {
+    assertNoEnvConfigMode();
     createEmptyProfile(input.name);
     await runProfileConfigure(input.configure, context.sink, input.name);
     setActiveProfile(input.name);
@@ -192,7 +209,7 @@ function createProfileUseCommand(id: string, name: string, hidden = false) {
       return requireProfileName(args.name);
     },
     local(profileName) {
-      assertProfileHasNoEnvCredentials("Switching profiles");
+      assertNoEnvConfigMode();
       setActiveProfile(profileName);
       return profileName;
     },
@@ -220,7 +237,7 @@ const profileSwitchCommand = defineLocalCommand<string | undefined, string>({
     return args.name ? requireProfileName(args.name) : undefined;
   },
   async local(profileName) {
-    assertProfileHasNoEnvCredentials("Switching profiles");
+    assertNoEnvConfigMode();
     if (!profileName) {
       if (isJsonOutput(getCliContext()) || getCliContext().agent || process.stdin.isTTY !== true) {
         throw new CliError("Interactive profile switch requires a TTY. Pass a profile name.");
@@ -265,7 +282,7 @@ const profileEnvCommand = defineValueCommand({
     name: { type: "positional", description: "Profile name (default: active profile)" },
   },
   parse({ args }) {
-    return existingProfileName(profileNameArgOrActive(args));
+    return requireStoredProfileForExport(profileNameArgOrActive(args));
   },
   value(profileName) {
     return profileName;
@@ -289,7 +306,7 @@ const profileDirenvCommand = defineValueCommand({
     name: { type: "positional", description: "Profile name (default: active profile)" },
   },
   parse({ args }) {
-    return existingProfileName(profileNameArgOrActive(args));
+    return requireStoredProfileForExport(profileNameArgOrActive(args));
   },
   value(profileName) {
     return profileName;
@@ -358,6 +375,7 @@ const profileRenameCommand = defineLocalCommand({
     };
   },
   local(input) {
+    assertNoEnvConfigMode();
     renameProfile(input.from, input.to);
     return input;
   },
@@ -387,6 +405,7 @@ const profileDeleteCommand = defineLocalCommand({
     return requireProfileName(args.name);
   },
   local(profileName) {
+    assertNoEnvConfigMode();
     deleteProfile(profileName);
     return profileName;
   },
@@ -462,6 +481,7 @@ export const profileCommand = defineLocalCommand<Record<string, unknown>, void>(
   },
   async local(args, context) {
     if (args.configure) {
+      assertNoEnvConfigMode();
       await runProfileConfigure(args as ConfigureCommandArgs, context.sink);
       return;
     }
