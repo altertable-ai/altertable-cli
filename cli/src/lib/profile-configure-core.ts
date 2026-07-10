@@ -1,8 +1,13 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
-import { configFile, configGet, configSet, credentialsFile } from "@/lib/config.ts";
+import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
-import { ensureProfileExists, profilesDir, resolveWorkingProfile } from "@/lib/profile-store.ts";
+import {
+  ensureProfileExists,
+  profileConfigFile,
+  profilesDir,
+  resolveWorkingProfile,
+} from "@/lib/profile-store.ts";
 import { getCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
@@ -38,6 +43,10 @@ function markCurrentProfileUpdated(profileName: string): void {
     configSet("created_at", timestamp, profileName);
   }
   configSet("updated_at", timestamp, profileName);
+}
+
+function clearProfileEndpoint(key: "api_base" | "management_api_base", profileName: string): void {
+  kvUnset(profileConfigFile(profileName), key);
 }
 
 function resolveConfigureProfile(options: ConfigureOptions, org: string): string {
@@ -82,8 +91,8 @@ function configureClearManagementCredentials(profileName: string): void {
 export function configureClearAll(profileName: string): void {
   configureClearLakehouseCredentials(profileName);
   configureClearManagementCredentials(profileName);
-  configSet("api_base", "", profileName);
-  configSet("management_api_base", "", profileName);
+  clearProfileEndpoint("api_base", profileName);
+  clearProfileEndpoint("management_api_base", profileName);
 }
 
 export async function configureRunSet(
@@ -188,13 +197,13 @@ export async function configureRunSet(
       assertAllowedApiBase(dataPlaneUrl, { allowInsecureHttp });
       configSet("api_base", dataPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configSet("api_base", "", profileName);
+      clearProfileEndpoint("api_base", profileName);
     }
     if (controlPlaneUrl) {
       assertAllowedApiBase(controlPlaneUrl, { allowInsecureHttp });
       configSet("management_api_base", controlPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configSet("management_api_base", "", profileName);
+      clearProfileEndpoint("management_api_base", profileName);
     }
 
     if (hasApiKey) {
