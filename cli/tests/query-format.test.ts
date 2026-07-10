@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { configSet } from "@/lib/config.ts";
+import { configSetGlobal } from "@/lib/config.ts";
 import { parseLakehouseQueryResponse } from "@/lib/lakehouse-client.ts";
 import {
   defaultDisplayOptions,
@@ -607,8 +607,8 @@ describe("defaultDisplayOptions", () => {
   });
 
   test("merges config defaults when present", () => {
-    configSet("query_max_width", "24");
-    configSet("query_layout", "table");
+    configSetGlobal("query_max_width", "24");
+    configSetGlobal("query_layout", "table");
     const options = defaultDisplayOptions();
     expect(options.maxColumnWidth).toBe(24);
     expect(options.layout).toBe("table");

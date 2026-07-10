@@ -1,9 +1,9 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
-import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
+import { configFile, configGet, configSet, credentialsFile } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
-import { ensureProfileExists, profilesDir } from "@/lib/profile-store.ts";
-import { getCliContext, setCliContext } from "@/context.ts";
+import { ensureProfileExists, profilesDir, resolveWorkingProfile } from "@/lib/profile-store.ts";
+import { getCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
@@ -32,15 +32,15 @@ export type ConfigureOptions = {
 
 const AUTO_PROFILE_NAME = "auto";
 
-function markCurrentProfileUpdated(): void {
+function markCurrentProfileUpdated(profileName: string): void {
   const timestamp = new Date().toISOString();
-  if (!configGet("created_at")) {
-    configSet("created_at", timestamp);
+  if (!configGet("created_at", profileName)) {
+    configSet("created_at", timestamp, profileName);
   }
-  configSet("updated_at", timestamp);
+  configSet("updated_at", timestamp, profileName);
 }
 
-function resolveConfigureProfile(options: ConfigureOptions, org: string): string | undefined {
+function resolveConfigureProfile(options: ConfigureOptions, org: string): string {
   const explicitProfile = options.profile;
   const env = options.env ?? "";
 
@@ -53,46 +53,37 @@ function resolveConfigureProfile(options: ConfigureOptions, org: string): string
   if (explicitProfile === AUTO_PROFILE_NAME) {
     throw new CliError("--profile auto is only supported by interactive configure.");
   }
-  return undefined;
+  return resolveWorkingProfile(getCliContext().profile);
 }
 
 export async function withConfigureProfileContext<T>(
-  profileName: string | undefined,
-  run: () => Promise<T> | T,
+  profileName: string,
+  run: (profileName: string) => Promise<T> | T,
 ): Promise<T> {
-  if (!profileName) {
-    return await run();
-  }
   ensureProfileExists(profileName);
-  const previous = getCliContext();
-  setCliContext({ ...previous, profile: profileName });
-  try {
-    return await run();
-  } finally {
-    setCliContext(previous);
-  }
+  return await run(profileName);
 }
 
-function configureClearLakehouseCredentials(profileName?: string): void {
+function configureClearLakehouseCredentials(profileName: string): void {
   secretDelete("lakehouse/password", profileName);
   secretDelete("lakehouse/basic-token", profileName);
-  configUnset("user");
-  configUnset("lakehouse_credential_expiry");
+  configSet("user", "", profileName);
+  configSet("lakehouse_credential_expiry", "", profileName);
 }
 
-function configureClearManagementCredentials(profileName?: string): void {
+function configureClearManagementCredentials(profileName: string): void {
   secretDelete("api-key", profileName);
   secretDelete("oauth/access-token", profileName);
   secretDelete("oauth/refresh-token", profileName);
-  configUnset("api_key_env");
-  configUnset("oauth_expiry");
+  configSet("api_key_env", "", profileName);
+  configSet("oauth_expiry", "", profileName);
 }
 
-export function configureClearAll(): void {
-  configureClearLakehouseCredentials();
-  configureClearManagementCredentials();
-  configUnset("api_base");
-  configUnset("management_api_base");
+export function configureClearAll(profileName: string): void {
+  configureClearLakehouseCredentials(profileName);
+  configureClearManagementCredentials(profileName);
+  configSet("api_base", "", profileName);
+  configSet("management_api_base", "", profileName);
 }
 
 export async function configureRunSet(
@@ -100,7 +91,7 @@ export async function configureRunSet(
   sink: OutputSink = getOutputSink(),
   org = "",
 ): Promise<void> {
-  return withConfigureProfileContext(resolveConfigureProfile(options, org), async () => {
+  return withConfigureProfileContext(resolveConfigureProfile(options, org), async (profileName) => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -177,33 +168,33 @@ export async function configureRunSet(
     }
 
     if (hasApiKey) {
-      configureClearManagementCredentials();
-      secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
-      configSet("api_key_env", env);
+      configureClearManagementCredentials(profileName);
+      secretSet("api-key", apiKey, profileName, { fromArgv: apiKeyFromArgv });
+      configSet("api_key_env", env, profileName);
       if (org) {
-        configSet("organization_slug", org);
+        configSet("organization_slug", org, profileName);
       }
     }
     if (hasLakehouseBasicToken) {
-      configureClearLakehouseCredentials();
-      secretSet("lakehouse/basic-token", basicToken);
+      configureClearLakehouseCredentials(profileName);
+      secretSet("lakehouse/basic-token", basicToken, profileName);
     } else if (hasLakehouseCredentials) {
-      configureClearLakehouseCredentials();
-      configSet("user", user);
-      secretSet("lakehouse/password", password, undefined, { fromArgv: passwordFromArgv });
+      configureClearLakehouseCredentials(profileName);
+      configSet("user", user, profileName);
+      secretSet("lakehouse/password", password, profileName, { fromArgv: passwordFromArgv });
     }
 
     if (dataPlaneUrl) {
       assertAllowedApiBase(dataPlaneUrl, { allowInsecureHttp });
-      configSet("api_base", dataPlaneUrl);
+      configSet("api_base", dataPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configUnset("api_base");
+      configSet("api_base", "", profileName);
     }
     if (controlPlaneUrl) {
       assertAllowedApiBase(controlPlaneUrl, { allowInsecureHttp });
-      configSet("management_api_base", controlPlaneUrl);
+      configSet("management_api_base", controlPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configUnset("management_api_base");
+      configSet("management_api_base", "", profileName);
     }
 
     if (hasApiKey) {
@@ -215,7 +206,7 @@ export async function configureRunSet(
     } else if (dataPlaneUrl) {
       sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);
     }
-    markCurrentProfileUpdated();
+    markCurrentProfileUpdated(profileName);
   });
 }
 

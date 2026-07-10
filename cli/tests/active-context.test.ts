@@ -20,6 +20,8 @@ import {
 import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
+const profileName = "default";
+
 let testHome = "";
 
 function runInTestHome<T>(run: () => T | Promise<T>): T | Promise<T> {
@@ -41,7 +43,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await runInTestHome(async () => {
-    configureClearAll();
+    configureClearAll(profileName);
   });
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
@@ -51,8 +53,8 @@ afterEach(async () => {
 describe("active context formatters", () => {
   test("summary shows profile and credential gaps when unconfigured", async () => {
     await runInTestHome(async () => {
-      configureClearAll();
-      const summary = formatActiveContextSummary(buildActiveContext());
+      configureClearAll(profileName);
+      const summary = formatActiveContextSummary(buildActiveContext(profileName));
       expect(summary).not.toContain("CONTEXT");
       expect(summary).toContain("PROFILE");
       expect(summary).toMatch(/\n  PROFILE/);
@@ -64,7 +66,7 @@ describe("active context formatters", () => {
   test("details include authenticated identity when present", async () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "production" });
-      const context = buildActiveContext();
+      const context = buildActiveContext(profileName);
       const details = formatActiveContextDetails(
         withAuthenticatedIdentity(context, {
           principal: { type: "User", name: "Jane Doe", email: "jane@x.io" },
@@ -84,7 +86,7 @@ describe("active context formatters", () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "production" });
 
-      const view = buildActiveContextSummaryView(buildActiveContext());
+      const view = buildActiveContextSummaryView(buildActiveContext(profileName));
       const [summarySection] = view.sections;
       const [summaryBlock] = summarySection?.blocks ?? [];
 
@@ -112,7 +114,7 @@ describe("active context formatters", () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "production" });
       const view = buildActiveContextDetailsView(
-        withAuthenticatedIdentity(buildActiveContext(), {
+        withAuthenticatedIdentity(buildActiveContext(profileName), {
           principal: { type: "User", name: "Alex Doe", email: "alex@example.com" },
           organization: { name: "Acme", slug: "acme" },
         }),
@@ -136,7 +138,7 @@ describe("active context formatters", () => {
   test("json output keeps principal for scripting compatibility", async () => {
     await runInTestHome(async () => {
       await configureRunSet({ apiKey: "atm_test", env: "production" });
-      const context = withAuthenticatedIdentity(buildActiveContext(), {
+      const context = withAuthenticatedIdentity(buildActiveContext(profileName), {
         principal: { type: "User", name: "Jane Doe", email: "jane@x.io" },
         organization: { name: "Acme", slug: "acme" },
       });
@@ -149,7 +151,7 @@ describe("active context formatters", () => {
 
   test("tryFormatActiveContextSummary renders an empty profile", async () => {
     await runInTestHome(async () => {
-      configureClearAll();
+      configureClearAll(profileName);
       const summary = tryFormatActiveContextSummary("staging");
       expect(summary).toContain("PROFILE");
       expect(summary).toContain("staging");

@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { configGet, configSet, kvGet } from "@/lib/config.ts";
+import { configGet, configSet, configSetGlobal, kvGet } from "@/lib/config.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import {
   resetSecretWarningsForTests,
@@ -22,7 +22,7 @@ import {
   profileConfigFile,
   profileExists,
   renameProfile,
-  resolveProfileName,
+  resolveWorkingProfile,
   setActiveProfile,
   updateProfile,
 } from "@/features/profile/model.ts";
@@ -41,6 +41,8 @@ import { runProfileConfigure } from "@/lib/profile-configure.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { createCliTestRuntime, runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
+
+const profileName = "default";
 
 let testHome = "";
 
@@ -69,14 +71,14 @@ describe("profiles layout", () => {
   });
 });
 
-describe("resolveProfileName", () => {
+describe("resolveWorkingProfile", () => {
   test("prefers CLI context profile over active profile", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
 
     setActiveProfile("default");
     setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
-    expect(resolveProfileName(getCliContext().profile)).toBe("staging");
+    expect(resolveWorkingProfile(getCliContext().profile)).toBe("staging");
   });
 
   test("prefers ALTERTABLE_PROFILE over active profile", async () => {
@@ -84,12 +86,12 @@ describe("resolveProfileName", () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     setActiveProfile("default");
     process.env.ALTERTABLE_PROFILE = "staging";
-    expect(resolveProfileName()).toBe("staging");
+    expect(resolveWorkingProfile()).toBe("staging");
   });
 
   test("returns active profile by default", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    expect(resolveProfileName()).toBe(DEFAULT_PROFILE_NAME);
+    expect(resolveWorkingProfile()).toBe(DEFAULT_PROFILE_NAME);
     expect(getActiveProfileName()).toBe(DEFAULT_PROFILE_NAME);
   });
 });
@@ -105,8 +107,8 @@ describe("profile storage", () => {
 
     expect(profileExists("acme_production")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "acme_production" });
-    expect(configGet("api_key_env")).toBe("Production");
-    expect(secretGet("api-key")).toBe("atm_prod");
+    expect(configGet("api_key_env", "acme_production")).toBe("Production");
+    expect(secretGet("api-key", "acme_production")).toBe("atm_prod");
     expect(
       listProfiles().find((profile) => profile.name === "acme_production")?.management_auth,
     ).toBe("api-key");
@@ -152,7 +154,7 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
     const lakehouseExpiry = Date.now() + 60 * 60 * 1000;
     setCliContext({ debug: false, json: false, agent: false, profile: "acme_prod" });
-    configSet("lakehouse_credential_expiry", String(lakehouseExpiry));
+    configSet("lakehouse_credential_expiry", String(lakehouseExpiry), "acme_prod");
 
     const profile = inspectProfile("acme_prod");
     expect(profile.status).toBe("configured");
@@ -166,8 +168,8 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
-    expect(configGet("api_key_env")).toBe("staging");
-    expect(secretGet("api-key")).toBe("atm_staging");
+    expect(configGet("api_key_env", "staging")).toBe("staging");
+    expect(secretGet("api-key", "staging")).toBe("atm_staging");
   });
 
   test("listProfiles marks the active profile", async () => {
@@ -244,7 +246,7 @@ describe("profile storage", () => {
   });
 
   test("global query defaults stay in root config across profiles", async () => {
-    configSet("query_layout", "line");
+    configSetGlobal("query_layout", "line");
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
     expect(kvGet(profileConfigFile("staging"), "query_layout")).toBe("");
@@ -415,7 +417,7 @@ describe("profile storage", () => {
   });
 
   test("rejects path traversal profile names", () => {
-    expect(() => resolveProfileName("../../outside")).toThrow(ConfigurationError);
+    expect(() => resolveWorkingProfile("../../outside")).toThrow(ConfigurationError);
     expect(() => setActiveProfile("..")).toThrow(ConfigurationError);
     expect(() => deleteProfile("foo/bar")).toThrow(ConfigurationError);
   });
@@ -457,8 +459,8 @@ describe("profile --configure dispatch", () => {
 
     await runProfileConfigure({ "api-key": "atm_flagkey", env: "staging" }, sink);
 
-    expect(secretGet("api-key")).toBe("atm_flagkey");
-    expect(configGet("api_key_env")).toBe("staging");
+    expect(secretGet("api-key", profileName)).toBe("atm_flagkey");
+    expect(configGet("api_key_env", profileName)).toBe("staging");
   });
 
   test("rejects --scope combined with credential flags", async () => {
@@ -472,7 +474,7 @@ describe("profile --configure dispatch", () => {
     }
 
     expect(caught).toBeInstanceOf(CliError);
-    expect(secretGet("api-key")).toBe("");
+    expect(secretGet("api-key", profileName)).toBe("");
   });
 });
 

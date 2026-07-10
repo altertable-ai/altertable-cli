@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { configSet } from "@/lib/config.ts";
+import { configSetGlobal } from "@/lib/config.ts";
 import { buildPagerEnv, resolvePagerOptions, shouldUsePager } from "@/lib/pager.ts";
 
 describe("resolvePagerOptions", () => {
@@ -19,17 +19,17 @@ describe("resolvePagerOptions", () => {
   });
 
   test("config always forces pager when CLI flags unset", () => {
-    configSet("query_pager", "always");
+    configSetGlobal("query_pager", "always");
     expect(resolvePagerOptions()).toEqual({ mode: "always" });
   });
 
   test("CLI pager mode wins over config always", () => {
-    configSet("query_pager", "always");
+    configSetGlobal("query_pager", "always");
     expect(resolvePagerOptions("never")).toEqual({ mode: "never" });
   });
 
   test("config always triggers pager for short text on TTY", () => {
-    configSet("query_pager", "always");
+    configSetGlobal("query_pager", "always");
     const originalIsTTY = process.stdout.isTTY;
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     expect(shouldUsePager("short", resolvePagerOptions())).toBe(true);

@@ -88,7 +88,7 @@ describe("renderAltertableUsage active context", () => {
     runWithCliRuntime(createCliRuntime(getBootstrapCliContext()), () => {
       process.env.ALTERTABLE_CONFIG_HOME = testHome;
       process.env.ALTERTABLE_SECRET_BACKEND = "file";
-      configureClearAll();
+      configureClearAll("default");
     });
     rmSync(testHome, { recursive: true, force: true });
     delete process.env.ALTERTABLE_CONFIG_HOME;

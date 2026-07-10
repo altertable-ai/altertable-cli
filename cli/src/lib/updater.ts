@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
 import { USER_AGENT, VERSION } from "@/version.ts";
-import { configDir, configGet, configSet } from "@/lib/config.ts";
+import { configDir, configGetGlobal, configSetGlobal } from "@/lib/config.ts";
 import { urlencode } from "@/lib/encode.ts";
 import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
@@ -286,12 +286,14 @@ export function parseUpdateCheckInterval(value: string): UpdateCheckInterval | u
 }
 
 export function getUpdateCheckInterval(): UpdateCheckInterval {
-  const fromConfig = parseUpdateCheckInterval(configGet(UpdaterConfig.configKeys.checkInterval));
+  const fromConfig = parseUpdateCheckInterval(
+    configGetGlobal(UpdaterConfig.configKeys.checkInterval),
+  );
   return fromConfig ?? UpdaterConfig.defaults.checkInterval;
 }
 
 export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
-  configSet(UpdaterConfig.configKeys.checkInterval, interval);
+  configSetGlobal(UpdaterConfig.configKeys.checkInterval, interval);
 }
 
 function parseUpdateSource(value: string | undefined): UpdateSource | undefined {

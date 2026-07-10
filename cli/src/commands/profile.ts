@@ -1,7 +1,6 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
-import { withConfigureProfileContext } from "@/lib/profile-configure-core.ts";
 import type { ProfileInspect } from "@/features/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
@@ -132,9 +131,7 @@ const profileCreateCommand = defineLocalCommand({
   },
   async local(input, context) {
     createEmptyProfile(input.name);
-    await withConfigureProfileContext(input.name, () =>
-      runProfileConfigure(input.configure, context.sink),
-    );
+    await runProfileConfigure(input.configure, context.sink, input.name);
     setActiveProfile(input.name);
     return inspectProfile(input.name);
   },
