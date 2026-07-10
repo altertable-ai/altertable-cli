@@ -8,6 +8,7 @@ import { formatConfigureSessionSummary } from "@/features/profile/render.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { ConfigurationError, CliError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput } from "@/context.ts";
+import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   collectLakehouseCredentials,
@@ -58,8 +59,12 @@ function formatNextCommandsLine(commands: string[]): string {
   );
 }
 
-function writeOutro(sink: OutputSink, configuredPlanes: ConfigureAuthPlane[]): void {
-  const summaryLines = formatConfigureSessionSummary(configuredPlanes);
+function writeOutro(
+  sink: OutputSink,
+  configuredPlanes: ConfigureAuthPlane[],
+  profileName: string,
+): void {
+  const summaryLines = formatConfigureSessionSummary(profileName, configuredPlanes);
   const nextCommands: string[] = [];
 
   if (configuredPlanes.includes("management")) {
@@ -82,7 +87,8 @@ export function configureNonTtyErrorMessage(): string {
 }
 
 async function runConfigureWizardInCurrentProfile(
-  options: ConfigureWizardOptions = {},
+  options: ConfigureWizardOptions,
+  profileName: string,
 ): Promise<void> {
   const sink = options.sink ?? getOutputSink();
   const prompts = options.prompts ?? defaultConfigurePrompts;
@@ -98,10 +104,13 @@ async function runConfigureWizardInCurrentProfile(
   }
 
   try {
-    const scope = await promptConfigureScope(prompts, options.scope ?? DEFAULT_SCOPE);
+    const scope = await promptConfigureScope(prompts, options.scope ?? DEFAULT_SCOPE, profileName);
     const planes = planesForConfigureScope(scope);
     const configuredPlanes: ConfigureAuthPlane[] = [];
     let activeProfile = options.profile;
+    // The profile actually written to; for `--profile auto` it is only known once
+    // the org/env are collected, so it starts as the read profile and is updated.
+    let targetProfile = profileName;
 
     if (activeProfile === AUTO_PROFILE_NAME && !planes.includes("management")) {
       throw new CliError(
@@ -110,27 +119,30 @@ async function runConfigureWizardInCurrentProfile(
     }
 
     if (planes.includes("management")) {
-      const { options: managementOptions, org } = await collectManagementCredentials(prompts, {
-        ...options,
-        profile: activeProfile,
-      });
+      const { options: managementOptions, org } = await collectManagementCredentials(
+        prompts,
+        { ...options, profile: activeProfile },
+        targetProfile,
+      );
       await saveCredentials(managementOptions, sink, org);
       if (activeProfile === AUTO_PROFILE_NAME && org && managementOptions.env) {
         activeProfile = deriveProfileName(org, managementOptions.env);
+        targetProfile = activeProfile;
       }
       configuredPlanes.push("management");
     }
 
     if (planes.includes("lakehouse")) {
-      const lakehouseOptions = await collectLakehouseCredentials(prompts, {
-        ...options,
-        profile: activeProfile,
-      });
+      const lakehouseOptions = await collectLakehouseCredentials(
+        prompts,
+        { ...options, profile: activeProfile },
+        targetProfile,
+      );
       await saveCredentials(lakehouseOptions, sink);
       configuredPlanes.push("lakehouse");
     }
 
-    writeOutro(sink, configuredPlanes);
+    writeOutro(sink, configuredPlanes, targetProfile);
   } catch (error) {
     if (error instanceof ConfigurePromptCancelled) {
       sink.writeMetadata([terminalMetadata("Configuration cancelled.")]);
@@ -141,9 +153,12 @@ async function runConfigureWizardInCurrentProfile(
 }
 
 export async function runConfigureWizard(options: ConfigureWizardOptions = {}): Promise<void> {
-  const contextProfile = options.profile === AUTO_PROFILE_NAME ? undefined : options.profile;
-  await withConfigureProfileContext(contextProfile, async () => {
-    await runConfigureWizardInCurrentProfile(options);
+  const contextProfile =
+    options.profile && options.profile !== AUTO_PROFILE_NAME
+      ? options.profile
+      : resolveWorkingProfile(getCliContext().profile);
+  await withConfigureProfileContext(contextProfile, async (profileName) => {
+    await runConfigureWizardInCurrentProfile(options, profileName);
   });
 }
 
@@ -241,8 +256,12 @@ function resolveWizardScope(scope: string | undefined): ConfigureWizardScope {
 export async function runProfileConfigure(
   args: ConfigureCommandArgs,
   sink: OutputSink,
+  profileName?: string,
 ): Promise<void> {
   const options = buildConfigureOptions(args);
+  if (profileName) {
+    options.profile = profileName;
+  }
 
   if (hasConfigureCredentialFlags(options)) {
     if (args.scope) {
@@ -257,6 +276,7 @@ export async function runProfileConfigure(
   await runConfigureWizard({
     scope: resolveWizardScope(args.scope),
     allowInsecureHttp: options.allowInsecureHttp,
+    profile: profileName,
     sink,
   });
 }

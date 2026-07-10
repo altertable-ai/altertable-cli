@@ -1,8 +1,9 @@
 import { HttpError, type AuthPlane } from "@/lib/errors.ts";
 import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { requirePlaneAuth, type ExecutionContext } from "@/lib/execution-context.ts";
-import { getManagementAuthHeader } from "@/lib/auth.ts";
+import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
+import { getLakehouseAuthHeader, getManagementAuthHeader } from "@/lib/auth.ts";
+import { resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
 import {
   canRecoverLakehouseAuth,
@@ -26,9 +27,9 @@ export type OperationHttpRequest = {
 };
 
 const PLANE_URL_BUILDERS = {
-  lakehouse: (endpoint, context) => `${context.endpoints.lakehouse}${endpoint}`,
+  lakehouse: (endpoint, context) => `${resolveApiBase(context.profile)}${endpoint}`,
   management: (endpoint, context) =>
-    `${context.endpoints.management}${encodeManagementEndpoint(endpoint)}`,
+    `${resolveManagementApiBase(context.profile)}${encodeManagementEndpoint(endpoint)}`,
 } satisfies Record<AuthPlane, PlaneUrlBuilder>;
 
 function resolvePlaneUrl(request: OperationHttpRequest, context: ExecutionContext): string {
@@ -39,16 +40,20 @@ async function resolveRequestAuthHeader(
   request: OperationHttpRequest,
   context: ExecutionContext,
 ): Promise<string> {
-  if (request.plane === "management" && hasOAuthSession()) {
-    await ensureFreshAccessToken();
-    return getManagementAuthHeader();
+  if (request.plane === "management") {
+    if (hasOAuthSession(context.profile)) {
+      await ensureFreshAccessToken(context.profile);
+    }
+    return getManagementAuthHeader(context.profile);
   }
-  if (request.plane === "lakehouse" && !context.auth.lakehouse && hasManagementCredentials()) {
-    const header = await provisionLakehouseCredential(context);
-    context.auth.lakehouse = header;
-    return header;
+  const existing = optionalAuth(() => getLakehouseAuthHeader(context.profile));
+  if (existing) {
+    return existing;
   }
-  return requirePlaneAuth(context, request.plane);
+  if (hasManagementCredentials(context.profile)) {
+    return provisionLakehouseCredential(context);
+  }
+  return getLakehouseAuthHeader(context.profile);
 }
 
 async function toHttpSendOptions(
@@ -70,14 +75,18 @@ async function toHttpSendOptions(
   };
 }
 
-function isRecoverableLakehouseAuthFailure(request: OperationHttpRequest, error: unknown): boolean {
+function isRecoverableLakehouseAuthFailure(
+  request: OperationHttpRequest,
+  error: unknown,
+  profileName: string,
+): boolean {
   return (
     error instanceof HttpError &&
     error.status === 401 &&
     request.plane === "lakehouse" &&
     // A stream body was consumed by the failed attempt and cannot be resent.
     !(request.body instanceof ReadableStream) &&
-    canRecoverLakehouseAuth()
+    canRecoverLakehouseAuth(profileName)
   );
 }
 
@@ -90,13 +99,12 @@ async function sendWithAuthRecovery<T>(
   try {
     return await send(options);
   } catch (error) {
-    if (!isRecoverableLakehouseAuthFailure(request, error)) {
+    if (!isRecoverableLakehouseAuthFailure(request, error, context.profile)) {
       throw error;
     }
     // The server can invalidate a provisioned credential (revocation, restart)
     // before the locally stored expiry: mint a fresh one and retry once.
     const authHeader = await provisionLakehouseCredential(context);
-    context.auth.lakehouse = authHeader;
     return send({ ...options, authHeader });
   }
 }

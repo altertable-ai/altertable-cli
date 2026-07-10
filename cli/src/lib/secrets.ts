@@ -1,11 +1,10 @@
 import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
 import { chmodSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { getCliContext } from "@/context.ts";
 import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
-import { assertSafeProfileName, resolveProfileName } from "@/lib/profile-store.ts";
+import { assertSafeProfileName } from "@/lib/profile-store.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -72,13 +71,9 @@ function secretBackend(): SecretBackend {
   return "file";
 }
 
-function resolveSecretAccount(account: string, profileName?: string): string {
-  if (profileName) {
-    assertSafeProfileName(profileName);
-    return `profile/${profileName}/${account}`;
-  }
-  const profile = resolveProfileName(getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
-  return `profile/${profile}/${account}`;
+function resolveSecretKey(key: string, profileName: string): string {
+  assertSafeProfileName(profileName);
+  return `profile/${profileName}/${key}`;
 }
 
 export type SecretSetOptions = {
@@ -120,10 +115,10 @@ function secretSetMacos(storageAccount: string, value: string): void {
 export function secretSet(
   account: string,
   value: string,
-  profileName?: string,
+  profileName: string,
   options?: SecretSetOptions,
 ): void {
-  const storageAccount = resolveSecretAccount(account, profileName);
+  const storageAccount = resolveSecretKey(account, profileName);
   const backend = secretBackend();
   if (backend === "macos" && !options?.fromArgv) {
     secretSetMacos(storageAccount, value);
@@ -138,13 +133,13 @@ export function secretSet(
   }
 }
 
-export function secretGet(account: string, profileName?: string): string {
-  const storageAccount = resolveSecretAccount(account, profileName);
+export function secretGet(key: string, profileName: string): string {
+  const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {
     const result = runSpawnSync(
       "security",
-      ["find-generic-password", "-s", "altertable", "-a", storageAccount, "-w"],
+      ["find-generic-password", "-s", "altertable", "-a", secretKey, "-w"],
       { encoding: "utf8" },
     );
     const stdout = result.stdout;
@@ -153,77 +148,73 @@ export function secretGet(account: string, profileName?: string): string {
       return keychainValue;
     }
     requireSafeCredentialsFile();
-    return kvGet(credentialsFile(), storageAccount);
+    return kvGet(credentialsFile(), secretKey);
   }
 
   requireSafeCredentialsFile();
-  return kvGet(credentialsFile(), storageAccount);
+  return kvGet(credentialsFile(), secretKey);
 }
 
-export function secretExists(account: string, profileName?: string): boolean {
-  const storageAccount = resolveSecretAccount(account, profileName);
+export function secretExists(key: string, profileName: string): boolean {
+  const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {
     const result = runSpawnSync(
       "security",
-      ["find-generic-password", "-s", "altertable", "-a", storageAccount],
+      ["find-generic-password", "-s", "altertable", "-a", secretKey],
       { stdio: "ignore" },
     );
     if (result.status === 0) {
       return true;
     }
     requireSafeCredentialsFile();
-    return kvGet(credentialsFile(), storageAccount) !== "";
+    return kvGet(credentialsFile(), secretKey) !== "";
   }
 
   requireSafeCredentialsFile();
-  return kvGet(credentialsFile(), storageAccount) !== "";
+  return kvGet(credentialsFile(), secretKey) !== "";
 }
 
-export function secretDelete(account: string, profileName?: string): void {
-  const storageAccount = resolveSecretAccount(account, profileName);
+export function secretDelete(key: string, profileName: string): void {
+  const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {
-    runSpawnSync(
-      "security",
-      ["delete-generic-password", "-s", "altertable", "-a", storageAccount],
-      {
-        stdio: "ignore",
-      },
-    );
-    kvUnset(credentialsFile(), storageAccount);
+    runSpawnSync("security", ["delete-generic-password", "-s", "altertable", "-a", secretKey], {
+      stdio: "ignore",
+    });
+    kvUnset(credentialsFile(), secretKey);
     return;
   }
 
-  kvUnset(credentialsFile(), storageAccount);
+  kvUnset(credentialsFile(), secretKey);
 }
 
 export function moveProfileSecrets(
   sourceProfile: string,
   targetProfile: string,
-  accounts: readonly string[],
+  keys: readonly string[],
 ): void {
-  const prepared: Array<{ account: string; targetValue: string }> = [];
+  const prepared: Array<{ key: string; targetValue: string }> = [];
 
   try {
-    for (const account of accounts) {
-      const sourceValue = secretGet(account, sourceProfile);
+    for (const key of keys) {
+      const sourceValue = secretGet(key, sourceProfile);
       if (sourceValue.length === 0) {
         continue;
       }
       prepared.push({
-        account,
-        targetValue: secretGet(account, targetProfile),
+        key,
+        targetValue: secretGet(key, targetProfile),
       });
-      secretSet(account, sourceValue, targetProfile);
+      secretSet(key, sourceValue, targetProfile);
     }
   } catch (error) {
     for (const entry of prepared.toReversed()) {
       try {
         if (entry.targetValue.length > 0) {
-          secretSet(entry.account, entry.targetValue, targetProfile);
+          secretSet(entry.key, entry.targetValue, targetProfile);
         } else {
-          secretDelete(entry.account, targetProfile);
+          secretDelete(entry.key, targetProfile);
         }
       } catch {
         // Best-effort rollback; preserve the original failure for the caller.
@@ -232,8 +223,8 @@ export function moveProfileSecrets(
     throw error;
   }
 
-  for (const { account } of prepared) {
-    secretDelete(account, sourceProfile);
+  for (const { key } of prepared) {
+    secretDelete(key, sourceProfile);
   }
 }
 

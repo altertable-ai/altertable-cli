@@ -1,43 +1,14 @@
 import type { CliContext } from "@/context.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { getLakehouseAuthHeader, getManagementAuthHeader } from "@/lib/auth.ts";
-import { configGet, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
-import { resolveProfileName } from "@/lib/profile-store.ts";
+import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 
+// Endpoints and auth are intentionally NOT cached here — they resolve from this
+// profile at each request, so they can never desync from it.
 export type CliSession = {
   profile: string;
-  apiBase: string;
-  managementApiBase: string;
-  lakehouseAuthHeader?: string;
-  managementAuthHeader?: string;
-  managementEnv?: string;
 };
 
-function tryAuthHeader(resolve: () => string): string | undefined {
-  try {
-    return resolve();
-  } catch (error) {
-    if (error instanceof ConfigurationError) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
-function resolveOptionalManagementEnv(): string | undefined {
-  const env = process.env.ALTERTABLE_ENV ?? configGet("api_key_env");
-  return env.length > 0 ? env : undefined;
-}
-
 export function createCliSession(context: CliContext): CliSession {
-  const profile = resolveProfileName(context.profile ?? process.env.ALTERTABLE_PROFILE);
-
   return {
-    profile,
-    apiBase: resolveApiBase(),
-    managementApiBase: resolveManagementApiBase(),
-    lakehouseAuthHeader: tryAuthHeader(getLakehouseAuthHeader),
-    managementAuthHeader: tryAuthHeader(getManagementAuthHeader),
-    managementEnv: resolveOptionalManagementEnv(),
+    profile: resolveWorkingProfile(context.profile),
   };
 }

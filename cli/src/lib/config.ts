@@ -1,13 +1,4 @@
-import { getCliContext } from "@/context.ts";
-import {
-  ensureProfilesLayout,
-  isProfileScopedConfigKey,
-  profileConfigFile,
-  readProfileConfig,
-  resolveProfileName,
-  unsetProfileConfig,
-  writeProfileConfig,
-} from "@/lib/profile-store.ts";
+import { configGet, configSet } from "@/lib/profile-store.ts";
 import {
   chmodConfigFile,
   configDir,
@@ -21,39 +12,15 @@ import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 
 export { configDir, configFile, credentialsFile, kvGet, kvSet, kvUnset };
+export { configGet, configSet };
 
-function resolveConfigProfile(override?: string): string {
-  return resolveProfileName(override ?? getCliContext().profile ?? process.env.ALTERTABLE_PROFILE);
-}
-
-export function configGet(key: string): string {
-  ensureProfilesLayout();
-  if (isProfileScopedConfigKey(key)) {
-    return readProfileConfig(resolveConfigProfile(), key);
-  }
+export function configGetGlobal(key: string): string {
   return kvGet(configFile(), key);
 }
 
-export function configSet(key: string, value: string): void {
-  ensureProfilesLayout();
-  if (isProfileScopedConfigKey(key)) {
-    writeProfileConfig(resolveConfigProfile(), key, value);
-    chmodConfigFile(profileConfigFile(resolveConfigProfile()));
-    return;
-  }
-
-  const filePath = configFile();
-  kvSet(filePath, key, value);
-  chmodConfigFile(filePath);
-}
-
-export function configUnset(key: string): void {
-  ensureProfilesLayout();
-  if (isProfileScopedConfigKey(key)) {
-    unsetProfileConfig(resolveConfigProfile(), key);
-    return;
-  }
-  kvUnset(configFile(), key);
+export function configSetGlobal(key: string, value: string): void {
+  kvSet(configFile(), key, value);
+  chmodConfigFile(configFile());
 }
 
 function resolveAllowInsecureHttp(): boolean {
@@ -61,10 +28,10 @@ function resolveAllowInsecureHttp(): boolean {
   return envFlag === "true" || envFlag === "1";
 }
 
-export function resolveApiBase(): string {
+export function resolveApiBase(profileName: string): string {
   let base = process.env.ALTERTABLE_API_BASE ?? "";
   if (!base) {
-    base = configGet("api_base");
+    base = configGet("api_base", profileName);
   }
   if (!base) {
     base = "https://api.altertable.ai";
@@ -74,10 +41,10 @@ export function resolveApiBase(): string {
   return normalized;
 }
 
-function resolveManagementApiRoot(): string {
+function resolveManagementApiRoot(profileName: string): string {
   let root = process.env.ALTERTABLE_MANAGEMENT_API_BASE ?? "";
   if (!root) {
-    root = configGet("management_api_base");
+    root = configGet("management_api_base", profileName);
   }
   if (!root) {
     root = "https://app.altertable.ai";
@@ -87,19 +54,19 @@ function resolveManagementApiRoot(): string {
   return normalized;
 }
 
-export function resolveManagementApiBase(): string {
-  return `${resolveManagementApiRoot()}/rest/v1`;
+export function resolveManagementApiBase(profileName: string): string {
+  return `${resolveManagementApiRoot(profileName)}/rest/v1`;
 }
 
-export function resolveOAuthBase(): string {
-  return `${resolveManagementApiRoot()}/oauth`;
+export function resolveOAuthBase(profileName: string): string {
+  return `${resolveManagementApiRoot(profileName)}/oauth`;
 }
 
 const QUERY_PAGER_VALUES = new Set(["auto", "always", "never"]);
 const MIN_QUERY_MAX_COL_WIDTH = 8;
 
 export function getQueryDefaultMaxColumnWidth(): number | undefined {
-  const value = configGet("query_max_width");
+  const value = configGetGlobal("query_max_width");
   if (value.length === 0) {
     return undefined;
   }
@@ -111,7 +78,7 @@ export function getQueryDefaultMaxColumnWidth(): number | undefined {
 }
 
 export function getQueryDefaultLayout(): QueryLayout | undefined {
-  const value = configGet("query_layout");
+  const value = configGetGlobal("query_layout");
   if (value.length === 0) {
     return undefined;
   }
@@ -122,7 +89,7 @@ export function getQueryDefaultLayout(): QueryLayout | undefined {
 }
 
 export function getQueryDefaultPager(): "auto" | "always" | "never" | undefined {
-  const value = configGet("query_pager");
+  const value = configGetGlobal("query_pager");
   if (value.length === 0) {
     return undefined;
   }

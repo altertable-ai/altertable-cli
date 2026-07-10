@@ -57,16 +57,20 @@ function renderConfigureRows(
 }
 
 export function formatConfigureAuthenticationLines(
+  profileName: string,
   options: FormatConfigureAuthenticationOptions = {},
 ): string[] {
   return renderConfigureRows(
-    configureAuthenticationRows(buildConfigureShowData(), options.planes),
+    configureAuthenticationRows(buildConfigureShowData(profileName), options.planes),
     options,
   );
 }
 
-export function formatConfigureSessionSummary(configuredPlanes: ConfigureAuthPlane[]): string[] {
-  return formatConfigureAuthenticationLines({ planes: configuredPlanes });
+export function formatConfigureSessionSummary(
+  profileName: string,
+  configuredPlanes: ConfigureAuthPlane[],
+): string[] {
+  return formatConfigureAuthenticationLines(profileName, { planes: configuredPlanes });
 }
 
 export function formatActiveContextSummary(context: ActiveContext): string {
@@ -82,9 +86,9 @@ export function formatActiveContextDetails(context: ActiveContext): string {
   return formatTerminalSection(lines);
 }
 
-export function tryFormatActiveContextSummary(profileOverride?: string): string {
+export function tryFormatActiveContextSummary(profileName: string): string {
   try {
-    return formatActiveContextSummary(buildActiveContext(profileOverride));
+    return formatActiveContextSummary(buildActiveContext(profileName));
   } catch (error) {
     if (error instanceof ConfigurationError) {
       return "";

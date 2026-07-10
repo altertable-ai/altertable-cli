@@ -6,7 +6,7 @@ import {
   hasLakehouseEnvCredentials,
   requireManagementEnv,
 } from "@/lib/auth.ts";
-import { configGet, configSet } from "@/lib/config.ts";
+import { configGet, configSet, resolveManagementApiBase } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
 import { httpSend } from "@/lib/http.ts";
@@ -20,10 +20,10 @@ import { USER_AGENT } from "@/version.ts";
 const CREDENTIAL_LABEL = USER_AGENT;
 const CREDENTIAL_TTL_MS = 2 * 60 * 60 * 1000;
 
-export function hasManagementCredentials(): boolean {
+export function hasManagementCredentials(profileName: string): boolean {
   // optionalAuth only swallows ConfigurationError ("not configured");
   // real failures (e.g. keychain errors) propagate to the user.
-  return optionalAuth(getManagementAuthHeader) !== undefined;
+  return optionalAuth(() => getManagementAuthHeader(profileName)) !== undefined;
 }
 
 /**
@@ -31,11 +31,11 @@ export function hasManagementCredentials(): boolean {
  * provisioned (never env vars or manually configured credentials — a 401 on
  * those must surface) and management credentials exist to mint a new one.
  */
-export function canRecoverLakehouseAuth(): boolean {
+export function canRecoverLakehouseAuth(profileName: string): boolean {
   return (
     !hasLakehouseEnvCredentials() &&
-    configGet("lakehouse_credential_expiry") !== "" &&
-    hasManagementCredentials()
+    configGet("lakehouse_credential_expiry", profileName) !== "" &&
+    hasManagementCredentials(profileName)
   );
 }
 
@@ -45,13 +45,13 @@ async function sendManagementRequest(
   endpoint: string,
   body?: string,
 ): Promise<unknown> {
-  if (hasOAuthSession()) {
-    await ensureFreshAccessToken();
+  if (hasOAuthSession(context.profile)) {
+    await ensureFreshAccessToken(context.profile);
   }
   const response = await httpSend({
     method,
-    url: `${context.endpoints.management}${encodeManagementEndpoint(endpoint)}`,
-    authHeader: getManagementAuthHeader(),
+    url: `${resolveManagementApiBase(context.profile)}${encodeManagementEndpoint(endpoint)}`,
+    authHeader: getManagementAuthHeader(context.profile),
     body,
     contentType: body === undefined ? undefined : "application/json",
     authPlane: "management",
@@ -61,7 +61,7 @@ async function sendManagementRequest(
 
 export async function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
   context.output.writeMetadata([terminalMuted("Refreshing lakehouse credentials...")]);
-  const env = context.managementEnv ?? requireManagementEnv();
+  const env = requireManagementEnv(context.profile);
   const whoami = (await sendManagementRequest(
     context,
     "GET",
@@ -96,7 +96,7 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
   }
 
   const token = basicAuthToken(username, password);
-  secretSet("lakehouse/basic-token", token);
-  configSet("lakehouse_credential_expiry", String(expiryMs));
+  secretSet("lakehouse/basic-token", token, context.profile);
+  configSet("lakehouse_credential_expiry", String(expiryMs), context.profile);
   return basicAuthHeader(token);
 }

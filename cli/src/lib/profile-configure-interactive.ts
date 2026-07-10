@@ -221,31 +221,40 @@ type ScopePromptModel = {
   options: ConfigureSelectOption[];
 };
 
-function formatScopeSelectLabel(plane: "management" | "lakehouse"): string {
+function formatScopeSelectLabel(plane: "management" | "lakehouse", profileName: string): string {
   const name = plane === "management" ? "Management" : "Lakehouse";
   const detail =
-    plane === "management" ? managementPlaneStatusDetail() : lakehousePlaneStatusDetail();
+    plane === "management"
+      ? managementPlaneStatusDetail(profileName)
+      : lakehousePlaneStatusDetail(profileName);
   if (!detail) {
     return `${terminalStrong(name)} ${terminalNotConfiguredStatus()}`;
   }
   return `${terminalStrong(name)} ${terminalSubtle(detail)}`;
 }
 
-function toScopePromptOption(value: PromptScopeSelection): ConfigureSelectOption {
+function toScopePromptOption(
+  value: PromptScopeSelection,
+  profileName: string,
+): ConfigureSelectOption {
   if (value === "both") {
     return { value, label: terminalStrong("Both") };
   }
-  return { value, label: formatScopeSelectLabel(value) };
+  return { value, label: formatScopeSelectLabel(value, profileName) };
 }
 
-function buildScopePromptModel(hasManagement: boolean, hasLakehouse: boolean): ScopePromptModel {
+function buildScopePromptModel(
+  hasManagement: boolean,
+  hasLakehouse: boolean,
+  profileName: string,
+): ScopePromptModel {
   if (hasManagement && hasLakehouse) {
     return {
       defaultValue: "both",
       options: [
-        toScopePromptOption("management"),
-        toScopePromptOption("lakehouse"),
-        toScopePromptOption("both"),
+        toScopePromptOption("management", profileName),
+        toScopePromptOption("lakehouse", profileName),
+        toScopePromptOption("both", profileName),
       ],
     };
   }
@@ -253,23 +262,29 @@ function buildScopePromptModel(hasManagement: boolean, hasLakehouse: boolean): S
   if (hasManagement) {
     return {
       defaultValue: "lakehouse",
-      options: [toScopePromptOption("lakehouse"), toScopePromptOption("management")],
+      options: [
+        toScopePromptOption("lakehouse", profileName),
+        toScopePromptOption("management", profileName),
+      ],
     };
   }
 
   if (hasLakehouse) {
     return {
       defaultValue: "management",
-      options: [toScopePromptOption("management"), toScopePromptOption("lakehouse")],
+      options: [
+        toScopePromptOption("management", profileName),
+        toScopePromptOption("lakehouse", profileName),
+      ],
     };
   }
 
   return {
     defaultValue: "both",
     options: [
-      toScopePromptOption("both"),
-      toScopePromptOption("management"),
-      toScopePromptOption("lakehouse"),
+      toScopePromptOption("both", profileName),
+      toScopePromptOption("management", profileName),
+      toScopePromptOption("lakehouse", profileName),
     ],
   };
 }
@@ -284,14 +299,15 @@ function parseScopeSelection(selection: string): ConfigureWizardScope {
 export async function promptConfigureScope(
   prompts: ConfigurePrompts,
   requestedScope: ConfigureWizardScope,
+  profileName: string,
 ): Promise<ConfigureWizardScope> {
-  const { hasManagement, hasLakehouse } = configureCredentialStatus();
+  const { hasManagement, hasLakehouse } = configureCredentialStatus(profileName);
 
   if (requestedScope !== DEFAULT_SCOPE) {
     return requestedScope;
   }
 
-  const scopePromptModel = buildScopePromptModel(hasManagement, hasLakehouse);
+  const scopePromptModel = buildScopePromptModel(hasManagement, hasLakehouse, profileName);
   const selectedScope = await prompts.readSelect(
     SCOPE_SELECT_TITLE,
     scopePromptModel.options,
@@ -342,12 +358,15 @@ type ReadSecretWithOptionalReuseArgs = {
   requiredMessage: string;
 };
 
-async function readSecretWithOptionalReuse(args: ReadSecretWithOptionalReuseArgs): Promise<string> {
+async function readSecretWithOptionalReuse(
+  args: ReadSecretWithOptionalReuseArgs,
+  profileName: string,
+): Promise<string> {
   const { prompts, secretKey, keepPrompt, passwordPrompt, requiredMessage } = args;
-  if (secretExists(secretKey)) {
+  if (secretExists(secretKey, profileName)) {
     const keepExistingValue = await prompts.readConfirm(keepPrompt, true);
     if (keepExistingValue) {
-      return secretGet(secretKey);
+      return secretGet(secretKey, profileName);
     }
   }
 
@@ -357,16 +376,17 @@ async function readSecretWithOptionalReuse(args: ReadSecretWithOptionalReuseArgs
 export async function collectManagementCredentials(
   prompts: ConfigurePrompts,
   options: ConfigureWizardOptions,
+  profileName: string,
 ): Promise<{ options: ConfigureOptions; org: string }> {
   prompts.writePrompt(`\n${terminalAccent("Management")}\n`);
 
-  const currentEnv = configGet("api_key_env");
+  const currentEnv = configGet("api_key_env", profileName);
   const envDefault = currentEnv || "production";
   const envPrompt = `Environment ${terminalDefaultHint(envDefault)}: `;
   const env = await readLineWithDefault(prompts, envPrompt, envDefault);
   let org = options.org ?? "";
   if (!org && options.profile === AUTO_PROFILE_NAME) {
-    const currentOrg = configGet("organization_slug");
+    const currentOrg = configGet("organization_slug", profileName);
     const orgPrompt = currentOrg
       ? `Organization slug ${terminalDefaultHint(currentOrg)}: `
       : `${terminalAccent("Organization slug")}: `;
@@ -377,13 +397,16 @@ export async function collectManagementCredentials(
       throw new CliError("Organization slug is required for --profile auto.");
     }
   }
-  const apiKey = await readSecretWithOptionalReuse({
-    prompts,
-    secretKey: "api-key",
-    keepPrompt: "Keep existing API key?",
-    passwordPrompt: `${terminalAccent("API key")} ${HIDDEN_PROMPT_HINT}: `,
-    requiredMessage: "API key is required.",
-  });
+  const apiKey = await readSecretWithOptionalReuse(
+    {
+      prompts,
+      secretKey: "api-key",
+      keepPrompt: "Keep existing API key?",
+      passwordPrompt: `${terminalAccent("API key")} ${HIDDEN_PROMPT_HINT}: `,
+      requiredMessage: "API key is required.",
+    },
+    profileName,
+  );
 
   const useDefaultControlPlane = await prompts.readConfirm(
     `Default control plane ${formatTerminalUrls(DEFAULT_CONTROL_PLANE_URL)}?`,
@@ -410,6 +433,7 @@ export async function collectManagementCredentials(
 export async function collectLakehouseCredentials(
   prompts: ConfigurePrompts,
   options: ConfigureWizardOptions,
+  profileName: string,
 ): Promise<ConfigureOptions> {
   const method = await prompts.readSelect(
     `${terminalAccent("Lakehouse")}  ${terminalSubtle("auth")}`,
@@ -435,7 +459,7 @@ export async function collectLakehouseCredentials(
     return configureOptions;
   }
 
-  const currentUser = configGet("user");
+  const currentUser = configGet("user", profileName);
   const userPrompt = currentUser
     ? `Username ${terminalDefaultHint(currentUser)}: `
     : `${terminalAccent("Username")}: `;
@@ -446,13 +470,16 @@ export async function collectLakehouseCredentials(
     throw new CliError("Username is required.");
   }
 
-  const password = await readSecretWithOptionalReuse({
-    prompts,
-    secretKey: "lakehouse/password",
-    keepPrompt: "Keep existing password?",
-    passwordPrompt: `${terminalAccent("Password")} ${HIDDEN_PROMPT_HINT}: `,
-    requiredMessage: "Password is required.",
-  });
+  const password = await readSecretWithOptionalReuse(
+    {
+      prompts,
+      secretKey: "lakehouse/password",
+      keepPrompt: "Keep existing password?",
+      passwordPrompt: `${terminalAccent("Password")} ${HIDDEN_PROMPT_HINT}: `,
+      requiredMessage: "Password is required.",
+    },
+    profileName,
+  );
 
   const useDefaultDataPlane = await prompts.readConfirm(
     `Default data plane ${formatTerminalUrls(DEFAULT_DATA_PLANE_URL)}?`,
