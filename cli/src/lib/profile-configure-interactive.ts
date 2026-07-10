@@ -357,7 +357,7 @@ async function readSecretWithOptionalReuse(args: ReadSecretWithOptionalReuseArgs
 export async function collectManagementCredentials(
   prompts: ConfigurePrompts,
   options: ConfigureWizardOptions,
-): Promise<ConfigureOptions> {
+): Promise<{ options: ConfigureOptions; org: string }> {
   prompts.writePrompt(`\n${terminalAccent("Management")}\n`);
 
   const currentEnv = configGet("api_key_env");
@@ -393,7 +393,6 @@ export async function collectManagementCredentials(
   const configureOptions: ConfigureOptions = {
     apiKey,
     env,
-    org,
     profile: options.profile,
     allowInsecureHttp: options.allowInsecureHttp,
   };
@@ -405,7 +404,7 @@ export async function collectManagementCredentials(
     configureOptions.controlPlaneUrl = controlPlaneUrl || DEFAULT_CONTROL_PLANE_URL;
   }
 
-  return configureOptions;
+  return { options: configureOptions, org };
 }
 
 export async function collectLakehouseCredentials(

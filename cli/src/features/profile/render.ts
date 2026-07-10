@@ -3,11 +3,8 @@ import {
   buildActiveContextSummaryView,
   buildProfileInspectView,
   buildProfileListView,
-  buildProfileShowView,
   buildProfileStatusView,
   configureAuthenticationRows,
-  type ProfileShowResult,
-  type ProfileShowViewOptions,
   type ProfileStatusResult,
 } from "@/features/profile/views.ts";
 import {
@@ -31,13 +28,6 @@ import { formatTerminalSection } from "@/ui/terminal/styles.ts";
 
 export function formatProfileInspect(profile: ProfileInspect): string {
   return renderDocumentText(buildProfileInspectView(profile));
-}
-
-export function formatProfileShow(
-  result: ProfileShowResult,
-  options: ProfileShowViewOptions = {},
-): string {
-  return renderDocumentText(buildProfileShowView(result, options));
 }
 
 export function formatProfileStatus(result: ProfileStatusResult): string {

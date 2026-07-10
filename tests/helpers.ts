@@ -218,6 +218,9 @@ function buildEnv(overrides: TestEnv = {}): Record<string, string> {
     }
   }
   env.PATH = `${join(repoRoot, "bin")}:${env.PATH ?? ""}`;
+  // Keep CLI output deterministic regardless of the developer's terminal: citty
+  // colorizes arg-validation errors unless NO_COLOR/CI is set (CI has it, local shells don't).
+  env.NO_COLOR = "1";
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) {
       delete env[key];

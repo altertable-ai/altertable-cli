@@ -36,8 +36,9 @@ const AUTO_PROFILE_NAME = "auto";
 async function saveCredentials(
   configureOptions: ConfigureOptions,
   sink: OutputSink,
+  org = "",
 ): Promise<void> {
-  await configureRunSet({ ...configureOptions, interactive: true }, sink);
+  await configureRunSet({ ...configureOptions, interactive: true }, sink, org);
 }
 
 function formatNextCommandsLine(commands: string[]): string {
@@ -109,13 +110,13 @@ async function runConfigureWizardInCurrentProfile(
     }
 
     if (planes.includes("management")) {
-      const managementOptions = await collectManagementCredentials(prompts, {
+      const { options: managementOptions, org } = await collectManagementCredentials(prompts, {
         ...options,
         profile: activeProfile,
       });
-      await saveCredentials(managementOptions, sink);
-      if (activeProfile === AUTO_PROFILE_NAME && managementOptions.org && managementOptions.env) {
-        activeProfile = deriveProfileName(managementOptions.org, managementOptions.env);
+      await saveCredentials(managementOptions, sink, org);
+      if (activeProfile === AUTO_PROFILE_NAME && org && managementOptions.env) {
+        activeProfile = deriveProfileName(org, managementOptions.env);
       }
       configuredPlanes.push("management");
     }
