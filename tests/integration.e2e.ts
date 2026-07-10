@@ -55,7 +55,7 @@ describe("lakehouse integration flows", () => {
 
     result = await workspace.runCommand("altertable --agent profile show", { env: { ALTERTABLE_API_KEY: "atm_test" } });
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout).profile.name).toBe("default");
+    expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
 
     const queryId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
     const sessionId = "b2c3d4e5-f6a7-8901-bcde-f12345678901";
