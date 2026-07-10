@@ -1,8 +1,5 @@
 import { defineHttpOperation } from "@/lib/http-operation.ts";
 import { buildCatalogRowsFromResponses } from "@/lib/catalog-rows.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { type WhoamiResponse } from "@/features/management/model.ts";
-import { type ActiveContext, withAuthenticatedIdentity } from "@/features/profile/model.ts";
 import type { CatalogRow } from "@/features/management/model.ts";
 
 export type ManagementCatalogCreateInput = {
@@ -16,17 +13,6 @@ export type ManagementCatalogCreateResult = {
   env: string;
   fallbackName: string;
 };
-
-export const managementWhoamiOperation = defineHttpOperation<ActiveContext, ActiveContext>({
-  id: "management.whoami",
-  request: () => ({
-    plane: "management",
-    method: "GET",
-    endpoint: "/whoami",
-  }),
-  decode: (response, _context, activeContext) =>
-    withAuthenticatedIdentity(activeContext, parseApiJson(response) as WhoamiResponse),
-});
 
 export const managementCatalogCreateOperation = defineHttpOperation<
   ManagementCatalogCreateInput,

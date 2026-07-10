@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-import { whoamiMock } from "./mock-http.ts";
 
 const API_BASE = "http://0.0.0.0:15000";
 
@@ -54,11 +53,9 @@ describe("lakehouse integration flows", () => {
     result = await workspace.runCommand('altertable --agent query "SELECT 1" --layout table');
     expect(result.exitCode).not.toBe(0);
 
-    await workspace.setupMockHttp(whoamiMock({ type: "User", name: "Agent User", email: "agent@x.io" }));
     result = await workspace.runCommand("altertable --agent profile show", { env: { ALTERTABLE_API_KEY: "atm_test" } });
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout).profile.user.email).toBe("agent@x.io");
-    workspace.clearMockHttp();
+    expect(JSON.parse(result.stdout).profile.name).toBe("default");
 
     const queryId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
     const sessionId = "b2c3d4e5-f6a7-8901-bcde-f12345678901";

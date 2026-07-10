@@ -40,9 +40,8 @@ function markCurrentProfileUpdated(): void {
   configSet("updated_at", timestamp);
 }
 
-function resolveConfigureProfile(options: ConfigureOptions): string | undefined {
+function resolveConfigureProfile(options: ConfigureOptions, org: string): string | undefined {
   const explicitProfile = options.profile;
-  const org = options.org ?? "";
   const env = options.env ?? "";
 
   if (explicitProfile && explicitProfile !== AUTO_PROFILE_NAME) {
@@ -99,8 +98,9 @@ export function configureClearAll(): void {
 export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),
+  org = "",
 ): Promise<void> {
-  return withConfigureProfileContext(resolveConfigureProfile(options), async () => {
+  return withConfigureProfileContext(resolveConfigureProfile(options, org), async () => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -180,6 +180,9 @@ export async function configureRunSet(
       configureClearManagementCredentials();
       secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
       configSet("api_key_env", env);
+      if (org) {
+        configSet("organization_slug", org);
+      }
     }
     if (hasLakehouseBasicToken) {
       configureClearLakehouseCredentials();
