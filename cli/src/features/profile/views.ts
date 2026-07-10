@@ -202,7 +202,7 @@ function verificationRows(result: ConfigureVerifyResult): DisplayRow[] {
 export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
   const errors = result.verification.errors.map(
     (error) =>
-      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
+      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane, result.verification.profile)}`,
   );
   return document(
     ...buildProfileInspectView(result.profile).sections,

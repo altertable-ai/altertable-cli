@@ -11,6 +11,8 @@ import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 
+const profileName = "default";
+
 let testHome = "";
 
 function createMockPrompts(responses: {
@@ -91,8 +93,8 @@ describe("runConfigureWizard", () => {
         });
       });
 
-      expect(secretGet("api-key")).toBe("atm_test_key");
-      expect(configGet("api_key_env")).toBe("staging");
+      expect(secretGet("api-key", profileName)).toBe("atm_test_key");
+      expect(configGet("api_key_env", profileName)).toBe("staging");
     } finally {
       Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
     }
@@ -119,8 +121,8 @@ describe("runConfigureWizard", () => {
         });
       });
 
-      expect(configGet("user")).toBe("alice");
-      expect(secretGet("lakehouse/password")).toBe("lake-secret");
+      expect(configGet("user", profileName)).toBe("alice");
+      expect(secretGet("lakehouse/password", profileName)).toBe("lake-secret");
     } finally {
       Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
     }
@@ -154,9 +156,9 @@ describe("runConfigureWizard", () => {
         });
       });
 
-      await withConfigureProfileContext("target", () => {
-        expect(configGet("user")).toBe("target-user");
-        expect(secretGet("lakehouse/password")).toBe("target-secret");
+      await withConfigureProfileContext("target", (profileName) => {
+        expect(configGet("user", profileName)).toBe("target-user");
+        expect(secretGet("lakehouse/password", profileName)).toBe("target-secret");
       });
     } finally {
       Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
@@ -185,12 +187,12 @@ describe("runConfigureWizard", () => {
         });
       });
 
-      await withConfigureProfileContext("acme_production", () => {
-        expect(secretGet("api-key")).toBe("atm_test_key");
-        expect(configGet("api_key_env")).toBe("production");
-        expect(configGet("organization_slug")).toBe("Acme");
-        expect(configGet("user")).toBe("alice");
-        expect(secretGet("lakehouse/password")).toBe("lake-secret");
+      await withConfigureProfileContext("acme_production", (profileName) => {
+        expect(secretGet("api-key", profileName)).toBe("atm_test_key");
+        expect(configGet("api_key_env", profileName)).toBe("production");
+        expect(configGet("organization_slug", profileName)).toBe("Acme");
+        expect(configGet("user", profileName)).toBe("alice");
+        expect(secretGet("lakehouse/password", profileName)).toBe("lake-secret");
       });
     } finally {
       Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
@@ -250,8 +252,8 @@ describe("runConfigureWizard", () => {
         });
       });
 
-      expect(secretGet("api-key")).toBe("atm_existing");
-      expect(configGet("api_key_env")).toBe("production");
+      expect(secretGet("api-key", profileName)).toBe("atm_existing");
+      expect(configGet("api_key_env", profileName)).toBe("production");
     } finally {
       Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
     }

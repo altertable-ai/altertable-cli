@@ -34,14 +34,14 @@ const catalogsCreateCommand = defineHttpCommand({
     },
     name: { type: "string", description: "Catalog name", required: true },
   },
-  parse({ args }): ManagementCatalogCreateInput {
+  parse({ args, execution }): ManagementCatalogCreateInput {
     if (args.engine !== "altertable") {
       throw new CliError(
         `Only the 'altertable' engine is supported (got '${String(args.engine)}').`,
       );
     }
 
-    const env = requireManagementEnv();
+    const env = requireManagementEnv(execution.profile);
     const name = String(args.name);
     return {
       env,
@@ -77,7 +77,7 @@ const catalogsListCommand = defineOperationCommand({
     examples: ["altertable catalogs list", "altertable --json catalogs list"],
   },
   run(_input, context) {
-    const env = requireManagementEnv();
+    const env = requireManagementEnv(context.execution.profile);
     return localPlan(() => fetchManagementCatalogRows(env, context));
   },
   present(rows) {

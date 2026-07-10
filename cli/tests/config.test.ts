@@ -6,7 +6,7 @@ import {
   configDir,
   configGet,
   configSet,
-  configUnset,
+  configSetGlobal,
   getQueryDefaultMaxColumnWidth,
   getQueryDefaultLayout,
   getQueryDefaultPager,
@@ -29,6 +29,7 @@ import { setCliContext } from "@/context.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 let testHome = "";
+const profileName = "default";
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-cli-test-"));
@@ -54,8 +55,7 @@ describe("config", () => {
     expect(kvGet(filePath, "user")).toBe("alice");
     kvSet(filePath, "user", "bob");
     expect(kvGet(filePath, "user")).toBe("bob");
-    configUnset("missing");
-    expect(configGet("missing")).toBe("");
+    expect(configGet("missing", profileName)).toBe("");
   });
 
   test("kvSet writes temp files with mode 0600", () => {
@@ -66,69 +66,69 @@ describe("config", () => {
   });
 
   test("resolve api bases with defaults", () => {
-    expect(resolveApiBase()).toBe("https://api.altertable.ai");
-    expect(resolveManagementApiBase()).toBe("https://app.altertable.ai/rest/v1");
-    configSet("api_base", "http://localhost:1111/");
-    configSet("management_api_base", "http://localhost:13000/");
-    expect(resolveApiBase()).toBe("http://localhost:1111");
-    expect(resolveManagementApiBase()).toBe("http://localhost:13000/rest/v1");
+    expect(resolveApiBase(profileName)).toBe("https://api.altertable.ai");
+    expect(resolveManagementApiBase(profileName)).toBe("https://app.altertable.ai/rest/v1");
+    configSet("api_base", "http://localhost:1111/", profileName);
+    configSet("management_api_base", "http://localhost:13000/", profileName);
+    expect(resolveApiBase(profileName)).toBe("http://localhost:1111");
+    expect(resolveManagementApiBase(profileName)).toBe("http://localhost:13000/rest/v1");
   });
 
   test("env vars beat stored config", () => {
-    configSet("api_base", "http://localhost:1111");
+    configSet("api_base", "http://localhost:1111", profileName);
     process.env.ALTERTABLE_API_BASE = "http://localhost:2222";
-    expect(resolveApiBase()).toBe("http://localhost:2222");
+    expect(resolveApiBase(profileName)).toBe("http://localhost:2222");
   });
 
   test("resolveApiBase rejects insecure env override without allow flag", () => {
     process.env.ALTERTABLE_API_BASE = "http://192.168.1.5";
-    expect(() => resolveApiBase()).toThrow(CliError);
+    expect(() => resolveApiBase(profileName)).toThrow(CliError);
     delete process.env.ALTERTABLE_API_BASE;
   });
 
   test("resolveApiBase allows insecure env override with ALTERTABLE_ALLOW_INSECURE_HTTP", () => {
     process.env.ALTERTABLE_API_BASE = "http://192.168.1.5";
     process.env.ALTERTABLE_ALLOW_INSECURE_HTTP = "true";
-    expect(resolveApiBase()).toBe("http://192.168.1.5");
+    expect(resolveApiBase(profileName)).toBe("http://192.168.1.5");
     delete process.env.ALTERTABLE_API_BASE;
     delete process.env.ALTERTABLE_ALLOW_INSECURE_HTTP;
   });
 
   test("reads query display defaults from config", () => {
-    configSet("query_max_width", "48");
-    configSet("query_layout", "line");
+    configSetGlobal("query_max_width", "48");
+    configSetGlobal("query_layout", "line");
     expect(getQueryDefaultMaxColumnWidth()).toBe(48);
     expect(getQueryDefaultLayout()).toBe("line");
   });
 
   test("ignores invalid query config values", () => {
-    configSet("query_max_width", "4");
-    configSet("query_layout", "invalid");
+    configSetGlobal("query_max_width", "4");
+    configSetGlobal("query_layout", "invalid");
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
   });
 
   test("reads query_pager config", () => {
-    configSet("query_pager", "always");
+    configSetGlobal("query_pager", "always");
     expect(getQueryDefaultPager()).toBe("always");
   });
 
   test("ignores unknown query_pager values", () => {
-    configSet("query_pager", "sometimes");
+    configSetGlobal("query_pager", "sometimes");
     expect(getQueryDefaultPager()).toBeUndefined();
   });
 
   test("query_pager respects ALTERTABLE_CONFIG_HOME", () => {
-    configSet("query_pager", "never");
+    configSetGlobal("query_pager", "never");
     expect(getQueryDefaultPager()).toBe("never");
   });
 });
 
 describe("secrets", () => {
   test("stores and reads file-backed secrets", () => {
-    secretSet("api-key", "atm_test");
-    expect(secretGet("api-key")).toBe("atm_test");
-    expect(secretExists("api-key")).toBe(true);
+    secretSet("api-key", "atm_test", profileName);
+    expect(secretGet("api-key", profileName)).toBe("atm_test");
+    expect(secretExists("api-key", profileName)).toBe(true);
   });
 });
 
@@ -137,10 +137,10 @@ describe("profile --configure credential accumulation", () => {
     await configureRunSet({ apiKey: "atm_test", env: "development" });
     await configureRunSet({ user: "alice", password: "lakehouse-secret" });
 
-    expect(secretGet("api-key")).toBe("atm_test");
-    expect(configGet("api_key_env")).toBe("development");
-    expect(secretGet("lakehouse/password")).toBe("lakehouse-secret");
-    expect(configGet("user")).toBe("alice");
+    expect(secretGet("api-key", profileName)).toBe("atm_test");
+    expect(configGet("api_key_env", profileName)).toBe("development");
+    expect(secretGet("lakehouse/password", profileName)).toBe("lakehouse-secret");
+    expect(configGet("user", profileName)).toBe("alice");
   });
 
   test("accumulates both planes across separate configure invocations", async () => {
@@ -153,10 +153,10 @@ describe("profile --configure credential accumulation", () => {
       env: "development",
     });
 
-    expect(secretGet("api-key")).toBe("atm_test");
-    expect(configGet("api_key_env")).toBe("development");
-    expect(secretGet("lakehouse/password")).toBe("lakehouse-secret");
-    expect(configGet("user")).toBe("alice");
+    expect(secretGet("api-key", profileName)).toBe("atm_test");
+    expect(configGet("api_key_env", profileName)).toBe("development");
+    expect(secretGet("lakehouse/password", profileName)).toBe("lakehouse-secret");
+    expect(configGet("user", profileName)).toBe("alice");
   });
 });
 
@@ -214,7 +214,7 @@ describe("configureRunClear", () => {
 describe("config dir", () => {
   test("uses ALTERTABLE_CONFIG_HOME", () => {
     expect(configDir()).toBe(testHome);
-    configSet("user", "x");
+    configSet("user", "x", profileName);
     expect(existsSync(join(testHome, "profiles", "default", "config"))).toBe(true);
     expect(readFileSync(join(testHome, "profiles", "default", "config"), "utf8")).toContain(
       "user=x",
@@ -277,10 +277,10 @@ describe("profile --configure argv secrets", () => {
 
     try {
       process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
-      secretSet("lakehouse/password", "test-password-value", undefined, { fromArgv: true });
+      secretSet("lakehouse/password", "test-password-value", profileName, { fromArgv: true });
       const keychainWrites = spawnCalls.filter((args) => args.includes("add-generic-password"));
       expect(keychainWrites).toHaveLength(0);
-      expect(secretGet("lakehouse/password")).toBe("test-password-value");
+      expect(secretGet("lakehouse/password", profileName)).toBe("test-password-value");
     } finally {
       if (platformDescriptor) {
         Object.defineProperty(process, "platform", platformDescriptor);

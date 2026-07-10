@@ -76,12 +76,15 @@ async function runDuckdb(input: DuckdbInput, context: OperationContext): Promise
     throw new ConfigurationError(LOGIN_PROMPT);
   }
 
-  const credentials = getLoginLakehouseCredentials();
+  const credentials = getLoginLakehouseCredentials(context.execution.profile);
   if (!credentials) {
     throw new ConfigurationError(LOGIN_PROMPT);
   }
 
-  const rows = await fetchManagementCatalogRows(requireManagementEnv(), context);
+  const rows = await fetchManagementCatalogRows(
+    requireManagementEnv(context.execution.profile),
+    context,
+  );
   const catalogs = selectCatalogsToAttach(rows, input.catalog);
 
   const snippet = buildDuckdbAttachSnippet(credentials, catalogs);
