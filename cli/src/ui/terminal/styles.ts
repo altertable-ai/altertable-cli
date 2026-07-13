@@ -1,9 +1,7 @@
 import { readEnv, setEnv, unsetEnv } from "@/lib/env.ts";
 
-const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
-const MARKDOWN_LINK_PATTERN = /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/g;
-const URL_PATTERN = /https?:\/\/[^\s)>\]]+/g;
 import type { DisplayText, DisplayTextStyle } from "@/ui/document.ts";
+
 export const DEFAULT_TERMINAL_WIDTH = 80;
 const TERMINAL_ELLIPSIS = "…";
 const ANSI_ESCAPE_CHARACTER = String.fromCharCode(27);
