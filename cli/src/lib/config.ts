@@ -25,11 +25,11 @@ export function configSetGlobal(key: string, value: string): void {
 }
 
 function resolveAllowInsecureHttp(): boolean {
-  return readEnv("allowInsecureHttp") ?? false;
+  return readEnv("ALTERTABLE_ALLOW_INSECURE_HTTP") ?? false;
 }
 
 export function resolveApiBase(profileName: string): string {
-  let base = readEnv("apiBase") ?? "";
+  let base = readEnv("ALTERTABLE_API_BASE") ?? "";
   if (!base) {
     base = configGet("api_base", profileName);
   }
@@ -42,7 +42,7 @@ export function resolveApiBase(profileName: string): string {
 }
 
 function resolveManagementApiRoot(profileName: string): string {
-  let root = readEnv("managementApiBase") ?? "";
+  let root = readEnv("ALTERTABLE_MANAGEMENT_API_BASE") ?? "";
   if (!root) {
     root = configGet("management_api_base", profileName);
   }

@@ -297,11 +297,13 @@ export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
 }
 
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {
-  return source ?? readEnv("updateSource") ?? UpdaterConfig.defaults.source;
+  return source ?? readEnv("ALTERTABLE_UPDATE_SOURCE") ?? UpdaterConfig.defaults.source;
 }
 
 export function resolveUpdateInstallMethod(method?: UpdateInstallMethod): UpdateInstallMethod {
-  return method ?? readEnv("updateInstallMethod") ?? UpdaterConfig.defaults.installMethod;
+  return (
+    method ?? readEnv("ALTERTABLE_UPDATE_INSTALL_METHOD") ?? UpdaterConfig.defaults.installMethod
+  );
 }
 
 function isAllowedValue<TValue extends string>(
@@ -320,14 +322,15 @@ function repoSegments(repo: string): [string, string] {
 }
 
 function npmRegistryUrl(): string {
-  const registry = readEnv("updateRegistryUrl") ?? UpdaterConfig.sources.npm.registryUrl;
+  const registry =
+    readEnv("ALTERTABLE_UPDATE_REGISTRY_URL") ?? UpdaterConfig.sources.npm.registryUrl;
   const url = new URL(registry);
   appendEncodedUrlPath(url, UpdaterConfig.packageName, "latest");
   return url.toString();
 }
 
 function githubLatestReleaseUrl(): string {
-  const repo = readEnv("updateGithubRepo") ?? UpdaterConfig.githubRepo;
+  const repo = readEnv("ALTERTABLE_UPDATE_GITHUB_REPO") ?? UpdaterConfig.githubRepo;
   const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(url, ...repoSegments(repo), "releases", "latest");
   return url.toString();
@@ -337,7 +340,7 @@ function githubReleaseMetadataUrl(version?: string): string {
   if (!version) {
     return githubLatestReleaseUrl();
   }
-  const repo = readEnv("updateGithubRepo") ?? UpdaterConfig.githubRepo;
+  const repo = readEnv("ALTERTABLE_UPDATE_GITHUB_REPO") ?? UpdaterConfig.githubRepo;
   const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(
     url,
@@ -631,12 +634,12 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
 }
 
 export function detectInstallManager(env: NodeJS.ProcessEnv = copyProcessEnv()): InstallManager {
-  const override = readEnvFrom(env, "updateInstaller");
+  const override = readEnvFrom(env, "ALTERTABLE_UPDATE_INSTALLER");
   if (override) {
     return override;
   }
 
-  const userAgent = readEnvFrom(env, "npmUserAgent") ?? "";
+  const userAgent = readEnvFrom(env, "npm_config_user_agent") ?? "";
   if (userAgent.startsWith("bun/")) {
     return "bun";
   }
@@ -649,7 +652,7 @@ export function detectInstallManager(env: NodeJS.ProcessEnv = copyProcessEnv()):
   if (userAgent.startsWith("npm/")) {
     return "npm";
   }
-  if (readEnvFrom(env, "bunInstall")) {
+  if (readEnvFrom(env, "BUN_INSTALL")) {
     return "bun";
   }
   return UpdaterConfig.defaults.installManager;
@@ -1028,12 +1031,12 @@ export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<
 }
 
 function envDisablesAutomaticChecks(): boolean {
-  const noUpdate = readEnv("noUpdateCheck");
+  const noUpdate = readEnv("ALTERTABLE_NO_UPDATE_CHECK");
   if (noUpdate === true) {
     return true;
   }
 
-  const updateCheck = readEnv("updateCheck");
+  const updateCheck = readEnv("ALTERTABLE_UPDATE_CHECK");
   return updateCheck === "0" || updateCheck === "false" || updateCheck === "never";
 }
 
@@ -1078,7 +1081,7 @@ function shouldShowAutomaticUpdateNotice(options: {
   if (stderrIsTTY !== true) {
     return false;
   }
-  if (readEnv("ci") || readEnv("test") || envDisablesAutomaticChecks()) {
+  if (readEnv("CI") || readEnv("TEST") || envDisablesAutomaticChecks()) {
     return false;
   }
 

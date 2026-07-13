@@ -108,7 +108,7 @@ function resolveShell(shell: unknown): SupportedShell {
     throw new CliError(`Unsupported shell: ${shell}. Use ${formatSupportedShells()}.`);
   }
 
-  const envShell = readEnv("shell");
+  const envShell = readEnv("SHELL");
   const detectedShell = envShell ? getShellName(envShell) : "";
   if (isSupportedShell(detectedShell)) {
     return detectedShell;
@@ -120,15 +120,15 @@ function resolveShell(shell: unknown): SupportedShell {
 }
 
 function envHome(): string {
-  return readEnv("home") ?? homedir();
+  return readEnv("HOME") ?? homedir();
 }
 
 function xdgDataHome(): string {
-  return readEnv("xdgDataHome") ?? join(envHome(), ".local", "share");
+  return readEnv("XDG_DATA_HOME") ?? join(envHome(), ".local", "share");
 }
 
 function xdgConfigHome(): string {
-  return readEnv("xdgConfigHome") ?? join(envHome(), ".config");
+  return readEnv("XDG_CONFIG_HOME") ?? join(envHome(), ".config");
 }
 
 function shellQuote(value: string): string {

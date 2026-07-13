@@ -8,7 +8,7 @@ import {
 } from "@/lib/config.ts";
 import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { CONFIG_ENV_KEYS, Env, isSecretEnv, readEnv } from "@/lib/env.ts";
+import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
 import type { WhoamiResponse } from "@/features/management/model.ts";
 import {
   moveProfileSecrets,
@@ -285,10 +285,10 @@ function parseTimestampMs(raw: string | undefined): string | undefined {
 }
 
 function envLakehouseAuthKind(): ProfileLakehouseAuth {
-  if (readEnv("basicAuthToken")) {
+  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
     return "basic_token";
   }
-  if (readEnv("lakehouseUsername") && readEnv("lakehousePassword")) {
+  if (readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
     return "username_password";
   }
   return "none";
@@ -305,10 +305,10 @@ function inspectFromEnvProfile(): ProfileInspect {
     config_file: "environment variables",
     organization: {},
     principal: {},
-    environment: readEnv("environment"),
+    environment: readEnv("ALTERTABLE_ENV"),
     endpoints: {
-      data_plane: readEnv("apiBase"),
-      control_plane: readEnv("managementApiBase"),
+      data_plane: readEnv("ALTERTABLE_API_BASE"),
+      control_plane: readEnv("ALTERTABLE_MANAGEMENT_API_BASE"),
     },
     auth: { management, lakehouse },
     status: management !== "none" || lakehouse !== "none" ? "configured" : "empty",
@@ -514,7 +514,7 @@ export type ConfigureShowData = {
 };
 
 function hasEnvManagementCredentials(): boolean {
-  return Boolean(readEnv("apiKey"));
+  return Boolean(readEnv("ALTERTABLE_API_KEY"));
 }
 
 function hasStoredManagementCredentials(profileName: string): boolean {
@@ -526,10 +526,12 @@ function hasOAuthLogin(profileName: string): boolean {
 }
 
 function hasEnvLakehouseCredentials(): boolean {
-  if (readEnv("basicAuthToken")) {
+  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
     return true;
   }
-  return Boolean(readEnv("lakehouseUsername") && readEnv("lakehousePassword"));
+  return Boolean(
+    readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD"),
+  );
 }
 
 function hasStoredLakehouseCredentials(profileName: string): boolean {
@@ -550,12 +552,12 @@ export function resolveActiveProfileName(): string {
 
 /** The profile-configuring env vars currently set, with secrets masked. */
 export function configuredEnvConfig(): Array<{ name: string; display: string }> {
-  return CONFIG_ENV_KEYS.flatMap((key) => {
-    const value = readEnv(key);
+  return CONFIG_ENV_NAMES.flatMap((name) => {
+    const value = readEnv(name);
     if (!value) {
       return [];
     }
-    return [{ name: Env[key], display: isSecretEnv(key) ? "set (hidden)" : String(value) }];
+    return [{ name, display: isSecretEnv(name) ? "set (hidden)" : String(value) }];
   });
 }
 
@@ -598,7 +600,7 @@ function buildManagementCredential(profileName: string): ConfigureManagementCred
       configured: true,
       mechanism: "management_api_key",
       source: "environment",
-      environment: readEnv("environment") ?? configGet("api_key_env", profileName) ?? undefined,
+      environment: readEnv("ALTERTABLE_ENV") ?? configGet("api_key_env", profileName) ?? undefined,
     };
   }
   if (hasOAuthLogin(profileName)) {
@@ -642,15 +644,15 @@ function buildLakehouseCredential(profileName: string): ConfigureLakehouseCreden
       password: "set",
     };
   }
-  if (readEnv("basicAuthToken")) {
+  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
     return {
       configured: true,
       mechanism: "lakehouse_basic_token",
       source: "environment",
     };
   }
-  const envUser = readEnv("lakehouseUsername");
-  if (envUser && readEnv("lakehousePassword")) {
+  const envUser = readEnv("ALTERTABLE_LAKEHOUSE_USERNAME");
+  if (envUser && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
     return {
       configured: true,
       mechanism: "lakehouse_username_password",
@@ -664,13 +666,13 @@ function buildLakehouseCredential(profileName: string): ConfigureLakehouseCreden
 function buildConfigureShowOverrides(profileName: string): ConfigureShowOverrides {
   const overrides: ConfigureShowOverrides = {};
   const storedApiKeyEnv = configGet("api_key_env", profileName);
-  const envOverride = readEnv("environment");
+  const envOverride = readEnv("ALTERTABLE_ENV");
 
   if (envOverride && envOverride !== storedApiKeyEnv) {
     overrides.environment = envOverride;
     overrides.stored_environment = storedApiKeyEnv || null;
   }
-  if (readEnv("apiKey") && hasStoredManagementCredentials(profileName)) {
+  if (readEnv("ALTERTABLE_API_KEY") && hasStoredManagementCredentials(profileName)) {
     overrides.api_key = true;
   }
   return overrides;
@@ -711,11 +713,11 @@ export function managementPlaneStatusDetail(profileName: string): string | null 
 }
 
 export function lakehousePlaneStatusDetail(profileName: string): string | null {
-  if (readEnv("basicAuthToken")) {
+  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
     return "via ALTERTABLE_BASIC_AUTH_TOKEN";
   }
-  const envUser = readEnv("lakehouseUsername");
-  if (envUser && readEnv("lakehousePassword")) {
+  const envUser = readEnv("ALTERTABLE_LAKEHOUSE_USERNAME");
+  if (envUser && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
     return envUser;
   }
   if (!hasStoredLakehouseCredentials(profileName)) {
@@ -742,7 +744,7 @@ export type ActiveContext = {
 };
 
 function resolveEnvironment(showData: ConfigureShowData): string | undefined {
-  const envOverride = readEnv("environment");
+  const envOverride = readEnv("ALTERTABLE_ENV");
   if (envOverride && envOverride.length > 0) {
     return envOverride;
   }

@@ -144,7 +144,7 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
   if (!url) {
     return;
   }
-  const envOverride = readEnv("managementApiBase");
+  const envOverride = readEnv("ALTERTABLE_MANAGEMENT_API_BASE");
   if (envOverride && envOverride !== url) {
     throw new ConfigurationError(
       `ALTERTABLE_MANAGEMENT_API_BASE=${envOverride} overrides --control-plane-url=${url}. Unset the environment variable or make them match.`,
@@ -154,10 +154,10 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
     // resolveManagementApiRoot re-validates the URL on every read using this env
     // var, so set it too — otherwise an http:// root would fail the very next
     // read (whoami, and later commands in this process).
-    setEnv("allowInsecureHttp", "1");
+    setEnv("ALTERTABLE_ALLOW_INSECURE_HTTP", "1");
   }
   assertAllowedApiBase(url, { allowInsecureHttp: Boolean(args["allow-insecure-http"]) });
-  setEnv("managementApiBase", url);
+  setEnv("ALTERTABLE_MANAGEMENT_API_BASE", url);
 }
 
 // Profile-free on purpose: the minted token — not the current profile's stored

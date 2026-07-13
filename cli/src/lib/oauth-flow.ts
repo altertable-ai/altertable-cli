@@ -17,11 +17,11 @@ export type TokenResponse = {
 };
 
 export function oauthClientId(): string {
-  return readEnv("oauthClientId") ?? "altertable_cli";
+  return readEnv("ALTERTABLE_OAUTH_CLIENT_ID") ?? "altertable_cli";
 }
 
 export function oauthScope(): string {
-  return readEnv("oauthScope") ?? "management";
+  return readEnv("ALTERTABLE_OAUTH_SCOPE") ?? "management";
 }
 
 export type CallbackOutcome = { ok: true; code: string } | { ok: false; message: string };
@@ -175,7 +175,7 @@ export async function refreshAccessToken(
 }
 
 function redirectPort(): number {
-  return readEnv("oauthRedirectPort") ?? 0;
+  return readEnv("ALTERTABLE_OAUTH_REDIRECT_PORT") ?? 0;
 }
 
 export type LoopbackServer = {

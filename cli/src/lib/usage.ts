@@ -206,7 +206,7 @@ function getHelpTerminalWidth(): number {
     return columns;
   }
 
-  const environmentColumns = Number.parseInt(readEnv("columns") ?? "", 10);
+  const environmentColumns = Number.parseInt(readEnv("COLUMNS") ?? "", 10);
   return Number.isFinite(environmentColumns) && environmentColumns > 0
     ? environmentColumns
     : HELP_FALLBACK_TERMINAL_WIDTH;

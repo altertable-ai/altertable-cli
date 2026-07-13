@@ -33,7 +33,7 @@ export function hasOAuthSession(profileName: string): boolean {
 }
 
 export async function ensureFreshAccessToken(profileName: string): Promise<void> {
-  if (readEnv("apiKey")) {
+  if (readEnv("ALTERTABLE_API_KEY")) {
     return; // env API key takes precedence; don't refresh or clear the OAuth session
   }
   const expiryRaw = configGet(OAUTH_EXPIRY_KEY, profileName);

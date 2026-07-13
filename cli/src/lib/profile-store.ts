@@ -23,12 +23,12 @@ export function isFromEnvProfile(name: string): boolean {
 // secret backend, OAuth, mock/log) are deliberately excluded.
 export function envConfigMode(): boolean {
   return Boolean(
-    readEnv("apiKey") ||
-    readEnv("basicAuthToken") ||
-    (readEnv("lakehouseUsername") && readEnv("lakehousePassword")) ||
-    readEnv("environment") ||
-    readEnv("apiBase") ||
-    readEnv("managementApiBase"),
+    readEnv("ALTERTABLE_API_KEY") ||
+    readEnv("ALTERTABLE_BASIC_AUTH_TOKEN") ||
+    (readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) ||
+    readEnv("ALTERTABLE_ENV") ||
+    readEnv("ALTERTABLE_API_BASE") ||
+    readEnv("ALTERTABLE_MANAGEMENT_API_BASE"),
   );
 }
 
@@ -146,7 +146,7 @@ export function resolveWorkingProfile(override?: string): string {
 
   ensureProfilesLayout();
 
-  const explicit = override ?? readEnv("profile") ?? "";
+  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
 
   if (explicit.length > 0) {
     assertSafeProfileName(explicit);

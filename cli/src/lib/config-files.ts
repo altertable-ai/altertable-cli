@@ -12,11 +12,11 @@ function tempSiblingPath(filePath: string): string {
 }
 
 export function configDir(): string {
-  const override = readEnv("configHome");
+  const override = readEnv("ALTERTABLE_CONFIG_HOME");
   if (override) {
     return override;
   }
-  const xdg = readEnv("xdgConfigHome") ?? join(readEnv("home") ?? "", ".config");
+  const xdg = readEnv("XDG_CONFIG_HOME") ?? join(readEnv("HOME") ?? "", ".config");
   return join(xdg, "altertable");
 }
 

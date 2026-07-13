@@ -29,13 +29,13 @@ function storedLakehouseCredentialsExpired(profileName: string): boolean {
 }
 
 function lakehouseEnvAuthHeader(): string | undefined {
-  const envToken = readEnv("basicAuthToken");
+  const envToken = readEnv("ALTERTABLE_BASIC_AUTH_TOKEN");
   if (envToken) {
     return basicAuthHeader(envToken);
   }
 
-  const envUser = readEnv("lakehouseUsername");
-  const envPassword = readEnv("lakehousePassword");
+  const envUser = readEnv("ALTERTABLE_LAKEHOUSE_USERNAME");
+  const envPassword = readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD");
   if (envUser && envPassword) {
     return basicAuthHeader(basicAuthToken(envUser, envPassword));
   }
@@ -93,7 +93,7 @@ export function getLoginLakehouseCredentials(
 }
 
 export function getManagementAuthHeader(profileName: string): string {
-  const envKey = readEnv("apiKey") ?? "";
+  const envKey = readEnv("ALTERTABLE_API_KEY") ?? "";
   if (envKey) {
     return `Authorization: Bearer ${envKey}`;
   }
@@ -113,7 +113,7 @@ export function getManagementAuthHeader(profileName: string): string {
 }
 
 function managementEnv(profileName: string): string {
-  return readEnv("environment") ?? configGet("api_key_env", profileName);
+  return readEnv("ALTERTABLE_ENV") ?? configGet("api_key_env", profileName);
 }
 
 export function requireManagementEnv(profileName: string): string {

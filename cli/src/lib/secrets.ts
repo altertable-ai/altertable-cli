@@ -56,7 +56,7 @@ function hasSecurityCommand(): boolean {
 }
 
 function secretBackend(): SecretBackend {
-  const override = readEnv("secretBackend") ?? "";
+  const override = readEnv("ALTERTABLE_SECRET_BACKEND") ?? "";
   if (override === "file") {
     return "file";
   }

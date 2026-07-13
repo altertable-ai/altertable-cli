@@ -201,7 +201,7 @@ function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
 }
 
 async function executeMockRequest(options: HttpSendOptions, attemptIndex: number): Promise<string> {
-  const mockFile = readEnv("mockHttpFile");
+  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
   if (!mockFile) {
     throw new CliError("Mock HTTP file is not configured.");
   }
@@ -233,7 +233,7 @@ async function executeMockStream(
   options: HttpStreamOptions,
   attemptIndex: number,
 ): Promise<ReadableStream<Uint8Array>> {
-  const mockFile = readEnv("mockHttpFile");
+  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
   if (!mockFile) {
     throw new CliError("Mock HTTP file is not configured.");
   }
@@ -289,7 +289,7 @@ export function redactAuthHeader(authHeader: string): string {
 }
 
 function logHttpRequest(options: HttpSendOptions): void {
-  const logPath = readEnv("httpLog");
+  const logPath = readEnv("ALTERTABLE_HTTP_LOG");
   if (!logPath) {
     return;
   }
@@ -501,7 +501,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
 
 export async function httpSend(options: HttpSendOptions): Promise<string> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
-  const mockFile = readEnv("mockHttpFile");
+  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
 
   for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
     try {
@@ -528,7 +528,7 @@ export async function httpSendStream(
   options: HttpStreamOptions,
 ): Promise<ReadableStream<Uint8Array>> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
-  const mockFile = readEnv("mockHttpFile");
+  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
 
   for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
     try {

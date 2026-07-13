@@ -58,26 +58,26 @@ export function setTerminalColorMode(mode: TerminalColorMode | undefined): void 
 export function applyTerminalColorFromContext(context: { noColor?: boolean }): void {
   if (context.noColor) {
     setTerminalColorMode("never");
-    setEnv("noColor", "1");
+    setEnv("NO_COLOR", "1");
     noColorEnvSetByCli = true;
     return;
   }
   setTerminalColorMode(undefined);
   if (noColorEnvSetByCli) {
-    unsetEnv("noColor");
+    unsetEnv("NO_COLOR");
     noColorEnvSetByCli = false;
   }
 }
 
 export function ensurePromptColorAlignment(): void {
   if (!shouldUseTerminalColor()) {
-    setEnv("noColor", "1");
+    setEnv("NO_COLOR", "1");
   }
 }
 
 function readEnvColorMode(): TerminalColorMode | undefined {
   try {
-    return readEnv("color");
+    return readEnv("ALTERTABLE_COLOR");
   } catch {
     // Error rendering must remain available while startup validation reports
     // an invalid ALTERTABLE_COLOR value.
@@ -93,8 +93,8 @@ function resolveTerminalColorMode(): TerminalColorMode {
   if (envMode !== undefined) {
     return envMode;
   }
-  const noColor = readEnv("noColor");
-  const forceColor = readEnv("forceColor");
+  const noColor = readEnv("NO_COLOR");
+  const forceColor = readEnv("FORCE_COLOR");
   if (noColor === "1" || forceColor === "0") {
     return "never";
   }
@@ -116,7 +116,7 @@ export function shouldUseTerminalColor(): boolean {
   if (mode === "always") {
     return true;
   }
-  if (readEnv("term") === "dumb" || Boolean(readEnv("test")) || Boolean(readEnv("ci"))) {
+  if (readEnv("TERM") === "dumb" || Boolean(readEnv("TEST")) || Boolean(readEnv("CI"))) {
     return false;
   }
   return isInteractiveTerminal();
@@ -126,15 +126,15 @@ export function shouldUseTerminalHyperlinks(): boolean {
   if (!shouldUseTerminalColor()) {
     return false;
   }
-  const override = readEnv("oscHyperlink");
+  const override = readEnv("OSC_HYPERLINK");
   if (override === "0" || override === "false") {
     return false;
   }
   if (override === "1" || override === "true") {
     return true;
   }
-  const termProgram = readEnv("termProgram");
-  if (readEnv("sshConnection") && termProgram !== "Apple_Terminal") {
+  const termProgram = readEnv("TERM_PROGRAM");
+  if (readEnv("SSH_CONNECTION") && termProgram !== "Apple_Terminal") {
     return false;
   }
   if (
@@ -146,7 +146,7 @@ export function shouldUseTerminalHyperlinks(): boolean {
   ) {
     return true;
   }
-  if (readEnv("wtSession") || readEnv("ghosttyResourcesDir")) {
+  if (readEnv("WT_SESSION") || readEnv("GHOSTTY_RESOURCES_DIR")) {
     return true;
   }
   return isInteractiveTerminal();
