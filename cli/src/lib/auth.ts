@@ -10,8 +10,8 @@ export function basicAuthHeader(token: string): string {
   return `Authorization: Basic ${token}`;
 }
 
-function storedLakehouseCredentialsExpired(): boolean {
-  const raw = configGet("lakehouse_credential_expiry");
+function storedLakehouseCredentialsExpired(profileName: string): boolean {
+  const raw = configGet("lakehouse_credential_expiry", profileName);
   if (!raw) {
     return false;
   }
@@ -46,20 +46,20 @@ export function hasLakehouseEnvCredentials(): boolean {
   return lakehouseEnvAuthHeader() !== undefined;
 }
 
-export function getLakehouseAuthHeader(): string {
+export function getLakehouseAuthHeader(profileName: string): string {
   const envHeader = lakehouseEnvAuthHeader();
   if (envHeader) {
     return envHeader;
   }
 
-  if (!storedLakehouseCredentialsExpired()) {
-    const storedToken = secretGet("lakehouse/basic-token");
+  if (!storedLakehouseCredentialsExpired(profileName)) {
+    const storedToken = secretGet("lakehouse/basic-token", profileName);
     if (storedToken) {
       return basicAuthHeader(storedToken);
     }
 
-    const user = configGet("user");
-    const password = secretGet("lakehouse/password");
+    const user = configGet("user", profileName);
+    const password = secretGet("lakehouse/password", profileName);
     if (user && password) {
       return basicAuthHeader(basicAuthToken(user, password));
     }
@@ -81,26 +81,28 @@ function decodeBasicToken(token: string): LakehouseCredentials | undefined {
   return { user, password };
 }
 
-export function getLoginLakehouseCredentials(): LakehouseCredentials | undefined {
-  if (storedLakehouseCredentialsExpired()) {
+export function getLoginLakehouseCredentials(
+  profileName: string,
+): LakehouseCredentials | undefined {
+  if (storedLakehouseCredentialsExpired(profileName)) {
     return undefined;
   }
-  const token = secretGet("lakehouse/basic-token");
+  const token = secretGet("lakehouse/basic-token", profileName);
   return token ? decodeBasicToken(token) : undefined;
 }
 
-export function getManagementAuthHeader(): string {
+export function getManagementAuthHeader(profileName: string): string {
   const envKey = process.env.ALTERTABLE_API_KEY ?? "";
   if (envKey) {
     return `Authorization: Bearer ${envKey}`;
   }
 
-  const oauthToken = secretGet("oauth/access-token");
+  const oauthToken = secretGet("oauth/access-token", profileName);
   if (oauthToken) {
     return `Authorization: Bearer ${oauthToken}`;
   }
 
-  const key = secretGet("api-key");
+  const key = secretGet("api-key", profileName);
   if (!key) {
     throw new ConfigurationError(
       "No management credentials. Run 'altertable login', 'altertable profile --configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
@@ -109,12 +111,12 @@ export function getManagementAuthHeader(): string {
   return `Authorization: Bearer ${key}`;
 }
 
-function managementEnv(): string {
-  return process.env.ALTERTABLE_ENV ?? configGet("api_key_env");
+function managementEnv(profileName: string): string {
+  return process.env.ALTERTABLE_ENV ?? configGet("api_key_env", profileName);
 }
 
-export function requireManagementEnv(): string {
-  const env = managementEnv();
+export function requireManagementEnv(profileName: string): string {
+  const env = managementEnv(profileName);
   if (!env) {
     throw new ConfigurationError(
       "No environment set. Run 'altertable profile --configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",

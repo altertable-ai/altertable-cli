@@ -10,7 +10,6 @@ import {
   section,
   table,
   text,
-  type DisplayBlock,
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
@@ -21,9 +20,7 @@ import {
   terminalDescription,
   terminalHighlightCommands,
   terminalNotConfiguredStatus,
-  terminalStrong,
 } from "@/ui/terminal/styles.ts";
-import type { WhoamiResponse } from "@/features/management/model.ts";
 import type {
   ActiveContext,
   ConfigureCredentialStatus,
@@ -173,132 +170,8 @@ export function buildProfileDirenvView(profileName: string): ShellExportView {
   };
 }
 
-export type ProfileShowResult = {
-  configuration: ConfigureShowData;
-  identity?: WhoamiResponse;
-};
-
-function whoamiPrincipalValue(
-  identity: WhoamiResponse | undefined,
-  configuration: ConfigureShowData,
-): string {
-  const principal = identity?.principal;
-  if (principal?.type === "ServiceAccount") {
-    return `${principal.name ?? ""} (${principal.slug ?? ""})`;
-  }
-  if (principal?.email) {
-    return principal.name ? `${principal.name} <${principal.email}>` : principal.email;
-  }
-  if (principal?.name) {
-    return principal.name;
-  }
-  return lakehouseUserValue(configuration) ?? terminalNotConfiguredStatus();
-}
-
-function whoamiOrganizationValue(
-  identity: WhoamiResponse | undefined,
-  configuration: ConfigureShowData,
-): string {
-  const organization = identity?.organization;
-  if (organization?.name && organization?.slug) {
-    return `${organization.name} (${organization.slug})`;
-  }
-  if (organization?.name || organization?.slug) {
-    return organization.name ?? organization.slug ?? "";
-  }
-  const configured = configuration.organization;
-  if (configured.name && configured.slug) {
-    return `${configured.name} (${configured.slug})`;
-  }
-  return configured.name ?? configured.slug ?? terminalNotConfiguredStatus();
-}
-
-function managementEnvironmentValue(configuration: ConfigureShowData): string | undefined {
-  const credential = configuration.credentials.management;
-  return credential.configured ? credential.environment : undefined;
-}
-
-function lakehouseUserValue(configuration: ConfigureShowData): string | undefined {
-  const credential = configuration.credentials.lakehouse;
-  return credential.configured && credential.mechanism === "lakehouse_username_password"
-    ? credential.user
-    : undefined;
-}
-
-function profileEnvironmentValue(configuration: ConfigureShowData): string {
-  return (
-    managementEnvironmentValue(configuration) ??
-    process.env.ALTERTABLE_ENV ??
-    terminalNotConfiguredStatus()
-  );
-}
-
-function cliConfigRows(configuration: ConfigureShowData): DisplayRow[] {
-  return [
-    { label: "Config dir:", value: configuration.config_dir },
-    { label: "Profile config file:", value: configuration.config_file },
-    { label: "Secret store:", value: configuration.secret_store },
-  ];
-}
-
-function principalLabel(identity: WhoamiResponse | undefined): string {
-  return identity?.principal?.type === "ServiceAccount" ? "Service account:" : "User:";
-}
-
-function profileIdentityRows(result: ProfileShowResult): DisplayRow[] {
-  return [
-    { label: "Profile:", value: terminalStrong(result.configuration.profile) },
-    { label: "Environment:", value: profileEnvironmentValue(result.configuration) },
-    {
-      label: principalLabel(result.identity),
-      value: whoamiPrincipalValue(result.identity, result.configuration),
-    },
-    {
-      label: "Organization:",
-      value: whoamiOrganizationValue(result.identity, result.configuration),
-    },
-  ];
-}
-
-function profileDetailBlocks(configuration: ConfigureShowData): DisplayBlock[] {
-  const blocks: DisplayBlock[] = [
-    rows([
-      { label: "Data plane:", value: configuration.data_plane, linkifyUrls: true },
-      { label: "Control plane:", value: configuration.control_plane, linkifyUrls: true },
-      ...configureAuthenticationRows(configuration, undefined),
-    ]),
-  ];
-  const hints = configureSetupHintLines({
-    hasManagement: configuration.credentials.management.configured,
-    hasLakehouse: configuration.credentials.lakehouse.configured,
-  });
-  if (hints.length > 0) {
-    blocks.push(text(hints));
-  }
-  const overrides = configureOverrideRows(configuration.overrides);
-  if (overrides.length > 0) {
-    blocks.push(rows(overrides));
-  }
-  return blocks;
-}
-
-export type ProfileShowViewOptions = {
-  /** Include the CLI config paths section (config dir, profile config file, secret store). */
-  config?: boolean;
-};
-
-export function buildProfileShowView(
-  result: ProfileShowResult,
-  options: ProfileShowViewOptions = {},
-): DisplayDocument {
-  return document(
-    ...(options.config ? [section(rows(cliConfigRows(result.configuration)))] : []),
-    section(rows(profileIdentityRows(result))),
-    section(...profileDetailBlocks(result.configuration)),
-  );
-}
-
-export type ProfileStatusResult = ProfileShowResult & {
+export type ProfileStatusResult = {
+  profile: ProfileInspect;
   verification: ConfigureVerifyResult;
 };
 
@@ -329,10 +202,10 @@ function verificationRows(result: ConfigureVerifyResult): DisplayRow[] {
 export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
   const errors = result.verification.errors.map(
     (error) =>
-      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane)}`,
+      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane, result.verification.profile)}`,
   );
   return document(
-    ...buildProfileShowView(result).sections,
+    ...buildProfileInspectView(result.profile).sections,
     section(
       rows(verificationRows(result.verification)),
       ...(errors.length > 0 ? [text(errors)] : []),
@@ -340,33 +213,9 @@ export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocu
   );
 }
 
-export function profileShowToJson(result: ProfileShowResult): Record<string, unknown> {
-  const environment =
-    managementEnvironmentValue(result.configuration) ?? process.env.ALTERTABLE_ENV ?? null;
-  return {
-    cli_config: {
-      config_dir: result.configuration.config_dir,
-      config_file: result.configuration.config_file,
-      secret_store: result.configuration.secret_store,
-    },
-    profile: {
-      name: result.configuration.profile,
-      environment,
-      user: result.identity?.principal ?? null,
-      organization: result.identity?.organization ?? null,
-    },
-    details: {
-      data_plane: result.configuration.data_plane,
-      control_plane: result.configuration.control_plane,
-      credentials: result.configuration.credentials,
-      overrides: result.configuration.overrides,
-    },
-  };
-}
-
 export function profileStatusToJson(result: ProfileStatusResult): Record<string, unknown> {
   return {
-    ...profileShowToJson(result),
+    profile: result.profile,
     verification: {
       configured: result.verification.configured,
       verified: result.verification.verified,

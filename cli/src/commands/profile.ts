@@ -1,12 +1,7 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
-import { withConfigureProfileContext } from "@/lib/profile-configure-core.ts";
-import {
-  buildConfigureShowData,
-  configureCredentialStatus,
-  type ConfigureShowData,
-} from "@/features/profile/model.ts";
+import type { ProfileInspect } from "@/features/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import {
@@ -14,11 +9,6 @@ import {
   runProfileConfigure,
   type ConfigureCommandArgs,
 } from "@/lib/profile-configure.ts";
-import { buildActiveContext } from "@/features/profile/model.ts";
-import { managementWhoamiOperation } from "@/lib/management-operations.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
-import { runOperationPlan } from "@/lib/operation-effect.ts";
-import type { WhoamiResponse } from "@/features/management/model.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import {
   defaultConfigurePrompts,
@@ -28,20 +18,18 @@ import { defineLocalCommand, defineValueCommand } from "@/lib/operation-command-
 import {
   buildProfileDirenvView,
   buildProfileShellExportView,
-  profileShowToJson,
   profileStatusToJson,
   profileSwitchOption,
-  type ProfileShowResult,
   type ProfileStatusResult,
 } from "@/features/profile/views.ts";
 import {
   formatProfileInspect,
   formatProfileList,
-  formatProfileShow,
   formatProfileStatus,
 } from "@/features/profile/render.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
 import {
+  assertProfileHasNoEnvCredentials,
   createEmptyProfile,
   deleteProfile,
   getActiveProfileName,
@@ -77,12 +65,12 @@ function profileNameArgOrActive(args: Record<string, unknown>): string {
   return args.name ? requireProfileName(args.name) : getActiveProfileName();
 }
 
-function configuredVerificationPlanes(configuration: ConfigureShowData): ConfigureAuthPlane[] {
+function configuredVerificationPlanes(profile: ProfileInspect): ConfigureAuthPlane[] {
   const planes: ConfigureAuthPlane[] = [];
-  if (configuration.credentials.management.configured) {
+  if (profile.auth.management !== "none") {
     planes.push("management");
   }
-  if (configuration.credentials.lakehouse.configured) {
+  if (profile.auth.lakehouse !== "none") {
     planes.push("lakehouse");
   }
   return planes;
@@ -143,9 +131,7 @@ const profileCreateCommand = defineLocalCommand({
   },
   async local(input, context) {
     createEmptyProfile(input.name);
-    await withConfigureProfileContext(input.name, () =>
-      runProfileConfigure(input.configure, context.sink),
-    );
+    await runProfileConfigure(input.configure, context.sink, input.name);
     setActiveProfile(input.name);
     return inspectProfile(input.name);
   },
@@ -166,69 +152,28 @@ function profileShowTargetName(args: Record<string, unknown>): string {
   return getCliContext().profile ?? getActiveProfileName();
 }
 
-async function fetchProfileIdentity(
-  context: OperationContext,
-): Promise<WhoamiResponse | undefined> {
-  try {
-    const enriched = await runOperationPlan(
-      managementWhoamiOperation.plan(buildActiveContext(), context),
-      context,
-    );
-    if (enriched.principal === undefined && enriched.organization === undefined) {
-      return undefined;
-    }
-    return { principal: enriched.principal ?? {}, organization: enriched.organization ?? {} };
-  } catch {
-    // Best-effort: fall back to stored/blank identity when whoami is unreachable.
-    return undefined;
-  }
-}
-
-const profileShowCommand = defineLocalCommand<
-  { profileName: string; config: boolean },
-  ProfileShowResult & { config: boolean }
->({
+const profileShowCommand = defineLocalCommand<{ profileName: string }, ProfileInspect>({
   id: "profile.show",
   localConfig: true,
   output: "normalized",
   meta: {
     name: "show",
-    description: "Show active profile identity and credential details",
+    description: "Show a profile's stored identity, auth, and endpoints",
   },
   args: {
     name: { type: "string", description: "Profile name (default: active profile)" },
-    config: {
-      type: "boolean",
-      description: "Include CLI config paths (config dir, profile config file, secret store)",
-    },
   },
   parse({ args }) {
-    return {
-      profileName: existingProfileName(profileShowTargetName(args)),
-      config: Boolean(args.config),
-    };
+    return { profileName: existingProfileName(profileShowTargetName(args)) };
   },
-  async local(input, context) {
-    const previous = getCliContext();
-    try {
-      const next = { ...previous, profile: input.profileName };
-      setCliContext(next);
-      refreshCliRuntimeContext(next);
-      const configuration = buildConfigureShowData();
-      const identity = configureCredentialStatus().hasManagement
-        ? await fetchProfileIdentity(context)
-        : undefined;
-      return { configuration, identity, config: input.config };
-    } finally {
-      setCliContext(previous);
-      refreshCliRuntimeContext(previous);
-    }
+  local(input) {
+    return inspectProfile(input.profileName);
   },
   present(result) {
     return {
       kind: "normalized",
-      data: profileShowToJson(result),
-      humanText: formatProfileShow(result, { config: result.config }),
+      data: { profile: result },
+      humanText: formatProfileInspect(result),
     };
   },
 });
@@ -247,6 +192,7 @@ function createProfileUseCommand(id: string, name: string, hidden = false) {
       return requireProfileName(args.name);
     },
     local(profileName) {
+      assertProfileHasNoEnvCredentials("Switching profiles");
       setActiveProfile(profileName);
       return profileName;
     },
@@ -274,6 +220,7 @@ const profileSwitchCommand = defineLocalCommand<string | undefined, string>({
     return args.name ? requireProfileName(args.name) : undefined;
   },
   async local(profileName) {
+    assertProfileHasNoEnvCredentials("Switching profiles");
     if (!profileName) {
       if (isJsonOutput(getCliContext()) || getCliContext().agent || process.stdin.isTTY !== true) {
         throw new CliError("Interactive profile switch requires a TTY. Pass a profile name.");
@@ -371,18 +318,15 @@ const profileStatusCommand = defineLocalCommand<string, ProfileStatusResult>({
   parse({ args }) {
     return existingProfileName(profileShowTargetName(args));
   },
-  async local(profileName, context) {
+  async local(profileName) {
     const previous = getCliContext();
     try {
       const next = { ...previous, profile: profileName };
       setCliContext(next);
       refreshCliRuntimeContext(next);
-      const configuration = buildConfigureShowData();
-      const identity = configureCredentialStatus().hasManagement
-        ? await fetchProfileIdentity(context)
-        : undefined;
-      const verification = await configureVerify(configuredVerificationPlanes(configuration));
-      return { configuration, identity, verification };
+      const profile = inspectProfile(profileName);
+      const verification = await configureVerify(configuredVerificationPlanes(profile));
+      return { profile, verification };
     } finally {
       setCliContext(previous);
       refreshCliRuntimeContext(previous);

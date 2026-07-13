@@ -1,9 +1,14 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
-import { configFile, configGet, configSet, configUnset, credentialsFile } from "@/lib/config.ts";
+import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
-import { ensureProfileExists, profilesDir } from "@/lib/profile-store.ts";
-import { getCliContext, setCliContext } from "@/context.ts";
+import {
+  ensureProfileExists,
+  profileConfigFile,
+  profilesDir,
+  resolveWorkingProfile,
+} from "@/lib/profile-store.ts";
+import { getCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
@@ -23,7 +28,6 @@ export type ConfigureOptions = {
   dataPlaneUrl?: string;
   controlPlaneUrl?: string;
   profile?: string;
-  org?: string;
   show?: boolean;
   clear?: boolean;
   allowInsecureHttp?: boolean;
@@ -33,17 +37,20 @@ export type ConfigureOptions = {
 
 const AUTO_PROFILE_NAME = "auto";
 
-function markCurrentProfileUpdated(): void {
+function markCurrentProfileUpdated(profileName: string): void {
   const timestamp = new Date().toISOString();
-  if (!configGet("created_at")) {
-    configSet("created_at", timestamp);
+  if (!configGet("created_at", profileName)) {
+    configSet("created_at", timestamp, profileName);
   }
-  configSet("updated_at", timestamp);
+  configSet("updated_at", timestamp, profileName);
 }
 
-function resolveConfigureProfile(options: ConfigureOptions): string | undefined {
+function clearProfileEndpoint(key: "api_base" | "management_api_base", profileName: string): void {
+  kvUnset(profileConfigFile(profileName), key);
+}
+
+function resolveConfigureProfile(options: ConfigureOptions, org: string): string {
   const explicitProfile = options.profile;
-  const org = options.org ?? "";
   const env = options.env ?? "";
 
   if (explicitProfile && explicitProfile !== AUTO_PROFILE_NAME) {
@@ -55,53 +62,45 @@ function resolveConfigureProfile(options: ConfigureOptions): string | undefined 
   if (explicitProfile === AUTO_PROFILE_NAME) {
     throw new CliError("--profile auto is only supported by interactive configure.");
   }
-  return undefined;
+  return resolveWorkingProfile(getCliContext().profile);
 }
 
 export async function withConfigureProfileContext<T>(
-  profileName: string | undefined,
-  run: () => Promise<T> | T,
+  profileName: string,
+  run: (profileName: string) => Promise<T> | T,
 ): Promise<T> {
-  if (!profileName) {
-    return await run();
-  }
   ensureProfileExists(profileName);
-  const previous = getCliContext();
-  setCliContext({ ...previous, profile: profileName });
-  try {
-    return await run();
-  } finally {
-    setCliContext(previous);
-  }
+  return await run(profileName);
 }
 
-function configureClearLakehouseCredentials(profileName?: string): void {
+function configureClearLakehouseCredentials(profileName: string): void {
   secretDelete("lakehouse/password", profileName);
   secretDelete("lakehouse/basic-token", profileName);
-  configUnset("user");
-  configUnset("lakehouse_credential_expiry");
+  configSet("user", "", profileName);
+  configSet("lakehouse_credential_expiry", "", profileName);
 }
 
-function configureClearManagementCredentials(profileName?: string): void {
+function configureClearManagementCredentials(profileName: string): void {
   secretDelete("api-key", profileName);
   secretDelete("oauth/access-token", profileName);
   secretDelete("oauth/refresh-token", profileName);
-  configUnset("api_key_env");
-  configUnset("oauth_expiry");
+  configSet("api_key_env", "", profileName);
+  configSet("oauth_expiry", "", profileName);
 }
 
-export function configureClearAll(): void {
-  configureClearLakehouseCredentials();
-  configureClearManagementCredentials();
-  configUnset("api_base");
-  configUnset("management_api_base");
+export function configureClearAll(profileName: string): void {
+  configureClearLakehouseCredentials(profileName);
+  configureClearManagementCredentials(profileName);
+  clearProfileEndpoint("api_base", profileName);
+  clearProfileEndpoint("management_api_base", profileName);
 }
 
 export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),
+  org = "",
 ): Promise<void> {
-  return withConfigureProfileContext(resolveConfigureProfile(options), async () => {
+  return withConfigureProfileContext(resolveConfigureProfile(options, org), async (profileName) => {
     let user = options.user ?? "";
     let password = options.password ?? "";
     let apiKey = options.apiKey ?? "";
@@ -109,7 +108,6 @@ export async function configureRunSet(
     const env = options.env ?? "";
     const dataPlaneUrl = options.dataPlaneUrl ?? "";
     const controlPlaneUrl = options.controlPlaneUrl ?? "";
-    const org = options.org ?? "";
     const allowInsecureHttp = options.allowInsecureHttp ?? false;
 
     const passwordFromArgv =
@@ -143,18 +141,19 @@ export async function configureRunSet(
       apiKey = (await Bun.stdin.text()).replace(/\n$/, "");
     }
 
-    const hasLakehouse = Boolean(user || password);
-    const hasToken = Boolean(basicToken);
+    const hasLakehouseCredentials = Boolean(user || password);
+    const hasLakehouseBasicToken = Boolean(basicToken);
     const hasApiKey = Boolean(apiKey);
-    const lakehouseMechanismCount = Number(hasLakehouse) + Number(hasToken);
-    const hasAnyCredential = hasLakehouse || hasToken || hasApiKey;
+    const lakehouseMechanismCount =
+      Number(hasLakehouseCredentials) + Number(hasLakehouseBasicToken);
+    const hasAnyCredential = hasLakehouseCredentials || hasLakehouseBasicToken || hasApiKey;
 
     if (lakehouseMechanismCount > 1) {
       throw new CliError(
         "Choose a single lakehouse authentication mechanism: --user/--password or --basic-token.",
       );
     }
-    if (hasApiKey && (hasLakehouse || hasToken)) {
+    if (hasApiKey && (hasLakehouseCredentials || hasLakehouseBasicToken)) {
       throw new CliError(
         "Choose a single authentication mechanism per configure invocation: lakehouse credentials or --api-key.",
       );
@@ -170,7 +169,7 @@ export async function configureRunSet(
         "Nothing to configure. Use --user/--password, --basic-token, or --api-key --env <name>.",
       );
     }
-    if (hasLakehouse && (!user || !password)) {
+    if (hasLakehouseCredentials && (!user || !password)) {
       throw new CliError("--user and --password must be provided together.");
     }
     if (hasApiKey && !env) {
@@ -178,45 +177,45 @@ export async function configureRunSet(
     }
 
     if (hasApiKey) {
-      configureClearManagementCredentials();
-      secretSet("api-key", apiKey, undefined, { fromArgv: apiKeyFromArgv });
-      configSet("api_key_env", env);
+      configureClearManagementCredentials(profileName);
+      secretSet("api-key", apiKey, profileName, { fromArgv: apiKeyFromArgv });
+      configSet("api_key_env", env, profileName);
       if (org) {
-        configSet("organization_slug", org);
+        configSet("organization_slug", org, profileName);
       }
     }
-    if (hasToken) {
-      configureClearLakehouseCredentials();
-      secretSet("lakehouse/basic-token", basicToken);
-    } else if (hasLakehouse) {
-      configureClearLakehouseCredentials();
-      configSet("user", user);
-      secretSet("lakehouse/password", password, undefined, { fromArgv: passwordFromArgv });
+    if (hasLakehouseBasicToken) {
+      configureClearLakehouseCredentials(profileName);
+      secretSet("lakehouse/basic-token", basicToken, profileName);
+    } else if (hasLakehouseCredentials) {
+      configureClearLakehouseCredentials(profileName);
+      configSet("user", user, profileName);
+      secretSet("lakehouse/password", password, profileName, { fromArgv: passwordFromArgv });
     }
 
     if (dataPlaneUrl) {
       assertAllowedApiBase(dataPlaneUrl, { allowInsecureHttp });
-      configSet("api_base", dataPlaneUrl);
+      configSet("api_base", dataPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configUnset("api_base");
+      clearProfileEndpoint("api_base", profileName);
     }
     if (controlPlaneUrl) {
       assertAllowedApiBase(controlPlaneUrl, { allowInsecureHttp });
-      configSet("management_api_base", controlPlaneUrl);
+      configSet("management_api_base", controlPlaneUrl, profileName);
     } else if (hasAnyCredential) {
-      configUnset("management_api_base");
+      clearProfileEndpoint("management_api_base", profileName);
     }
 
     if (hasApiKey) {
       sink.writeMetadata([terminalMetadata(`Saved management API key for environment ${env}.`)]);
-    } else if (hasToken) {
+    } else if (hasLakehouseBasicToken) {
       sink.writeMetadata([terminalMetadata("Saved lakehouse Basic token.")]);
-    } else if (hasLakehouse) {
+    } else if (hasLakehouseCredentials) {
       sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
     } else if (dataPlaneUrl) {
       sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);
     }
-    markCurrentProfileUpdated();
+    markCurrentProfileUpdated(profileName);
   });
 }
 

@@ -2,7 +2,10 @@ import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import { getCliRuntime, refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
+import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
+import { httpSend } from "@/lib/http.ts";
+import { resolveManagementApiBase, resolveOAuthBase } from "@/lib/config.ts";
+import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
@@ -10,15 +13,16 @@ import type { WhoamiResponse } from "@/features/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import {
+  assertProfileHasNoEnvCredentials,
   createEmptyProfile,
   deriveProfileName,
   profileExists,
-  resolveProfileName,
+  profileHasAnyAuthConfigured,
+  resolveWorkingProfile,
   setActiveProfile,
   updateProfile,
 } from "@/features/profile/model.ts";
 import { terminalSuccess } from "@/ui/terminal/styles.ts";
-import { createExecutionContext } from "@/lib/execution-context.ts";
 
 function isInteractiveTerminal(): boolean {
   return process.stdin.isTTY;
@@ -54,9 +58,18 @@ function selectLoginProfile(
   environment: string,
   replaceCurrentProfile: boolean,
 ): Pick<LoginProfileMetadata, "profileName" | "profileAction"> {
-  const currentProfile = resolveProfileName(getCliContext().profile);
+  const currentProfile = resolveWorkingProfile(getCliContext().profile);
   if (replaceCurrentProfile) {
     return { profileName: currentProfile, profileAction: "replaced" };
+  }
+
+  // Sign into the current profile while it has no credentials of its own yet — a
+  // fresh `default` or a just-created empty profile. Only branch to a new profile
+  // once the current one is already authenticated, so a second login doesn't
+  // clobber an existing session. (Env credentials never reach here — login is
+  // refused up front while they are set.)
+  if (!profileHasAnyAuthConfigured(currentProfile)) {
+    return { profileName: currentProfile, profileAction: "unchanged" };
   }
 
   const targetProfile = loginProfileName(whoami, environment, currentProfile);
@@ -146,26 +159,60 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
   process.env.ALTERTABLE_MANAGEMENT_API_BASE = url;
 }
 
-async function fetchLoginWhoami(oauthResponse: TokenResponse): Promise<WhoamiResponse> {
-  const execution = createExecutionContext(getCliRuntime());
-  execution.auth.management = `Authorization: Bearer ${oauthResponse.access_token}`;
-  return JSON.parse(
-    await managementRequest("GET", "/whoami", undefined, execution),
-  ) as WhoamiResponse;
+// Profile-free on purpose: the minted token — not the current profile's stored
+// auth, which may still be a different org's session — decides who we are.
+export async function fetchLoginWhoami(
+  oauthResponse: TokenResponse,
+  managementApiBase: string,
+): Promise<WhoamiResponse> {
+  const body = await httpSend({
+    method: "GET",
+    url: `${managementApiBase}${encodeManagementEndpoint("/whoami")}`,
+    authHeader: `Authorization: Bearer ${oauthResponse.access_token}`,
+    authPlane: "management",
+  });
+  return JSON.parse(body) as WhoamiResponse;
+}
+
+async function fetchCurrentProfileWhoami(): Promise<WhoamiResponse> {
+  return JSON.parse(await managementRequest("GET", "/whoami")) as WhoamiResponse;
+}
+
+export function sameWhoamiContext(a: WhoamiResponse, b: WhoamiResponse): boolean {
+  return (
+    a.principal?.type === b.principal?.type &&
+    a.principal?.slug === b.principal?.slug &&
+    a.principal?.email === b.principal?.email &&
+    a.organization?.slug === b.organization?.slug &&
+    a.environment_slug === b.environment_slug
+  );
 }
 
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
+  assertProfileHasNoEnvCredentials("altertable login");
   assertInteractiveLogin();
   applyControlPlaneOverride(args);
 
-  const oauthResponse = await runLoginFlow(sink);
-  const whoami = await fetchLoginWhoami(oauthResponse);
-  // Login succeeded — now persist whoami metadata and any control-plane override
-  // to the profile so later commands target it. The override is kept session-only
-  // until here so a failed login against a bad URL never writes it.
+  const currentProfile = resolveWorkingProfile(getCliContext().profile);
+  const oauthBase = resolveOAuthBase(currentProfile);
+  const managementApiBase = resolveManagementApiBase(currentProfile);
+
+  // Past this point the flow is profile-free so it can't accidentally read another org's stored session.
+  const oauthResponse = await runLoginFlow(sink, oauthBase);
+  const whoami = await fetchLoginWhoami(oauthResponse, managementApiBase);
+
+  // Login succeeded and we can now persist whoami metadata and any control-plane override to the profile so later commands target it.
   const { environment, profileName, profileAction } = storeLoginProfileMetadata(whoami, args);
-  storeOAuthTokens(oauthResponse);
+  storeOAuthTokens(oauthResponse, profileName);
   refreshCliRuntimeContext(getCliContext());
+
+  // Refresh whoami from the profile and check if the identity is the same as the one we just authenticated as.
+  const refreshedWhoami = await fetchCurrentProfileWhoami();
+  if (!sameWhoamiContext(whoami, refreshedWhoami)) {
+    throw new Error(
+      "Login failed: the identity before and after profile persistence do not match.",
+    );
+  }
 
   const identity = formatWhoamiPrincipalLine(whoami);
   const profileMessages = {

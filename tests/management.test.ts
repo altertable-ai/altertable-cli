@@ -18,7 +18,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable profile show");
+    const result = await workspace.runCommand("altertable api GET /whoami");
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
@@ -31,7 +31,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable profile show", {
+    const result = await workspace.runCommand("altertable api GET /whoami", {
       env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:9" },
     });
 
@@ -48,14 +48,14 @@ describe("management API user flows", () => {
     await workspace.appendFile(workspace.defaultProfileConfig, "management_api_base=http://localhost:7\n");
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
-    expect((await workspace.runCommand("altertable profile show", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable api GET /whoami", { env: { ALTERTABLE_API_KEY: "atm_env" } })).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:7/rest/v1/whoami");
 
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
     expect(
       (
-        await workspace.runCommand("altertable profile show", {
+        await workspace.runCommand("altertable api GET /whoami", {
           env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:8/" },
         })
       ).exitCode,
@@ -86,8 +86,9 @@ describe("management API user flows", () => {
   test("context works locally without credentials, but raw API requires them", async () => {
     const context = await workspace.runCommand("altertable profile show");
     expect(context.exitCode).toBe(0);
-    expect(context.stdout).toContain("Profile:");
-    expect(context.stdout).toContain("No credentials configured");
+    expect(context.stdout).toContain("Profile");
+    expect(context.stdout).toContain("Status");
+    expect(context.stdout).toContain("empty");
 
     const api = await workspace.runCommand("altertable api GET /whoami");
     expect(api.exitCode).toBe(10);

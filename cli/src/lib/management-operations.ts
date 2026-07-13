@@ -1,9 +1,8 @@
 import { defineHttpOperation } from "@/lib/http-operation.ts";
 import { buildCatalogRowsFromResponses } from "@/lib/catalog-rows.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { type WhoamiResponse } from "@/features/management/model.ts";
-import { type ActiveContext, withAuthenticatedIdentity } from "@/features/profile/model.ts";
 import type { CatalogRow } from "@/features/management/model.ts";
+import type { OperationContext } from "@/lib/operation-command.ts";
+import { runOperationEffect } from "@/lib/operation-effect.ts";
 
 export type ManagementCatalogCreateInput = {
   env: string;
@@ -16,17 +15,6 @@ export type ManagementCatalogCreateResult = {
   env: string;
   fallbackName: string;
 };
-
-export const managementWhoamiOperation = defineHttpOperation<ActiveContext, ActiveContext>({
-  id: "management.whoami",
-  request: () => ({
-    plane: "management",
-    method: "GET",
-    endpoint: "/whoami",
-  }),
-  decode: (response, _context, activeContext) =>
-    withAuthenticatedIdentity(activeContext, parseApiJson(response) as WhoamiResponse),
-});
 
 export const managementCatalogCreateOperation = defineHttpOperation<
   ManagementCatalogCreateInput,
@@ -68,4 +56,19 @@ export const managementCatalogConnectionsOperation = defineHttpOperation<string,
 export function buildManagementCatalogRows(responses: unknown[]): CatalogRow[] {
   const [databasesResponse, connectionsResponse] = responses;
   return buildCatalogRowsFromResponses(String(databasesResponse), String(connectionsResponse));
+}
+
+export async function fetchManagementCatalogRows(
+  env: string,
+  context: OperationContext,
+): Promise<CatalogRow[]> {
+  const databasesResponse = await runOperationEffect(
+    managementCatalogDatabasesOperation.effect(env, context),
+    context,
+  );
+  const connectionsResponse = await runOperationEffect(
+    managementCatalogConnectionsOperation.effect(env, context),
+    context,
+  );
+  return buildManagementCatalogRows([databasesResponse, connectionsResponse]);
 }

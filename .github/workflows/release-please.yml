@@ -62,13 +62,14 @@ jobs:
           bun build --compile --target=bun-linux-x64 src/cli.ts --outfile ../dist/altertable-linux-x64
           bun build --compile --target=bun-linux-arm64 src/cli.ts --outfile ../dist/altertable-linux-arm64
           cp dist/cli.js ../dist/altertable-cli.js
-          cd ../dist && shasum -a 256 altertable-* altertable-cli.js > checksums.txt
+          cd ../dist && shasum -a 256 altertable-darwin-* altertable-linux-* altertable-cli.js > checksums.txt
 
       - name: Attest release assets
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-path: |
-            dist/altertable-*
+            dist/altertable-darwin-*
+            dist/altertable-linux-*
             dist/altertable-cli.js
             dist/checksums.txt
 
@@ -76,10 +77,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/altertable-* dist/altertable-cli.js dist/checksums.txt --clobber
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/altertable-darwin-* dist/altertable-linux-* dist/altertable-cli.js dist/checksums.txt --clobber
 
       - name: Publish npm package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
         working-directory: cli

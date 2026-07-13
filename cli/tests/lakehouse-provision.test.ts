@@ -10,6 +10,8 @@ import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { USER_AGENT } from "@/version.ts";
 
+const profileName = "default";
+
 let testHome = "";
 let mockFile = "";
 let logFile = "";
@@ -89,8 +91,8 @@ describe("lakehouse credential auto-provisioning", () => {
 
     expect(response).toBe("ok");
     const expectedToken = Buffer.from("cli-user:cli-pass").toString("base64");
-    expect(secretGet("lakehouse/basic-token")).toBe(expectedToken);
-    expect(configGet("lakehouse_credential_expiry")).toBe(
+    expect(secretGet("lakehouse/basic-token", profileName)).toBe(expectedToken);
+    expect(configGet("lakehouse_credential_expiry", profileName)).toBe(
       String(Date.parse("2100-01-01T00:00:00Z")),
     );
     const logContent = readFileSync(logFile, "utf8");
@@ -102,21 +104,29 @@ describe("lakehouse credential auto-provisioning", () => {
 
   test("re-provisions when the stored credential is expired", async () => {
     writeMocks();
-    secretSet("lakehouse/basic-token", Buffer.from("old-user:old-pass").toString("base64"));
-    configSet("lakehouse_credential_expiry", String(Date.now() - 1000));
+    secretSet(
+      "lakehouse/basic-token",
+      Buffer.from("old-user:old-pass").toString("base64"),
+      profileName,
+    );
+    configSet("lakehouse_credential_expiry", String(Date.now() - 1000), profileName);
 
     const response = await sendLakehouseRequest();
 
     expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token")).toBe(
+    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
       Buffer.from("cli-user:cli-pass").toString("base64"),
     );
   });
 
   test("aborts on a corrupt stored expiry without provisioning or sending anything", async () => {
     writeMocks();
-    secretSet("lakehouse/basic-token", Buffer.from("old-user:old-pass").toString("base64"));
-    configSet("lakehouse_credential_expiry", "not-a-number");
+    secretSet(
+      "lakehouse/basic-token",
+      Buffer.from("old-user:old-pass").toString("base64"),
+      profileName,
+    );
+    configSet("lakehouse_credential_expiry", "not-a-number", profileName);
 
     await expectRejection(
       sendLakehouseRequest(),
@@ -135,12 +145,16 @@ describe("lakehouse credential auto-provisioning", () => {
 
   test("uses valid stored credentials without touching the management plane", async () => {
     writeMocks();
-    secretSet("lakehouse/basic-token", Buffer.from("old-user:old-pass").toString("base64"));
+    secretSet(
+      "lakehouse/basic-token",
+      Buffer.from("old-user:old-pass").toString("base64"),
+      profileName,
+    );
 
     const response = await sendLakehouseRequest();
 
     expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token")).toBe(
+    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
       Buffer.from("old-user:old-pass").toString("base64"),
     );
     expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
@@ -151,8 +165,8 @@ describe("lakehouse credential recovery after 401", () => {
   const OLD_TOKEN = Buffer.from("old-user:old-pass").toString("base64");
 
   function storeProvisionedCredential(): void {
-    secretSet("lakehouse/basic-token", OLD_TOKEN);
-    configSet("lakehouse_credential_expiry", String(Date.now() + 60 * 60 * 1000));
+    secretSet("lakehouse/basic-token", OLD_TOKEN, profileName);
+    configSet("lakehouse_credential_expiry", String(Date.now() + 60 * 60 * 1000), profileName);
   }
 
   test("re-provisions and retries when the server rejects a provisioned credential", async () => {
@@ -180,7 +194,7 @@ describe("lakehouse credential recovery after 401", () => {
     const response = await sendLakehouseRequest();
 
     expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token")).toBe(
+    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
       Buffer.from("cli-user:cli-pass").toString("base64"),
     );
   });
@@ -224,7 +238,7 @@ describe("lakehouse credential recovery after 401", () => {
   });
 
   test("does not re-provision on 401 for manually configured credentials", async () => {
-    secretSet("lakehouse/basic-token", OLD_TOKEN);
+    secretSet("lakehouse/basic-token", OLD_TOKEN, profileName);
 
     writeFileSync(
       mockFile,
