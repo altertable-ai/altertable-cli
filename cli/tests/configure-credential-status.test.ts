@@ -209,7 +209,16 @@ describe("buildConfigureShowData", () => {
       expect(summaryRows.rows).toEqual(
         expect.arrayContaining([
           { label: "Active profile:", value: "default" },
-          { label: "Data plane:", value: "https://api.altertable.ai", linkifyUrls: true },
+          {
+            label: "Data plane:",
+            value: [
+              {
+                text: "https://api.altertable.ai",
+                style: "accent",
+                href: "https://api.altertable.ai",
+              },
+            ],
+          },
         ]),
       );
     }

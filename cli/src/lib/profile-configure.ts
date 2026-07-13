@@ -20,15 +20,9 @@ import {
   type ConfigureWizardOptions,
   type ConfigureWizardScope,
 } from "@/lib/profile-configure-interactive.ts";
-import {
-  terminalAccent,
-  terminalMetadata,
-  terminalMuted,
-  getTerminalWidth,
-  getVisibleTextWidth,
-} from "@/ui/terminal/styles.ts";
+import { getTerminalWidth, getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { deriveProfileName } from "@/features/profile/model.ts";
-import { document, section, text } from "@/ui/document.ts";
+import { document, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 
 const DEFAULT_SCOPE: ConfigureWizardScope = "both";
@@ -42,20 +36,30 @@ async function saveCredentials(
   await configureRunSet({ ...configureOptions, interactive: true }, sink, org);
 }
 
-function formatNextCommandsLine(commands: string[]): string {
+function formatNextCommandsLine(commands: DisplayText[]): string {
   if (commands.length === 0) {
     return "";
   }
 
   const terminalWidth = getTerminalWidth();
-  const inlineLines = [terminalMuted("Next:"), ...commands];
+  const inlineLines: DisplayText[] = [[span("Next:", "muted")], ...commands];
   const inlineLine = renderDocumentText(document(section(text(inlineLines))));
   if (getVisibleTextWidth(inlineLine) <= terminalWidth) {
     return inlineLine;
   }
 
   return renderDocumentText(
-    document(section(text([terminalMuted("Next:"), ...commands.map((command) => `  ${command}`)]))),
+    document(
+      section(
+        text([
+          [span("Next:", "muted")],
+          ...commands.map((command) => [
+            span("  "),
+            ...(typeof command === "string" ? [span(command)] : command),
+          ]),
+        ]),
+      ),
+    ),
   );
 }
 
@@ -65,13 +69,13 @@ function writeOutro(
   profileName: string,
 ): void {
   const summaryLines = formatConfigureSessionSummary(profileName, configuredPlanes);
-  const nextCommands: string[] = [];
+  const nextCommands: DisplayText[] = [];
 
   if (configuredPlanes.includes("management")) {
-    nextCommands.push(terminalAccent("altertable profile show"));
+    nextCommands.push([span("altertable profile show", "accent")]);
   }
   if (configuredPlanes.includes("lakehouse")) {
-    nextCommands.push(terminalAccent('altertable query "SELECT 1"'));
+    nextCommands.push([span('altertable query "SELECT 1"', "accent")]);
   }
 
   const nextLine = formatNextCommandsLine(nextCommands);
@@ -145,7 +149,7 @@ async function runConfigureWizardInCurrentProfile(
     writeOutro(sink, configuredPlanes, targetProfile);
   } catch (error) {
     if (error instanceof ConfigurePromptCancelled) {
-      sink.writeMetadata([terminalMetadata("Configuration cancelled.")]);
+      sink.writeMetadata([renderDisplayText([span("Configuration cancelled.", "subtle")])]);
       throw error;
     }
     throw error;

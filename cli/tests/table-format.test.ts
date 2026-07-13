@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { renderFixedTable } from "@/ui/terminal/table.ts";
 import { renderApiRoutesTable, renderApiRoutesTableSection } from "@/features/api/render.ts";
 import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
 const originalStdoutIsTTY = process.stdout.isTTY;
@@ -38,6 +39,17 @@ describe("renderFixedTable", () => {
     );
     expect(output).toContain("abcdefghi…");
     expect(output).not.toContain("abcdefghijklmnopqrstuvwxyz");
+  });
+
+  test("sizes and truncates semantic spans by visible text", () => {
+    setTerminalColorMode("always");
+    const output = renderFixedTable(
+      [{ label: "abcdefghijklmnopqrstuvwxyz" }],
+      [{ header: "LABEL", cell: (row) => [span(row.label, "accent")], maxWidth: 10 }],
+    );
+
+    expect(output).toContain("\u001b[96mabcdefghi…");
+    expect(getVisibleTextWidth(output.split("\n")[1] ?? "")).toBe(10);
   });
 
   test("returns empty message for no rows", () => {

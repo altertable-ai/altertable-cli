@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderTree } from "@/ui/layouts/tree.ts";
+import { renderTree } from "@/ui/renderers/terminal.ts";
 
 describe("tree layout", () => {
   test("renders nested tree branches", () => {

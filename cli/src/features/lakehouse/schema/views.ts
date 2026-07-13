@@ -1,14 +1,7 @@
 import { getQueryColumnNames } from "@/lib/lakehouse-client.ts";
 import type { LakehouseQueryResult, LakehouseRow } from "@/lib/lakehouse-ndjson.ts";
 import type { TreeNode, TreeView } from "@/ui/layouts/tree.ts";
-import {
-  terminalAccent,
-  terminalBoolean,
-  terminalNumber,
-  terminalStrong,
-  terminalSubtle,
-  terminalWarning,
-} from "@/ui/terminal/styles.ts";
+import { span, type DisplaySpan } from "@/ui/document.ts";
 
 type SchemaTreeColumn = {
   name: string;
@@ -86,21 +79,34 @@ function buildSchemaMap(result: LakehouseQueryResult): Map<string, Map<string, S
 }
 
 function schemaColumnNode(column: SchemaTreeColumn, nameWidth: number): TreeNode {
-  const notNull = column.nullable === "NO" ? ` ${terminalBoolean("NOT NULL")}` : "";
-  const comment = column.comment ? `  ${terminalSubtle(`— ${column.comment}`)}` : "";
+  const label: DisplaySpan[] = [
+    span(column.name.padEnd(nameWidth)),
+    span("  "),
+    span(column.dataType, "number"),
+  ];
+  if (column.nullable === "NO") {
+    label.push(span(" "), span("NOT NULL", "boolean"));
+  }
+  if (column.comment) {
+    label.push(span("  "), span(`— ${column.comment}`, "subtle"));
+  }
   return {
-    label: `${column.name.padEnd(nameWidth)}  ${terminalNumber(column.dataType)}${notNull}${comment}`,
+    label,
   };
 }
 
 function schemaTableNode(tableName: string, table: SchemaTreeTable): TreeNode {
-  const typeSuffix =
-    table.type && table.type !== "BASE TABLE" ? ` ${terminalWarning(`(${table.type})`)}` : "";
-  const comment = table.comment ? `  ${terminalSubtle(`— ${table.comment}`)}` : "";
   const nameWidth = Math.max(0, ...table.columns.map((column) => column.name.length));
+  const label: DisplaySpan[] = [span(tableName, "strong")];
+  if (table.type && table.type !== "BASE TABLE") {
+    label.push(span(" "), span(`(${table.type})`, "warning"));
+  }
+  if (table.comment) {
+    label.push(span("  "), span(`— ${table.comment}`, "subtle"));
+  }
 
   return {
-    label: `${terminalStrong(tableName)}${typeSuffix}${comment}`,
+    label,
     children: table.columns.map((column) => schemaColumnNode(column, nameWidth)),
   };
 }
@@ -112,8 +118,8 @@ function schemaNode(
   const tableEntries = tables ? [...tables] : [];
 
   return {
-    label: terminalAccent(schemaName),
-    emptyLabel: terminalSubtle("<no table>"),
+    label: [span(schemaName, "accent")],
+    emptyLabel: [span("<no table>", "subtle")],
     children: tableEntries.map(([tableName, table]) => schemaTableNode(tableName, table)),
   };
 }
@@ -122,8 +128,8 @@ export function buildSchemaTreeView(result: LakehouseQueryResult, catalog: strin
   const schemas = buildSchemaMap(result);
 
   return {
-    title: terminalStrong(`Schemas and tables for ${catalog}`),
-    emptyLabel: terminalSubtle("<no schema>"),
+    title: [span(`Schemas and tables for ${catalog}`, "strong")],
+    emptyLabel: [span("<no schema>", "subtle")],
     children: [...schemas.keys()]
       .sort()
       .map((schemaName) => schemaNode(schemaName, schemas.get(schemaName))),

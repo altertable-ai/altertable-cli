@@ -8,19 +8,14 @@ import {
   document,
   rows,
   section,
+  span,
   table,
   text,
   type DisplayDocument,
   type DisplayRow,
+  type DisplayText,
 } from "@/ui/document.ts";
 import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
-import {
-  formatTerminalUrls,
-  terminalAccent,
-  terminalDescription,
-  terminalHighlightCommands,
-  terminalNotConfiguredStatus,
-} from "@/ui/terminal/styles.ts";
 import type {
   ActiveContext,
   ConfigureCredentialStatus,
@@ -37,6 +32,14 @@ import type { ShellExportView } from "@/ui/shell/model.ts";
 const ACTIVE_PROFILE_MARK = "✓";
 const INACTIVE_PROFILE_MARK = " ";
 const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
+
+function linkedUrl(value: string): DisplayText {
+  return /^https?:\/\//.test(value) ? [span(value, "accent", value)] : value;
+}
+
+function notConfigured(): DisplayText {
+  return [span("not set", "muted")];
+}
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
   // The env pseudo-profile has no stored name/status; a heading line replaces
@@ -61,15 +64,13 @@ function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
     },
     {
       label: "Data plane",
-      value: profile.endpoints.data_plane ?? "default",
-      linkifyUrls: true,
+      value: linkedUrl(profile.endpoints.data_plane ?? "default"),
     },
     {
       label: "Control plane",
-      value: profile.endpoints.control_plane ?? "default",
-      linkifyUrls: true,
+      value: linkedUrl(profile.endpoints.control_plane ?? "default"),
     },
-    { label: "Config file", value: terminalAccent(profile.config_file) },
+    { label: "Config file", value: [span(profile.config_file, "accent")] },
   ];
 }
 
@@ -107,49 +108,44 @@ export function buildProfileListView(profiles: readonly ProfileSummary[]): Displ
         columns: [
           {
             header: PROFILE_NAME_HEADER,
-            cell: (profile) =>
-              `${profile.active ? ACTIVE_PROFILE_MARK : INACTIVE_PROFILE_MARK} ${profile.name}`,
-            style: "strong",
+            cell: (profile) => [
+              span(
+                `${profile.active ? ACTIVE_PROFILE_MARK : INACTIVE_PROFILE_MARK} ${profile.name}`,
+                "strong",
+              ),
+            ],
           },
           {
             header: "ORG",
-            cell: (profile) => profile.organization ?? "",
-            style: "muted",
+            cell: (profile) => [span(profile.organization ?? "", "muted")],
           },
           {
             header: "PRINCIPAL",
-            cell: (profile) => profile.principal ?? "",
-            style: "muted",
+            cell: (profile) => [span(profile.principal ?? "", "muted")],
           },
           {
             header: "ENV",
-            cell: (profile) => profile.management_env ?? "",
-            style: "muted",
+            cell: (profile) => [span(profile.management_env ?? "", "muted")],
           },
           {
             header: "MGMT",
-            cell: (profile) => profile.management_auth ?? "",
-            style: "string",
+            cell: (profile) => [span(profile.management_auth ?? "", "string")],
           },
           {
             header: "LAKEHOUSE",
-            cell: (profile) => profile.lakehouse_auth ?? "",
-            style: "string",
+            cell: (profile) => [span(profile.lakehouse_auth ?? "", "string")],
           },
           {
             header: "OAUTH EXPIRES",
-            cell: (profile) => profile.oauth_expires_at ?? "",
-            style: "muted",
+            cell: (profile) => [span(profile.oauth_expires_at ?? "", "muted")],
           },
           {
             header: "STATUS",
-            cell: (profile) => profile.status ?? "",
-            style: "accent",
+            cell: (profile) => [span(profile.status ?? "", "accent")],
           },
           {
             header: "DATA PLANE",
-            cell: (profile) => formatTerminalUrls(profile.data_plane ?? ""),
-            style: "muted",
+            cell: (profile) => linkedUrl(profile.data_plane ?? ""),
           },
         ],
         emptyMessage: "No profiles configured.",
@@ -346,8 +342,8 @@ function configureSummaryRows(data: ConfigureShowData): DisplayRow[] {
     { label: "Config dir:", value: data.config_dir },
     { label: "Active profile:", value: data.profile },
     { label: "Secret store:", value: data.secret_store },
-    { label: "Data plane:", value: data.data_plane, linkifyUrls: true },
-    { label: "Control plane:", value: data.control_plane, linkifyUrls: true },
+    { label: "Data plane:", value: linkedUrl(data.data_plane) },
+    { label: "Control plane:", value: linkedUrl(data.control_plane) },
   ];
 }
 
@@ -382,31 +378,50 @@ export function configureAuthenticationRows(
   ];
 }
 
-export function configureSetupHintLines(status: ConfigureCredentialStatus): string[] {
+export function configureSetupHintLines(status: ConfigureCredentialStatus): DisplayText[] {
   if (!status.hasManagement && !status.hasLakehouse) {
     return [
-      terminalDescription(
-        `${TERMINAL_INDENT}No credentials configured. Run: altertable profile --configure`,
-      ),
-      terminalHighlightCommands(
-        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope management' (or 'altertable profile --configure --api-key atm_xxx --env <name>') for management commands, then 'altertable profile --configure --scope lakehouse' (or 'altertable profile --configure --user <u> --password <p>') for lakehouse queries.`,
-      ),
+      [
+        span(
+          `${TERMINAL_INDENT}No credentials configured. Run: altertable profile --configure`,
+          "subtle",
+        ),
+      ],
+      [
+        span(`${TERMINAL_INDENT}Hint: run '`),
+        span("altertable profile --configure --scope management", "accent"),
+        span("' (or '"),
+        span("altertable profile --configure --api-key atm_xxx --env <name>", "accent"),
+        span("') for management commands, then '"),
+        span("altertable profile --configure --scope lakehouse", "accent"),
+        span("' (or '"),
+        span("altertable profile --configure --user <u> --password <p>", "accent"),
+        span("') for lakehouse queries."),
+      ],
     ];
   }
 
   if (status.hasManagement && !status.hasLakehouse) {
     return [
-      terminalHighlightCommands(
-        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope lakehouse' or 'altertable profile --configure --user <u> --password <p>' for lakehouse query, upload, upsert, and append commands.`,
-      ),
+      [
+        span(`${TERMINAL_INDENT}Hint: run '`),
+        span("altertable profile --configure --scope lakehouse", "accent"),
+        span("' or '"),
+        span("altertable profile --configure --user <u> --password <p>", "accent"),
+        span("' for lakehouse query, upload, upsert, and append commands."),
+      ],
     ];
   }
 
   if (status.hasLakehouse && !status.hasManagement) {
     return [
-      terminalHighlightCommands(
-        `${TERMINAL_INDENT}Hint: run 'altertable profile --configure --scope management' or 'altertable profile --configure --api-key atm_xxx --env <name>' for profile show, catalogs, and other management commands.`,
-      ),
+      [
+        span(`${TERMINAL_INDENT}Hint: run '`),
+        span("altertable profile --configure --scope management", "accent"),
+        span("' or '"),
+        span("altertable profile --configure --api-key atm_xxx --env <name>", "accent"),
+        span("' for profile show, catalogs, and other management commands."),
+      ],
     ];
   }
 
@@ -441,9 +456,9 @@ type ContextSummaryRow = {
   lakehouse: string;
 };
 
-function formatConfiguredValue(detail: string | null | undefined): string {
+function formatConfiguredValue(detail: string | null | undefined): DisplayText {
   if (detail === null || detail === undefined || detail.length === 0) {
-    return terminalNotConfiguredStatus();
+    return notConfigured();
   }
   return detail;
 }
@@ -455,9 +470,9 @@ function plainStatus(detail: string | null | undefined): string {
   return detail;
 }
 
-function formatStatusCell(value: string): string {
+function formatStatusCell(value: string): DisplayText {
   if (value === "not set") {
-    return terminalNotConfiguredStatus();
+    return notConfigured();
   }
   return value;
 }
@@ -502,8 +517,8 @@ function contextDetailRows(context: ActiveContext): DisplayRow[] {
     { label: "Profile:", value: context.profile },
     { label: "Environment:", value: formatConfiguredValue(context.environment) },
     ...identityRows(context),
-    { label: "Data plane:", value: context.data_plane, linkifyUrls: true },
-    { label: "Control plane:", value: context.control_plane, linkifyUrls: true },
+    { label: "Data plane:", value: linkedUrl(context.data_plane) },
+    { label: "Control plane:", value: linkedUrl(context.control_plane) },
     { label: "Lakehouse:", value: formatConfiguredValue(context.lakehouse) },
   ];
 }
@@ -516,28 +531,24 @@ export function buildActiveContextSummaryView(context: ActiveContext): DisplayDo
         {
           header: "PROFILE",
           cell: (entry) => formatStatusCell(entry.profile),
-          style: "strong",
         },
         {
           header: "ENV",
           cell: (entry) => formatStatusCell(entry.environment),
-          style: "accent",
         },
         {
           header: "MGMT",
           cell: (entry) => formatStatusCell(entry.management),
-          style: "muted",
         },
         {
           header: "LAKEHOUSE",
           cell: (entry) => formatStatusCell(entry.lakehouse),
-          style: "string",
           flex: true,
         },
       ],
     }),
     ...(!context.credentialStatus.hasManagement && !context.credentialStatus.hasLakehouse
-      ? [text([terminalHighlightCommands("Hint: run `altertable profile --configure`")])]
+      ? [text([[span("Hint: run `"), span("altertable profile --configure", "accent"), span("`")]])]
       : []),
   ];
 

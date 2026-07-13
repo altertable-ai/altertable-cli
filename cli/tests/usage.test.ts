@@ -9,7 +9,8 @@ import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/usage.ts
 import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { VERSION } from "@/version.ts";
-import { getVisibleTextWidth, terminalAccent } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import {
   forceTerminalColorForTests,
   restoreTerminalState,
@@ -123,9 +124,11 @@ describe("renderAltertableUsage", () => {
       const usage = await renderAltertableUsage(command, parent);
 
       expect(usage).toContain(
-        `    Use ${terminalAccent("altertable profile <command> --help")} for more information about a command.`,
+        `    Use ${renderDisplayText([span("altertable profile <command> --help", "accent")])} for more information about a command.`,
       );
-      expect(usage).toContain(`    ${terminalAccent("altertable profile show")}`);
+      expect(usage).toContain(
+        `    ${renderDisplayText([span("altertable profile show", "accent")])}`,
+      );
     } finally {
       restoreTerminalState(terminalState);
       Object.defineProperty(process.stdout, "columns", {

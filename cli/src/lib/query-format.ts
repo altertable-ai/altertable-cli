@@ -6,9 +6,11 @@ import type {
 import { getQueryDefaultMaxColumnWidth, getQueryDefaultLayout } from "@/lib/config.ts";
 import {
   getColumnTypeMap,
+  isTimestampValue,
   resolveCellDataType,
   selectDisplayColumnNames,
   type ColumnTypeMap,
+  type QueryDataType,
 } from "@/lib/query-column-types.ts";
 import { pluralizeLabel } from "@/lib/pluralize.ts";
 import { redactPasswordFieldInText } from "@/lib/redact.ts";
@@ -16,19 +18,14 @@ import { formatRelativeTimestamp, formatTimestampWithRelative } from "@/lib/rela
 import {
   getTerminalWidth,
   getVisibleTextWidth,
-  isTimestampValue,
   padVisibleText,
-  parseJsonStringValue,
+  renderDisplayText,
   shouldUseTerminalColor,
-  terminalAccent,
-  terminalDataType,
-  terminalMetadata,
-  terminalSubtle,
-  terminalTimestamp,
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
 import type { QueryLayout } from "@/ui/layouts/query.ts";
 import { renderRows } from "@/ui/renderers/terminal.ts";
+import { span, type DisplayTextStyle } from "@/ui/document.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;
@@ -78,6 +75,35 @@ function shouldColorizeQueryCells(colorize: boolean | undefined): boolean {
   return colorize === true && shouldUseTerminalColor();
 }
 
+function queryDataTypeStyle(dataType: QueryDataType): DisplayTextStyle {
+  switch (dataType) {
+    case "null":
+      return "subtle";
+    case "boolean":
+      return "boolean";
+    case "number":
+      return "number";
+    case "uuid":
+      return "accent";
+    case "string":
+    case "timestamp":
+      return "string";
+  }
+}
+
+function parseJsonStringValue(value: string): string | null {
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return null;
+  }
+  try {
+    JSON.parse(trimmed);
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
 function styleQueryHeader(
   name: string,
   width: number,
@@ -89,11 +115,11 @@ function styleQueryHeader(
   if (!shouldColorizeQueryCells(colorize)) {
     return padded;
   }
-  return terminalAccent(padded);
+  return renderDisplayText([span(padded, "accent")]);
 }
 
 function styleQueryTableChrome(text: string, colorize: boolean): string {
-  return shouldColorizeQueryCells(colorize) ? terminalMetadata(text) : text;
+  return shouldColorizeQueryCells(colorize) ? renderDisplayText([span(text, "subtle")]) : text;
 }
 
 export function highlightJsonForTerminal(json: string, enabled: boolean): string {
@@ -105,21 +131,21 @@ export function highlightJsonForTerminal(json: string, enabled: boolean): string
     /("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
     (match, keyPart, stringPart, booleanPart) => {
       if (keyPart !== undefined) {
-        return `${terminalAccent(keyPart)}:`;
+        return renderDisplayText([span(keyPart, "accent"), span(":")]);
       }
       if (stringPart !== undefined) {
-        return terminalDataType(stringPart, "string");
+        return renderDisplayText([span(stringPart, "string")]);
       }
       if (booleanPart !== undefined) {
         if (booleanPart === "null") {
-          return terminalDataType(booleanPart, "null");
+          return renderDisplayText([span(booleanPart, "subtle")]);
         }
         if (booleanPart === "false") {
-          return terminalSubtle(booleanPart);
+          return renderDisplayText([span(booleanPart, "subtle")]);
         }
-        return terminalDataType(booleanPart, "boolean");
+        return renderDisplayText([span(booleanPart, "boolean")]);
       }
-      return terminalDataType(match, "number");
+      return renderDisplayText([span(match, "number")]);
     },
   );
 }
@@ -154,10 +180,10 @@ function formatTimestampQueryCell(
   }
 
   if (relative === null || display === value) {
-    return terminalTimestamp(display, null);
+    return renderDisplayText([span(display, "string")]);
   }
 
-  return terminalTimestamp(value, relative);
+  return renderDisplayText([span(value, "string"), span(` ${relative}`, "subtle")]);
 }
 
 function formatStringQueryCell(
@@ -167,7 +193,7 @@ function formatStringQueryCell(
 ): string {
   const sanitized = redactPasswordFieldInText(value);
   if (sanitized.length === 0) {
-    return colorize ? terminalSubtle('""') : '""';
+    return colorize ? renderDisplayText([span('""', "subtle")]) : '""';
   }
 
   const columnTypeMap = options.columnTypeMap ?? new Map();
@@ -195,7 +221,7 @@ function formatStringQueryCell(
     return display;
   }
 
-  return terminalDataType(display, dataType);
+  return renderDisplayText([span(display, queryDataTypeStyle(dataType))]);
 }
 
 export function truncateText(text: string, maxWidth: number): string {
@@ -243,7 +269,7 @@ export function formatQueryCell(value: unknown, options: QueryCellOptions): stri
   const colorize = shouldColorizeQueryCells(options.colorize);
 
   if (value === null || value === undefined) {
-    return colorize ? terminalDataType(NULL_DISPLAY, "null") : NULL_DISPLAY;
+    return colorize ? renderDisplayText([span(NULL_DISPLAY, "subtle")]) : NULL_DISPLAY;
   }
   if (typeof value === "boolean") {
     const text = String(value);
@@ -251,13 +277,13 @@ export function formatQueryCell(value: unknown, options: QueryCellOptions): stri
       return text;
     }
     if (value === false) {
-      return terminalSubtle(text);
+      return renderDisplayText([span(text, "subtle")]);
     }
-    return terminalDataType(text, "boolean");
+    return renderDisplayText([span(text, "boolean")]);
   }
   if (typeof value === "number" || typeof value === "bigint") {
     const text = String(value);
-    return colorize ? terminalDataType(text, "number") : text;
+    return colorize ? renderDisplayText([span(text, "number")]) : text;
   }
   if (typeof value === "string") {
     return formatStringQueryCell(value, options, colorize);
@@ -622,7 +648,9 @@ export function renderQueryFooter(
   }
 
   const footer = footerParts.join("\n");
-  return shouldColorizeQueryCells(options.colorize) ? terminalMetadata(footer) : footer;
+  return shouldColorizeQueryCells(options.colorize)
+    ? renderDisplayText([span(footer, "subtle")])
+    : footer;
 }
 
 function escapeMarkdownCell(value: string): string {

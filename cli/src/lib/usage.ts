@@ -1,13 +1,7 @@
 import type { ArgDef, ArgsDef, CommandDef } from "citty";
 import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command-context.ts";
-import {
-  formatCommandExamplesSection,
-  getVisibleTextWidth,
-  terminalAccent,
-  terminalHighlightCommands,
-  terminalMuted,
-  terminalStrong,
-} from "@/ui/terminal/styles.ts";
+import { span, type DisplaySpan } from "@/ui/document.ts";
+import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
 import { readEnv } from "@/lib/env.ts";
 
@@ -15,11 +9,32 @@ const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
 const HELP_MIN_DESCRIPTION_WIDTH = 16;
 const HELP_FALLBACK_TERMINAL_WIDTH = 68;
+const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
 const COMMAND_GROUP_TITLES: Record<AltertableCommandGroup, string> = {
   platform: "Platform",
   ingest: "Ingest",
   query: "Query",
 };
+
+function renderHighlightedCommands(text: string): string {
+  const spans: DisplaySpan[] = [];
+  let offset = 0;
+  for (const match of text.matchAll(COMMAND_PATTERN)) {
+    const index = match.index ?? 0;
+    spans.push(span(text.slice(offset, index)), span(match[0], "accent"));
+    offset = index + match[0].length;
+  }
+  spans.push(span(text.slice(offset)));
+  return renderDisplayText(spans);
+}
+
+function formatCommandExamplesSection(examples: readonly string[]): string {
+  if (examples.length === 0) {
+    return "";
+  }
+  const heading = renderDisplayText([span("EXAMPLES", "heading")]);
+  return `\n\n${heading}\n\n${examples.map((example) => `  ${renderHighlightedCommands(example)}`).join("\n")}`;
+}
 
 function toArray<T>(value: T | T[] | undefined): T[] {
   if (Array.isArray(value)) {
@@ -228,14 +243,14 @@ function formatHelpEntries(entries: readonly HelpEntry[]): string[] {
     if (stacked) {
       const wrappedLabel = wrapHelpText(label, availableWidth);
       return [
-        ...wrappedLabel.map((line) => `${HELP_INDENT}${terminalAccent(line)}`),
+        ...wrappedLabel.map((line) => `${HELP_INDENT}${renderDisplayText([span(line, "accent")])}`),
         ...wrappedDescription.map((line) => `${HELP_INDENT}${line}`),
       ];
     }
 
     return wrappedDescription.map((line, index) => {
       if (index === 0) {
-        return `${HELP_INDENT}${terminalAccent(label.padEnd(labelWidth))}${HELP_COLUMN_GAP}${line}`;
+        return `${HELP_INDENT}${renderDisplayText([span(label.padEnd(labelWidth), "accent")])}${HELP_COLUMN_GAP}${line}`;
       }
       return `${" ".repeat(descriptionColumn)}${line}`;
     });
@@ -255,7 +270,11 @@ function formatHelpGuidance(commandName: string): string[] {
     if (invocationStart === -1) {
       return line;
     }
-    return `${line.slice(0, invocationStart)}${terminalAccent(invocation)}${line.slice(invocationStart + invocation.length)}`;
+    return renderDisplayText([
+      span(line.slice(0, invocationStart)),
+      span(invocation, "accent"),
+      span(line.slice(invocationStart + invocation.length)),
+    ]);
   });
 }
 
@@ -356,18 +375,30 @@ async function renderCommandUsage(command: CommandDef, parent?: CommandDef): Pro
   const lines = [
     ...(meta.description ? wrapHelpText(meta.description, getHelpTerminalWidth()) : []),
     "",
-    `  ${terminalStrong("Usage")}`,
+    `  ${renderDisplayText([span("Usage", "strong")])}`,
     `    ${usageTokens(commandName, args, subCommands)}`,
   ];
 
   if (positionalEntries.length > 0) {
-    lines.push("", `  ${terminalStrong("Arguments")}`, ...formatHelpEntries(positionalEntries));
+    lines.push(
+      "",
+      `  ${renderDisplayText([span("Arguments", "strong")])}`,
+      ...formatHelpEntries(positionalEntries),
+    );
   }
   if (optionEntries.length > 0) {
-    lines.push("", `  ${terminalStrong("Options")}`, ...formatHelpEntries(optionEntries));
+    lines.push(
+      "",
+      `  ${renderDisplayText([span("Options", "strong")])}`,
+      ...formatHelpEntries(optionEntries),
+    );
   }
   if (commandEntries.length > 0) {
-    lines.push("", `  ${terminalStrong("Commands")}`, ...formatHelpEntries(commandEntries));
+    lines.push(
+      "",
+      `  ${renderDisplayText([span("Commands", "strong")])}`,
+      ...formatHelpEntries(commandEntries),
+    );
     lines.push("", ...formatHelpGuidance(commandName));
   }
 
@@ -375,9 +406,9 @@ async function renderCommandUsage(command: CommandDef, parent?: CommandDef): Pro
   if (examples.length > 0) {
     lines.push(
       "",
-      `  ${terminalStrong("Examples")}`,
+      `  ${renderDisplayText([span("Examples", "strong")])}`,
       ...examples.flatMap((example) =>
-        formatHelpParagraph(example, HELP_INDENT).map(terminalHighlightCommands),
+        formatHelpParagraph(example, HELP_INDENT).map(renderHighlightedCommands),
       ),
     );
   }
@@ -395,10 +426,10 @@ async function renderRootUsage(command: CommandDef, meta: AltertableCommandMeta)
   const lines = [
     ...wrapHelpText(meta.description ?? "", getHelpTerminalWidth()),
     "",
-    `  ${terminalStrong("Usage")}`,
+    `  ${renderDisplayText([span("Usage", "strong")])}`,
     "    altertable <command> [flags]",
     "",
-    `  ${terminalStrong("Commands")}`,
+    `  ${renderDisplayText([span("Commands", "strong")])}`,
   ];
 
   for (const { name, meta: commandMeta } of await visibleSubCommands(command)) {
@@ -418,7 +449,7 @@ async function renderRootUsage(command: CommandDef, meta: AltertableCommandMeta)
     if (entries.length > 0) {
       lines.push(
         ...(renderedGroup ? [""] : []),
-        `    ${terminalMuted(COMMAND_GROUP_TITLES[group])}`,
+        `    ${renderDisplayText([span(COMMAND_GROUP_TITLES[group], "muted")])}`,
         ...formatHelpEntries(entries),
       );
       renderedGroup = true;
@@ -435,15 +466,19 @@ async function renderRootUsage(command: CommandDef, meta: AltertableCommandMeta)
     { label: HELP_FLAGS.join(", "), description: "Show this help" },
     { label: VERSION_FLAGS.join(", "), description: "Show the Altertable CLI version" },
   );
-  lines.push("", `  ${terminalStrong("Global flags")}`, ...formatHelpEntries(flags));
+  lines.push(
+    "",
+    `  ${renderDisplayText([span("Global flags", "strong")])}`,
+    ...formatHelpEntries(flags),
+  );
 
   const examples = await resolveCommandExamples(command);
   if (examples.length > 0) {
     lines.push(
       "",
-      `  ${terminalStrong("Examples")}`,
+      `  ${renderDisplayText([span("Examples", "strong")])}`,
       ...examples.flatMap((example) =>
-        formatHelpParagraph(example, HELP_INDENT).map(terminalHighlightCommands),
+        formatHelpParagraph(example, HELP_INDENT).map(renderHighlightedCommands),
       ),
     );
   }

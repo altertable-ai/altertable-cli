@@ -6,7 +6,8 @@ import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
 import { localPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
-import { terminalMetadata } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 import {
   fetchManagementCatalogRows,
   managementCatalogCreateOperation,
@@ -89,7 +90,8 @@ const catalogsListCommand = defineOperationCommand({
         ...(summary !== null ? { summary } : {}),
       },
       humanText: formatCatalogsTable(rows),
-      metadataLines: summary !== null ? ["", terminalMetadata(summary)] : undefined,
+      metadataLines:
+        summary !== null ? ["", renderDisplayText([span(summary, "subtle")])] : undefined,
     };
   },
 });

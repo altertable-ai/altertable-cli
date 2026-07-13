@@ -3,7 +3,8 @@ import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { httpSend } from "@/lib/http.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { terminalMetadata } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { readEnv } from "@/lib/env.ts";
 
@@ -258,8 +259,13 @@ export async function runLoginFlow(sink: OutputSink, oauthBase: string): Promise
       { redirectUri: server.redirectUri, challenge, state },
       oauthBase,
     );
-    sink.writeMetadata([terminalMetadata("Opening your browser to sign in…")]);
-    sink.writeMetadata([terminalMetadata(`If it doesn't open, visit: ${authorizeUrl}`)]);
+    sink.writeMetadata([renderDisplayText([span("Opening your browser to sign in…", "subtle")])]);
+    sink.writeMetadata([
+      renderDisplayText([
+        span("If it doesn't open, visit: ", "subtle"),
+        span(authorizeUrl, "accent", authorizeUrl),
+      ]),
+    ]);
     openBrowser(authorizeUrl);
     const code = await server.waitForCode();
     return await exchangeCode({ code, redirectUri: server.redirectUri, verifier }, oauthBase);

@@ -2,25 +2,20 @@ import {
   getTerminalWidth,
   getVisibleTextWidth,
   padVisibleText,
-  terminalAccent,
-  terminalHttpMethod,
-  terminalMuted,
-  terminalString,
-  terminalStrong,
-  terminalSubtle,
-  terminalTableHeader,
+  renderDisplayText,
   truncateTerminalText,
 } from "@/ui/terminal/styles.ts";
-import type {
-  DisplayTableColumn,
-  DisplayTableColumnStyle,
-  DisplayTableOptions,
+import {
+  displayTextContent,
+  span,
+  type DisplayText,
+  type DisplayTableColumn,
+  type DisplayTableOptions,
 } from "@/ui/document.ts";
 
 const COLUMN_GAP = "  ";
 const FLEX_SHRINK_MIN_WIDTH = 4;
 
-export type TableColumnStyle = DisplayTableColumnStyle;
 export type TableColumn<T> = DisplayTableColumn<T>;
 export type FixedTableRenderOptions<T> = DisplayTableOptions<T>;
 
@@ -28,30 +23,8 @@ function truncateCell(text: string, maxWidth?: number): string {
   return truncateTerminalText(text, maxWidth);
 }
 
-function applyCellStyle(text: string, style: TableColumnStyle = "foreground"): string {
-  if (style === "subtle") {
-    return terminalSubtle(text);
-  }
-  if (style === "muted") {
-    return terminalMuted(text);
-  }
-  if (style === "accent") {
-    return terminalAccent(text);
-  }
-  if (style === "string") {
-    return terminalString(text);
-  }
-  if (style === "strong") {
-    return terminalStrong(text);
-  }
-  if (style === "httpMethod") {
-    return padVisibleText(terminalHttpMethod(text.trimEnd()), getVisibleTextWidth(text));
-  }
-  return text;
-}
-
 function applyHeaderStyle(text: string): string {
-  return terminalTableHeader(text);
+  return renderDisplayText([span(text.toUpperCase(), "subtle")]);
 }
 
 function tablePlainWidth(columnWidths: number[], columnCount: number): number {
@@ -126,23 +99,24 @@ export function renderFixedTable<T>(
   options: FixedTableRenderOptions<T> = {},
 ): string {
   if (rows.length === 0) {
-    return terminalSubtle(emptyMessage);
+    return renderDisplayText([span(emptyMessage, "subtle")]);
   }
 
-  const plainCells = rows.map((row) => columns.map((column) => column.cell(row)));
+  const cells = rows.map((row) => columns.map((column) => column.cell(row)));
+  const plainCells = cells.map((row) => row.map(displayTextContent));
   const columnWidths = computeColumnWidths(columns, plainCells, options);
 
-  function formatRow(cells: string[], rowIndex: number): string {
-    return cells
+  function formatRow(rowCells: readonly DisplayText[], rowIndex: number): string {
+    return rowCells
       .map((cell, columnIndex) => {
-        const column = columns[columnIndex];
-        const width = columnWidths[columnIndex] ?? getVisibleTextWidth(cell);
-        const truncated = truncateCell(cell, width);
+        const rendered = renderDisplayText(cell);
+        const width = columnWidths[columnIndex] ?? getVisibleTextWidth(rendered);
+        const truncated = truncateCell(rendered, width);
         const padded = padVisibleText(truncated, width);
         if (rowIndex < 0) {
           return applyHeaderStyle(padded);
         }
-        return applyCellStyle(padded, column?.style);
+        return padded;
       })
       .join(COLUMN_GAP);
   }
@@ -153,10 +127,10 @@ export function renderFixedTable<T>(
   );
 
   const bodyLines: string[] = [];
-  for (let rowIndex = 0; rowIndex < plainCells.length; rowIndex++) {
+  for (let rowIndex = 0; rowIndex < cells.length; rowIndex++) {
     const row = rows[rowIndex];
-    const cells = plainCells[rowIndex];
-    if (row === undefined || cells === undefined) {
+    const rowCells = cells[rowIndex];
+    if (row === undefined || rowCells === undefined) {
       continue;
     }
     if (rowIndex > 0 && options.groupBy) {
@@ -165,7 +139,7 @@ export function renderFixedTable<T>(
         bodyLines.push("");
       }
     }
-    bodyLines.push(formatRow(cells, rowIndex));
+    bodyLines.push(formatRow(rowCells, rowIndex));
   }
 
   return [header, ...bodyLines].join("\n");

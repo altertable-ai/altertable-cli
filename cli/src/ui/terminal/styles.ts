@@ -3,6 +3,7 @@ import { readEnv, setEnv, unsetEnv } from "@/lib/env.ts";
 const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/g;
 const URL_PATTERN = /https?:\/\/[^\s)>\]]+/g;
+import type { DisplayText, DisplayTextStyle } from "@/ui/document.ts";
 export const DEFAULT_TERMINAL_WIDTH = 80;
 const TERMINAL_ELLIPSIS = "…";
 const ANSI_ESCAPE_CHARACTER = String.fromCharCode(27);
@@ -17,18 +18,7 @@ const TERMINAL_CONTROL_PATTERN = new RegExp(
   "g",
 );
 
-type TerminalStyle =
-  | "strong"
-  | "underline"
-  | "accent"
-  | "string"
-  | "boolean"
-  | "number"
-  | "muted"
-  | "subtle"
-  | "success"
-  | "warning"
-  | "error";
+type TerminalStyle = Exclude<DisplayTextStyle, "heading" | "httpMethod"> | "underline";
 
 const STYLE_CODES: Record<TerminalStyle, { open: number; close: number }> = {
   strong: { open: 1, close: 22 },
@@ -45,8 +35,6 @@ const STYLE_CODES: Record<TerminalStyle, { open: number; close: number }> = {
 };
 
 export type TerminalColorMode = "auto" | "always" | "never";
-
-export type TerminalDataType = "null" | "boolean" | "number" | "string" | "uuid" | "timestamp";
 
 let contextColorMode: TerminalColorMode | undefined;
 let noColorEnvSetByCli = false;
@@ -282,227 +270,65 @@ function applyTerminalStyle(style: TerminalStyle, text: string): string {
   return `\u001b[${code.open}m${text}\u001b[${code.close}m`;
 }
 
-export function terminalStrong(text: string): string {
-  return applyTerminalStyle("strong", text);
-}
-
-export function terminalAccent(text: string): string {
-  return applyTerminalStyle("accent", text);
-}
-
-export function terminalString(text: string): string {
-  return applyTerminalStyle("string", text);
-}
-
-export function terminalBoolean(text: string): string {
-  return applyTerminalStyle("boolean", text);
-}
-
-export function terminalNumber(text: string): string {
-  return applyTerminalStyle("number", text);
-}
-
-export function terminalHttpMethod(method: string): string {
+function renderHttpMethod(method: string): string {
   switch (method.toUpperCase()) {
     case "GET":
-      return terminalSuccess(method.toUpperCase());
+      return applyTerminalStyle("success", method.toUpperCase());
     case "POST":
-      return terminalAccent(method.toUpperCase());
+      return applyTerminalStyle("accent", method.toUpperCase());
     case "PATCH":
-      return terminalWarning(method.toUpperCase());
+      return applyTerminalStyle("warning", method.toUpperCase());
     case "PUT":
-      return terminalString(method.toUpperCase());
+      return applyTerminalStyle("string", method.toUpperCase());
     case "DELETE":
-      return terminalError(method.toUpperCase());
+      return applyTerminalStyle("error", method.toUpperCase());
     default:
-      return terminalSubtle(method.toUpperCase());
+      return applyTerminalStyle("subtle", method.toUpperCase());
   }
 }
 
-export function terminalLink(label: string, url: string): string {
+function renderLink(label: string, url: string): string {
   if (!shouldUseTerminalHyperlinks()) {
     return label;
   }
   return `${OSC_HYPERLINK_START}${url}${OSC_HYPERLINK_SEPARATOR}${label}${OSC_HYPERLINK_END}`;
 }
 
-export function terminalUrl(url: string): string {
-  const styled = terminalAccent(url);
-  if (!shouldUseTerminalHyperlinks()) {
-    return styled;
-  }
-  return terminalLink(styled, url);
+function renderHeading(text: string): string {
+  return applyTerminalStyle("strong", applyTerminalStyle("underline", text.toUpperCase()));
 }
 
-export function formatTerminalUrls(text: string): string {
-  if (!shouldUseTerminalColor()) {
+const DISPLAY_TEXT_STYLE_RENDERERS = {
+  strong: (text: string) => applyTerminalStyle("strong", text),
+  accent: (text: string) => applyTerminalStyle("accent", text),
+  string: (text: string) => applyTerminalStyle("string", text),
+  boolean: (text: string) => applyTerminalStyle("boolean", text),
+  number: (text: string) => applyTerminalStyle("number", text),
+  muted: (text: string) => applyTerminalStyle("muted", text),
+  subtle: (text: string) => applyTerminalStyle("subtle", text),
+  success: (text: string) => applyTerminalStyle("success", text),
+  warning: (text: string) => applyTerminalStyle("warning", text),
+  error: (text: string) => applyTerminalStyle("error", text),
+  heading: renderHeading,
+  httpMethod: renderHttpMethod,
+} satisfies Record<DisplayTextStyle, (text: string) => string>;
+
+export function renderDisplayText(text: DisplayText): string {
+  if (typeof text === "string") {
     return text;
   }
-  return text.replace(URL_PATTERN, (url) => terminalUrl(url));
-}
-
-export function formatTerminalMarkdownLinks(text: string): string {
-  return text.replace(MARKDOWN_LINK_PATTERN, (_match, label: string, url: string) => {
-    if (!shouldUseTerminalColor()) {
-      return `${label} (${url})`;
-    }
-    if (!shouldUseTerminalHyperlinks()) {
-      return `${terminalAccent(label)} ${terminalSubtle(`(${url})`)}`;
-    }
-    return terminalLink(terminalAccent(label), url);
-  });
-}
-
-export function terminalDataType(text: string, kind: TerminalDataType): string {
-  switch (kind) {
-    case "null":
-      return terminalSubtle(text);
-    case "boolean":
-      return terminalBoolean(text);
-    case "number":
-      return terminalNumber(text);
-    case "string":
-      return terminalString(text);
-    case "uuid":
-      return terminalAccent(text);
-    case "timestamp":
-      return terminalString(text);
-  }
-}
-
-export function terminalTimestamp(absolute: string, relative: string | null): string {
-  const styledAbsolute = terminalString(absolute);
-  if (relative === null) {
-    return styledAbsolute;
-  }
-  return `${styledAbsolute} ${terminalSubtle(relative)}`;
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
-
-export function isUuidValue(value: string): boolean {
-  return UUID_PATTERN.test(value);
-}
-
-export function isTimestampValue(value: string): boolean {
-  return TIMESTAMP_PATTERN.test(value);
-}
-
-export function classifyStringDataType(value: string): TerminalDataType {
-  if (isUuidValue(value)) {
-    return "uuid";
-  }
-  if (isTimestampValue(value)) {
-    return "timestamp";
-  }
-  return "string";
-}
-
-export function parseJsonStringValue(value: string): string | null {
-  const trimmed = value.trim();
-  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
-    return null;
-  }
-  try {
-    JSON.parse(trimmed);
-    return trimmed;
-  } catch {
-    return null;
-  }
-}
-
-export function terminalSuccess(text: string): string {
-  return applyTerminalStyle("success", text);
-}
-
-export function terminalWarning(text: string): string {
-  return applyTerminalStyle("warning", text);
-}
-
-export function terminalError(text: string): string {
-  return applyTerminalStyle("error", text);
-}
-
-export function terminalUnderline(text: string): string {
-  return applyTerminalStyle("underline", text);
-}
-
-export function terminalSectionHeader(title: string): string {
-  return terminalUnderline(terminalStrong(title.toUpperCase()));
-}
-
-export function formatTerminalSection(bodyLines: string[]): string {
-  return bodyLines.join("\n");
-}
-
-export function terminalLabel(text: string): string {
-  return terminalMuted(text);
-}
-
-export function terminalTableHeader(title: string): string {
-  return terminalSubtle(title.toUpperCase());
-}
-
-export function terminalDefaultHint(value: string): string {
-  return terminalSubtle(`[${value}]`);
-}
-
-export function terminalNotConfiguredStatus(): string {
-  return terminalMuted("not set");
-}
-
-export function terminalDescription(text: string): string {
-  return terminalSubtle(text);
-}
-
-export function terminalSubtle(text: string): string {
-  return applyTerminalStyle("subtle", text);
-}
-
-export function terminalMuted(text: string): string {
-  return applyTerminalStyle("muted", text);
-}
-
-export function terminalMetadata(text: string): string {
-  return terminalSubtle(text);
-}
-
-export function formatTerminalLabelValue(
-  label: string,
-  value: string,
-  options: { indent?: string; labelWidth?: number; linkifyUrls?: boolean } = {},
-): string {
-  const indent = options.indent ?? "";
-  const labelWidth = options.labelWidth ?? label.length;
-  const displayValue = options.linkifyUrls ? formatTerminalUrls(value) : value;
-  return `${indent}${terminalLabel(`${label.padEnd(labelWidth)}`)} ${displayValue}`;
-}
-
-export function terminalHighlightCommands(text: string): string {
-  if (!shouldUseTerminalColor()) {
-    return text;
-  }
-  return text.replace(COMMAND_PATTERN, (match) => terminalAccent(match));
-}
-
-export function terminalUsageSectionHeader(title: string): string {
-  return applyTerminalStyle("strong", applyTerminalStyle("underline", title));
-}
-
-export function formatTerminalUsageSection(title: string, bodyLines: string[]): string {
-  if (bodyLines.length === 0) {
-    return "";
-  }
-
-  return `\n\n${terminalUsageSectionHeader(title)}\n\n${bodyLines.join("\n")}`;
-}
-
-export function formatCommandExamplesSection(examples: readonly string[]): string {
-  if (examples.length === 0) {
-    return "";
-  }
-
-  const bodyLines = examples.map((example) => `  ${terminalHighlightCommands(example)}`);
-  return formatTerminalUsageSection("EXAMPLES", bodyLines);
+  return text
+    .map((item) => {
+      const styled = item.style ? DISPLAY_TEXT_STYLE_RENDERERS[item.style](item.text) : item.text;
+      if (!item.href) {
+        return styled;
+      }
+      if (shouldUseTerminalHyperlinks()) {
+        return renderLink(styled, item.href);
+      }
+      return item.text === item.href
+        ? styled
+        : `${styled} ${applyTerminalStyle("subtle", `(${item.href})`)}`;
+    })
+    .join("");
 }

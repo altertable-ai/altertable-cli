@@ -16,15 +16,8 @@ import {
   managementPlaneStatusDetail,
 } from "@/features/profile/model.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
-import {
-  ensurePromptColorAlignment,
-  terminalAccent,
-  terminalDefaultHint,
-  terminalNotConfiguredStatus,
-  terminalStrong,
-  terminalSubtle,
-  formatTerminalUrls,
-} from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { ensurePromptColorAlignment, renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export type ConfigureWizardScope = "both" | "management" | "lakehouse";
 
@@ -207,7 +200,7 @@ const DEFAULT_DATA_PLANE_URL = "https://api.altertable.ai";
 const DEFAULT_SCOPE: ConfigureWizardScope = "both";
 const AUTO_PROFILE_NAME = "auto";
 
-const HIDDEN_PROMPT_HINT = terminalSubtle("(hidden)");
+const HIDDEN_PROMPT_HINT = "(hidden)";
 const SCOPE_SELECT_TITLE = "What to configure?";
 
 const CONFIGURE_SCOPE_SELECT_OPTIONS = {
@@ -228,9 +221,9 @@ function formatScopeSelectLabel(plane: "management" | "lakehouse", profileName: 
       ? managementPlaneStatusDetail(profileName)
       : lakehousePlaneStatusDetail(profileName);
   if (!detail) {
-    return `${terminalStrong(name)} ${terminalNotConfiguredStatus()}`;
+    return renderDisplayText([span(name, "strong"), span(" not set", "muted")]);
   }
-  return `${terminalStrong(name)} ${terminalSubtle(detail)}`;
+  return renderDisplayText([span(name, "strong"), span(` ${detail}`, "subtle")]);
 }
 
 function toScopePromptOption(
@@ -238,7 +231,7 @@ function toScopePromptOption(
   profileName: string,
 ): ConfigureSelectOption {
   if (value === "both") {
-    return { value, label: terminalStrong("Both") };
+    return { value, label: renderDisplayText([span("Both", "strong")]) };
   }
   return { value, label: formatScopeSelectLabel(value, profileName) };
 }
@@ -378,18 +371,26 @@ export async function collectManagementCredentials(
   options: ConfigureWizardOptions,
   profileName: string,
 ): Promise<{ options: ConfigureOptions; org: string }> {
-  prompts.writePrompt(`\n${terminalAccent("Management")}\n`);
+  prompts.writePrompt(`\n${renderDisplayText([span("Management", "accent")])}\n`);
 
   const currentEnv = configGet("api_key_env", profileName);
   const envDefault = currentEnv || "production";
-  const envPrompt = `Environment ${terminalDefaultHint(envDefault)}: `;
+  const envPrompt = renderDisplayText([
+    span("Environment "),
+    span(`[${envDefault}]`, "subtle"),
+    span(": "),
+  ]);
   const env = await readLineWithDefault(prompts, envPrompt, envDefault);
   let org = options.org ?? "";
   if (!org && options.profile === AUTO_PROFILE_NAME) {
     const currentOrg = configGet("organization_slug", profileName);
     const orgPrompt = currentOrg
-      ? `Organization slug ${terminalDefaultHint(currentOrg)}: `
-      : `${terminalAccent("Organization slug")}: `;
+      ? renderDisplayText([
+          span("Organization slug "),
+          span(`[${currentOrg}]`, "subtle"),
+          span(": "),
+        ])
+      : renderDisplayText([span("Organization slug", "accent"), span(": ")]);
     org = currentOrg
       ? await readLineWithDefault(prompts, orgPrompt, currentOrg)
       : await prompts.readLine(orgPrompt);
@@ -402,14 +403,22 @@ export async function collectManagementCredentials(
       prompts,
       secretKey: "api-key",
       keepPrompt: "Keep existing API key?",
-      passwordPrompt: `${terminalAccent("API key")} ${HIDDEN_PROMPT_HINT}: `,
+      passwordPrompt: renderDisplayText([
+        span("API key", "accent"),
+        span(` ${HIDDEN_PROMPT_HINT}`, "subtle"),
+        span(": "),
+      ]),
       requiredMessage: "API key is required.",
     },
     profileName,
   );
 
   const useDefaultControlPlane = await prompts.readConfirm(
-    `Default control plane ${formatTerminalUrls(DEFAULT_CONTROL_PLANE_URL)}?`,
+    renderDisplayText([
+      span("Default control plane "),
+      span(DEFAULT_CONTROL_PLANE_URL, "accent", DEFAULT_CONTROL_PLANE_URL),
+      span("?"),
+    ]),
     true,
   );
 
@@ -422,7 +431,11 @@ export async function collectManagementCredentials(
 
   if (!useDefaultControlPlane) {
     const controlPlaneUrl = await prompts.readLine(
-      `Control plane ${terminalDefaultHint(formatTerminalUrls(DEFAULT_CONTROL_PLANE_URL))}: `,
+      renderDisplayText([
+        span("Control plane [", "subtle"),
+        span(DEFAULT_CONTROL_PLANE_URL, "accent", DEFAULT_CONTROL_PLANE_URL),
+        span("]: ", "subtle"),
+      ]),
     );
     configureOptions.controlPlaneUrl = controlPlaneUrl || DEFAULT_CONTROL_PLANE_URL;
   }
@@ -436,7 +449,7 @@ export async function collectLakehouseCredentials(
   profileName: string,
 ): Promise<ConfigureOptions> {
   const method = await prompts.readSelect(
-    `${terminalAccent("Lakehouse")}  ${terminalSubtle("auth")}`,
+    renderDisplayText([span("Lakehouse", "accent"), span("  auth", "subtle")]),
     [
       { value: "user-password", label: "Username and password" },
       { value: "basic-token", label: "Basic token" },
@@ -452,7 +465,11 @@ export async function collectLakehouseCredentials(
   if (method === "basic-token") {
     const basicToken = await readRequiredPassword(
       prompts,
-      `${terminalAccent("Basic token")} ${HIDDEN_PROMPT_HINT}: `,
+      renderDisplayText([
+        span("Basic token", "accent"),
+        span(` ${HIDDEN_PROMPT_HINT}`, "subtle"),
+        span(": "),
+      ]),
       "Basic token is required.",
     );
     configureOptions.basicToken = basicToken;
@@ -461,8 +478,8 @@ export async function collectLakehouseCredentials(
 
   const currentUser = configGet("user", profileName);
   const userPrompt = currentUser
-    ? `Username ${terminalDefaultHint(currentUser)}: `
-    : `${terminalAccent("Username")}: `;
+    ? renderDisplayText([span("Username "), span(`[${currentUser}]`, "subtle"), span(": ")])
+    : renderDisplayText([span("Username", "accent"), span(": ")]);
   const user = currentUser
     ? await readLineWithDefault(prompts, userPrompt, currentUser)
     : await prompts.readLine(userPrompt);
@@ -475,14 +492,22 @@ export async function collectLakehouseCredentials(
       prompts,
       secretKey: "lakehouse/password",
       keepPrompt: "Keep existing password?",
-      passwordPrompt: `${terminalAccent("Password")} ${HIDDEN_PROMPT_HINT}: `,
+      passwordPrompt: renderDisplayText([
+        span("Password", "accent"),
+        span(` ${HIDDEN_PROMPT_HINT}`, "subtle"),
+        span(": "),
+      ]),
       requiredMessage: "Password is required.",
     },
     profileName,
   );
 
   const useDefaultDataPlane = await prompts.readConfirm(
-    `Default data plane ${formatTerminalUrls(DEFAULT_DATA_PLANE_URL)}?`,
+    renderDisplayText([
+      span("Default data plane "),
+      span(DEFAULT_DATA_PLANE_URL, "accent", DEFAULT_DATA_PLANE_URL),
+      span("?"),
+    ]),
     true,
   );
 
@@ -491,7 +516,11 @@ export async function collectLakehouseCredentials(
 
   if (!useDefaultDataPlane) {
     const dataPlaneUrl = await prompts.readLine(
-      `Data plane ${terminalDefaultHint(formatTerminalUrls(DEFAULT_DATA_PLANE_URL))}: `,
+      renderDisplayText([
+        span("Data plane [", "subtle"),
+        span(DEFAULT_DATA_PLANE_URL, "accent", DEFAULT_DATA_PLANE_URL),
+        span("]: ", "subtle"),
+      ]),
     );
     configureOptions.dataPlaneUrl = dataPlaneUrl || DEFAULT_DATA_PLANE_URL;
   }

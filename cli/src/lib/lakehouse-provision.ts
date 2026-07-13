@@ -14,7 +14,8 @@ import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { secretSet } from "@/lib/secrets.ts";
-import { terminalMuted } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 import { USER_AGENT } from "@/version.ts";
 
 const CREDENTIAL_LABEL = USER_AGENT;
@@ -60,7 +61,9 @@ async function sendManagementRequest(
 }
 
 export async function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
-  context.output.writeMetadata([terminalMuted("Refreshing lakehouse credentials...")]);
+  context.output.writeMetadata([
+    renderDisplayText([span("Refreshing lakehouse credentials...", "muted")]),
+  ]);
   const env = requireManagementEnv(context.profile);
   const whoami = (await sendManagementRequest(
     context,
