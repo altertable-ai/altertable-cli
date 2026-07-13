@@ -38,6 +38,7 @@ export const uploadCommand = defineOperationCommand({
   },
   meta: {
     name: "upload",
+    commandGroup: "ingest",
     description: "Upload a file to create, append to, or overwrite a table.",
     examples: [
       "altertable upload --catalog db --schema public --table users --mode overwrite --format csv --file users.csv",

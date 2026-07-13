@@ -87,6 +87,7 @@ const appendStatusCommand = defineHttpCommand({
 export const appendCommand = defineGroupCommand({
   meta: {
     name: "append",
+    commandGroup: "ingest",
     description: "Append JSON rows to a table.",
     examples: [
       "altertable append --catalog db --schema public --table events --data '[{\"id\":1}]'",

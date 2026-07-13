@@ -22,6 +22,7 @@ export const upsertCommand = defineOperationCommand({
   },
   meta: {
     name: "upsert",
+    commandGroup: "ingest",
     description: "Upload a file and match existing rows by primary key.",
     examples: [
       "altertable upsert --catalog db --schema public --table users --primary-key id --format csv --file users.csv",

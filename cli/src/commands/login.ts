@@ -233,6 +233,7 @@ export const loginCommand = defineLocalCommand({
   output: "none",
   meta: {
     name: "login",
+    commandGroup: "platform",
     description: "Sign in with your browser (OAuth) and store the session.",
     examples: ["altertable login", "altertable login --replace-profile"],
   },
@@ -267,6 +268,7 @@ export const logoutCommand = defineLocalCommand({
   output: "none",
   meta: {
     name: "logout",
+    commandGroup: "platform",
     description: "Remove stored credentials and settings for all profiles.",
     examples: ["altertable logout"],
   },

@@ -184,6 +184,7 @@ const QUERY_SUBCOMMAND_NAMES = new Set(Object.keys(querySubCommands));
 export const queryCommand = defineGroupCommand({
   meta: {
     name: "query",
+    commandGroup: "query",
     description: "Run SQL queries against the lakehouse.",
     examples: [
       'altertable query "SELECT * FROM users LIMIT 10"',

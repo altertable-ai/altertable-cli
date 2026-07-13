@@ -97,6 +97,7 @@ const catalogsListCommand = defineOperationCommand({
 export const catalogsCommand = defineGroupCommand({
   meta: {
     name: "catalogs",
+    commandGroup: "platform",
     description: "Manage catalogs (databases and connections) in the current environment.",
     examples: [
       "altertable catalogs list",

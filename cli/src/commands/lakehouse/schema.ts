@@ -74,6 +74,7 @@ export const schemaCommand = defineOperationCommand<SchemaRunInput, LakehouseQue
   },
   meta: {
     name: "schema",
+    commandGroup: "query",
     description: "List schemas, tables, and columns for a catalog.",
     examples: ["altertable schema my-catalog", "altertable schema my-catalog --format json"],
   },
