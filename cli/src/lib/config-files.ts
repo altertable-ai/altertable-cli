@@ -1,10 +1,13 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 function trim(value: string): string {
   return value.trim();
+}
+
+function tempSiblingPath(filePath: string): string {
+  return join(dirname(filePath), `.altertable-kv-${randomBytes(8).toString("hex")}`);
 }
 
 export function configDir(): string {
@@ -48,7 +51,7 @@ export function kvGet(filePath: string, key: string): string {
 
 export function kvSet(filePath: string, key: string, value: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
-  const tmpPath = join(tmpdir(), `altertable-kv-${randomBytes(8).toString("hex")}`);
+  const tmpPath = tempSiblingPath(filePath);
   let found = false;
   let lines: string[] = [];
 
@@ -77,25 +80,29 @@ export function kvSet(filePath: string, key: string, value: string): void {
     output.push(`${key}=${value}`);
   }
 
-  writeFileSync(
-    tmpPath,
-    output
-      .filter((line, index, array) => {
-        if (index === array.length - 1 && line === "") {
-          return false;
-        }
-        return true;
-      })
-      .join("\n") + (output.length > 0 ? "\n" : ""),
-    { mode: 0o600 },
-  );
-  renameSync(tmpPath, filePath);
+  try {
+    writeFileSync(
+      tmpPath,
+      output
+        .filter((line, index, array) => {
+          if (index === array.length - 1 && line === "") {
+            return false;
+          }
+          return true;
+        })
+        .join("\n") + (output.length > 0 ? "\n" : ""),
+      { mode: 0o600 },
+    );
+    renameSync(tmpPath, filePath);
+  } finally {
+    rmSync(tmpPath, { force: true });
+  }
 }
 
 export function kvUnset(filePath: string, key: string): void {
   try {
     const lines = readFileSync(filePath, "utf8").split("\n");
-    const tmpPath = join(tmpdir(), `altertable-kv-${randomBytes(8).toString("hex")}`);
+    const tmpPath = tempSiblingPath(filePath);
     const output: string[] = [];
     for (const line of lines) {
       const eqIndex = line.indexOf("=");
@@ -105,8 +112,12 @@ export function kvUnset(filePath: string, key: string): void {
       }
       output.push(line);
     }
-    writeFileSync(tmpPath, output.join("\n"), { mode: 0o600 });
-    renameSync(tmpPath, filePath);
+    try {
+      writeFileSync(tmpPath, output.join("\n"), { mode: 0o600 });
+      renameSync(tmpPath, filePath);
+    } finally {
+      rmSync(tmpPath, { force: true });
+    }
   } catch {
     // file does not exist
   }

@@ -165,6 +165,10 @@ async function bootstrap(): Promise<void> {
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
       await showAltertableUsage(command, parent);
+      await maybeShowUpdateNotice({
+        context: getCliContext(),
+        commandName: resolveTopLevelCommandName(rawArgs) ?? "help",
+      });
       process.exit(EXIT_SUCCESS);
     }
 
