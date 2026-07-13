@@ -217,6 +217,7 @@ describe("terminal-style", () => {
     expect(getVisibleTextWidth("abc")).toBe(3);
     expect(getVisibleTextWidth("e\u0301")).toBe(1);
     expect(getVisibleTextWidth("👨‍👩‍👧‍👦")).toBe(2);
+    expect(getVisibleTextWidth("🇫🇷")).toBe(2);
   });
 
   test("truncates without splitting joined emoji", () => {
@@ -224,6 +225,10 @@ describe("terminal-style", () => {
 
     expect(truncated).toBe("👨‍👩‍👧‍👦a…");
     expect(getVisibleTextWidth(truncated)).toBe(4);
+
+    const flag = truncateTerminalText("🇫🇷abc", 4);
+    expect(flag).toBe("🇫🇷a…");
+    expect(getVisibleTextWidth(flag)).toBe(4);
   });
 
   test("padLeft indents multi-line terminal output", () => {

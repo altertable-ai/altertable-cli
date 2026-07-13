@@ -174,11 +174,18 @@ function getCodePointDisplayWidth(codePoint: number): number {
 
 function getGraphemeDisplayWidth(grapheme: string): number {
   let width = grapheme.includes("\ufe0f") ? 2 : 0;
+  let regionalIndicatorCount = 0;
   for (const character of grapheme) {
     const codePoint = character.codePointAt(0);
     if (codePoint !== undefined) {
       width = Math.max(width, getCodePointDisplayWidth(codePoint));
+      if (codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff) {
+        regionalIndicatorCount += 1;
+      }
     }
+  }
+  if (regionalIndicatorCount === 2) {
+    return 2;
   }
   return width;
 }
