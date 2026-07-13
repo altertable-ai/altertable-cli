@@ -440,6 +440,7 @@ export const profileCommand = defineLocalCommand<Record<string, unknown>, void>(
   output: "none",
   meta: {
     name: "profile",
+    commandGroup: "platform",
     description: "Manage named profiles and stored credentials.",
     examples: [
       "altertable profile show",

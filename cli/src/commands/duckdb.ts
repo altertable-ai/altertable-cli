@@ -100,6 +100,7 @@ export const duckdbCommand = defineLocalCommand<DuckdbInput>({
   capabilities: ["management-http"],
   meta: {
     name: "duckdb",
+    commandGroup: "query",
     description: "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",
     examples: ["altertable duckdb", "altertable duckdb my_catalog"],
   },

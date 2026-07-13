@@ -111,7 +111,6 @@ export const UpdaterConfig = {
   },
   commands: {
     selfUpdate: "altertable update --install",
-    packageManagerUpdate: "altertable update --install --install-method package-manager",
   },
 } as const;
 

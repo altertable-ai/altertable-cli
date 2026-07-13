@@ -465,6 +465,7 @@ export function createCompletionCommand(
     catalog: { effects: ["local", "output", "value"], mutates: true, output: "human" },
     meta: {
       name: "completion",
+      commandGroup: "platform",
       description: "Generate or install shell completion scripts.",
       examples: [
         "altertable completion install",

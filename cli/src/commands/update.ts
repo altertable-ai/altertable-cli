@@ -83,7 +83,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
     return;
   }
 
-  if ((interval || args["clear-cache"]) && !args.install && !args["target-version"]) {
+  if (interval && !args["clear-cache"] && !args.install && !args["target-version"]) {
     await writeStatus(sink);
     return;
   }
@@ -137,6 +137,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
 export const updateCommand = defineAltertableCommand({
   meta: {
     name: "update",
+    commandGroup: "platform",
     description: "Check for a newer Altertable CLI release and optionally install it.",
     examples: [
       "altertable update",

@@ -36,7 +36,7 @@ import {
   resolveSubCommandForUsage,
   showAltertableUsage,
   showCommandExamplesForArgs,
-} from "@/lib/citty-usage.ts";
+} from "@/lib/usage.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { terminalError, applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
@@ -165,6 +165,10 @@ async function bootstrap(): Promise<void> {
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
       await showAltertableUsage(command, parent);
+      await maybeShowUpdateNotice({
+        context: getCliContext(),
+        commandName: resolveTopLevelCommandName(rawArgs) ?? "help",
+      });
       process.exit(EXIT_SUCCESS);
     }
 
