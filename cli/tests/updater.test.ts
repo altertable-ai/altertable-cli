@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
+import { VERSION } from "@/version.ts";
 import {
   checkForUpdate,
   compareVersions,
@@ -343,6 +344,7 @@ describe("binary self-update", () => {
   });
 
   test("recommends install commands from installation origin", () => {
+    process.env.ALTERTABLE_UPDATE_INSTALLER = "npm";
     expect(
       recommendedInstallCommand(UPDATE_TEST_VERSION, {
         kind: "native-binary",
@@ -354,7 +356,19 @@ describe("binary self-update", () => {
         kind: "package-manager",
         executablePath: "/usr/local/lib/node_modules/@altertable/cli/dist/cli.js",
       }),
-    ).toContain(`${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
+    ).toBe(`npm install -g ${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
+    expect(
+      recommendedInstallCommand(UPDATE_TEST_VERSION, {
+        kind: "source",
+        executablePath: "/repo/cli/src/cli.ts",
+      }),
+    ).toBe("altertable update --install");
+    expect(
+      recommendedInstallCommand(UPDATE_TEST_VERSION, {
+        kind: "unknown",
+        executablePath: "/custom/altertable",
+      }),
+    ).toBe("altertable update --install");
   });
 
   test("parses and verifies SHA-256 checksums", () => {
@@ -426,29 +440,33 @@ describe("binary self-update", () => {
     expect(readFileSync(targetPath, "utf8")).toBe(originalBinary);
   });
 
-  test("auto install rejects source checkouts but explicit package-manager can run", async () => {
+  test("verifies a downloaded GitHub binary before replacing the target", async () => {
+    const targetPath = join(testHome, "altertable");
+    const originalBinary = "#!/bin/sh\necho 1.0.0\n";
+    const unexpectedBinary = "#!/bin/sh\necho 9.9.9\n";
+    writeFileSync(targetPath, originalBinary, { mode: 0o755 });
+
     try {
-      await installCliUpdate(UPDATE_TEST_VERSION, {
-        verify: false,
-        installation: {
-          kind: "source",
-          executablePath: "/repo/cli/src/cli.ts",
-          reason: "test",
-        },
-        spawnImpl: (() => {
-          throw new Error("should not spawn");
-        }) as unknown as typeof import("node:child_process").spawnSync,
+      await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
+        targetPath,
+        platform: "linux-x64",
+        fetchImpl: githubBinaryFetch({
+          binary: unexpectedBinary,
+          checksum: sha256(unexpectedBinary),
+        }),
       });
-      throw new Error("Expected automatic install to reject source checkouts.");
+      throw new Error("Expected downloaded binary verification to fail.");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain("Automatic CLI install is not supported");
+      expect((error as Error).message).toContain("Downloaded altertable version is 9.9.9");
     }
+    expect(readFileSync(targetPath, "utf8")).toBe(originalBinary);
+  });
 
+  test("auto install uses the package manager for source checkouts", async () => {
     process.env.ALTERTABLE_UPDATE_INSTALLER = "npm";
     const commands: string[] = [];
     const result = await installCliUpdate(UPDATE_TEST_VERSION, {
-      method: "package-manager",
       verify: false,
       stdio: "pipe",
       installation: {
@@ -563,6 +581,19 @@ describe("automatic update checks", () => {
     });
   });
 
+  test("does not reject when automatic check policy cannot read config", async () => {
+    const invalidConfigHome = join(testHome, "not-a-directory");
+    writeFileSync(invalidConfigHome, "");
+    process.env.ALTERTABLE_CONFIG_HOME = invalidConfigHome;
+
+    await maybeShowUpdateNotice({
+      context: { debug: false, json: false, agent: false },
+      commandName: "context",
+      stderrIsTTY: true,
+      fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
+    });
+  });
+
   test("writes automatic notices to metadata output", async () => {
     const stderr: string[] = [];
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
@@ -582,13 +613,103 @@ describe("automatic update checks", () => {
     expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
     expect(stderr.join("\n")).toContain("altertable update --install");
   });
+
+  test("writes cached update notices without refreshing release metadata", async () => {
+    await checkForUpdate({ fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }) });
+    const stderr: string[] = [];
+    let fetchCalls = 0;
+
+    await maybeShowUpdateNotice({
+      context: { debug: false, json: false, agent: false },
+      commandName: "help",
+      stderrIsTTY: true,
+      fetchImpl: (async () => {
+        fetchCalls += 1;
+        throw new Error("cached notices should not fetch");
+      }) as unknown as typeof fetch,
+      sink: {
+        json: false,
+        debug: false,
+        writeStderr() {},
+        writeJson() {},
+        writeRaw() {},
+        writeHuman() {},
+        writeMetadata(lines) {
+          stderr.push(...lines);
+        },
+      },
+    });
+
+    expect(fetchCalls).toBe(0);
+    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+  });
+
+  test("falls back to a cached notice when a scheduled refresh fails", async () => {
+    await checkForUpdate({ fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }) });
+    const state = readUpdateState();
+    const stderr: string[] = [];
+
+    await maybeShowUpdateNotice({
+      context: { debug: false, json: false, agent: false },
+      commandName: "context",
+      stderrIsTTY: true,
+      now: new Date(Date.parse(state.last_checked_at ?? "") + 24 * 60 * 60 * 1000),
+      fetchImpl: (async () => {
+        throw new Error("network unavailable");
+      }) as unknown as typeof fetch,
+      sink: {
+        json: false,
+        debug: false,
+        writeStderr() {},
+        writeJson() {},
+        writeRaw() {},
+        writeHuman() {},
+        writeMetadata(lines) {
+          stderr.push(...lines);
+        },
+      },
+    });
+
+    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+    expect(readUpdateState().last_error).toBe("Unable to check for CLI updates.");
+  });
 });
 
 describe("update command", () => {
   test("reports explicit target version without network", async () => {
     const output = await runUpdateCommand(["update", "--target-version", UPDATE_TEST_VERSION]);
 
-    expect(output.stdout[0]).toContain(`altertable ${UPDATE_TEST_VERSION} is available`);
+    expect(output.stdout[0]).toBe(
+      [
+        `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
+        `Run ${UpdaterConfig.commands.selfUpdate} to install it.`,
+      ].join("\n"),
+    );
+    expect(output.stdout[0]).not.toContain("Install:");
+    expect(output.stdout[0]).not.toContain("Release:");
+  });
+
+  test("reports the latest installed version like Bun", async () => {
+    const output = await runUpdateCommand(["update", "--target-version", VERSION]);
+
+    expect(output.stdout[0]).toBe(
+      `Congrats! You're already on the latest version of altertable (which is v${VERSION})`,
+    );
+  });
+
+  test("clear-cache forces a fresh update check", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = jsonFetch({ version: UPDATE_TEST_VERSION });
+    try {
+      const output = await runUpdateCommand(["update", "--clear-cache"]);
+
+      expect(output.stdout[0]).toContain(
+        `A new version of altertable is available: v${UPDATE_TEST_VERSION}`,
+      );
+      expect(readUpdateState().latest_version).toBe(UPDATE_TEST_VERSION);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("configures automatic check interval", async () => {
@@ -608,9 +729,11 @@ describe("update command", () => {
         UPDATE_TEST_VERSION,
       ]);
 
-      expect(output.stdout[0]).toContain(`altertable ${UPDATE_TEST_VERSION} is available`);
-      expect(output.stdout[0]).toContain(
-        `Release: ${releaseUrlForSource(source, UPDATE_TEST_VERSION)}`,
+      expect(output.stdout[0]).toBe(
+        [
+          `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
+          `Run ${UpdaterConfig.commands.selfUpdate} to install it.`,
+        ].join("\n"),
       );
     }
   });
