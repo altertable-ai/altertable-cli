@@ -4,14 +4,12 @@ import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
-import { localPlan, runOperationEffect } from "@/lib/operation-effect.ts";
+import { localPlan } from "@/lib/operation-effect.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
 import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import {
-  buildManagementCatalogRows,
-  managementCatalogConnectionsOperation,
+  fetchManagementCatalogRows,
   managementCatalogCreateOperation,
-  managementCatalogDatabasesOperation,
   type ManagementCatalogCreateInput,
   type ManagementCatalogCreateResult,
 } from "@/lib/management-operations.ts";
@@ -36,14 +34,14 @@ const catalogsCreateCommand = defineHttpCommand({
     },
     name: { type: "string", description: "Catalog name", required: true },
   },
-  parse({ args }): ManagementCatalogCreateInput {
+  parse({ args, execution }): ManagementCatalogCreateInput {
     if (args.engine !== "altertable") {
       throw new CliError(
         `Only the 'altertable' engine is supported (got '${String(args.engine)}').`,
       );
     }
 
-    const env = requireManagementEnv();
+    const env = requireManagementEnv(execution.profile);
     const name = String(args.name);
     return {
       env,
@@ -79,18 +77,8 @@ const catalogsListCommand = defineOperationCommand({
     examples: ["altertable catalogs list", "altertable --json catalogs list"],
   },
   run(_input, context) {
-    const env = requireManagementEnv();
-    return localPlan(async () => {
-      const databasesResponse = await runOperationEffect(
-        managementCatalogDatabasesOperation.effect(env, context),
-        context,
-      );
-      const connectionsResponse = await runOperationEffect(
-        managementCatalogConnectionsOperation.effect(env, context),
-        context,
-      );
-      return buildManagementCatalogRows([databasesResponse, connectionsResponse]);
-    });
+    const env = requireManagementEnv(context.execution.profile);
+    return localPlan(() => fetchManagementCatalogRows(env, context));
   },
   present(rows) {
     const summary = formatCatalogsSummary(rows);

@@ -67,20 +67,19 @@ describe("altertable profile --configure", () => {
     expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/api-key=atm_fromstdin\n");
   });
 
-  test("--show masks secrets, reports the store, and non-TTY configure requires flags", async () => {
+  test("profile show reports auth without leaking secrets, and non-TTY configure requires flags", async () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile --configure --user u_blabla --password s_llll")).exitCode).toBe(0);
-    let result = await workspace.runCommand("altertable profile show --config");
+    const result = await workspace.runCommand("altertable profile show");
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("u_blabla");
-    expect(result.stdout).toMatch(/password:\s*set/i);
+    expect(result.stdout).toContain("Lakehouse auth");
+    expect(result.stdout).toContain("username_password");
     expect(result.stdout).not.toContain("s_llll");
-    expect(result.stdout).toContain(workspace.credentialsFile);
 
     await workspace.resetConfig();
-    result = await workspace.runCommand("altertable profile --configure");
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain("Interactive configure requires a TTY");
+    const configure = await workspace.runCommand("altertable profile --configure");
+    expect(configure.exitCode).not.toBe(0);
+    expect(configure.stderr).toContain("Interactive configure requires a TTY");
   });
 
   test("--verify checks management credentials after save", async () => {
@@ -145,7 +144,9 @@ describe("altertable profile --configure", () => {
 
     expect(await workspace.fileExists(workspace.configFile)).toBe(false);
     expect(await workspace.fileExists(workspace.credentialsFile)).toBe(false);
-    expect((await workspace.runCommand("altertable profile show --config")).stdout).toContain("No credentials configured");
+    const show = await workspace.runCommand("altertable profile show");
+    expect(show.exitCode).toBe(0);
+    expect(show.stdout).toContain("empty");
   });
 
   test("stores endpoint overrides and applies endpoint precedence", async () => {
@@ -177,7 +178,7 @@ describe("altertable profile --configure", () => {
     expect((await workspace.runCommand("altertable profile --configure --api-key atm_x --env prod --control-plane-url http://localhost:13000")).exitCode).toBe(0);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
-    expect((await workspace.runCommand("altertable profile show")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable api GET /whoami")).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:13000/rest/v1/whoami");
 
     await workspace.resetConfig();
@@ -209,11 +210,11 @@ describe("altertable profile --configure", () => {
       ).exitCode,
     ).toBe(0);
 
-    const result = await workspace.runCommand("altertable profile show --config");
+    const result = await workspace.runCommand("altertable profile show");
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Data plane:");
-    expect(result.stdout).toContain("Control plane:");
+    expect(result.stdout).toContain("Data plane");
+    expect(result.stdout).toContain("Control plane");
     expect(result.stdout).toContain("http://localhost:15000");
-    expect(result.stdout).toContain("http://localhost:13000/rest/v1");
+    expect(result.stdout).toContain("http://localhost:13000");
   });
 });

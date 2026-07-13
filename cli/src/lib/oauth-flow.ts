@@ -1,7 +1,6 @@
 import * as oauth from "oauth4webapi";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { resolveOAuthBase } from "@/lib/config.ts";
 import { httpSend } from "@/lib/http.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { terminalMetadata } from "@/ui/terminal/styles.ts";
@@ -46,11 +45,14 @@ export function parseCallback(requestUrl: string, expectedState: string): Callba
   return { ok: true, code };
 }
 
-export function buildAuthorizeUrl(params: {
-  redirectUri: string;
-  challenge: string;
-  state: string;
-}): string {
+export function buildAuthorizeUrl(
+  params: {
+    redirectUri: string;
+    challenge: string;
+    state: string;
+  },
+  oauthBase: string,
+): string {
   const query = new URLSearchParams({
     response_type: "code",
     client_id: oauthClientId(),
@@ -63,18 +65,17 @@ export function buildAuthorizeUrl(params: {
   if (scope) {
     query.set("scope", scope);
   }
-  return `${resolveOAuthBase()}/authorize?${query.toString()}`;
+  return `${oauthBase}/authorize?${query.toString()}`;
 }
 
 type OAuthFetchOptions = oauth.CustomFetchOptions<"POST", URLSearchParams>;
 
-function resolveAuthServer(): oauth.AuthorizationServer {
-  const base = resolveOAuthBase();
+function resolveAuthServer(oauthBase: string): oauth.AuthorizationServer {
   return {
     // Discovery advertises the issuer as the server root (base without the /oauth suffix).
-    issuer: base.replace(/\/oauth$/, ""),
-    authorization_endpoint: `${base}/authorize`,
-    token_endpoint: `${base}/token`,
+    issuer: oauthBase.replace(/\/oauth$/, ""),
+    authorization_endpoint: `${oauthBase}/authorize`,
+    token_endpoint: `${oauthBase}/token`,
   };
 }
 
@@ -104,9 +105,9 @@ async function httpSendFetch(url: string, options: OAuthFetchOptions): Promise<R
   });
 }
 
-function tokenRequestOptions(): oauth.TokenEndpointRequestOptions {
+function tokenRequestOptions(oauthBase: string): oauth.TokenEndpointRequestOptions {
   const options: oauth.TokenEndpointRequestOptions = { [oauth.customFetch]: httpSendFetch };
-  if (resolveOAuthBase().startsWith("http://")) {
+  if (oauthBase.startsWith("http://")) {
     // Endpoint protocol is gated by our own url-policy; let oauth4webapi allow the
     // http:// loopback/localhost control-plane instead of hard-failing on it.
     options[oauth.allowInsecureRequests] = true;
@@ -123,12 +124,15 @@ function toTokenResponse(result: oauth.TokenEndpointResponse): TokenResponse {
   };
 }
 
-export async function exchangeCode(params: {
-  code: string;
-  redirectUri: string;
-  verifier: string;
-}): Promise<TokenResponse> {
-  const authServer = resolveAuthServer();
+export async function exchangeCode(
+  params: {
+    code: string;
+    redirectUri: string;
+    verifier: string;
+  },
+  oauthBase: string,
+): Promise<TokenResponse> {
+  const authServer = resolveAuthServer(oauthBase);
   const client = resolveOauthClient();
   // parseCallback already verified `state` against the loopback's expected value, so
   // skip the re-check here; validateAuthResponse still brands the params object that
@@ -146,22 +150,25 @@ export async function exchangeCode(params: {
     callbackParameters,
     params.redirectUri,
     params.verifier,
-    tokenRequestOptions(),
+    tokenRequestOptions(oauthBase),
   );
   return toTokenResponse(
     await oauth.processAuthorizationCodeResponse(authServer, client, response),
   );
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
-  const authServer = resolveAuthServer();
+export async function refreshAccessToken(
+  refreshToken: string,
+  oauthBase: string,
+): Promise<TokenResponse> {
+  const authServer = resolveAuthServer(oauthBase);
   const client = resolveOauthClient();
   const response = await oauth.refreshTokenGrantRequest(
     authServer,
     client,
     oauth.None(),
     refreshToken,
-    tokenRequestOptions(),
+    tokenRequestOptions(oauthBase),
   );
   return toTokenResponse(await oauth.processRefreshTokenResponse(authServer, client, response));
 }
@@ -242,18 +249,21 @@ export function openBrowser(url: string): void {
   }
 }
 
-export async function runLoginFlow(sink: OutputSink): Promise<TokenResponse> {
+export async function runLoginFlow(sink: OutputSink, oauthBase: string): Promise<TokenResponse> {
   const verifier = oauth.generateRandomCodeVerifier();
   const challenge = await oauth.calculatePKCECodeChallenge(verifier);
   const state = oauth.generateRandomState();
   const server = await startLoopbackServer(state);
   try {
-    const authorizeUrl = buildAuthorizeUrl({ redirectUri: server.redirectUri, challenge, state });
+    const authorizeUrl = buildAuthorizeUrl(
+      { redirectUri: server.redirectUri, challenge, state },
+      oauthBase,
+    );
     sink.writeMetadata([terminalMetadata("Opening your browser to sign in…")]);
     sink.writeMetadata([terminalMetadata(`If it doesn't open, visit: ${authorizeUrl}`)]);
     openBrowser(authorizeUrl);
     const code = await server.waitForCode();
-    return await exchangeCode({ code, redirectUri: server.redirectUri, verifier });
+    return await exchangeCode({ code, redirectUri: server.redirectUri, verifier }, oauthBase);
   } finally {
     server.close();
   }

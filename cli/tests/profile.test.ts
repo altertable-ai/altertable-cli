@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { configGet, configSet, kvGet } from "@/lib/config.ts";
+import { configGet, configSet, configSetGlobal, kvGet } from "@/lib/config.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import {
   resetSecretWarningsForTests,
@@ -22,7 +22,7 @@ import {
   profileConfigFile,
   profileExists,
   renameProfile,
-  resolveProfileName,
+  resolveWorkingProfile,
   setActiveProfile,
   updateProfile,
 } from "@/features/profile/model.ts";
@@ -33,17 +33,16 @@ import {
   buildProfileInspectView,
   buildProfileListView,
   buildProfileShellExportView,
-  profileShowToJson,
   profileStatusToJson,
-  type ProfileShowResult,
   type ProfileStatusResult,
 } from "@/features/profile/views.ts";
-import { formatProfileShow, formatProfileStatus } from "@/features/profile/render.ts";
-import { buildConfigureShowData } from "@/features/profile/model.ts";
+import { formatProfileInspect, formatProfileStatus } from "@/features/profile/render.ts";
 import { runProfileConfigure } from "@/lib/profile-configure.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { createCliTestRuntime, runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
+
+const profileName = "default";
 
 let testHome = "";
 
@@ -72,14 +71,14 @@ describe("profiles layout", () => {
   });
 });
 
-describe("resolveProfileName", () => {
+describe("resolveWorkingProfile", () => {
   test("prefers CLI context profile over active profile", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
 
     setActiveProfile("default");
     setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
-    expect(resolveProfileName(getCliContext().profile)).toBe("staging");
+    expect(resolveWorkingProfile(getCliContext().profile)).toBe("staging");
   });
 
   test("prefers ALTERTABLE_PROFILE over active profile", async () => {
@@ -87,12 +86,12 @@ describe("resolveProfileName", () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     setActiveProfile("default");
     process.env.ALTERTABLE_PROFILE = "staging";
-    expect(resolveProfileName()).toBe("staging");
+    expect(resolveWorkingProfile()).toBe("staging");
   });
 
   test("returns active profile by default", async () => {
     await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    expect(resolveProfileName()).toBe(DEFAULT_PROFILE_NAME);
+    expect(resolveWorkingProfile()).toBe(DEFAULT_PROFILE_NAME);
     expect(getActiveProfileName()).toBe(DEFAULT_PROFILE_NAME);
   });
 });
@@ -108,8 +107,8 @@ describe("profile storage", () => {
 
     expect(profileExists("acme_production")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "acme_production" });
-    expect(configGet("api_key_env")).toBe("Production");
-    expect(secretGet("api-key")).toBe("atm_prod");
+    expect(configGet("api_key_env", "acme_production")).toBe("Production");
+    expect(secretGet("api-key", "acme_production")).toBe("atm_prod");
     expect(
       listProfiles().find((profile) => profile.name === "acme_production")?.management_auth,
     ).toBe("api-key");
@@ -155,7 +154,7 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "acme_prod", user: "alice", password: "secret" });
     const lakehouseExpiry = Date.now() + 60 * 60 * 1000;
     setCliContext({ debug: false, json: false, agent: false, profile: "acme_prod" });
-    configSet("lakehouse_credential_expiry", String(lakehouseExpiry));
+    configSet("lakehouse_credential_expiry", String(lakehouseExpiry), "acme_prod");
 
     const profile = inspectProfile("acme_prod");
     expect(profile.status).toBe("configured");
@@ -169,8 +168,8 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     expect(profileExists("staging")).toBe(true);
     setCliContext({ debug: false, json: false, agent: false, profile: "staging" });
-    expect(configGet("api_key_env")).toBe("staging");
-    expect(secretGet("api-key")).toBe("atm_staging");
+    expect(configGet("api_key_env", "staging")).toBe("staging");
+    expect(secretGet("api-key", "staging")).toBe("atm_staging");
   });
 
   test("listProfiles marks the active profile", async () => {
@@ -184,7 +183,7 @@ describe("profile storage", () => {
   });
 
   test("profile list view describes table columns declaratively", async () => {
-    await configureRunSet({ profile: "acme_prod", org: "acme", apiKey: "atm_prod", env: "prod" });
+    await configureRunSet({ profile: "acme_prod", apiKey: "atm_prod", env: "prod" });
     const view = buildProfileListView(listProfiles());
     const [section] = view.sections;
     const [block] = section?.blocks ?? [];
@@ -247,7 +246,7 @@ describe("profile storage", () => {
   });
 
   test("global query defaults stay in root config across profiles", async () => {
-    configSet("query_layout", "line");
+    configSetGlobal("query_layout", "line");
     await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
     expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
     expect(kvGet(profileConfigFile("staging"), "query_layout")).toBe("");
@@ -418,7 +417,7 @@ describe("profile storage", () => {
   });
 
   test("rejects path traversal profile names", () => {
-    expect(() => resolveProfileName("../../outside")).toThrow(ConfigurationError);
+    expect(() => resolveWorkingProfile("../../outside")).toThrow(ConfigurationError);
     expect(() => setActiveProfile("..")).toThrow(ConfigurationError);
     expect(() => deleteProfile("foo/bar")).toThrow(ConfigurationError);
   });
@@ -460,8 +459,8 @@ describe("profile --configure dispatch", () => {
 
     await runProfileConfigure({ "api-key": "atm_flagkey", env: "staging" }, sink);
 
-    expect(secretGet("api-key")).toBe("atm_flagkey");
-    expect(configGet("api_key_env")).toBe("staging");
+    expect(secretGet("api-key", profileName)).toBe("atm_flagkey");
+    expect(configGet("api_key_env", profileName)).toBe("staging");
   });
 
   test("rejects --scope combined with credential flags", async () => {
@@ -475,102 +474,57 @@ describe("profile --configure dispatch", () => {
     }
 
     expect(caught).toBeInstanceOf(CliError);
-    expect(secretGet("api-key")).toBe("");
+    expect(secretGet("api-key", profileName)).toBe("");
   });
 });
 
 describe("profile show view", () => {
-  function showResult(identity?: ProfileShowResult["identity"]): ProfileShowResult {
-    return { configuration: buildConfigureShowData(), identity };
-  }
-
-  test("renders profile identity and credentials without config paths by default", async () => {
+  test("renders the stored profile's auth, environment, and config file", async () => {
     await configureRunSet({ apiKey: "atm_show", env: "production" });
 
-    const output = formatProfileShow(
-      showResult({
-        principal: { type: "User", name: "Ada Lovelace", email: "ada@example.com" },
-        organization: { name: "Acme", slug: "acme" },
-      }),
-    );
+    const output = formatProfileInspect(inspectProfile(getActiveProfileName()));
 
-    expect(output).toContain("Ada Lovelace <ada@example.com>");
-    expect(output).toContain("Acme (acme)");
-    expect(output).toContain("Data plane:");
-    expect(output).toContain("management API key");
+    expect(output).toContain("Management auth");
+    expect(output).toContain("api_key");
+    expect(output).toContain("Environment");
     expect(output).toContain("production");
+    expect(output).toContain("Config file");
     expect(output).not.toContain("atm_show");
-    expect(output).not.toContain("Config dir:");
-    expect(output).not.toContain("Secret store:");
   });
 
-  test("--config includes CLI config paths", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
+  test("marks an unconfigured profile as empty with no auth", () => {
+    const output = formatProfileInspect(inspectProfile(getActiveProfileName()));
 
-    const output = formatProfileShow(showResult(), { config: true });
-
-    expect(output).toContain("Config dir:");
-    expect(output).toContain("Profile config file:");
-    expect(output).toContain("Secret store:");
-  });
-
-  test("falls back to 'not set' identity when whoami is unavailable", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
-
-    const output = formatProfileShow(showResult());
-
-    expect(output).toContain("User:");
-    expect(output).toContain("not set");
-  });
-
-  test("json envelope groups cli_config, profile, and details", async () => {
-    await configureRunSet({ apiKey: "atm_show", env: "production" });
-
-    const json = profileShowToJson(
-      showResult({ principal: { name: "Ada" }, organization: { slug: "acme" } }),
-    );
-
-    expect(json.cli_config).toBeDefined();
-    expect((json.profile as { name: string }).name).toBe(getActiveProfileName());
-    expect((json.profile as { environment: string }).environment).toBe("production");
-    expect(
-      (json.details as { credentials: { management: { configured: boolean } } }).credentials
-        .management.configured,
-    ).toBe(true);
+    expect(output).toContain("Status");
+    expect(output).toContain("empty");
+    expect(output).toContain("none");
   });
 });
 
 describe("profile status view", () => {
-  function statusResult(
-    verification: ProfileStatusResult["verification"],
-    identity?: ProfileStatusResult["identity"],
-  ): ProfileStatusResult {
-    return { configuration: buildConfigureShowData(), identity, verification };
+  function statusResult(verification: ProfileStatusResult["verification"]): ProfileStatusResult {
+    return { profile: inspectProfile(getActiveProfileName()), verification };
   }
 
-  test("renders profile show plus a verification section", async () => {
+  test("renders the inspect view plus a verification section", async () => {
     await configureRunSet({ apiKey: "atm_status", env: "production" });
 
     const output = formatProfileStatus(
-      statusResult(
-        {
-          profile: getActiveProfileName(),
-          configured: ["management"],
-          verified: { management: true, lakehouse: false },
-          errors: [],
-        },
-        { principal: { name: "Ada" }, organization: { slug: "acme" } },
-      ),
+      statusResult({
+        profile: getActiveProfileName(),
+        configured: ["management"],
+        verified: { management: true, lakehouse: false },
+        errors: [],
+      }),
     );
 
-    expect(output).toContain("management API key");
+    expect(output).toContain("Management auth");
     expect(output).toContain("Verification:");
     expect(output).toContain("Management:");
     expect(output).toContain("verified");
-    expect(output).not.toContain("Config dir:");
   });
 
-  test("json envelope includes the verification result", async () => {
+  test("json envelope includes the profile and verification result", async () => {
     await configureRunSet({ apiKey: "atm_status", env: "production" });
 
     const json = profileStatusToJson(
@@ -583,6 +537,6 @@ describe("profile status view", () => {
     );
 
     expect((json.verification as { configured: string[] }).configured).toEqual(["management"]);
-    expect(json.cli_config).toBeDefined();
+    expect((json.profile as { name: string }).name).toBe(getActiveProfileName());
   });
 });

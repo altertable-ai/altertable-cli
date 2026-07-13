@@ -16,6 +16,8 @@ import {
 import { secretSet } from "@/lib/secrets.ts";
 import { configSet } from "@/lib/config.ts";
 
+const profileName = "default";
+
 let testHome = "";
 
 beforeEach(() => {
@@ -37,36 +39,42 @@ afterEach(() => {
 
 describe("configureCredentialStatus", () => {
   test("detects stored and environment credentials", () => {
-    expect(configureCredentialStatus()).toEqual({ hasManagement: false, hasLakehouse: false });
+    expect(configureCredentialStatus(profileName)).toEqual({
+      hasManagement: false,
+      hasLakehouse: false,
+    });
 
-    secretSet("api-key", "atm_test");
-    expect(configureCredentialStatus().hasManagement).toBe(true);
+    secretSet("api-key", "atm_test", profileName);
+    expect(configureCredentialStatus(profileName).hasManagement).toBe(true);
 
     process.env.ALTERTABLE_API_KEY = "atm_env";
-    expect(configureCredentialStatus().hasManagement).toBe(true);
+    expect(configureCredentialStatus(profileName).hasManagement).toBe(true);
 
-    secretSet("lakehouse/password", "secret");
-    configSet("user", "alice");
-    expect(configureCredentialStatus().hasLakehouse).toBe(true);
+    secretSet("lakehouse/password", "secret", profileName);
+    configSet("user", "alice", profileName);
+    expect(configureCredentialStatus(profileName).hasLakehouse).toBe(true);
   });
 
   test("detects environment lakehouse credentials without stored secrets", () => {
     process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "env-user";
     process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "env-pass";
-    expect(configureCredentialStatus()).toEqual({ hasManagement: false, hasLakehouse: true });
+    expect(configureCredentialStatus(profileName)).toEqual({
+      hasManagement: false,
+      hasLakehouse: true,
+    });
   });
 
   test("plane status detail reflects environment credentials", () => {
     process.env.ALTERTABLE_API_KEY = "atm_env";
-    expect(managementPlaneStatusDetail()).toBe("via ALTERTABLE_API_KEY");
+    expect(managementPlaneStatusDetail(profileName)).toBe("via ALTERTABLE_API_KEY");
 
     process.env.ALTERTABLE_BASIC_AUTH_TOKEN = "dG9rZW4=";
-    expect(lakehousePlaneStatusDetail()).toBe("via ALTERTABLE_BASIC_AUTH_TOKEN");
+    expect(lakehousePlaneStatusDetail(profileName)).toBe("via ALTERTABLE_BASIC_AUTH_TOKEN");
 
     delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
     process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "env-user";
     process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "env-pass";
-    expect(lakehousePlaneStatusDetail()).toBe("env-user");
+    expect(lakehousePlaneStatusDetail(profileName)).toBe("env-user");
   });
 });
 
@@ -75,18 +83,18 @@ describe("formatConfigureAuthenticationLines", () => {
     process.env.ALTERTABLE_API_KEY = "atm_env";
     process.env.ALTERTABLE_ENV = "staging";
 
-    const lines = formatConfigureAuthenticationLines({ planes: ["management"] });
+    const lines = formatConfigureAuthenticationLines(profileName, { planes: ["management"] });
     expect(lines.join("\n")).toContain("ALTERTABLE_API_KEY");
     expect(lines.join("\n")).toContain("staging");
   });
 
   test("session summary includes only configured planes", () => {
-    secretSet("api-key", "atm_test");
-    configSet("api_key_env", "production");
-    secretSet("lakehouse/password", "secret");
-    configSet("user", "alice");
+    secretSet("api-key", "atm_test", profileName);
+    configSet("api_key_env", "production", profileName);
+    secretSet("lakehouse/password", "secret", profileName);
+    configSet("user", "alice", profileName);
 
-    const summary = formatConfigureSessionSummary(["management"]);
+    const summary = formatConfigureSessionSummary(profileName, ["management"]);
     expect(summary.join("\n")).toContain("management API key");
     expect(summary.join("\n")).not.toContain("lakehouse");
   });
@@ -94,21 +102,23 @@ describe("formatConfigureAuthenticationLines", () => {
 
 describe("OAuth login status", () => {
   function loginViaOAuth(): void {
-    secretSet("oauth/access-token", "tok");
-    configSet("oauth_expiry", String(Date.now() + 3_600_000));
-    configSet("api_key_env", "production");
+    secretSet("oauth/access-token", "tok", profileName);
+    configSet("oauth_expiry", String(Date.now() + 3_600_000), profileName);
+    configSet("api_key_env", "production", profileName);
   }
 
   test("counts as a management credential", () => {
     loginViaOAuth();
-    expect(configureCredentialStatus().hasManagement).toBe(true);
+    expect(configureCredentialStatus(profileName).hasManagement).toBe(true);
   });
 
   test("shows browser login (OAuth), not the api-key lines", () => {
     loginViaOAuth();
-    configSet("organization_slug", "altertable");
-    configSet("organization_name", "Altertable");
-    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    configSet("organization_slug", "altertable", profileName);
+    configSet("organization_name", "Altertable", profileName);
+    const text = formatConfigureAuthenticationLines(profileName, { planes: ["management"] }).join(
+      "\n",
+    );
     expect(text).toContain("browser login (OAuth)");
     expect(text).toContain("production");
     expect(text).toContain("Organization:");
@@ -118,13 +128,15 @@ describe("OAuth login status", () => {
   });
 
   test("OAuth login shadows a leftover stored api key", () => {
-    secretSet("api-key", "atm_leftover");
+    secretSet("api-key", "atm_leftover", profileName);
     loginViaOAuth();
-    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    const text = formatConfigureAuthenticationLines(profileName, { planes: ["management"] }).join(
+      "\n",
+    );
     expect(text).toContain("browser login (OAuth)");
     expect(text).not.toContain("api key:");
-    expect(managementPlaneStatusDetail()).toBe("OAuth login (production)");
-    expect(buildConfigureShowData().credentials.management).toMatchObject({
+    expect(managementPlaneStatusDetail(profileName)).toBe("OAuth login (production)");
+    expect(buildConfigureShowData(profileName).credentials.management).toMatchObject({
       mechanism: "management_oauth",
       oauth: "set",
     });
@@ -133,21 +145,23 @@ describe("OAuth login status", () => {
   test("ALTERTABLE_API_KEY env still takes precedence over OAuth", () => {
     loginViaOAuth();
     process.env.ALTERTABLE_API_KEY = "atm_env";
-    const text = formatConfigureAuthenticationLines({ planes: ["management"] }).join("\n");
+    const text = formatConfigureAuthenticationLines(profileName, { planes: ["management"] }).join(
+      "\n",
+    );
     expect(text).toContain("ALTERTABLE_API_KEY");
     expect(text).not.toContain("browser login (OAuth)");
-    expect(managementPlaneStatusDetail()).toBe("via ALTERTABLE_API_KEY");
+    expect(managementPlaneStatusDetail(profileName)).toBe("via ALTERTABLE_API_KEY");
   });
 });
 
 describe("buildConfigureShowData", () => {
   test("returns structured credential status without secrets", () => {
-    secretSet("api-key", "atm_test");
-    configSet("api_key_env", "production");
-    secretSet("lakehouse/password", "lakehouse-pass");
-    configSet("user", "alice");
+    secretSet("api-key", "atm_test", profileName);
+    configSet("api_key_env", "production", profileName);
+    secretSet("lakehouse/password", "lakehouse-pass", profileName);
+    configSet("user", "alice", profileName);
 
-    const data = buildConfigureShowData();
+    const data = buildConfigureShowData(profileName);
     expect(data.credentials.management).toEqual({
       configured: true,
       mechanism: "management_api_key",
@@ -167,12 +181,12 @@ describe("buildConfigureShowData", () => {
   });
 
   test("includes environment overrides", () => {
-    secretSet("api-key", "atm_test");
-    configSet("api_key_env", "production");
+    secretSet("api-key", "atm_test", profileName);
+    configSet("api_key_env", "production", profileName);
     process.env.ALTERTABLE_ENV = "staging";
     process.env.ALTERTABLE_API_KEY = "atm_override";
 
-    const data = buildConfigureShowData();
+    const data = buildConfigureShowData(profileName);
     expect(data.overrides).toEqual({
       environment: "staging",
       stored_environment: "production",
@@ -181,11 +195,11 @@ describe("buildConfigureShowData", () => {
     expect(JSON.stringify(data)).not.toContain("atm_override");
   });
 
-  test("buildConfigureShowView separates summary and authentication sections", () => {
-    secretSet("api-key", "atm_test");
-    configSet("api_key_env", "production");
+  test("configure show view separates summary and authentication sections", () => {
+    secretSet("api-key", "atm_test", profileName);
+    configSet("api_key_env", "production", profileName);
 
-    const view = buildConfigureShowView(buildConfigureShowData());
+    const view = buildConfigureShowView(buildConfigureShowData(profileName));
     const [summary, authentication] = view.sections;
     const [summaryRows] = summary?.blocks ?? [];
     const [authenticationRows] = authentication?.blocks ?? [];

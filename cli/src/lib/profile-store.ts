@@ -1,9 +1,15 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
-import { configDir, configFile, kvGet, kvSet, kvUnset } from "@/lib/config-files.ts";
+import { configDir, configFile, kvGet, kvSet } from "@/lib/config-files.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
+
+// Reserved pseudo-profile: the identity in effect when credentials come from
+// environment variables rather than a stored profile. Never a real directory.
+export const FROM_ENV_PSEUDOPROFILE_NAME = "_from_env";
+
+const RESERVED_PROFILE_NAMES = new Set<string>([FROM_ENV_PSEUDOPROFILE_NAME]);
 
 export const PROFILE_CONFIG_KEYS = [
   "user",
@@ -25,12 +31,6 @@ export const PROFILE_CONFIG_KEYS = [
 
 export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
 
-const PROFILE_SCOPED_KEYS = new Set<string>(PROFILE_CONFIG_KEYS);
-
-export function isProfileScopedConfigKey(key: string): key is ProfileConfigKey {
-  return PROFILE_SCOPED_KEYS.has(key);
-}
-
 const SAFE_PROFILE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
 
 export function profilesDir(): string {
@@ -51,6 +51,9 @@ export function assertSafeProfileName(name: string): void {
     throw new ConfigurationError(
       `Invalid profile name: ${name}. Use only letters, digits, dots, underscores, and hyphens.`,
     );
+  }
+  if (RESERVED_PROFILE_NAMES.has(name)) {
+    throw new ConfigurationError(`Profile name is reserved: ${name}`);
   }
 
   const resolvedProfileDir = resolve(join(profilesDir(), name));
@@ -106,7 +109,7 @@ export function setActiveProfile(name: string): void {
   kvSet(configFile(), "active_profile", name);
 }
 
-export function resolveProfileName(override?: string): string {
+export function resolveWorkingProfile(override?: string): string {
   ensureProfilesLayout();
 
   const explicit = override ?? process.env.ALTERTABLE_PROFILE ?? "";
@@ -141,18 +144,14 @@ export function ensureProfileExists(name: string): void {
   }
 }
 
-export function readProfileConfig(profileName: string, key: string): string {
+export function configGet(key: string, profileName: string): string {
   return kvGet(profileConfigFile(profileName), key);
 }
 
-export function writeProfileConfig(profileName: string, key: string, value: string): void {
+export function configSet(key: string, value: string, profileName: string): void {
   assertSafeProfileName(profileName);
   mkdirSync(profileDir(profileName), { recursive: true });
   kvSet(profileConfigFile(profileName), key, value);
-}
-
-export function unsetProfileConfig(profileName: string, key: string): void {
-  kvUnset(profileConfigFile(profileName), key);
 }
 
 export function readProfileConfigRecord(

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-import { jsonMock, whoamiMock } from "./mock-http.ts";
+import { jsonMock } from "./mock-http.ts";
 
 const statusMocks = {
   auth: [jsonMock("GET", "/whoami", { error: "invalid key" }, 401)],
@@ -23,12 +23,11 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test("--json profile show exits 0 and prints structured success JSON", async () => {
-    await workspace.setupMockHttp(whoamiMock());
     const result = await workspace.runCommand("altertable --json profile show");
 
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-    expect(JSON.parse(result.stdout).profile.user.name).toBe("Jane");
+    expect(JSON.parse(result.stdout).profile.name).toBe("default");
   });
 
   test.each([

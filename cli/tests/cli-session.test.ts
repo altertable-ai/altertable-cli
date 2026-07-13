@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("createCliSession", () => {
-  test("builds profile and API bases from config", async () => {
+  test("pins the resolved working profile", async () => {
     await configureRunSet({
       apiKey: "atm_test",
       env: "staging",
@@ -37,17 +37,5 @@ describe("createCliSession", () => {
     const session = runWithCliRuntime(runtime, () => createCliSession(runtime.context));
 
     expect(session.profile).toBe("default");
-    expect(session.apiBase).toBe("http://localhost:15000");
-    expect(session.managementApiBase).toBe("http://localhost:13000/rest/v1");
-    expect(session.managementEnv).toBe("staging");
-    expect(session.managementAuthHeader).toBe("Authorization: Bearer atm_test");
-  });
-
-  test("omits auth headers when credentials are missing", () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    const session = runWithCliRuntime(runtime, () => createCliSession(runtime.context));
-
-    expect(session.lakehouseAuthHeader).toBeUndefined();
-    expect(session.managementAuthHeader).toBeUndefined();
   });
 });

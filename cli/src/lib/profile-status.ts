@@ -10,7 +10,7 @@ import type { OperationContext } from "@/lib/operation-command.ts";
 import { runOperationPlan } from "@/lib/operation-effect.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { resolveProfileName } from "@/lib/profile-store.ts";
+import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 
 export { configureCredentialStatus } from "@/features/profile/model.ts";
 
@@ -99,7 +99,7 @@ export async function configureVerify(
   refreshCliRuntimeContext(getCliContext());
 
   const result: ConfigureVerifyResult = {
-    profile: resolveProfileName(getCliContext().profile),
+    profile: resolveWorkingProfile(getCliContext().profile),
     configured: [...planes],
     verified: { management: false, lakehouse: false },
     errors: [],
@@ -121,9 +121,12 @@ export async function configureVerify(
   return result;
 }
 
-export function formatConfigureVerifyRemediation(plane: ConfigureAuthPlane): string {
+export function formatConfigureVerifyRemediation(
+  plane: ConfigureAuthPlane,
+  profileName: string,
+): string {
   if (plane === "management") {
-    const env = configGet("api_key_env") || "<name>";
+    const env = configGet("api_key_env", profileName) || "<name>";
     return `Check your API key and environment. Run: altertable profile --configure --scope management or altertable profile --configure --api-key atm_xxx --env ${env}`;
   }
   return "Check your lakehouse username and password. Run: altertable profile --configure --scope lakehouse or altertable profile --configure --user <u> --password <p>";

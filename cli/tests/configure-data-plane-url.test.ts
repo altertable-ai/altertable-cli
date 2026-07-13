@@ -9,6 +9,7 @@ import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 import { secretGet } from "@/lib/secrets.ts";
 
 let testHome = "";
+const profileName = "default";
 
 function runInTestHome<T>(run: () => T | Promise<T>): T | Promise<T> {
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
@@ -23,7 +24,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await runInTestHome(async () => {
-    configureClearAll();
+    configureClearAll(profileName);
   });
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
@@ -37,10 +38,10 @@ describe("profile --configure --data-plane-url alone", () => {
 
       await configureRunSet({ dataPlaneUrl: "https://data.example.com" });
 
-      expect(configGet("api_base")).toBe("https://data.example.com");
-      expect(secretGet("api-key")).toBe("atm_test");
-      expect(configGet("api_key_env")).toBe("staging");
-      expect(configGet("management_api_base")).toBe("");
+      expect(configGet("api_base", profileName)).toBe("https://data.example.com");
+      expect(secretGet("api-key", profileName)).toBe("atm_test");
+      expect(configGet("api_key_env", profileName)).toBe("staging");
+      expect(configGet("management_api_base", profileName)).toBe("");
     });
   });
 
