@@ -281,6 +281,17 @@ export function renderCliError(error: unknown): string {
   return renderDisplayText([span("ERROR", "error"), span(" Unexpected error.")]);
 }
 
+export function renderCliErrorDetails(details: string): string {
+  return details
+    .split(/\r\n|\r|\n/)
+    .map((line, index) =>
+      index === 0
+        ? renderDisplayText([span("ERROR", "error"), span(` ${line}`)])
+        : renderDisplayText(line),
+    )
+    .join("\n");
+}
+
 export function getCliExitCode(error: unknown): number {
   if (error instanceof CliError) {
     return error.exitCode;

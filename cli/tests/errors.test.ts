@@ -18,6 +18,7 @@ import {
   getCliExitCode,
   httpStatusMessage,
   renderCliError,
+  renderCliErrorDetails,
   renderCliErrorJson,
   serializeCliError,
   shouldShowCommandExamplesOnError,
@@ -43,6 +44,15 @@ afterEach(() => {
 describe("errors", () => {
   test("renderCliError formats CliError", () => {
     expect(renderCliError(new CliError("x"))).toBe("ERROR x");
+  });
+
+  test("renderCliErrorDetails preserves trusted line structure and sanitizes each line", () => {
+    const rendered = renderCliErrorDetails("First line\nRun this\u001b]0;spoofed\u0007");
+
+    expect(rendered).toBe("ERROR First line\nRun this\\x1b]0;spoofed\\x07");
+    expect(rendered).not.toContain("\\x0a");
+    expect(rendered).not.toContain("\u001b");
+    expect(rendered).not.toContain("\u0007");
   });
 
   test("ConfigurationError uses EXIT_CONFIG", () => {

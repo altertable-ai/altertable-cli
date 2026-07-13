@@ -28,6 +28,7 @@ import {
   getCliExitCode,
   isCittyCliError,
   renderCliError,
+  renderCliErrorDetails,
   renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
@@ -39,8 +40,7 @@ import {
 } from "@/lib/usage.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
-import { span } from "@/ui/document.ts";
-import { applyTerminalColorFromContext, renderDisplayText } from "@/ui/terminal/styles.ts";
+import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
 
@@ -141,7 +141,7 @@ function handleCliError(error: unknown): never {
     console.error(renderCliError(error));
 
     if (error instanceof CliError && error.details) {
-      console.error(renderDisplayText([span("ERROR", "error"), span(` ${error.details}`)]));
+      console.error(renderCliErrorDetails(error.details));
     }
   }
 

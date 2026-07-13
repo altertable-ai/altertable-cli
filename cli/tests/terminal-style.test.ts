@@ -215,6 +215,15 @@ describe("terminal-style", () => {
   test("counts wide characters as double width", () => {
     expect(getVisibleTextWidth("日本語")).toBe(6);
     expect(getVisibleTextWidth("abc")).toBe(3);
+    expect(getVisibleTextWidth("e\u0301")).toBe(1);
+    expect(getVisibleTextWidth("👨‍👩‍👧‍👦")).toBe(2);
+  });
+
+  test("truncates without splitting joined emoji", () => {
+    const truncated = truncateTerminalText("👨‍👩‍👧‍👦abc", 4);
+
+    expect(truncated).toBe("👨‍👩‍👧‍👦a…");
+    expect(getVisibleTextWidth(truncated)).toBe(4);
   });
 
   test("padLeft indents multi-line terminal output", () => {

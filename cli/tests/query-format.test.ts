@@ -99,6 +99,12 @@ describe("truncateText", () => {
   test("truncates middle of long strings with ellipsis", () => {
     expect(truncateTextMiddle("019ee8e4-1d79-77d9-8693-1f67732b184d", 16)).toBe("019ee8e4…32b184d");
     expect(truncateTextMiddle("abcdef", 2)).toBe("a…");
+    expect(truncateTextMiddle("👨‍👩‍👧‍👦abc", 4)).toBe("👨‍👩‍👧‍👦…c");
+  });
+
+  test("truncates by terminal width without splitting wide characters", () => {
+    expect(truncateText("日本語", 4)).toBe("日…");
+    expect(getVisibleTextWidth(truncateText("日本語", 4))).toBeLessThanOrEqual(4);
   });
 });
 
@@ -251,6 +257,27 @@ describe("renderQueryHumanOutput", () => {
       terminalWidth: 80,
     });
     expect(output).toContain("│ query │          42 │");
+  });
+
+  test("keeps wide cells inside the rendered table frame", () => {
+    const output = renderQueryHumanOutput(
+      { metadata: {}, columns: ["値"], rows: [{ 値: "日本語" }] },
+      { layout: "table", maxColumnWidth: 4, terminalWidth: 80, colorize: false },
+    );
+
+    const tableLines = output.split("\n").filter((line) => /^[┌├│└]/u.test(line));
+    expect(tableLines.some((line) => line.includes("日…"))).toBe(true);
+    expect(tableLines.every((line) => getVisibleTextWidth(line) === 8)).toBe(true);
+  });
+
+  test("pads expanded labels by terminal width", () => {
+    const output = renderQueryHumanOutput(
+      { metadata: {}, columns: ["日本語", "id"], rows: [{ 日本語: "value", id: 1 }] },
+      { layout: "line", maxColumnWidth: 32, terminalWidth: 80, colorize: false },
+    );
+
+    expect(output).toContain("日本語: value");
+    expect(output).toContain("id:     1");
   });
 
   test("auto layout picks line output when wider than terminal", () => {
@@ -492,6 +519,26 @@ describe("renderQueryFooter", () => {
     expect(footer).toContain("2 rows in 285ms");
     expect(footer).toContain("query_id:");
     expect(footer).toContain("019ee8e4-1d79-77d9-8693-1f67732b184d");
+  });
+
+  test("sanitizes query IDs without terminal color", () => {
+    const result = {
+      metadata: { query_id: "query\u001b]0;spoofed\u0007" },
+      columns: [],
+      rows: [],
+    };
+
+    expect(renderQueryFooter(result, { colorize: false })).toContain(
+      "query_id: query\\x1b]0;spoofed\\x07",
+    );
+    expect(
+      renderQueryMarkdown(result, [], {
+        layout: "table",
+        maxColumnWidth: 32,
+        terminalWidth: 80,
+        colorize: false,
+      }),
+    ).toContain("query_id: query\\x1b]0;spoofed\\x07");
   });
 });
 

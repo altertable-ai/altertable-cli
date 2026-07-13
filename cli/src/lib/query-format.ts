@@ -21,6 +21,7 @@ import {
   padVisibleText,
   renderDisplayText,
   shouldUseTerminalColor,
+  truncateTerminalText,
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
 import type { QueryLayout } from "@/ui/layouts/query.ts";
@@ -30,6 +31,7 @@ const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;
 const NULL_DISPLAY = "NULL";
 const ELLIPSIS = "…";
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 type QueryColumnAlignment = TerminalTextAlignment;
 
@@ -225,28 +227,38 @@ function formatStringQueryCell(
 }
 
 export function truncateText(text: string, maxWidth: number): string {
-  if (text.length <= maxWidth) {
-    return text;
-  }
-  if (maxWidth <= 1) {
-    return ELLIPSIS;
-  }
-  return text.slice(0, maxWidth - ELLIPSIS.length) + ELLIPSIS;
+  return truncateTerminalText(text, maxWidth);
 }
 
 export function truncateTextMiddle(text: string, maxWidth: number): string {
-  if (text.length <= maxWidth) {
+  if (getVisibleTextWidth(text) <= maxWidth) {
     return text;
   }
   if (maxWidth <= 1) {
     return ELLIPSIS;
   }
 
-  const visibleCharacterCount = maxWidth - ELLIPSIS.length;
-  const prefixLength = Math.ceil(visibleCharacterCount / 2);
-  const suffixLength = Math.floor(visibleCharacterCount / 2);
-  const suffix = suffixLength > 0 ? text.slice(text.length - suffixLength) : "";
-  return `${text.slice(0, prefixLength)}${ELLIPSIS}${suffix}`;
+  const characters = Array.from(graphemeSegmenter.segment(text), ({ segment }) => segment);
+  const availableWidth = maxWidth - getVisibleTextWidth(ELLIPSIS);
+  const prefixWidth = Math.ceil(availableWidth / 2);
+  const suffixWidth = Math.floor(availableWidth / 2);
+  let prefix = "";
+  let suffix = "";
+
+  for (const character of characters) {
+    if (getVisibleTextWidth(prefix + character) > prefixWidth) {
+      break;
+    }
+    prefix += character;
+  }
+  for (let index = characters.length - 1; index >= 0; index -= 1) {
+    const character = characters[index] ?? "";
+    if (getVisibleTextWidth(character + suffix) > suffixWidth) {
+      break;
+    }
+    suffix = character + suffix;
+  }
+  return `${prefix}${ELLIPSIS}${suffix}`;
 }
 
 export function formatQueryCellRaw(value: unknown): string {
@@ -614,7 +626,7 @@ function renderQueryExpanded(model: QueryRenderModel, options: QueryDisplayOptio
         columnName: name,
         columnTypeMap,
       });
-      const labelText = `${renderDisplayText(name)}:`.padEnd(labelWidth);
+      const labelText = padVisibleText(`${renderDisplayText(name)}:`, labelWidth);
       const label = renderDisplayText([span(labelText, "muted")]);
       return `${label} ${value}`;
     });
@@ -655,9 +667,8 @@ export function renderQueryFooter(
     footerParts.push(summary);
   }
 
-  return shouldColorizeQueryCells(options.colorize)
-    ? footerParts.map((line) => renderDisplayText([span(line, "subtle")])).join("\n")
-    : footerParts.join("\n");
+  const style = shouldColorizeQueryCells(options.colorize) ? "subtle" : undefined;
+  return footerParts.map((line) => renderDisplayText([span(line, style)])).join("\n");
 }
 
 function escapeMarkdownCell(value: string): string {

@@ -38,6 +38,7 @@ export type TerminalColorMode = "auto" | "always" | "never";
 
 let contextColorMode: TerminalColorMode | undefined;
 let noColorEnvSetByCli = false;
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 export function setTerminalColorMode(mode: TerminalColorMode | undefined): void {
   contextColorMode = mode;
@@ -141,7 +142,17 @@ export function shouldUseTerminalHyperlinks(): boolean {
 }
 
 function getCodePointDisplayWidth(codePoint: number): number {
-  if (codePoint === 0xfe0f) {
+  if (
+    codePoint === 0x200d ||
+    codePoint === 0xfe0e ||
+    codePoint === 0xfe0f ||
+    (codePoint >= 0x0300 && codePoint <= 0x036f) ||
+    (codePoint >= 0x1ab0 && codePoint <= 0x1aff) ||
+    (codePoint >= 0x1dc0 && codePoint <= 0x1dff) ||
+    (codePoint >= 0x20d0 && codePoint <= 0x20ff) ||
+    (codePoint >= 0xfe20 && codePoint <= 0xfe2f) ||
+    (codePoint >= 0x1f3fb && codePoint <= 0x1f3ff)
+  ) {
     return 0;
   }
   if (
@@ -161,14 +172,21 @@ function getCodePointDisplayWidth(codePoint: number): number {
   return 1;
 }
 
+function getGraphemeDisplayWidth(grapheme: string): number {
+  let width = grapheme.includes("\ufe0f") ? 2 : 0;
+  for (const character of grapheme) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined) {
+      width = Math.max(width, getCodePointDisplayWidth(codePoint));
+    }
+  }
+  return width;
+}
+
 function getPlainTextDisplayWidth(text: string): number {
   let width = 0;
-  for (const character of text) {
-    const codePoint = character.codePointAt(0);
-    if (codePoint === undefined) {
-      continue;
-    }
-    width += getCodePointDisplayWidth(codePoint);
+  for (const { segment } of graphemeSegmenter.segment(text)) {
+    width += getGraphemeDisplayWidth(segment);
   }
   return width;
 }
@@ -236,22 +254,18 @@ export function truncateTerminalText(text: string, maxWidth?: number): string {
       continue;
     }
 
-    const codePoint = text.codePointAt(index);
-    if (codePoint === undefined) {
+    const grapheme = graphemeSegmenter.segment(text.slice(index))[Symbol.iterator]().next()
+      .value?.segment;
+    if (grapheme === undefined) {
       break;
     }
-    const charWidth = getCodePointDisplayWidth(codePoint);
-    if (visibleWidth + charWidth > targetWidth) {
+    const graphemeWidth = getGraphemeDisplayWidth(grapheme);
+    if (visibleWidth + graphemeWidth > targetWidth) {
       break;
     }
-
-    if (codePoint > 0xffff) {
-      result += String.fromCodePoint(codePoint);
-      index += 1;
-    } else {
-      result += character;
-    }
-    visibleWidth += charWidth;
+    result += grapheme;
+    index += grapheme.length - 1;
+    visibleWidth += graphemeWidth;
   }
 
   const closeOpenStyle = ANSI_ESCAPE_PATTERN.test(result) ? ANSI_RESET : "";
