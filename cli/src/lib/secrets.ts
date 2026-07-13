@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
-import { assertSafeProfileName } from "@/lib/profile-store.ts";
+import { assertSafeProfileName, isFromEnvProfile } from "@/lib/profile-store.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -118,6 +118,12 @@ export function secretSet(
   profileName: string,
   options?: SecretSetOptions,
 ): void {
+  // Env config isolates to `_from_env`, which has no store. Profile-mutating
+  // commands are refused in env mode; internal caches (e.g. a provisioned
+  // lakehouse token) are used in-process only — dropping them is correct.
+  if (isFromEnvProfile(profileName)) {
+    return;
+  }
   const storageAccount = resolveSecretKey(account, profileName);
   const backend = secretBackend();
   if (backend === "macos" && !options?.fromArgv) {
@@ -134,6 +140,10 @@ export function secretSet(
 }
 
 export function secretGet(key: string, profileName: string): string {
+  // The env pseudo-profile has no stored secrets; auth reads env vars directly.
+  if (isFromEnvProfile(profileName)) {
+    return "";
+  }
   const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {
@@ -156,6 +166,9 @@ export function secretGet(key: string, profileName: string): string {
 }
 
 export function secretExists(key: string, profileName: string): boolean {
+  if (isFromEnvProfile(profileName)) {
+    return false;
+  }
   const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {
@@ -176,6 +189,9 @@ export function secretExists(key: string, profileName: string): boolean {
 }
 
 export function secretDelete(key: string, profileName: string): void {
+  if (isFromEnvProfile(profileName)) {
+    return;
+  }
   const secretKey = resolveSecretKey(key, profileName);
   const backend = secretBackend();
   if (backend === "macos") {

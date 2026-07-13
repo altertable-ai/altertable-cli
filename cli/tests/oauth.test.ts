@@ -162,10 +162,7 @@ import {
   sameWhoamiContext,
   storeLoginProfileMetadata,
 } from "@/commands/login.ts";
-import {
-  assertProfileHasNoEnvCredentials,
-  resolveActiveProfileName,
-} from "@/features/profile/model.ts";
+import { assertNoEnvConfigMode, resolveActiveProfileName } from "@/features/profile/model.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
@@ -319,11 +316,11 @@ describe("login profile metadata", () => {
 
   // Environment credentials pin the identity, so stored-profile controls (login,
   // switching) are locked while they are set.
-  test("locks stored-profile controls while credentials come from the environment", () => {
-    expect(() => assertProfileHasNoEnvCredentials("altertable login")).not.toThrow();
+  test("locks stored-profile controls while the CLI is configured through the environment", () => {
+    expect(() => assertNoEnvConfigMode()).not.toThrow();
 
     process.env.ALTERTABLE_API_KEY = "atm_env";
-    expect(() => assertProfileHasNoEnvCredentials("altertable login")).toThrow(ConfigurationError);
+    expect(() => assertNoEnvConfigMode()).toThrow(ConfigurationError);
   });
 
   test("_from_env is a reserved profile name that cannot be created", () => {

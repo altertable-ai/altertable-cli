@@ -73,26 +73,51 @@ describe("profile switching", () => {
     expect(result.stdout).not.toContain("globex_dev");
   });
 
-  // Environment credentials pin the identity to `_from_env`, so login and profile
-  // switching are disabled — they would only mutate stored state the env overrides.
-  test("environment credentials disable login and profile switching", async () => {
+  // `_from_env` names a real identity only while env config is in effect. With
+  // no env vars set it resolves to nothing, so reading it must 404 rather than
+  // render a fake empty view.
+  test("show and status reject _from_env when no env configuration is set", async () => {
+    const shown = await workspace.runCommand("altertable profile show --name _from_env");
+    expect(shown.exitCode).not.toBe(0);
+    expect(shown.stderr).toContain("Profile not found: _from_env");
+
+    const status = await workspace.runCommand("altertable profile status --name _from_env");
+    expect(status.exitCode).not.toBe(0);
+    expect(status.stderr).toContain("Profile not found: _from_env");
+  });
+
+  // Env configuration pins the identity to `_from_env`, so profile-mutating
+  // commands are refused — they would only mutate stored state the env overrides.
+  // The refusal lists the currently configured env vars (secrets masked).
+  test("env configuration disables login and profile-mutating commands", async () => {
     const login = await workspace.runCommand("altertable login", {
       env: { ALTERTABLE_API_KEY: "atm_env" },
     });
     expect(login.exitCode).not.toBe(0);
-    expect(login.stderr).toContain("disabled while credentials come from the environment");
+    expect(login.stderr).toContain(
+      "Profile management commands aren't available when configuring through environment variables",
+    );
+    expect(login.stderr).toContain("ALTERTABLE_API_KEY");
+    expect(login.stderr).toContain("set (hidden)");
 
     const use = await workspace.runCommand("altertable profile use acme_staging", {
       env: { ALTERTABLE_API_KEY: "atm_env" },
     });
     expect(use.exitCode).not.toBe(0);
-    expect(use.stderr).toContain("disabled while credentials come from the environment");
+    expect(use.stderr).toContain("aren't available when configuring through environment variables");
+
+    const created = await workspace.runCommand("altertable profile create globex --api-key atm_x --env dev", {
+      env: { ALTERTABLE_ENV: "staging" },
+    });
+    expect(created.exitCode).not.toBe(0);
+    expect(created.stderr).toContain("aren't available when configuring through environment variables");
+    expect(created.stderr).toContain("ALTERTABLE_ENV");
 
     const switched = await workspace.runCommand("altertable profile switch acme_staging", {
       env: { ALTERTABLE_LAKEHOUSE_USERNAME: "u", ALTERTABLE_LAKEHOUSE_PASSWORD: "p" },
     });
     expect(switched.exitCode).not.toBe(0);
-    expect(switched.stderr).toContain("disabled while credentials come from the environment");
+    expect(switched.stderr).toContain("aren't available when configuring through environment variables");
   });
 });
 

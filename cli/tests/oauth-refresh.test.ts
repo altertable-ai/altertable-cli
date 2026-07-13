@@ -27,7 +27,9 @@ beforeEach(() => {
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
-  process.env.ALTERTABLE_MANAGEMENT_API_BASE = "http://localhost:13000";
+  // No ALTERTABLE_MANAGEMENT_API_BASE: it would trigger env-config isolation
+  // (`_from_env`) and bypass the stored-profile OAuth session these tests set up.
+  // The mock intercepts by URL substring regardless of host.
   setCliContext({ debug: false, json: false, agent: false });
 });
 
@@ -36,6 +38,8 @@ afterEach(() => {
   delete process.env.ALTERTABLE_CONFIG_HOME;
   delete process.env.ALTERTABLE_SECRET_BACKEND;
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+  // Individual tests may set this to exercise endpoint overrides; always clean up
+  // so it can't leak into later tests and trip env-config isolation.
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
   delete process.env.ALTERTABLE_API_KEY;
 });

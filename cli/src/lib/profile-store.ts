@@ -11,6 +11,26 @@ export const FROM_ENV_PSEUDOPROFILE_NAME = "_from_env";
 
 const RESERVED_PROFILE_NAMES = new Set<string>([FROM_ENV_PSEUDOPROFILE_NAME]);
 
+export function isFromEnvProfile(name: string): boolean {
+  return name === FROM_ENV_PSEUDOPROFILE_NAME;
+}
+
+// True when the CLI is configured through environment variables. Any
+// profile-configuring var (credentials, endpoints, or environment) isolates the
+// active identity to the synthetic `_from_env` profile so no stored profile
+// value leaks in. Operational vars (ALTERTABLE_PROFILE, ALTERTABLE_CONFIG_HOME,
+// secret backend, OAuth, mock/log) are deliberately excluded.
+export function envConfigMode(): boolean {
+  return Boolean(
+    process.env.ALTERTABLE_API_KEY ||
+    process.env.ALTERTABLE_BASIC_AUTH_TOKEN ||
+    (process.env.ALTERTABLE_LAKEHOUSE_USERNAME && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD) ||
+    process.env.ALTERTABLE_ENV ||
+    process.env.ALTERTABLE_API_BASE ||
+    process.env.ALTERTABLE_MANAGEMENT_API_BASE,
+  );
+}
+
 export const PROFILE_CONFIG_KEYS = [
   "user",
   "api_key_env",
@@ -79,6 +99,10 @@ export function profileConfigFile(name: string): string {
 }
 
 export function profileExists(name: string): boolean {
+  // The env pseudo-profile has no directory; never a real stored profile.
+  if (isFromEnvProfile(name)) {
+    return false;
+  }
   return existsSync(profileDir(name));
 }
 
@@ -92,6 +116,9 @@ export function ensureProfilesLayout(): void {
 }
 
 export function getActiveProfileName(): string {
+  if (envConfigMode()) {
+    return FROM_ENV_PSEUDOPROFILE_NAME;
+  }
   ensureProfilesLayout();
   const active = kvGet(configFile(), "active_profile");
   if (active.length > 0 && profileExists(active)) {
@@ -110,6 +137,12 @@ export function setActiveProfile(name: string): void {
 }
 
 export function resolveWorkingProfile(override?: string): string {
+  // Env configuration isolates the active identity; it wins even over an
+  // explicit --profile / ALTERTABLE_PROFILE so nothing stored leaks in.
+  if (envConfigMode()) {
+    return FROM_ENV_PSEUDOPROFILE_NAME;
+  }
+
   ensureProfilesLayout();
 
   const explicit = override ?? process.env.ALTERTABLE_PROFILE ?? "";
@@ -137,6 +170,10 @@ export function listProfileNames(): string[] {
 }
 
 export function ensureProfileExists(name: string): void {
+  // The env pseudo-profile is never materialized on disk.
+  if (isFromEnvProfile(name)) {
+    return;
+  }
   assertSafeProfileName(name);
   ensureProfilesLayout();
   if (!profileExists(name)) {
@@ -145,10 +182,20 @@ export function ensureProfileExists(name: string): void {
 }
 
 export function configGet(key: string, profileName: string): string {
+  // Env config never reads stored values — the whole point of the isolation.
+  if (isFromEnvProfile(profileName)) {
+    return "";
+  }
   return kvGet(profileConfigFile(profileName), key);
 }
 
 export function configSet(key: string, value: string, profileName: string): void {
+  // The env pseudo-profile has no directory. Profile-mutating commands are
+  // refused in env mode; the only writes that reach here are internal caches
+  // (e.g. lakehouse credential expiry), which are simply ephemeral — drop them.
+  if (isFromEnvProfile(profileName)) {
+    return;
+  }
   assertSafeProfileName(profileName);
   mkdirSync(profileDir(profileName), { recursive: true });
   kvSet(profileConfigFile(profileName), key, value);
@@ -161,6 +208,9 @@ export function readProfileConfigRecord(
     ProfileConfigKey,
     string | undefined
   >;
+  if (isFromEnvProfile(name)) {
+    return config;
+  }
   for (const key of PROFILE_CONFIG_KEYS) {
     config[key] = kvGet(profileConfigFile(name), key) || undefined;
   }

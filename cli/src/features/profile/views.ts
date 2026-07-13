@@ -31,6 +31,7 @@ import type {
   ProfileInspect,
   ProfileSummary,
 } from "@/features/profile/model.ts";
+import { isFromEnvProfile } from "@/features/profile/model.ts";
 import type { ShellExportView } from "@/ui/shell/model.ts";
 
 const ACTIVE_PROFILE_MARK = "✓";
@@ -38,9 +39,16 @@ const INACTIVE_PROFILE_MARK = " ";
 const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
+  // The env pseudo-profile has no stored name/status; a heading line replaces
+  // them (see buildProfileInspectView).
+  const identityRows: DisplayRow[] = isFromEnvProfile(profile.name)
+    ? []
+    : [
+        { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
+        { label: "Status", value: profile.status },
+      ];
   return [
-    { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
-    { label: "Status", value: profile.status },
+    ...identityRows,
     { label: "Principal", value: formatProfilePrincipal(profile) },
     { label: "Organization", value: profile.organization.slug ?? "not set" },
     { label: "Environment", value: profile.environment ?? "not set" },
@@ -66,6 +74,14 @@ function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
 }
 
 export function buildProfileInspectView(profile: ProfileInspect): DisplayDocument {
+  if (isFromEnvProfile(profile.name)) {
+    return document(
+      section(
+        text([`${TERMINAL_INDENT}Configuration set from environment variables`]),
+        rows(profileInspectRows(profile)),
+      ),
+    );
+  }
   return document(section(rows(profileInspectRows(profile))));
 }
 

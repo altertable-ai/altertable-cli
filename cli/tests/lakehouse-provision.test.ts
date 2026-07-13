@@ -30,11 +30,15 @@ beforeEach(() => {
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_HTTP_LOG = logFile;
-  process.env.ALTERTABLE_API_BASE = "https://api.example.com";
-  process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
-  process.env.ALTERTABLE_API_KEY = "atm_test";
-  process.env.ALTERTABLE_ENV = "env-1";
   setCliContext({ debug: false, json: false, agent: false });
+  // Endpoints, environment, and management key live in the stored `default`
+  // profile rather than env vars: setting those vars would trigger env-config
+  // isolation (`_from_env`), which has no store to cache provisioned lakehouse
+  // credentials in. This exercises the stored-profile provisioning path.
+  configSet("api_base", "https://api.example.com", profileName);
+  configSet("management_api_base", "https://app.example.com", profileName);
+  configSet("api_key_env", "env-1", profileName);
+  secretSet("api-key", "atm_test", profileName);
   refreshCliRuntimeContext(getCliRuntime().context);
 });
 
@@ -44,10 +48,6 @@ afterEach(() => {
   delete process.env.ALTERTABLE_SECRET_BACKEND;
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
   delete process.env.ALTERTABLE_HTTP_LOG;
-  delete process.env.ALTERTABLE_API_BASE;
-  delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
-  delete process.env.ALTERTABLE_API_KEY;
-  delete process.env.ALTERTABLE_ENV;
 });
 
 function writeMocks(credentialBody: string = CREDENTIAL_BODY): void {
