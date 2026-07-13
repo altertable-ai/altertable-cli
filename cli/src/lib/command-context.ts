@@ -2,9 +2,12 @@ import type { ArgsDef, CommandContext, CommandDef, CommandMeta, Resolvable } fro
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
 
+export type AltertableCommandGroup = "platform" | "ingest" | "query";
+
 export type AltertableCommandMeta = CommandMeta & {
   examples?: readonly string[];
   hidden?: boolean;
+  commandGroup?: AltertableCommandGroup;
 };
 
 export type CommandRunContext<T extends ArgsDef = ArgsDef> = CommandContext<T> & {

@@ -258,6 +258,7 @@ export const apiCommand = defineOperationCommand<ApiInvokeInput, ApiHttpResult |
   },
   meta: {
     name: "api",
+    commandGroup: "platform",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
     examples: [
       "altertable api /whoami",
