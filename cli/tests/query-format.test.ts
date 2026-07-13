@@ -143,6 +143,14 @@ describe("formatQueryCell", () => {
     expect(formatQueryCell(requestedBy, { colorize: false })).toBe("password: [MASKED]");
   });
 
+  test("escapes terminal controls even when color is disabled", () => {
+    const output = formatQueryCell("safe\u001b]0;spoofed\u0007\nnext", { colorize: false });
+
+    expect(output).toBe("safe\\x1b]0;spoofed\\x07\\x0anext");
+    expect(output).not.toContain("\u001b");
+    expect(output).not.toContain("\u0007");
+  });
+
   test("dims false and empty string values when colorized", () => {
     enableTerminalColorForTests();
     try {

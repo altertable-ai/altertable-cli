@@ -106,6 +106,13 @@ describe("active context formatters", () => {
             lakehouse: "not set",
           },
         ]);
+        const [entry] = summaryBlock.table.rows;
+        expect(summaryBlock.table.columns.map((column) => column.cell(entry))).toEqual([
+          [{ text: "default", style: "strong" }],
+          [{ text: "production", style: "accent" }],
+          [{ text: "production", style: "muted" }],
+          [{ text: "not set", style: "muted" }],
+        ]);
       }
     });
   });

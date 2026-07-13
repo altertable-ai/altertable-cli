@@ -5,6 +5,7 @@ import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.
 import { span } from "@/ui/document.ts";
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
+const originalOscHyperlink = process.env.OSC_HYPERLINK;
 const originalStdoutIsTTY = process.stdout.isTTY;
 
 afterEach(() => {
@@ -13,6 +14,11 @@ afterEach(() => {
     delete process.env.ALTERTABLE_COLOR;
   } else {
     process.env.ALTERTABLE_COLOR = originalAltertableColor;
+  }
+  if (originalOscHyperlink === undefined) {
+    delete process.env.OSC_HYPERLINK;
+  } else {
+    process.env.OSC_HYPERLINK = originalOscHyperlink;
   }
   Object.defineProperty(process.stdout, "isTTY", {
     value: originalStdoutIsTTY,
@@ -50,6 +56,17 @@ describe("renderFixedTable", () => {
 
     expect(output).toContain("\u001b[96mabcdefghi…");
     expect(getVisibleTextWidth(output.split("\n")[1] ?? "")).toBe(10);
+  });
+
+  test("measures the rendered fallback for labeled links", () => {
+    setTerminalColorMode("never");
+    process.env.OSC_HYPERLINK = "0";
+    const output = renderFixedTable(
+      [{ label: "Docs", url: "https://example.com" }],
+      [{ header: "LINK", cell: (row) => [span(row.label, "accent", row.url)] }],
+    );
+
+    expect(output.split("\n")[1]).toBe("Docs (https://example.com)");
   });
 
   test("returns empty message for no rows", () => {

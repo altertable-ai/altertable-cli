@@ -24,7 +24,6 @@ import {
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
 import type { QueryLayout } from "@/ui/layouts/query.ts";
-import { renderRows } from "@/ui/renderers/terminal.ts";
 import { span, type DisplayTextStyle } from "@/ui/document.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
@@ -110,7 +109,7 @@ function styleQueryHeader(
   colorize: boolean,
   alignment: QueryColumnAlignment,
 ): string {
-  const truncated = truncateText(name, width);
+  const truncated = truncateText(renderDisplayText(name), width);
   const padded = padVisibleText(truncated, width, alignment);
   if (!shouldColorizeQueryCells(colorize)) {
     return padded;
@@ -207,15 +206,16 @@ function formatStringQueryCell(
   if (jsonText !== null) {
     const displayText = truncateDisplayText(jsonText, options.maxWidth);
     if (!colorize) {
-      return displayText;
+      return renderDisplayText(displayText);
     }
     return highlightJsonForTerminal(displayText, true);
   }
 
+  const safeValue = renderDisplayText(sanitized);
   const display =
     dataType === "uuid"
-      ? truncateDisplayTextMiddle(sanitized, options.maxWidth)
-      : truncateDisplayText(sanitized, options.maxWidth);
+      ? truncateDisplayTextMiddle(safeValue, options.maxWidth)
+      : truncateDisplayText(safeValue, options.maxWidth);
 
   if (!colorize) {
     return display;
@@ -361,7 +361,7 @@ function collectQueryDisplayRows(
     const values = getRowCellValues(row, columnNames, allColumnNames);
     return {
       values,
-      rawCells: values.map((value) => formatQueryCellRaw(value)),
+      rawCells: values.map((value) => renderDisplayText(formatQueryCellRaw(value))),
     };
   });
 }
@@ -387,12 +387,15 @@ function computeColumnWidths(
   maxColumnWidth: number,
 ): number[] {
   const naturalWidths = columnNames.map((name, columnIndex) => {
-    const cellWidths = formattedCells.map((cells) => cells[columnIndex]?.length ?? 0);
-    const natural = Math.max(name.length, ...cellWidths);
+    const nameWidth = getVisibleTextWidth(renderDisplayText(name));
+    const cellWidths = formattedCells.map((cells) => getVisibleTextWidth(cells[columnIndex] ?? ""));
+    const natural = Math.max(nameWidth, ...cellWidths);
     return Math.min(natural, maxColumnWidth);
   });
 
-  const minimumWidths = columnNames.map((name) => Math.min(name.length, maxColumnWidth));
+  const minimumWidths = columnNames.map((name) =>
+    Math.min(getVisibleTextWidth(renderDisplayText(name)), maxColumnWidth),
+  );
 
   const totalNatural = naturalWidths.reduce((sum, width) => sum + width, 0);
 
@@ -596,20 +599,25 @@ function renderQueryExpanded(model: QueryRenderModel, options: QueryDisplayOptio
   }
 
   const colorize = options.colorize ?? true;
-  const labelWidth = columnNames.reduce((maxWidth, name) => Math.max(maxWidth, name.length), 0) + 1;
+  const labelWidth =
+    columnNames.reduce(
+      (maxWidth, name) => Math.max(maxWidth, getVisibleTextWidth(renderDisplayText(name))),
+      0,
+    ) + 1;
   const showRowNumbers = rows.length > 1;
 
   const records = rows.map((row, rowIndex) => {
-    const displayRows = columnNames.map((name, columnIndex) => {
+    const lines = columnNames.map((name, columnIndex) => {
       const value = formatQueryCell(row.values[columnIndex], {
         colorize,
         includeRelative: true,
         columnName: name,
         columnTypeMap,
       });
-      return { label: `${name}:`, value };
+      const labelText = `${renderDisplayText(name)}:`.padEnd(labelWidth);
+      const label = renderDisplayText([span(labelText, "muted")]);
+      return `${label} ${value}`;
     });
-    const lines = renderRows(displayRows, { indent: "", labelWidth });
     const body = lines.join("\n");
     if (showRowNumbers) {
       return `${styleQueryTableChrome(`#${rowIndex + 1}`, colorize)}\n${body}`;
@@ -647,10 +655,9 @@ export function renderQueryFooter(
     footerParts.push(summary);
   }
 
-  const footer = footerParts.join("\n");
   return shouldColorizeQueryCells(options.colorize)
-    ? renderDisplayText([span(footer, "subtle")])
-    : footer;
+    ? footerParts.map((line) => renderDisplayText([span(line, "subtle")])).join("\n")
+    : footerParts.join("\n");
 }
 
 function escapeMarkdownCell(value: string): string {

@@ -270,6 +270,38 @@ function applyTerminalStyle(style: TerminalStyle, text: string): string {
   return `\u001b[${code.open}m${text}\u001b[${code.close}m`;
 }
 
+function sanitizeTerminalText(text: string): string {
+  let safe = "";
+  for (const character of text) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    const unsafe =
+      codePoint <= 0x1f ||
+      (codePoint >= 0x7f && codePoint <= 0x9f) ||
+      (codePoint >= 0x202a && codePoint <= 0x202e) ||
+      (codePoint >= 0x2066 && codePoint <= 0x2069);
+    if (!unsafe) {
+      safe += character;
+    } else if (codePoint <= 0xff) {
+      safe += `\\x${codePoint.toString(16).padStart(2, "0")}`;
+    } else {
+      safe += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+    }
+  }
+  return safe;
+}
+
+function safeHyperlinkTarget(href: string): string | null {
+  if (sanitizeTerminalText(href) !== href) {
+    return null;
+  }
+  try {
+    const protocol = new URL(href).protocol;
+    return protocol === "http:" || protocol === "https:" ? href : null;
+  } catch {
+    return null;
+  }
+}
+
 function renderHttpMethod(method: string): string {
   switch (method.toUpperCase()) {
     case "GET":
@@ -315,20 +347,23 @@ const DISPLAY_TEXT_STYLE_RENDERERS = {
 
 export function renderDisplayText(text: DisplayText): string {
   if (typeof text === "string") {
-    return text;
+    return sanitizeTerminalText(text);
   }
   return text
     .map((item) => {
-      const styled = item.style ? DISPLAY_TEXT_STYLE_RENDERERS[item.style](item.text) : item.text;
+      const safeText = sanitizeTerminalText(item.text);
+      const styled = item.style ? DISPLAY_TEXT_STYLE_RENDERERS[item.style](safeText) : safeText;
       if (!item.href) {
         return styled;
       }
-      if (shouldUseTerminalHyperlinks()) {
-        return renderLink(styled, item.href);
+      const safeHref = safeHyperlinkTarget(item.href);
+      if (safeHref !== null && shouldUseTerminalHyperlinks()) {
+        return renderLink(styled, safeHref);
       }
-      return item.text === item.href
+      const visibleHref = sanitizeTerminalText(item.href);
+      return safeText === visibleHref
         ? styled
-        : `${styled} ${applyTerminalStyle("subtle", `(${item.href})`)}`;
+        : `${styled} ${applyTerminalStyle("subtle", `(${visibleHref})`)}`;
     })
     .join("");
 }

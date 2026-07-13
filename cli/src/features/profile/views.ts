@@ -14,6 +14,7 @@ import {
   type DisplayDocument,
   type DisplayRow,
   type DisplayText,
+  type DisplayTextStyle,
 } from "@/ui/document.ts";
 import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
 import type {
@@ -470,11 +471,11 @@ function plainStatus(detail: string | null | undefined): string {
   return detail;
 }
 
-function formatStatusCell(value: string): DisplayText {
+function formatStatusCell(value: string, style: DisplayTextStyle): DisplayText {
   if (value === "not set") {
     return notConfigured();
   }
-  return value;
+  return [span(value, style)];
 }
 
 function contextSummaryRow(context: ActiveContext): ContextSummaryRow {
@@ -530,19 +531,19 @@ export function buildActiveContextSummaryView(context: ActiveContext): DisplayDo
       columns: [
         {
           header: "PROFILE",
-          cell: (entry) => formatStatusCell(entry.profile),
+          cell: (entry) => formatStatusCell(entry.profile, "strong"),
         },
         {
           header: "ENV",
-          cell: (entry) => formatStatusCell(entry.environment),
+          cell: (entry) => formatStatusCell(entry.environment, "accent"),
         },
         {
           header: "MGMT",
-          cell: (entry) => formatStatusCell(entry.management),
+          cell: (entry) => formatStatusCell(entry.management, "muted"),
         },
         {
           header: "LAKEHOUSE",
-          cell: (entry) => formatStatusCell(entry.lakehouse),
+          cell: (entry) => formatStatusCell(entry.lakehouse, "string"),
           flex: true,
         },
       ],

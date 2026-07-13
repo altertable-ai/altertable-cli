@@ -14,6 +14,7 @@ const originalNoColor = process.env.NO_COLOR;
 const originalTerm = process.env.TERM;
 const originalForceColor = process.env.FORCE_COLOR;
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
+const originalOscHyperlink = process.env.OSC_HYPERLINK;
 const originalStdoutIsTTY = process.stdout.isTTY;
 const originalStderrIsTTY = process.stderr.isTTY;
 
@@ -50,6 +51,11 @@ afterEach(() => {
     delete process.env.ALTERTABLE_COLOR;
   } else {
     process.env.ALTERTABLE_COLOR = originalAltertableColor;
+  }
+  if (originalOscHyperlink === undefined) {
+    delete process.env.OSC_HYPERLINK;
+  } else {
+    process.env.OSC_HYPERLINK = originalOscHyperlink;
   }
   Object.defineProperty(process.stdout, "isTTY", {
     value: originalStdoutIsTTY,
@@ -234,5 +240,27 @@ describe("terminal-style", () => {
     expect(renderDisplayText([span("Docs", "accent", "https://example.com")])).toContain(
       "Docs\u001b[39m \u001b[90m(https://example.com)",
     );
+  });
+
+  test("escapes terminal controls and bidirectional overrides in span text", () => {
+    setTerminalColorMode("never");
+    const output = renderDisplayText("safe\u001b]0;spoofed\u0007\nnext\u202eright");
+
+    expect(output).toBe("safe\\x1b]0;spoofed\\x07\\x0anext\\u202eright");
+    expect(output).not.toContain("\u001b");
+    expect(output).not.toContain("\u0007");
+    expect(output).not.toContain("\u202e");
+  });
+
+  test("never emits unsafe hyperlink targets", () => {
+    enableTerminalColorForTests();
+    process.env.OSC_HYPERLINK = "1";
+    const output = renderDisplayText([
+      span("Docs", "accent", "https://example.com\u0007\u001b]0;spoofed"),
+    ]);
+
+    expect(output).not.toContain("\u001b]8;;");
+    expect(output).not.toContain("\u0007");
+    expect(output).toContain("https://example.com\\x07\\x1b]0;spoofed");
   });
 });

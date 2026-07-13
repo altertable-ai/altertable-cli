@@ -88,10 +88,6 @@ export function span(text: string, style?: DisplayTextStyle, href?: string): Dis
   };
 }
 
-export function displayTextContent(text: DisplayText): string {
-  return typeof text === "string" ? text : text.map((item) => item.text).join("");
-}
-
 export function section(...blocks: readonly DisplayBlock[]): DisplaySection {
   return { blocks };
 }

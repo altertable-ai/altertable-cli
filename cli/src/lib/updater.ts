@@ -1154,13 +1154,19 @@ export function formatUpdateResult(result: UpdateCheckResult): string {
     ]);
   }
 
-  return renderDisplayText([
-    span(`A new version of altertable is available: v${normalizeVersion(result.latest_version)} `),
-    span(`(current v${normalizeVersion(result.current_version)})`, "subtle"),
-    span("\nRun "),
-    span(result.install_command, "accent"),
-    span(" to install it."),
-  ]);
+  return [
+    renderDisplayText([
+      span(
+        `A new version of altertable is available: v${normalizeVersion(result.latest_version)} `,
+      ),
+      span(`(current v${normalizeVersion(result.current_version)})`, "subtle"),
+    ]),
+    renderDisplayText([
+      span("Run "),
+      span(result.install_command, "accent"),
+      span(" to install it."),
+    ]),
+  ].join("\n");
 }
 
 export function formatUpdateStatus(interval: UpdateCheckInterval, state: UpdateState): string {

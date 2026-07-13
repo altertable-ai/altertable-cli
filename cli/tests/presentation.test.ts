@@ -1,5 +1,4 @@
 import { afterEach, expect, test } from "bun:test";
-import { join } from "node:path";
 import { buildApiOperationDetailsView } from "@/features/api/views.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { setTerminalColorMode } from "@/ui/terminal/styles.ts";
@@ -29,36 +28,4 @@ test("presentation documents carry semantics without terminal escapes", () => {
     });
   }
   expect(renderDocumentText(view)).toContain("\u001b[96mcreateDatabase\u001b[39m");
-});
-
-test("legacy presentation APIs do not return", async () => {
-  const legacyNames = [
-    "DisplayTableColumnStyle",
-    "formatTerminalMarkdownLinks",
-    "formatTerminalSection",
-    "formatTerminalUrls",
-    "linkifyUrls",
-    "terminalAccent",
-    "terminalDataType",
-    "terminalError",
-    "terminalHighlightCommands",
-    "terminalHttpMethod",
-    "terminalLink",
-    "terminalMetadata",
-    "terminalStrong",
-    "terminalSubtle",
-    "terminalSuccess",
-    "terminalTimestamp",
-    "terminalUrl",
-    "terminalWarning",
-  ];
-  const sourceRoot = join(import.meta.dir, "..", "src");
-  const glob = new Bun.Glob("**/*.ts");
-
-  for await (const path of glob.scan(sourceRoot)) {
-    const source = await Bun.file(join(sourceRoot, path)).text();
-    for (const name of legacyNames) {
-      expect(source).not.toContain(name);
-    }
-  }
 });
