@@ -1,4 +1,5 @@
 import openapiYaml from "../../openapi/openapi.yaml" with { type: "text" };
+import { parse } from "yaml";
 
 const OPENAPI_SOURCE_HEADER_PATTERN = /^# AUTO-GENERATED[^\n]*\n(?:# [^\n]*\n)*/;
 
@@ -14,7 +15,7 @@ export function getOpenapiSpecYaml(): string {
 }
 
 export function getOpenapiSpecJson(): string {
-  const document = Bun.YAML.parse(openapiYaml) as unknown;
+  const document = parse(openapiYaml) as unknown;
   return JSON.stringify(document, null, 2);
 }
 

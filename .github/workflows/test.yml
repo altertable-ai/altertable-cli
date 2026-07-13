@@ -6,30 +6,60 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  test:
-    name: Test CLI
-    runs-on: ubuntu-latest
-    services:
-      altertable:
-        image: ghcr.io/altertable-ai/altertable-mock:latest
-        ports:
-          - 15000:15000
-        env:
-          ALTERTABLE_MOCK_USERS: testuser:testpass
-        options: >-
-          --health-cmd "exit 0"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 3
-          --health-start-period 10s
+  verify:
+    name: Canonical verification
+    uses: ./.github/workflows/verify.yml
+    with:
+      ref: ${{ github.sha }}
+
+  release-matrix:
+    name: Resolve release matrix
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          submodules: recursive
+          persist-credentials: false
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Export typed release matrix
+        id: matrix
+        run: echo "matrix=$(bun run cli/scripts/release.ts matrix)" >> "$GITHUB_OUTPUT"
+
+  compile:
+    name: Compile binary (${{ matrix.artifact }})
+    needs: [verify, release-matrix]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
 
@@ -37,102 +67,22 @@ jobs:
         run: bun install --frozen-lockfile
         working-directory: cli
 
-      - name: Typecheck
-        run: bun run typecheck
+      - name: Verify release contract
+        run: bun run release:verify
         working-directory: cli
 
-      - name: Typecheck top-level tests
-        run: ./cli/node_modules/.bin/tsc -p tsconfig.tests.json
-
-      - name: Lint
-        run: bun run lint
+      - name: Compile hardened standalone binary
+        run: bun run release:build --target=${{ matrix.target }}
         working-directory: cli
-
-      - name: Check formatting
-        run: bun run format:check
-        working-directory: cli
-
-      - name: Dead code check (knip)
-        run: bun run knip
-        working-directory: cli
-
-      - name: Verify OpenAPI generated files are up to date
-        run: |
-          bun run generate
-          git diff --exit-code src/generated/openapi-types.ts src/generated/openapi-operations.ts
-        working-directory: cli
-
-      - name: Unit tests with coverage
-        run: bun run test:coverage
-        working-directory: cli
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: cli-coverage-lcov
-          path: cli/coverage/lcov.info
-          if-no-files-found: error
-
-      - name: Build JS bundle
-        run: bun run build
-        working-directory: cli
-
-      - name: Verify package contents
-        run: bun run pack:check
-        working-directory: cli
-
-      - name: Verify executable
-        run: |
-          chmod +x bin/altertable
-          bin/altertable --version
-          bin/altertable --help
-
-      - name: Run top-level CLI behavior tests
-        run: bun test "$PWD"/tests/*.test.ts
-
-      - name: Run lakehouse integration tests
-        run: bun test "$PWD"/tests/integration.e2e.ts
-
-  compile:
-    name: Compile binaries (${{ matrix.artifact }})
-    runs-on: ${{ matrix.runs-on }}
-    needs: test
-    strategy:
-      matrix:
-        include:
-          - target: bun-linux-x64
-            artifact: altertable-linux-x64
-            runs-on: ubuntu-latest
-          - target: bun-linux-arm64
-            artifact: altertable-linux-arm64
-            runs-on: ubuntu-24.04-arm
-          - target: bun-darwin-arm64
-            artifact: altertable-darwin-arm64
-            runs-on: macos-14
-          - target: bun-darwin-x64
-            artifact: altertable-darwin-x64
-            runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version-file: .bun-version
-
-      - name: Install and build
-        run: |
-          cd cli
-          bun install --frozen-lockfile
-          bun run build
-          bun build --compile --target=${{ matrix.target }} src/cli.ts --outfile ../dist/${{ matrix.artifact }}
 
       - name: Smoke test compiled binary
-        run: |
-          chmod +x dist/${{ matrix.artifact }}
-          dist/${{ matrix.artifact }} --version
-          dist/${{ matrix.artifact }} --help
+        run: bun run release:smoke --target=${{ matrix.target }}
+        working-directory: cli
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload compiled binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
           path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 7

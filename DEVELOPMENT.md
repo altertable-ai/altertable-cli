@@ -37,6 +37,7 @@ The JS bundle is the npm `bin` entry and a GitHub Release asset:
 ```bash
 cd cli
 bun run build                  # writes cli/dist/cli.js
+bun run scripts/smoke-npm-bundle.ts
 bun run pack:check             # ensures dist/ is the only packed file
 ```
 
@@ -48,26 +49,33 @@ The root `Makefile` is the easiest path. `make` (default target) detects the hos
 
 ```bash
 make                           # native binary for this host, e.g. dist/altertable-darwin-arm64
-make cross                     # cross-compile all four released targets
+make cross                     # build and checksum all released targets
 make clean                     # remove dist/ and cli/dist/
 make help                      # list targets
 ```
 
-To invoke Bun directly instead:
+The typed manifest in `cli/src/release-manifest.ts` is the single source of truth for Bun targets,
+public asset names, updater platforms, and CI runners. To invoke the release tooling directly:
 
 ```bash
 cd cli
-bun run build
-bun build --compile --target=bun-darwin-arm64 src/cli.ts --outfile ../dist/altertable-darwin-arm64
-bun build --compile --target=bun-linux-x64 src/cli.ts --outfile ../dist/altertable-linux-x64
+bun run release:verify
+bun run release:build --native
+bun run release:build --all
+bun run release:build --bundle
+bun run release:finalize
 ```
 
-Smoke-test a compiled binary:
+Release compilation requires the exact Bun version pinned in `.bun-version` and `packageManager`.
+That reproducible build-toolchain pin is intentionally independent from the npm package's
+`engines.bun` compatibility range (`>=1.1.0`). Standalone builds reject unresolved imports, disable
+automatic `.env` and Bun configuration loading, and use the baseline Linux x64 target for broad CPU
+compatibility.
+
+Smoke-test a compiled binary through the same command used by CI:
 
 ```bash
-chmod +x ../dist/altertable-linux-x64
-../dist/altertable-linux-x64 --version
-../dist/altertable-linux-x64 --help
+bun run release:smoke --target=bun-linux-x64-baseline
 ```
 
 ## Versioning
@@ -79,13 +87,40 @@ The CLI version comes from `cli/src/version.ts` (`altertable --version`). [relea
 On push to `main`, `.github/workflows/release-please.yml`:
 
 1. Opens or merges a release-please PR that bumps version and changelog.
-2. When a release is created, builds `cli/dist/cli.js`, compiles four native binaries, copies the bundle to `dist/altertable-cli.js`, writes `dist/checksums.txt` (SHA-256 for every asset), attests release assets, uploads all files to the GitHub Release, and publishes `@altertable/cli` to npm with provenance.
+2. When a release is created, keeps its GitHub Release in draft form and invokes the same reusable
+   canonical verification workflow used by branch CI for the exact release tag.
+3. Native runners compile and smoke-test each platform binary. The final job downloads those exact
+   tested bytes, builds `cli/dist/cli.js` once, stages the identical bytes as
+   `dist/altertable-cli.js`, and smoke-tests that npm bundle on both the release toolchain and Bun
+   1.1.0. It then writes artifact-specific recipes in `dist/release-manifest.json`, verifies
+   `dist/checksums.txt`, and attests and uploads every checksummed asset.
+4. npm publication is idempotent: retries skip a package version already present in the registry.
+   The completed GitHub Release becomes public only after npm publication succeeds.
 
-CI (`.github/workflows/test.yml`) runs the same `bun run build`, `bun run pack:check`, and native compile smoke tests for Linux and macOS release targets so release artifacts are verified before merge.
+Both `.github/workflows/test.yml` and the release workflow call `.github/workflows/verify.yml`, which
+runs the repository and integration gates and executes the npm bundle on the minimum supported Bun
+runtime. Branch CI then loads its native compile matrix from the typed release manifest and
+smoke-tests every Linux and macOS release target. Main-branch verification is never cancelled by a
+newer push. Workflows use explicit permissions, pinned runners/actions, concurrency controls, and job
+timeouts; behavioral probes live in checked-in scripts rather than inline workflow programs.
 
 ### npm publish
 
-The `@altertable/cli` package is published to npm on each release by `.github/workflows/release-please.yml` using the `NPM_TOKEN` repository secret and npm provenance. Install globally with `npm install -g @altertable/cli`; npm installs require Bun at runtime, while prebuilt binaries do not.
+The `@altertable/cli` package is published to npm on each release by `.github/workflows/release-please.yml` through npm trusted publishing. The workflow uses GitHub Actions OIDC, carries no long-lived npm publishing token, and receives automatic npm provenance. Install globally with `npm install -g @altertable/cli`; npm installs require Bun at runtime, while prebuilt binaries do not.
+
+The npm package trust relationship must authorize GitHub repository
+`altertable-ai/altertable-cli`, workflow file `release-please.yml`, and the `npm publish`
+action. The cutover is intentionally staged:
+
+1. Configure that trusted publisher on npm before merging the tokenless workflow.
+2. Publish the next release and verify its npm provenance points to the expected
+   GitHub Actions run.
+3. Set npm publishing access to require 2FA and disallow token publishing.
+4. Delete the unused `NPM_TOKEN` GitHub Actions secret and revoke its npm token.
+
+Do not perform steps 3–4 until an OIDC publication succeeds. This preserves the
+rollback path during migration without allowing the workflow to fall back to the
+long-lived token.
 
 ### Update installer
 
@@ -156,7 +191,7 @@ Integration tests against the mock server:
 ```bash
 docker run -d --rm --name at-mock -p 15000:15000 \
   -e ALTERTABLE_MOCK_USERS=testuser:testpass \
-  ghcr.io/altertable-ai/altertable-mock:latest
+  ghcr.io/altertable-ai/altertable-mock@sha256:2e85cecd30b582a28196fc7574b2c7ae323378ccf40abfe658e2692270799977
 bun test "$PWD"/tests/integration.e2e.ts
 docker stop at-mock
 ```

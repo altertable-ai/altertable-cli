@@ -551,7 +551,7 @@ export function detectReleasePlatform(
 }
 
 export function releaseAssetName(platform: ReleasePlatform): string {
-  return `${UpdaterConfig.binaryAssetPrefix}-${platform}`;
+  return UpdaterConfig.releasePlatforms[platform].asset;
 }
 
 function readGitHubAsset(data: unknown): { name: string; downloadUrl: string } | undefined {

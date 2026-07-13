@@ -38,7 +38,7 @@ check_mock_server() {
     echo "✗ integration requires mock server at http://0.0.0.0:15000" >&2
     echo "  Start with: docker run -d --rm --name at-mock -p 15000:15000 \\" >&2
     echo "    -e ALTERTABLE_MOCK_USERS=testuser:testpass \\" >&2
-    echo "    ghcr.io/altertable-ai/altertable-mock:latest" >&2
+    echo "    ghcr.io/altertable-ai/altertable-mock@sha256:2e85cecd30b582a28196fc7574b2c7ae323378ccf40abfe658e2692270799977" >&2
     exit 1
   fi
 }
@@ -67,9 +67,7 @@ cd "${REPO_ROOT}/cli"
 run_step "build" bun run build
 run_step "pack:check" bun run pack:check
 
-chmod +x "${REPO_ROOT}/bin/altertable"
-run_step "altertable --version" "${REPO_ROOT}/bin/altertable" --version
-run_step "altertable --help" "${REPO_ROOT}/bin/altertable" --help
+run_step "npm bundle smoke test" bun run scripts/smoke-npm-bundle.ts
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server
