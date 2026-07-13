@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { chmodSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -13,8 +12,8 @@ import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { terminalMetadata } from "@/ui/terminal/styles.ts";
-import { document, rows, section, text, type DisplayRow } from "@/ui/document.ts";
+import { terminalAccent, terminalMetadata, terminalSuccess } from "@/ui/terminal/styles.ts";
+import { document, rows, section, type DisplayRow } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import {
   UpdaterInstallManagers,
@@ -240,9 +239,13 @@ function updaterStateFile(): string {
 
 function writeJsonFileAtomic(filePath: string, data: unknown): void {
   mkdirSync(dirname(filePath), { recursive: true });
-  const tmpPath = join(tmpdir(), `altertable-update-${randomBytes(8).toString("hex")}`);
-  writeFileSync(tmpPath, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
-  renameSync(tmpPath, filePath);
+  const tmpPath = tempSiblingPath(filePath, "update");
+  try {
+    writeFileSync(tmpPath, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+    renameSync(tmpPath, filePath);
+  } finally {
+    rmSync(tmpPath, { force: true });
+  }
   try {
     chmodSync(filePath, 0o600);
   } catch {
@@ -796,13 +799,7 @@ function resolveInstallMethodForInstallation(
   if (installation.kind === UpdaterInstallationKind.nativeBinary) {
     return UpdaterInstallMethod.githubBinary;
   }
-  if (installation.kind === UpdaterInstallationKind.packageManager) {
-    return UpdaterInstallMethod.packageManager;
-  }
-  throw new CliError("Automatic CLI install is not supported for this checkout.", {
-    details:
-      "Source checkouts should be updated with git, or pass --install-method package-manager to install the published package globally.",
-  });
+  return UpdaterInstallMethod.packageManager;
 }
 
 function spawnOutputText(value: unknown): string {
@@ -819,20 +816,21 @@ export function verifyInstalledCliVersion(
   expectedVersion: string,
   command = "altertable",
   spawnImpl: SpawnSyncImpl = spawnSync,
+  description = "Installed altertable",
 ): string {
   const result = spawnImpl(command, ["--version"], { encoding: "utf8" });
   if (result.error) {
-    throw new CliError(`Unable to verify installed altertable version.`, { cause: result.error });
+    throw new CliError(`Unable to verify ${description.toLowerCase()} version.`, {
+      cause: result.error,
+    });
   }
   if (result.status !== 0) {
-    throw new CliError(
-      `Installed altertable version check failed with exit code ${result.status ?? 1}.`,
-    );
+    throw new CliError(`${description} version check failed with exit code ${result.status ?? 1}.`);
   }
   const installedVersion = normalizeVersion(spawnOutputText(result.stdout).trim());
   if (compareVersions(installedVersion, expectedVersion) !== 0) {
     throw new CliError(
-      `Installed altertable version is ${installedVersion || "unknown"}, expected ${normalizeVersion(
+      `${description} version is ${installedVersion || "unknown"}, expected ${normalizeVersion(
         expectedVersion,
       )}.`,
     );
@@ -936,18 +934,27 @@ export async function installGitHubBinaryRelease(
     timeoutMs,
     fetchImpl,
   });
-  replaceFileAtomically(targetPath, tempPath);
+  try {
+    const verifiedVersion =
+      options.verify === false
+        ? release.version
+        : verifyInstalledCliVersion(
+            release.version,
+            tempPath,
+            options.spawnImpl,
+            "Downloaded altertable",
+          );
+    replaceFileAtomically(targetPath, tempPath);
 
-  const verifiedVersion =
-    options.verify === false
-      ? release.version
-      : verifyInstalledCliVersion(release.version, targetPath, options.spawnImpl);
-  return {
-    installed_version: release.version,
-    verified_version: verifiedVersion,
-    method: UpdaterInstallMethod.githubBinary,
-    target_path: targetPath,
-  };
+    return {
+      installed_version: release.version,
+      verified_version: verifiedVersion,
+      method: UpdaterInstallMethod.githubBinary,
+      target_path: targetPath,
+    };
+  } finally {
+    rmSync(tempPath, { force: true });
+  }
 }
 
 export function runInstallPlan(plan: InstallPlan, options: RunInstallPlanOptions = {}): string {
@@ -1015,18 +1022,10 @@ export function recommendedInstallCommand(
   version: string,
   installation: CurrentInstallation = detectCurrentInstallation(),
 ): string {
-  try {
-    const method = resolveInstallMethodForInstallation(
-      UpdaterConfig.defaults.installMethod,
-      installation,
-    );
-    if (method === UpdaterInstallMethod.githubBinary) {
-      return UpdaterConfig.commands.selfUpdate;
-    }
-  } catch {
-    return UpdaterConfig.commands.packageManagerUpdate;
+  if (installation.kind === UpdaterInstallationKind.packageManager) {
+    return createInstallPlan(version).display;
   }
-  return createInstallPlan(version).display;
+  return UpdaterConfig.commands.selfUpdate;
 }
 
 export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<UpdateCheckResult> {
@@ -1073,6 +1072,29 @@ export function shouldRunAutomaticUpdateCheck(options: {
   now?: Date;
   stderrIsTTY?: boolean;
 }): boolean {
+  if (!shouldShowAutomaticUpdateNotice(options)) {
+    return false;
+  }
+
+  const interval = getUpdateCheckInterval();
+  const state = options.state ?? readUpdateState();
+  if (!state.last_checked_at) {
+    return true;
+  }
+
+  const previous = Date.parse(state.last_checked_at);
+  if (Number.isNaN(previous)) {
+    return true;
+  }
+  const now = options.now ?? new Date();
+  return now.getTime() - previous >= intervalMs(interval);
+}
+
+function shouldShowAutomaticUpdateNotice(options: {
+  context: CliContext;
+  commandName?: string;
+  stderrIsTTY?: boolean;
+}): boolean {
   if (isJsonOutput(options.context) || options.context.debug) {
     return false;
   }
@@ -1097,73 +1119,62 @@ export function shouldRunAutomaticUpdateCheck(options: {
   if (interval === "never") {
     return false;
   }
+  return true;
+}
 
-  const state = options.state ?? readUpdateState();
-  if (!state.last_checked_at) {
-    return true;
-  }
-
-  const previous = Date.parse(state.last_checked_at);
-  if (Number.isNaN(previous)) {
-    return true;
-  }
-  const now = options.now ?? new Date();
-  return now.getTime() - previous >= intervalMs(interval);
+function writeAutomaticUpdateNotice(sink: OutputSink, latestVersion: string): void {
+  sink.writeMetadata([
+    "",
+    terminalMetadata(`Update available: altertable ${latestVersion} (current ${VERSION}).`),
+    terminalMetadata(`Run ${recommendedInstallCommand(latestVersion)} to install it.`),
+  ]);
 }
 
 export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Promise<void> {
-  if (!shouldRunAutomaticUpdateCheck(options)) {
-    return;
-  }
-
-  const sink = options.sink ?? getOutputSink();
   try {
-    const result = await checkForUpdate({
-      source: options.source,
-      fetchImpl: options.fetchImpl,
-      timeoutMs: options.timeoutMs ?? UpdaterConfig.timeoutsMs.automatic,
-    });
-    if (!result.update_available) {
+    if (!shouldShowAutomaticUpdateNotice(options)) {
       return;
     }
 
-    sink.writeMetadata([
-      "",
-      terminalMetadata(
-        `Update available: altertable ${result.latest_version} (current ${result.current_version}).`,
-      ),
-      terminalMetadata(`Run ${result.install_command} or ${UpdaterConfig.commands.selfUpdate}.`),
-    ]);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown update check error.";
+    const sink = options.sink ?? getOutputSink();
     const previous = readUpdateState();
-    tryWriteUpdateState({
-      ...previous,
-      last_checked_at: new Date().toISOString(),
-      last_error: message,
-    });
+    let latestVersion = previous.latest_version;
+
+    if (shouldRunAutomaticUpdateCheck({ ...options, state: previous })) {
+      try {
+        const result = await checkForUpdate({
+          source: options.source,
+          fetchImpl: options.fetchImpl,
+          timeoutMs: options.timeoutMs ?? UpdaterConfig.timeoutsMs.automatic,
+        });
+        latestVersion = result.latest_version;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown update check error.";
+        tryWriteUpdateState({
+          ...previous,
+          last_checked_at: new Date().toISOString(),
+          last_error: message,
+        });
+      }
+    }
+
+    if (latestVersion && compareVersions(latestVersion, VERSION) > 0) {
+      writeAutomaticUpdateNotice(sink, latestVersion);
+    }
+  } catch {
+    // Automatic update notices must never interrupt the command being run.
   }
 }
 
 export function formatUpdateResult(result: UpdateCheckResult): string {
   if (!result.update_available) {
-    return `altertable is up to date (${result.current_version}).`;
+    return `${terminalSuccess("Congrats!")} You're already on the latest version of altertable ${terminalMetadata(`(which is v${normalizeVersion(result.current_version)})`)}`;
   }
 
-  return renderDocumentText(
-    document(
-      section(
-        text([
-          `altertable ${result.latest_version} is available (current ${result.current_version}).`,
-        ]),
-        rows([
-          { label: "Install:", value: result.install_command },
-          { label: "Release:", value: result.release_url, linkifyUrls: true },
-        ]),
-      ),
-    ),
-    { labelWidth: "Release:".length },
-  );
+  return [
+    `A new version of altertable is available: v${normalizeVersion(result.latest_version)} ${terminalMetadata(`(current v${normalizeVersion(result.current_version)})`)}`,
+    `Run ${terminalAccent(result.install_command)} to install it.`,
+  ].join("\n");
 }
 
 export function formatUpdateStatus(interval: UpdateCheckInterval, state: UpdateState): string {
