@@ -41,6 +41,7 @@ import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegatio
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { terminalError, applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
+import { validateEnvironment } from "@/lib/env.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -161,6 +162,7 @@ async function bootstrap(): Promise<void> {
   setCliContext(earlyContext);
 
   try {
+    validateEnvironment();
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);

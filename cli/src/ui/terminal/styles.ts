@@ -1,3 +1,5 @@
+import { readEnv, setEnv, unsetEnv } from "@/lib/env.ts";
+
 const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/g;
 const URL_PATTERN = /https?:\/\/[^\s)>\]]+/g;
@@ -56,30 +58,31 @@ export function setTerminalColorMode(mode: TerminalColorMode | undefined): void 
 export function applyTerminalColorFromContext(context: { noColor?: boolean }): void {
   if (context.noColor) {
     setTerminalColorMode("never");
-    process.env.NO_COLOR = "1";
+    setEnv("noColor", "1");
     noColorEnvSetByCli = true;
     return;
   }
   setTerminalColorMode(undefined);
   if (noColorEnvSetByCli) {
-    delete process.env.NO_COLOR;
+    unsetEnv("noColor");
     noColorEnvSetByCli = false;
   }
 }
 
 export function ensurePromptColorAlignment(): void {
   if (!shouldUseTerminalColor()) {
-    process.env.NO_COLOR = "1";
+    setEnv("noColor", "1");
   }
 }
 
 function readEnvColorMode(): TerminalColorMode | undefined {
-  const env = globalThis.process?.env ?? {};
-  const value = env.ALTERTABLE_COLOR?.trim().toLowerCase();
-  if (value === "always" || value === "never" || value === "auto") {
-    return value;
+  try {
+    return readEnv("color");
+  } catch {
+    // Error rendering must remain available while startup validation reports
+    // an invalid ALTERTABLE_COLOR value.
+    return undefined;
   }
-  return undefined;
 }
 
 function resolveTerminalColorMode(): TerminalColorMode {
@@ -90,11 +93,12 @@ function resolveTerminalColorMode(): TerminalColorMode {
   if (envMode !== undefined) {
     return envMode;
   }
-  const env = globalThis.process?.env ?? {};
-  if (env.NO_COLOR === "1" || env.FORCE_COLOR === "0") {
+  const noColor = readEnv("noColor");
+  const forceColor = readEnv("forceColor");
+  if (noColor === "1" || forceColor === "0") {
     return "never";
   }
-  if (env.FORCE_COLOR === "1" || env.FORCE_COLOR === "2" || env.FORCE_COLOR === "3") {
+  if (forceColor === "1" || forceColor === "2" || forceColor === "3") {
     return "always";
   }
   return "auto";
@@ -112,8 +116,7 @@ export function shouldUseTerminalColor(): boolean {
   if (mode === "always") {
     return true;
   }
-  const env = globalThis.process?.env ?? {};
-  if (env.TERM === "dumb" || Boolean(env.TEST) || Boolean(env.CI)) {
+  if (readEnv("term") === "dumb" || Boolean(readEnv("test")) || Boolean(readEnv("ci"))) {
     return false;
   }
   return isInteractiveTerminal();
@@ -123,18 +126,17 @@ export function shouldUseTerminalHyperlinks(): boolean {
   if (!shouldUseTerminalColor()) {
     return false;
   }
-  const env = globalThis.process?.env ?? {};
-  const override = env.OSC_HYPERLINK?.trim().toLowerCase();
+  const override = readEnv("oscHyperlink");
   if (override === "0" || override === "false") {
     return false;
   }
   if (override === "1" || override === "true") {
     return true;
   }
-  if (env.SSH_CONNECTION && env.TERM_PROGRAM !== "Apple_Terminal") {
+  const termProgram = readEnv("termProgram");
+  if (readEnv("sshConnection") && termProgram !== "Apple_Terminal") {
     return false;
   }
-  const termProgram = env.TERM_PROGRAM;
   if (
     termProgram === "iTerm.app" ||
     termProgram === "Apple_Terminal" ||
@@ -144,7 +146,7 @@ export function shouldUseTerminalHyperlinks(): boolean {
   ) {
     return true;
   }
-  if (env.WT_SESSION || env.GHOSTTY_RESOURCES_DIR) {
+  if (readEnv("wtSession") || readEnv("ghosttyResourcesDir")) {
     return true;
   }
   return isInteractiveTerminal();

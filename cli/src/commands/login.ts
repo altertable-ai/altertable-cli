@@ -23,6 +23,7 @@ import {
   updateProfile,
 } from "@/features/profile/model.ts";
 import { terminalSuccess } from "@/ui/terminal/styles.ts";
+import { readEnv, setEnv } from "@/lib/env.ts";
 
 function isInteractiveTerminal(): boolean {
   return process.stdin.isTTY;
@@ -143,7 +144,7 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
   if (!url) {
     return;
   }
-  const envOverride = process.env.ALTERTABLE_MANAGEMENT_API_BASE;
+  const envOverride = readEnv("managementApiBase");
   if (envOverride && envOverride !== url) {
     throw new ConfigurationError(
       `ALTERTABLE_MANAGEMENT_API_BASE=${envOverride} overrides --control-plane-url=${url}. Unset the environment variable or make them match.`,
@@ -153,10 +154,10 @@ export function applyControlPlaneOverride(args: LoginArgs): void {
     // resolveManagementApiRoot re-validates the URL on every read using this env
     // var, so set it too — otherwise an http:// root would fail the very next
     // read (whoami, and later commands in this process).
-    process.env.ALTERTABLE_ALLOW_INSECURE_HTTP = "1";
+    setEnv("allowInsecureHttp", "1");
   }
   assertAllowedApiBase(url, { allowInsecureHttp: Boolean(args["allow-insecure-http"]) });
-  process.env.ALTERTABLE_MANAGEMENT_API_BASE = url;
+  setEnv("managementApiBase", url);
 }
 
 // Profile-free on purpose: the minted token — not the current profile's stored

@@ -1,6 +1,7 @@
 import { configGet } from "@/lib/config.ts";
 import { CliError, ConfigurationError, EXIT_CONFIG } from "@/lib/errors.ts";
 import { secretGet } from "@/lib/secrets.ts";
+import { readEnv } from "@/lib/env.ts";
 
 export function basicAuthToken(user: string, password: string): string {
   return Buffer.from(`${user}:${password}`).toString("base64");
@@ -28,13 +29,13 @@ function storedLakehouseCredentialsExpired(profileName: string): boolean {
 }
 
 function lakehouseEnvAuthHeader(): string | undefined {
-  const envToken = process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
+  const envToken = readEnv("basicAuthToken");
   if (envToken) {
     return basicAuthHeader(envToken);
   }
 
-  const envUser = process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
-  const envPassword = process.env.ALTERTABLE_LAKEHOUSE_PASSWORD;
+  const envUser = readEnv("lakehouseUsername");
+  const envPassword = readEnv("lakehousePassword");
   if (envUser && envPassword) {
     return basicAuthHeader(basicAuthToken(envUser, envPassword));
   }
@@ -92,7 +93,7 @@ export function getLoginLakehouseCredentials(
 }
 
 export function getManagementAuthHeader(profileName: string): string {
-  const envKey = process.env.ALTERTABLE_API_KEY ?? "";
+  const envKey = readEnv("apiKey") ?? "";
   if (envKey) {
     return `Authorization: Bearer ${envKey}`;
   }
@@ -112,7 +113,7 @@ export function getManagementAuthHeader(profileName: string): string {
 }
 
 function managementEnv(profileName: string): string {
-  return process.env.ALTERTABLE_ENV ?? configGet("api_key_env", profileName);
+  return readEnv("environment") ?? configGet("api_key_env", profileName);
 }
 
 export function requireManagementEnv(profileName: string): string {

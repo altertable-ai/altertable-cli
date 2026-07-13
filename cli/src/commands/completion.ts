@@ -23,6 +23,7 @@ import {
   terminalSuccess,
 } from "@/ui/terminal/styles.ts";
 import { buildCompletionSpec } from "@/lib/completion-spec.ts";
+import { readEnv } from "@/lib/env.ts";
 import {
   formatBashCompletion,
   formatFishCompletion,
@@ -107,7 +108,8 @@ function resolveShell(shell: unknown): SupportedShell {
     throw new CliError(`Unsupported shell: ${shell}. Use ${formatSupportedShells()}.`);
   }
 
-  const detectedShell = process.env.SHELL ? getShellName(process.env.SHELL) : "";
+  const envShell = readEnv("shell");
+  const detectedShell = envShell ? getShellName(envShell) : "";
   if (isSupportedShell(detectedShell)) {
     return detectedShell;
   }
@@ -118,15 +120,15 @@ function resolveShell(shell: unknown): SupportedShell {
 }
 
 function envHome(): string {
-  return process.env.HOME || homedir();
+  return readEnv("home") ?? homedir();
 }
 
 function xdgDataHome(): string {
-  return process.env.XDG_DATA_HOME || join(envHome(), ".local", "share");
+  return readEnv("xdgDataHome") ?? join(envHome(), ".local", "share");
 }
 
 function xdgConfigHome(): string {
-  return process.env.XDG_CONFIG_HOME || join(envHome(), ".config");
+  return readEnv("xdgConfigHome") ?? join(envHome(), ".config");
 }
 
 function shellQuote(value: string): string {

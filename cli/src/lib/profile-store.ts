@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet } from "@/lib/config-files.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
+import { readEnv } from "@/lib/env.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
 
@@ -22,12 +23,12 @@ export function isFromEnvProfile(name: string): boolean {
 // secret backend, OAuth, mock/log) are deliberately excluded.
 export function envConfigMode(): boolean {
   return Boolean(
-    process.env.ALTERTABLE_API_KEY ||
-    process.env.ALTERTABLE_BASIC_AUTH_TOKEN ||
-    (process.env.ALTERTABLE_LAKEHOUSE_USERNAME && process.env.ALTERTABLE_LAKEHOUSE_PASSWORD) ||
-    process.env.ALTERTABLE_ENV ||
-    process.env.ALTERTABLE_API_BASE ||
-    process.env.ALTERTABLE_MANAGEMENT_API_BASE,
+    readEnv("apiKey") ||
+    readEnv("basicAuthToken") ||
+    (readEnv("lakehouseUsername") && readEnv("lakehousePassword")) ||
+    readEnv("environment") ||
+    readEnv("apiBase") ||
+    readEnv("managementApiBase"),
   );
 }
 
@@ -145,7 +146,7 @@ export function resolveWorkingProfile(override?: string): string {
 
   ensureProfilesLayout();
 
-  const explicit = override ?? process.env.ALTERTABLE_PROFILE ?? "";
+  const explicit = override ?? readEnv("profile") ?? "";
 
   if (explicit.length > 0) {
     assertSafeProfileName(explicit);

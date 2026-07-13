@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { readEnv } from "@/lib/env.ts";
 
 function trim(value: string): string {
   return value.trim();
@@ -11,11 +12,11 @@ function tempSiblingPath(filePath: string): string {
 }
 
 export function configDir(): string {
-  const override = process.env.ALTERTABLE_CONFIG_HOME;
+  const override = readEnv("configHome");
   if (override) {
     return override;
   }
-  const xdg = process.env.XDG_CONFIG_HOME ?? join(process.env.HOME ?? "", ".config");
+  const xdg = readEnv("xdgConfigHome") ?? join(readEnv("home") ?? "", ".config");
   return join(xdg, "altertable");
 }
 
