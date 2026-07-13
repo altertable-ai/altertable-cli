@@ -5,6 +5,7 @@ import { httpSend } from "@/lib/http.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { terminalMetadata } from "@/ui/terminal/styles.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
+import { readEnv } from "@/lib/env.ts";
 
 const LOGIN_TIMEOUT_MS = 180_000;
 
@@ -16,11 +17,11 @@ export type TokenResponse = {
 };
 
 export function oauthClientId(): string {
-  return process.env.ALTERTABLE_OAUTH_CLIENT_ID || "altertable_cli";
+  return readEnv("ALTERTABLE_OAUTH_CLIENT_ID") ?? "altertable_cli";
 }
 
 export function oauthScope(): string {
-  return process.env.ALTERTABLE_OAUTH_SCOPE ?? "management";
+  return readEnv("ALTERTABLE_OAUTH_SCOPE") ?? "management";
 }
 
 export type CallbackOutcome = { ok: true; code: string } | { ok: false; message: string };
@@ -174,9 +175,7 @@ export async function refreshAccessToken(
 }
 
 function redirectPort(): number {
-  const raw = process.env.ALTERTABLE_OAUTH_REDIRECT_PORT;
-  const parsed = raw ? Number.parseInt(raw, 10) : 0;
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return readEnv("ALTERTABLE_OAUTH_REDIRECT_PORT") ?? 0;
 }
 
 export type LoopbackServer = {

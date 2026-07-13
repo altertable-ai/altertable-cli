@@ -9,6 +9,7 @@ import {
   terminalStrong,
 } from "@/ui/terminal/styles.ts";
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
+import { readEnv } from "@/lib/env.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -205,7 +206,7 @@ function getHelpTerminalWidth(): number {
     return columns;
   }
 
-  const environmentColumns = Number.parseInt(globalThis.process?.env?.COLUMNS ?? "", 10);
+  const environmentColumns = Number.parseInt(readEnv("COLUMNS") ?? "", 10);
   return Number.isFinite(environmentColumns) && environmentColumns > 0
     ? environmentColumns
     : HELP_FALLBACK_TERMINAL_WIDTH;

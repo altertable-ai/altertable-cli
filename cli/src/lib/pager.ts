@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { getQueryDefaultPager } from "@/lib/config.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import { getVisibleTextWidth } from "@/ui/terminal/styles.ts";
+import { copyProcessEnv } from "@/lib/env.ts";
 
 export type PagerMode = "auto" | "always" | "never";
 
@@ -35,7 +36,7 @@ export function shouldUsePager(text: string, options: PagerOptions): boolean {
   return lineCount > rows || hasWideLine;
 }
 
-export function buildPagerEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function buildPagerEnv(env: NodeJS.ProcessEnv = copyProcessEnv()): NodeJS.ProcessEnv {
   return { ...env, LESS: "FRX", LESSCHARSET: env.LESSCHARSET ?? "utf-8" };
 }
 

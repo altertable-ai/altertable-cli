@@ -75,18 +75,6 @@ export const UpdaterConfig = {
     checkInterval: "update_check_interval",
   },
   defaults: UpdaterDefault,
-  env: {
-    source: "ALTERTABLE_UPDATE_SOURCE",
-    registryUrl: "ALTERTABLE_UPDATE_REGISTRY_URL",
-    githubRepo: "ALTERTABLE_UPDATE_GITHUB_REPO",
-    installer: "ALTERTABLE_UPDATE_INSTALLER",
-    installMethod: "ALTERTABLE_UPDATE_INSTALL_METHOD",
-    noUpdateCheck: "ALTERTABLE_NO_UPDATE_CHECK",
-    updateCheck: "ALTERTABLE_UPDATE_CHECK",
-    bunInstall: "BUN_INSTALL",
-    ci: "CI",
-    test: "TEST",
-  },
   sources: UpdaterSourceConfig,
   timeoutsMs: {
     automatic: 900,
@@ -125,5 +113,4 @@ export type InstallationKind =
 
 export const UpdaterSources = objectKeys(UpdaterConfig.sources);
 export const UpdaterCheckIntervals = objectKeys(UpdaterConfig.intervalsMs);
-export const UpdaterInstallManagers = objectKeys(UpdaterConfig.installCommands);
 export const UpdaterInstallMethods = objectKeys(UpdaterConfig.installMethods);

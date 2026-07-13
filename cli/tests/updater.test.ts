@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 import {
   checkForUpdate,
   compareVersions,
@@ -563,8 +564,8 @@ describe("automatic update checks", () => {
     expect(detectInstallManager({ npm_config_user_agent: "pnpm/9.0.0 npm/? node/?" })).toBe("pnpm");
     expect(detectInstallManager({ BUN_INSTALL: "/tmp/bun" })).toBe("bun");
     expect(detectInstallManager({ ALTERTABLE_UPDATE_INSTALLER: "yarn" })).toBe("yarn");
-    expect(detectInstallManager({ ALTERTABLE_UPDATE_INSTALLER: "invalid" })).toBe(
-      UpdaterConfig.defaults.installManager,
+    expect(() => detectInstallManager({ ALTERTABLE_UPDATE_INSTALLER: "invalid" })).toThrow(
+      ConfigurationError,
     );
   });
 
@@ -753,9 +754,9 @@ describe("update command", () => {
     expect(UpdaterInstallMethods).toContain("github-binary");
   });
 
-  test("falls back to configured source default for invalid environment override", () => {
+  test("rejects an invalid source environment override", () => {
     process.env.ALTERTABLE_UPDATE_SOURCE = "invalid";
 
-    expect(resolveUpdateSource()).toBe(UpdaterConfig.defaults.source);
+    expect(() => resolveUpdateSource()).toThrow(ConfigurationError);
   });
 });
