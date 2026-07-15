@@ -46,7 +46,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      contents: read
+      # Draft releases are only returned to callers with push-level access.
+      contents: write
     outputs:
       should_release: ${{ steps.context.outputs.should_release }}
       tag_name: ${{ steps.context.outputs.tag_name }}
@@ -70,11 +71,25 @@ jobs:
               exit 1
             fi
 
-            release_json="$(gh release view "${RECOVERY_TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft,targetCommitish)"
-            is_draft="$(jq -r '.isDraft' <<<"${release_json}")"
-            release_ref="$(jq -r '.targetCommitish' <<<"${release_json}")"
+            releases_json="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+            matching_releases="$(
+              jq -c --arg tag "${RECOVERY_TAG}" \
+                '[.[][] | select(.tag_name == $tag)]' <<<"${releases_json}"
+            )"
+            match_count="$(jq -r 'length' <<<"${matching_releases}")"
+            if [[ "${match_count}" == "0" ]]; then
+              echo "::error::Release ${RECOVERY_TAG} was not found"
+              exit 1
+            fi
+            if [[ "${match_count}" != "1" ]]; then
+              echo "::error::Release ${RECOVERY_TAG} is ambiguous (${match_count} matches)"
+              exit 1
+            fi
+
+            is_draft="$(jq -r '.[0].draft' <<<"${matching_releases}")"
+            release_ref="$(jq -r '.[0].target_commitish' <<<"${matching_releases}")"
             if [[ "${is_draft}" != "true" ]]; then
-              echo "::error::Release ${RECOVERY_TAG} is not a draft"
+              echo "::error::Release ${RECOVERY_TAG} is already published"
               exit 1
             fi
             if [[ ! "${release_ref}" =~ ^[0-9a-f]{40}$ ]]; then
