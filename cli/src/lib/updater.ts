@@ -124,6 +124,7 @@ type RunInstallPlanOptions = {
   stdio?: "inherit" | "pipe";
   spawnImpl?: SpawnSyncImpl;
   verifyCommand?: string;
+  verifyGlobalInstall?: boolean;
   verify?: boolean;
   expectedVersion?: string;
 };
@@ -942,7 +943,8 @@ export async function installGitHubBinaryRelease(
 
 export function runInstallPlan(plan: InstallPlan, options: RunInstallPlanOptions = {}): string {
   const stdio = options.stdio ?? "inherit";
-  const result = (options.spawnImpl ?? spawnSync)(plan.command, plan.args, { stdio });
+  const spawnImpl = options.spawnImpl ?? spawnSync;
+  const result = spawnImpl(plan.command, plan.args, { stdio });
   if (result.error) {
     throw new CliError(`Unable to run ${plan.command}.`, { cause: result.error });
   }
@@ -959,11 +961,44 @@ export function runInstallPlan(plan: InstallPlan, options: RunInstallPlanOptions
   if (options.verify === false) {
     return normalizeVersion(options.expectedVersion ?? "");
   }
+  const verifyCommand =
+    options.verifyCommand ??
+    (options.verifyGlobalInstall
+      ? resolveGlobalInstalledCliPath(plan.manager, spawnImpl)
+      : "altertable");
   return verifyInstalledCliVersion(
     options.expectedVersion ?? plan.args[plan.args.length - 1]?.split("@").pop() ?? "",
-    options.verifyCommand ?? "altertable",
-    options.spawnImpl,
+    verifyCommand,
+    spawnImpl,
   );
+}
+
+function resolveGlobalInstalledCliPath(manager: InstallManager, spawnImpl: SpawnSyncImpl): string {
+  const config = UpdaterConfig.installCommands[manager];
+  const result = spawnImpl(config.command, [...config.globalBinArgs], { encoding: "utf8" });
+  if (result.error) {
+    throw new CliError(`Unable to locate the ${manager} global binary directory.`, {
+      cause: result.error,
+    });
+  }
+  if (result.status !== 0) {
+    throw new CliError(
+      `${manager} global binary directory lookup failed with exit code ${result.status ?? 1}.`,
+    );
+  }
+  const outputPath = spawnOutputText(result.stdout).trim();
+  if (!outputPath) {
+    throw new CliError(`${manager} did not report its global binary directory.`);
+  }
+  const binDirectory =
+    "globalBinIsPrefix" in config && config.globalBinIsPrefix && process.platform !== "win32"
+      ? join(outputPath, "bin")
+      : outputPath;
+  const executableName =
+    process.platform === "win32"
+      ? `${UpdaterConfig.executableName}.cmd`
+      : UpdaterConfig.executableName;
+  return join(binDirectory, executableName);
 }
 
 function installPackageManagerRelease(
@@ -975,6 +1010,7 @@ function installPackageManagerRelease(
     stdio: options.stdio,
     spawnImpl: options.spawnImpl,
     expectedVersion: version,
+    verifyGlobalInstall: options.installation?.kind === UpdaterInstallationKind.source,
     verify: options.verify,
   });
   return {
@@ -998,7 +1034,7 @@ export async function installCliUpdate(
     return await installGitHubBinaryRelease(version, { ...options, installation });
   }
 
-  return installPackageManagerRelease(version, options);
+  return installPackageManagerRelease(version, { ...options, installation });
 }
 
 export function recommendedInstallCommand(

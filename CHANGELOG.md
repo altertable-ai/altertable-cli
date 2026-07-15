@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Simplify `altertable update` to install by default, add `--check` mode, describe explicit older targets accurately, and resolve compiled self-update paths reliably.
+- Simplify `altertable update` to install by default, add `--check` mode, preserve inherited global flags, resolve compiled self-update paths safely, and verify source-checkout updates through the package manager's global binary.
 
 ## [1.2.0](https://github.com/altertable-ai/altertable-cli/compare/v1.1.0...v1.2.0) (2026-07-15)
 

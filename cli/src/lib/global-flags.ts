@@ -7,6 +7,18 @@ export const GLOBAL_ARGV_FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
   "--connect-timeout",
   "--read-timeout",
 ]);
+const GLOBAL_ARGV_BOOLEAN_FLAGS: ReadonlySet<string> = new Set([
+  "--debug",
+  "-d",
+  "--json",
+  "--agent",
+  "--no-color",
+]);
+
+export function isGlobalArgvFlag(argument: string): boolean {
+  const flag = argument.split("=", 1)[0] ?? argument;
+  return GLOBAL_ARGV_BOOLEAN_FLAGS.has(flag) || GLOBAL_ARGV_FLAGS_WITH_VALUE.has(flag);
+}
 
 export function findFirstSubcommandIndex(argv: readonly string[]): number {
   for (let index = 0; index < argv.length; index += 1) {

@@ -3,7 +3,7 @@ import { runCommand } from "citty";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
 import {
@@ -350,7 +350,7 @@ describe("binary self-update", () => {
   test("resolves relative compiled executable paths from the original invocation", () => {
     const executable = join(testHome, "bin", "altertable");
     mkdirSync(join(testHome, "bin"), { recursive: true });
-    writeFileSync(executable, "binary");
+    writeFileSync(executable, "binary", { mode: 0o755 });
 
     expect(
       resolveProcessExecutablePath({
@@ -366,7 +366,7 @@ describe("binary self-update", () => {
     const binDirectory = join(testHome, "bin");
     const executable = join(binDirectory, "altertable");
     mkdirSync(binDirectory, { recursive: true });
-    writeFileSync(executable, "binary");
+    writeFileSync(executable, "binary", { mode: 0o755 });
 
     expect(
       resolveProcessExecutablePath({
@@ -374,6 +374,29 @@ describe("binary self-update", () => {
         argv0: "altertable",
         cwd: join(testHome, "elsewhere"),
         path: binDirectory,
+      }),
+    ).toBe(realpathSync(executable));
+  });
+
+  test("skips non-executable PATH entries", () => {
+    const directoryEntryBin = join(testHome, "directory-entry-bin");
+    const nonExecutableBin = join(testHome, "non-executable-bin");
+    const validBinDirectory = join(testHome, "valid-bin");
+    const directoryEntry = join(directoryEntryBin, "altertable");
+    const nonExecutable = join(nonExecutableBin, "altertable");
+    const executable = join(validBinDirectory, "altertable");
+    mkdirSync(directoryEntry, { recursive: true });
+    mkdirSync(nonExecutableBin, { recursive: true });
+    mkdirSync(validBinDirectory, { recursive: true });
+    writeFileSync(nonExecutable, "binary", { mode: 0o644 });
+    writeFileSync(executable, "binary", { mode: 0o755 });
+
+    expect(
+      resolveProcessExecutablePath({
+        execPath: "altertable",
+        argv0: "altertable",
+        cwd: join(testHome, "elsewhere"),
+        path: [directoryEntryBin, nonExecutableBin, validBinDirectory].join(delimiter),
       }),
     ).toBe(realpathSync(executable));
   });
@@ -498,11 +521,24 @@ describe("binary self-update", () => {
     expect(readFileSync(targetPath, "utf8")).toBe(originalBinary);
   });
 
-  test("auto install uses the package manager for source checkouts", async () => {
-    process.env.ALTERTABLE_UPDATE_INSTALLER = "npm";
+  test.each([
+    ["bun", ["pm", "bin", "-g"]],
+    ["npm", ["prefix", "-g"]],
+    ["pnpm", ["bin", "-g"]],
+    ["yarn", ["global", "bin"]],
+  ] as const)("source checkout verifies the %s global install", async (manager, binArgs) => {
+    process.env.ALTERTABLE_UPDATE_INSTALLER = manager;
     const commands: string[] = [];
+    const globalDirectory = join(testHome, `${manager}-global`);
+    const globalBinDirectory =
+      manager === "npm" && process.platform !== "win32"
+        ? join(globalDirectory, "bin")
+        : globalDirectory;
+    const installedCli = join(
+      globalBinDirectory,
+      process.platform === "win32" ? "altertable.cmd" : "altertable",
+    );
     const result = await installCliUpdate(UPDATE_TEST_VERSION, {
-      verify: false,
       stdio: "pipe",
       installation: {
         kind: "source",
@@ -511,12 +547,36 @@ describe("binary self-update", () => {
       },
       spawnImpl: ((command: string, args: string[]) => {
         commands.push([command, ...args].join(" "));
+        if (command === manager && args.join(" ") === binArgs.join(" ")) {
+          return {
+            status: 0,
+            signal: null,
+            stdout: globalDirectory,
+            stderr: "",
+            pid: 1,
+            output: [],
+          };
+        }
+        if (command === installedCli) {
+          return {
+            status: 0,
+            signal: null,
+            stdout: UPDATE_TEST_VERSION,
+            stderr: "",
+            pid: 1,
+            output: [],
+          };
+        }
         return { status: 0, signal: null, stdout: "", stderr: "", pid: 1, output: [] };
       }) as unknown as typeof import("node:child_process").spawnSync,
     });
 
-    expect(commands[0]).toBe(`npm install -g ${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
+    expect(commands[0]).toContain(`${UpdaterConfig.packageName}@${UPDATE_TEST_VERSION}`);
+    expect(commands[1]).toBe([manager, ...binArgs].join(" "));
+    expect(commands[2]).toBe(`${installedCli} --version`);
+    expect(commands).not.toContain("altertable --version");
     expect(result.method).toBe("package-manager");
+    expect(result.verified_version).toBe(UPDATE_TEST_VERSION);
   });
 });
 

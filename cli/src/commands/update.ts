@@ -3,6 +3,7 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
+import { GLOBAL_ARGV_FLAGS_WITH_VALUE, isGlobalArgvFlag } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
@@ -34,12 +35,22 @@ const UPDATE_OPTIONS: ReadonlySet<string> = new Set(["--check", "--force"]);
 function validateUpdateArguments(rawArgs: readonly string[]): void {
   let versionSeen = false;
 
-  for (const argument of rawArgs) {
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const argument = rawArgs[index];
+    if (argument === undefined) {
+      continue;
+    }
     if (argument === "--") {
       continue;
     }
     if (argument.startsWith("-")) {
       const option = argument.split("=", 1)[0] ?? argument;
+      if (isGlobalArgvFlag(argument)) {
+        if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(option)) {
+          index += 1;
+        }
+        continue;
+      }
       if (!UPDATE_OPTIONS.has(option)) {
         throw new CliError(`Unknown option ${option}.`, {
           details: "Run altertable update --help for usage.",

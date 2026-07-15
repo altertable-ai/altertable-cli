@@ -27,10 +27,27 @@ const UpdaterIntervalsMs = {
 } as const;
 
 const UpdaterInstallCommands = {
-  bun: { command: "bun", argsBeforePackage: ["install", "-g"] },
-  npm: { command: "npm", argsBeforePackage: ["install", "-g"] },
-  pnpm: { command: "pnpm", argsBeforePackage: ["add", "-g"] },
-  yarn: { command: "yarn", argsBeforePackage: ["global", "add"] },
+  bun: {
+    command: "bun",
+    argsBeforePackage: ["install", "-g"],
+    globalBinArgs: ["pm", "bin", "-g"],
+  },
+  npm: {
+    command: "npm",
+    argsBeforePackage: ["install", "-g"],
+    globalBinArgs: ["prefix", "-g"],
+    globalBinIsPrefix: true,
+  },
+  pnpm: {
+    command: "pnpm",
+    argsBeforePackage: ["add", "-g"],
+    globalBinArgs: ["bin", "-g"],
+  },
+  yarn: {
+    command: "yarn",
+    argsBeforePackage: ["global", "add"],
+    globalBinArgs: ["global", "bin"],
+  },
 } as const;
 
 export const UpdaterInstallMethod = {
