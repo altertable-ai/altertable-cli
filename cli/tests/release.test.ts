@@ -386,6 +386,8 @@ describe("release infrastructure wiring", () => {
     expect(preparation.if).toContain("github.event_name == 'push'");
     expect(workflowNeeds(context)).toEqual(["release-please"]);
     expect(context.if).toContain("workflow_dispatch");
+    expect(context.if).toContain("!cancelled()");
+    expect(context.if).not.toContain("always()");
     expect(context.permissions?.contents).toBe("write");
     const contextScript = context.steps?.find(
       ({ name }) => name === "Resolve automatic or recovery release",
@@ -398,10 +400,26 @@ describe("release infrastructure wiring", () => {
     expect(contextScript).toContain("immutable commit SHA");
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(workflowNeeds(verification)).toEqual(["release-context"]);
+    expect(verification.if).toContain("!cancelled()");
+    expect(verification.if).toContain("needs.release-context.result == 'success'");
+    expect(verification.if).not.toContain("always()");
     expect(verification.with?.ref).toContain("release_ref");
     expect(workflowNeeds(matrix)).toEqual(["release-context", "verify-release"]);
+    expect(matrix.if).toContain("!cancelled()");
+    expect(matrix.if).toContain("needs.release-context.result == 'success'");
+    expect(matrix.if).toContain("needs.verify-release.result == 'success'");
+    expect(matrix.if).not.toContain("always()");
     expect(workflowNeeds(native)).toEqual(["release-context", "verify-release", "release-matrix"]);
+    expect(native.if).toContain("!cancelled()");
+    expect(native.if).toContain("needs.release-context.result == 'success'");
+    expect(native.if).toContain("needs.verify-release.result == 'success'");
+    expect(native.if).toContain("needs.release-matrix.result == 'success'");
+    expect(native.if).not.toContain("always()");
     expect(workflowNeeds(publication)).toEqual(["release-context", "release-native"]);
+    expect(publication.if).toContain("!cancelled()");
+    expect(publication.if).toContain("needs.release-context.result == 'success'");
+    expect(publication.if).toContain("needs.release-native.result == 'success'");
+    expect(publication.if).not.toContain("always()");
 
     const orderedSteps = [
       "Download tested release binaries",
