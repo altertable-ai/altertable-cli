@@ -223,7 +223,16 @@ describe("profile storage", () => {
         expect.arrayContaining([
           { label: "Profile", value: "acme_prod" },
           { label: "Organization", value: "acme" },
-          { label: "Data plane", value: "https://api.example.com", linkifyUrls: true },
+          {
+            label: "Data plane",
+            value: [
+              {
+                text: "https://api.example.com",
+                style: "accent",
+                href: "https://api.example.com",
+              },
+            ],
+          },
         ]),
       );
     }

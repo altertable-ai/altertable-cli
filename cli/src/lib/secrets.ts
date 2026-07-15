@@ -5,6 +5,7 @@ import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
 import { assertSafeProfileName, isFromEnvProfile } from "@/lib/profile-store.ts";
+import { readEnv } from "@/lib/env.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -55,7 +56,7 @@ function hasSecurityCommand(): boolean {
 }
 
 function secretBackend(): SecretBackend {
-  const override = process.env.ALTERTABLE_SECRET_BACKEND ?? "";
+  const override = readEnv("ALTERTABLE_SECRET_BACKEND") ?? "";
   if (override === "file") {
     return "file";
   }

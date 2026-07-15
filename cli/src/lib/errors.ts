@@ -15,7 +15,8 @@
  * | 9    | EXIT_NETWORK       | NetworkError, TimeoutError       |
  * | 10   | EXIT_CONFIG        | ConfigurationError               |
  */
-import { terminalError } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export const EXIT_SUCCESS = 0;
 export const EXIT_GENERIC = 1;
@@ -272,12 +273,23 @@ export function renderCliErrorJson(error: unknown): string {
 
 export function renderCliError(error: unknown): string {
   if (error instanceof CliError) {
-    return `${terminalError("ERROR")} ${error.message}`;
+    return renderDisplayText([span("ERROR", "error"), span(` ${error.message}`)]);
   }
   if (error instanceof Error && error.name === "CLIError") {
-    return `${terminalError("ERROR")} ${error.message}`;
+    return renderDisplayText([span("ERROR", "error"), span(` ${error.message}`)]);
   }
-  return `${terminalError("ERROR")} Unexpected error.`;
+  return renderDisplayText([span("ERROR", "error"), span(" Unexpected error.")]);
+}
+
+export function renderCliErrorDetails(details: string): string {
+  return details
+    .split(/\r\n|\r|\n/)
+    .map((line, index) =>
+      index === 0
+        ? renderDisplayText([span("ERROR", "error"), span(` ${line}`)])
+        : renderDisplayText(line),
+    )
+    .join("\n");
 }
 
 export function getCliExitCode(error: unknown): number {

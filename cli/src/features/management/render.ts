@@ -1,7 +1,6 @@
 import type { CatalogRow, WhoamiResponse } from "@/features/management/model.ts";
 import { buildCatalogsTableView } from "@/features/management/views.ts";
-import { renderDocument } from "@/ui/renderers/terminal.ts";
-import { formatTerminalSection } from "@/ui/terminal/styles.ts";
+import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 
 export function formatWhoamiPrincipalLine(data: WhoamiResponse): string {
   const principal = data.principal ?? {};
@@ -37,5 +36,5 @@ export function formatCatalogsSummary(rows: CatalogRow[]): string | null {
 }
 
 export function formatCatalogsTable(rows: CatalogRow[]): string {
-  return formatTerminalSection(renderDocument(buildCatalogsTableView(rows)));
+  return renderDocumentText(buildCatalogsTableView(rows));
 }

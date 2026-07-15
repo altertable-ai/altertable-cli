@@ -2,6 +2,7 @@ import { configGet, configSet, resolveOAuthBase } from "@/lib/config.ts";
 import { secretDelete, secretGet, secretSet } from "@/lib/secrets.ts";
 import { ConfigurationError, HttpError } from "@/lib/errors.ts";
 import { refreshAccessToken, type TokenResponse } from "@/lib/oauth-flow.ts";
+import { readEnv } from "@/lib/env.ts";
 
 const ACCESS_TOKEN_ACCOUNT = "oauth/access-token";
 const REFRESH_TOKEN_ACCOUNT = "oauth/refresh-token";
@@ -32,7 +33,7 @@ export function hasOAuthSession(profileName: string): boolean {
 }
 
 export async function ensureFreshAccessToken(profileName: string): Promise<void> {
-  if (process.env.ALTERTABLE_API_KEY) {
+  if (readEnv("ALTERTABLE_API_KEY")) {
     return; // env API key takes precedence; don't refresh or clear the OAuth session
   }
   const expiryRaw = configGet(OAUTH_EXPIRY_KEY, profileName);

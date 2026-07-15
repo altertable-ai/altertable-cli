@@ -28,6 +28,7 @@ import {
   getCliExitCode,
   isCittyCliError,
   renderCliError,
+  renderCliErrorDetails,
   renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
@@ -39,8 +40,9 @@ import {
 } from "@/lib/usage.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
-import { terminalError, applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
+import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
+import { validateEnvironment } from "@/lib/env.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -139,7 +141,7 @@ function handleCliError(error: unknown): never {
     console.error(renderCliError(error));
 
     if (error instanceof CliError && error.details) {
-      console.error(`${terminalError("ERROR")} ${error.details}`);
+      console.error(renderCliErrorDetails(error.details));
     }
   }
 
@@ -161,6 +163,7 @@ async function bootstrap(): Promise<void> {
   setCliContext(earlyContext);
 
   try {
+    validateEnvironment();
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);

@@ -12,16 +12,14 @@ import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { terminalAccent, terminalMetadata, terminalSuccess } from "@/ui/terminal/styles.ts";
-import { document, rows, section, type DisplayRow } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
+import { document, rows, section, span, type DisplayRow } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
+import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
 import {
-  UpdaterInstallManagers,
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
   UpdaterInstallMethod,
-  UpdaterInstallMethods,
-  UpdaterSources,
   UpdaterConfig,
   type InstallationKind,
   type InstallManager,
@@ -33,7 +31,6 @@ import {
 } from "@/lib/updater-config.ts";
 
 export {
-  UpdaterInstallManagers,
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
   UpdaterInstallMethod,
@@ -299,33 +296,13 @@ export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
   configSetGlobal(UpdaterConfig.configKeys.checkInterval, interval);
 }
 
-function parseUpdateSource(value: string | undefined): UpdateSource | undefined {
-  if (isAllowedValue(UpdaterSources, value)) {
-    return value;
-  }
-  return undefined;
-}
-
-function parseUpdateInstallMethod(value: string | undefined): UpdateInstallMethod | undefined {
-  if (isAllowedValue(UpdaterInstallMethods, value)) {
-    return value;
-  }
-  return undefined;
-}
-
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {
-  return (
-    source ??
-    parseUpdateSource(process.env[UpdaterConfig.env.source]) ??
-    UpdaterConfig.defaults.source
-  );
+  return source ?? readEnv("ALTERTABLE_UPDATE_SOURCE") ?? UpdaterConfig.defaults.source;
 }
 
 export function resolveUpdateInstallMethod(method?: UpdateInstallMethod): UpdateInstallMethod {
   return (
-    method ??
-    parseUpdateInstallMethod(process.env[UpdaterConfig.env.installMethod]) ??
-    UpdaterConfig.defaults.installMethod
+    method ?? readEnv("ALTERTABLE_UPDATE_INSTALL_METHOD") ?? UpdaterConfig.defaults.installMethod
   );
 }
 
@@ -346,14 +323,14 @@ function repoSegments(repo: string): [string, string] {
 
 function npmRegistryUrl(): string {
   const registry =
-    process.env[UpdaterConfig.env.registryUrl] ?? UpdaterConfig.sources.npm.registryUrl;
+    readEnv("ALTERTABLE_UPDATE_REGISTRY_URL") ?? UpdaterConfig.sources.npm.registryUrl;
   const url = new URL(registry);
   appendEncodedUrlPath(url, UpdaterConfig.packageName, "latest");
   return url.toString();
 }
 
 function githubLatestReleaseUrl(): string {
-  const repo = process.env[UpdaterConfig.env.githubRepo] ?? UpdaterConfig.githubRepo;
+  const repo = readEnv("ALTERTABLE_UPDATE_GITHUB_REPO") ?? UpdaterConfig.githubRepo;
   const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(url, ...repoSegments(repo), "releases", "latest");
   return url.toString();
@@ -363,7 +340,7 @@ function githubReleaseMetadataUrl(version?: string): string {
   if (!version) {
     return githubLatestReleaseUrl();
   }
-  const repo = process.env[UpdaterConfig.env.githubRepo] ?? UpdaterConfig.githubRepo;
+  const repo = readEnv("ALTERTABLE_UPDATE_GITHUB_REPO") ?? UpdaterConfig.githubRepo;
   const url = new URL(UpdaterConfig.sources.github.apiBaseUrl);
   appendEncodedUrlPath(
     url,
@@ -656,13 +633,13 @@ export async function fetchLatestRelease(options: FetchLatestOptions = {}): Prom
   };
 }
 
-export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): InstallManager {
-  const override = env[UpdaterConfig.env.installer];
-  if (isAllowedValue(UpdaterInstallManagers, override)) {
+export function detectInstallManager(env: NodeJS.ProcessEnv = copyProcessEnv()): InstallManager {
+  const override = readEnvFrom(env, "ALTERTABLE_UPDATE_INSTALLER");
+  if (override) {
     return override;
   }
 
-  const userAgent = env.npm_config_user_agent ?? "";
+  const userAgent = readEnvFrom(env, "npm_config_user_agent") ?? "";
   if (userAgent.startsWith("bun/")) {
     return "bun";
   }
@@ -675,7 +652,7 @@ export function detectInstallManager(env: NodeJS.ProcessEnv = process.env): Inst
   if (userAgent.startsWith("npm/")) {
     return "npm";
   }
-  if (env[UpdaterConfig.env.bunInstall]) {
+  if (readEnvFrom(env, "BUN_INSTALL")) {
     return "bun";
   }
   return UpdaterConfig.defaults.installManager;
@@ -1054,12 +1031,12 @@ export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<
 }
 
 function envDisablesAutomaticChecks(): boolean {
-  const noUpdate = process.env[UpdaterConfig.env.noUpdateCheck];
-  if (noUpdate === "1" || noUpdate === "true") {
+  const noUpdate = readEnv("ALTERTABLE_NO_UPDATE_CHECK");
+  if (noUpdate === true) {
     return true;
   }
 
-  const updateCheck = process.env[UpdaterConfig.env.updateCheck];
+  const updateCheck = readEnv("ALTERTABLE_UPDATE_CHECK");
   return updateCheck === "0" || updateCheck === "false" || updateCheck === "never";
 }
 
@@ -1104,11 +1081,7 @@ function shouldShowAutomaticUpdateNotice(options: {
   if (stderrIsTTY !== true) {
     return false;
   }
-  if (
-    process.env[UpdaterConfig.env.ci] ||
-    process.env[UpdaterConfig.env.test] ||
-    envDisablesAutomaticChecks()
-  ) {
+  if (readEnv("CI") || readEnv("TEST") || envDisablesAutomaticChecks()) {
     return false;
   }
 
@@ -1127,8 +1100,12 @@ function shouldShowAutomaticUpdateNotice(options: {
 function writeAutomaticUpdateNotice(sink: OutputSink, latestVersion: string): void {
   sink.writeMetadata([
     "",
-    terminalMetadata(`Update available: altertable ${latestVersion} (current ${VERSION}).`),
-    terminalMetadata(`Run ${recommendedInstallCommand(latestVersion)} to install it.`),
+    renderDisplayText([
+      span(`Update available: altertable ${latestVersion} (current ${VERSION}).`, "subtle"),
+    ]),
+    renderDisplayText([
+      span(`Run ${recommendedInstallCommand(latestVersion)} to install it.`, "subtle"),
+    ]),
   ]);
 }
 
@@ -1170,12 +1147,25 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
 
 export function formatUpdateResult(result: UpdateCheckResult): string {
   if (!result.update_available) {
-    return `${terminalSuccess("Congrats!")} You're already on the latest version of altertable ${terminalMetadata(`(which is v${normalizeVersion(result.current_version)})`)}`;
+    return renderDisplayText([
+      span("Congrats!", "success"),
+      span(" You're already on the latest version of altertable "),
+      span(`(which is v${normalizeVersion(result.current_version)})`, "subtle"),
+    ]);
   }
 
   return [
-    `A new version of altertable is available: v${normalizeVersion(result.latest_version)} ${terminalMetadata(`(current v${normalizeVersion(result.current_version)})`)}`,
-    `Run ${terminalAccent(result.install_command)} to install it.`,
+    renderDisplayText([
+      span(
+        `A new version of altertable is available: v${normalizeVersion(result.latest_version)} `,
+      ),
+      span(`(current v${normalizeVersion(result.current_version)})`, "subtle"),
+    ]),
+    renderDisplayText([
+      span("Run "),
+      span(result.install_command, "accent"),
+      span(" to install it."),
+    ]),
   ].join("\n");
 }
 

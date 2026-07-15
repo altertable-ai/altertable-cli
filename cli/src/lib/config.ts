@@ -9,6 +9,7 @@ import {
   kvUnset,
 } from "@/lib/config-files.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
+import { readEnv } from "@/lib/env.ts";
 import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
 
 export { configDir, configFile, credentialsFile, kvGet, kvSet, kvUnset };
@@ -24,12 +25,11 @@ export function configSetGlobal(key: string, value: string): void {
 }
 
 function resolveAllowInsecureHttp(): boolean {
-  const envFlag = process.env.ALTERTABLE_ALLOW_INSECURE_HTTP ?? "";
-  return envFlag === "true" || envFlag === "1";
+  return readEnv("ALTERTABLE_ALLOW_INSECURE_HTTP") ?? false;
 }
 
 export function resolveApiBase(profileName: string): string {
-  let base = process.env.ALTERTABLE_API_BASE ?? "";
+  let base = readEnv("ALTERTABLE_API_BASE") ?? "";
   if (!base) {
     base = configGet("api_base", profileName);
   }
@@ -42,7 +42,7 @@ export function resolveApiBase(profileName: string): string {
 }
 
 function resolveManagementApiRoot(profileName: string): string {
-  let root = process.env.ALTERTABLE_MANAGEMENT_API_BASE ?? "";
+  let root = readEnv("ALTERTABLE_MANAGEMENT_API_BASE") ?? "";
   if (!root) {
     root = configGet("management_api_base", profileName);
   }

@@ -14,15 +14,10 @@ import {
   defaultConfigurePrompts,
   type ConfigurePrompts,
 } from "@/lib/profile-configure-interactive.ts";
-import { document, rows, section, text } from "@/ui/document.ts";
+import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
-import {
-  formatTerminalMarkdownLinks,
-  terminalAccent,
-  terminalSubtle,
-  terminalSuccess,
-} from "@/ui/terminal/styles.ts";
 import { buildCompletionSpec } from "@/lib/completion-spec.ts";
+import { readEnv } from "@/lib/env.ts";
 import {
   formatBashCompletion,
   formatFishCompletion,
@@ -107,7 +102,8 @@ function resolveShell(shell: unknown): SupportedShell {
     throw new CliError(`Unsupported shell: ${shell}. Use ${formatSupportedShells()}.`);
   }
 
-  const detectedShell = process.env.SHELL ? getShellName(process.env.SHELL) : "";
+  const envShell = readEnv("SHELL");
+  const detectedShell = envShell ? getShellName(envShell) : "";
   if (isSupportedShell(detectedShell)) {
     return detectedShell;
   }
@@ -118,15 +114,15 @@ function resolveShell(shell: unknown): SupportedShell {
 }
 
 function envHome(): string {
-  return process.env.HOME || homedir();
+  return readEnv("HOME") ?? homedir();
 }
 
 function xdgDataHome(): string {
-  return process.env.XDG_DATA_HOME || join(envHome(), ".local", "share");
+  return readEnv("XDG_DATA_HOME") ?? join(envHome(), ".local", "share");
 }
 
 function xdgConfigHome(): string {
-  return process.env.XDG_CONFIG_HOME || join(envHome(), ".config");
+  return readEnv("XDG_CONFIG_HOME") ?? join(envHome(), ".config");
 }
 
 function shellQuote(value: string): string {
@@ -245,11 +241,11 @@ export async function installCompletion(
 }
 
 function formatInstallMessage(result: InstallResult): string {
-  const startup =
+  const startup: DisplayText =
     result.startupAction === "updated"
-      ? `updated ${terminalAccent(result.rcPath ?? "")}`
+      ? [span("updated "), span(result.rcPath ?? "", "accent")]
       : result.startupAction === "skipped"
-        ? `left unchanged ${terminalSubtle("(--no-rc)")}`
+        ? [span("left unchanged "), span("(--no-rc)", "subtle")]
         : "automatic";
   const next =
     result.startupAction === "skipped"
@@ -259,15 +255,15 @@ function formatInstallMessage(result: InstallResult): string {
   return renderDocumentText(
     document(
       section(
-        text([`${terminalSuccess("✓")} Shell completion installed`]),
+        text([[span("✓", "success"), span(" Shell completion installed")]]),
         rows([
           { label: "Shell:", value: result.shell },
-          { label: "Script:", value: terminalAccent(result.completionPath) },
+          { label: "Script:", value: [span(result.completionPath, "accent")] },
           { label: "Startup:", value: startup },
           { label: "Next:", value: next },
           {
             label: "Docs:",
-            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+            value: [span("Shell completion", "accent", COMPLETION_DOCS_URL)],
           },
         ]),
       ),
@@ -280,14 +276,14 @@ function formatCompletionHelpMessage(): string {
   return renderDocumentText(
     document(
       section(
-        text([terminalAccent("Shell completion")]),
+        text([[span("Shell completion", "accent")]]),
         rows([
           { label: "Install:", value: COMPLETION_GUIDANCE.install },
           { label: "Install shell:", value: COMPLETION_GUIDANCE.installShell },
           { label: "Manual:", value: COMPLETION_GUIDANCE.manual },
           {
             label: "Docs:",
-            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_GUIDANCE.docs})`),
+            value: [span("Shell completion", "accent", COMPLETION_GUIDANCE.docs)],
           },
         ]),
       ),

@@ -1,7 +1,6 @@
 import type { ApiOperationDetails, ApiRouteRow } from "@/features/api/model.ts";
 import { buildApiOperationDetailsView, buildApiRoutesView } from "@/features/api/views.ts";
 import { renderDocument, renderDocumentText } from "@/ui/renderers/terminal.ts";
-import { formatTerminalSection } from "@/ui/terminal/styles.ts";
 
 const API_DETAILS_LABEL_WIDTH = 12;
 
@@ -10,11 +9,9 @@ type ApiRoutesRenderOptions = {
 };
 
 export function formatApiOperationDetails(operation: ApiOperationDetails): string {
-  return formatTerminalSection(
-    renderDocument(buildApiOperationDetailsView(operation), {
-      labelWidth: API_DETAILS_LABEL_WIDTH,
-    }),
-  );
+  return renderDocument(buildApiOperationDetailsView(operation), {
+    labelWidth: API_DETAILS_LABEL_WIDTH,
+  }).join("\n");
 }
 
 export function formatApiRoutes(rows: readonly ApiRouteRow[]): string {
@@ -38,5 +35,5 @@ export function renderApiRoutesTableSection(
   rows: readonly ApiRouteRow[],
   emptyMessage = "No operations found.",
 ): string {
-  return formatTerminalSection(renderDocument(buildApiRoutesView(rows, { emptyMessage })));
+  return renderDocumentText(buildApiRoutesView(rows, { emptyMessage }));
 }

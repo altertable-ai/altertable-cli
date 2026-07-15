@@ -24,7 +24,6 @@ import {
   TERMINAL_LABEL_WIDTH,
   TERMINAL_NESTED_LABEL_WIDTH,
 } from "@/ui/terminal/spacing.ts";
-import { formatTerminalSection } from "@/ui/terminal/styles.ts";
 
 export function formatProfileInspect(profile: ProfileInspect): string {
   return renderDocumentText(buildProfileInspectView(profile));
@@ -75,7 +74,7 @@ export function formatConfigureSessionSummary(
 
 export function formatActiveContextSummary(context: ActiveContext): string {
   const lines = renderDocument(buildActiveContextSummaryView(context));
-  return `\n\n${formatTerminalSection(padLeft(lines))}`;
+  return `\n\n${padLeft(lines).join("\n")}`;
 }
 
 export function formatActiveContextDetails(context: ActiveContext): string {
@@ -83,7 +82,7 @@ export function formatActiveContextDetails(context: ActiveContext): string {
     indent: TERMINAL_INDENT,
     labelWidth: TERMINAL_LABEL_WIDTH,
   });
-  return formatTerminalSection(lines);
+  return lines.join("\n");
 }
 
 export function tryFormatActiveContextSummary(profileName: string): string {
