@@ -49,6 +49,8 @@ type WorkflowStep = {
   with?: Record<string, unknown>;
 };
 type WorkflowJob = {
+  if?: string;
+  name?: string;
   needs?: string | string[];
   permissions?: Record<string, unknown>;
   steps?: WorkflowStep[];
@@ -466,10 +468,22 @@ describe("release infrastructure wiring", () => {
   test("routes branch CI through the same canonical verification workflow", async () => {
     const workflow = await readWorkflow("test.yml");
     const verification = workflow.jobs.verify ?? {};
+    const required = workflow.jobs.required ?? {};
 
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(verification.with?.ref).toContain("github.sha");
     expect(workflowNeeds(workflow.jobs["release-matrix"] ?? {})).toContain("verify");
     expect(workflowNeeds(workflow.jobs.compile ?? {})).toContain("verify");
+    expect(required.name).toBe("Required");
+    expect(required.if).toBe("always()");
+    expect(workflowNeeds(required)).toEqual(["verify", "release-matrix", "compile"]);
+
+    const enforcement = required.steps?.find(({ name }) => name === "Enforce required CI results");
+    expect(enforcement?.env).toEqual({
+      VERIFY_RESULT: "${{ needs.verify.result }}",
+      RELEASE_MATRIX_RESULT: "${{ needs.release-matrix.result }}",
+      COMPILE_RESULT: "${{ needs.compile.result }}",
+    });
+    expect(enforcement?.run).toContain('exit "$failed"');
   });
 });

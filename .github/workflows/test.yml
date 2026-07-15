@@ -86,3 +86,33 @@ jobs:
           path: dist/${{ matrix.artifact }}
           if-no-files-found: error
           retention-days: 7
+
+  required:
+    name: Required
+    needs: [verify, release-matrix, compile]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Enforce required CI results
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          RELEASE_MATRIX_RESULT: ${{ needs.release-matrix.result }}
+          COMPILE_RESULT: ${{ needs.compile.result }}
+        run: |
+          failed=0
+          for outcome in \
+            "Canonical verification:${VERIFY_RESULT}" \
+            "Release matrix:${RELEASE_MATRIX_RESULT}" \
+            "Native compilation:${COMPILE_RESULT}"
+          do
+            name="${outcome%%:*}"
+            result="${outcome#*:}"
+            if [ "$result" != "success" ]; then
+              echo "::error title=${name} failed::Result: ${result}"
+              failed=1
+            fi
+          done
+          exit "$failed"
