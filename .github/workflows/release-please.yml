@@ -55,6 +55,7 @@ jobs:
       should_release: ${{ steps.context.outputs.should_release }}
       tag_name: ${{ steps.context.outputs.tag_name }}
       release_ref: ${{ steps.context.outputs.release_ref }}
+      orchestration_ref: ${{ steps.context.outputs.orchestration_ref }}
 
     steps:
       - name: Resolve automatic or recovery release
@@ -69,6 +70,10 @@ jobs:
           set -euo pipefail
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+              echo "::error::Release recovery must run from refs/heads/main; received ${GITHUB_REF}"
+              exit 1
+            fi
             if [[ ! "${RECOVERY_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
               echo "::error::Invalid recovery release tag: ${RECOVERY_TAG}"
               exit 1
@@ -104,6 +109,7 @@ jobs:
               echo "should_release=true"
               echo "tag_name=${RECOVERY_TAG}"
               echo "release_ref=${release_ref}"
+              echo "orchestration_ref=${TRIGGER_SHA}"
             } >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -112,6 +118,7 @@ jobs:
             echo "should_release=${AUTOMATIC_RELEASE_CREATED}"
             echo "tag_name=${AUTOMATIC_TAG}"
             echo "release_ref=${TRIGGER_SHA}"
+            echo "orchestration_ref=${TRIGGER_SHA}"
           } >> "${GITHUB_OUTPUT}"
 
   release-matrix:
@@ -237,6 +244,15 @@ jobs:
           ref: ${{ needs.release-context.outputs.release_ref }}
           submodules: recursive
 
+      - name: Check out current release orchestration
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release-context.outputs.orchestration_ref }}
+          path: .release-orchestration
+          sparse-checkout: cli/scripts/publish-release.ts
+          sparse-checkout-cone-mode: false
+
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -301,17 +317,19 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_ROOT: ${{ github.workspace }}
           RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
-        run: bun run release:upload-github
-        working-directory: cli
+        run: bun run .release-orchestration/cli/scripts/publish-release.ts upload-github
 
       - name: Publish npm package
-        run: bun run release:publish-npm
-        working-directory: cli
+        env:
+          RELEASE_ROOT: ${{ github.workspace }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
+        run: bun run .release-orchestration/cli/scripts/publish-release.ts publish-npm
 
       - name: Publish completed GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_ROOT: ${{ github.workspace }}
           RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
-        run: bun run release:publish-github
-        working-directory: cli
+        run: bun run .release-orchestration/cli/scripts/publish-release.ts publish-github
