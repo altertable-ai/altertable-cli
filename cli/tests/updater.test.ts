@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { runCommand } from "citty";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -9,6 +9,7 @@ import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
+import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
   checkForUpdate,
   compareVersions,
@@ -342,6 +343,37 @@ describe("binary self-update", () => {
       isNativeCompiledInstall("/usr/local/bin/altertable", ["/usr/local/bin/altertable"]),
     ).toBe(true);
     expect(resolveCurrentExecutablePath()).toBeTruthy();
+  });
+
+  test("resolves relative compiled executable paths from the original invocation", () => {
+    const executable = join(testHome, "bin", "altertable");
+    mkdirSync(join(testHome, "bin"), { recursive: true });
+    writeFileSync(executable, "binary");
+
+    expect(
+      resolveProcessExecutablePath({
+        execPath: "altertable",
+        argv0: executable,
+        cwd: join(testHome, "elsewhere"),
+        path: "",
+      }),
+    ).toBe(realpathSync(executable));
+  });
+
+  test("resolves bare compiled executable names from PATH", () => {
+    const binDirectory = join(testHome, "bin");
+    const executable = join(binDirectory, "altertable");
+    mkdirSync(binDirectory, { recursive: true });
+    writeFileSync(executable, "binary");
+
+    expect(
+      resolveProcessExecutablePath({
+        execPath: "altertable",
+        argv0: "altertable",
+        cwd: join(testHome, "elsewhere"),
+        path: binDirectory,
+      }),
+    ).toBe(realpathSync(executable));
   });
 
   test("recommends install commands from installation origin", () => {
@@ -690,12 +722,28 @@ describe("update command", () => {
     expect(output.stdout[0]).not.toContain("Release:");
   });
 
-  test("reports the latest installed version like Bun", async () => {
+  test("reports an explicit target that is already installed", async () => {
     const output = await runUpdateCommand(["update", "--target-version", VERSION]);
 
+    expect(output.stdout[0]).toBe(`Target version v${VERSION} is already installed.`);
+  });
+
+  test("reports an explicit target that is older than the installed version", async () => {
+    const targetVersion = "1.1.0";
+    const output = await runUpdateCommand(["update", "--target-version", targetVersion]);
+
     expect(output.stdout[0]).toBe(
-      `Congrats! You're already on the latest version of altertable (which is v${VERSION})`,
+      [
+        `Target version v${targetVersion} is older than installed altertable v${VERSION}.`,
+        `Run altertable update --install --target-version ${targetVersion} --force to install it anyway.`,
+      ].join("\n"),
     );
+  });
+
+  test("rejects unexpected positional arguments", () => {
+    return expect(
+      runUpdateCommand(["update", "install", "--target-version", "1.1.0"]),
+    ).rejects.toThrow("Unexpected argument for altertable update: install.");
   });
 
   test("clear-cache forces a fresh update check", async () => {

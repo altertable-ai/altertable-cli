@@ -16,6 +16,7 @@ import { renderDisplayText } from "@/ui/terminal/styles.ts";
 import { document, rows, section, span, type DisplayRow } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
+import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
@@ -692,10 +693,16 @@ function pathEndsWithAny(filePath: string, suffixes: readonly string[]): boolean
 export function detectCurrentInstallation(
   options: {
     execPath?: string;
+    argv0?: string;
     argv?: readonly string[];
+    cwd?: string;
+    path?: string;
   } = {},
 ): CurrentInstallation {
-  const execPath = options.execPath ?? process.execPath;
+  const execPath = resolveProcessExecutablePath({
+    ...options,
+    path: options.path ?? readEnv("PATH"),
+  });
   const argv = options.argv ?? process.argv;
   const scriptPath = argv[1] ?? "";
   const execName = basename(execPath);
@@ -1145,7 +1152,28 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
   }
 }
 
-export function formatUpdateResult(result: UpdateCheckResult): string {
+export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: string): string {
+  if (targetVersion) {
+    const target = normalizeVersion(targetVersion);
+    const current = normalizeVersion(result.current_version);
+    const comparison = compareVersions(target, current);
+    if (comparison < 0) {
+      return [
+        renderDisplayText([
+          span(`Target version v${target} is older than installed altertable v${current}.`),
+        ]),
+        renderDisplayText([
+          span("Run "),
+          span(`altertable update --install --target-version ${target} --force`, "accent"),
+          span(" to install it anyway."),
+        ]),
+      ].join("\n");
+    }
+    if (comparison === 0) {
+      return renderDisplayText([span(`Target version v${target} is already installed.`)]);
+    }
+  }
+
   if (!result.update_available) {
     return renderDisplayText([
       span("Congrats!", "success"),

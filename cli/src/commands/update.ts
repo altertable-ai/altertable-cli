@@ -3,6 +3,7 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
+import { findFirstSubcommandIndex, GLOBAL_ARGV_FLAGS_WITH_VALUE } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
@@ -38,6 +39,51 @@ type UpdateCommandArgs = {
   "clear-cache"?: boolean;
   "check-interval"?: UpdateCheckInterval;
 };
+
+const UPDATE_VALUE_FLAGS: ReadonlySet<string> = new Set([
+  ...GLOBAL_ARGV_FLAGS_WITH_VALUE,
+  "--source",
+  "--target-version",
+  "--install-method",
+  "--target-path",
+  "--check-interval",
+]);
+
+export function findUnexpectedUpdateArgument(rawArgs: readonly string[]): string | undefined {
+  const commandIndex = findFirstSubcommandIndex(rawArgs);
+  const firstArgumentIndex = rawArgs[commandIndex] === "update" ? commandIndex + 1 : 0;
+
+  for (let index = firstArgumentIndex; index < rawArgs.length; index += 1) {
+    const argument = rawArgs[index];
+    if (argument === undefined) {
+      continue;
+    }
+    if (argument === "--") {
+      return rawArgs[index + 1];
+    }
+    if (argument.startsWith("-")) {
+      if (!argument.includes("=") && UPDATE_VALUE_FLAGS.has(argument)) {
+        index += 1;
+      }
+      continue;
+    }
+    return argument;
+  }
+  return undefined;
+}
+
+function validateUpdateArguments(rawArgs: readonly string[]): void {
+  const unexpected = findUnexpectedUpdateArgument(rawArgs);
+  if (!unexpected) {
+    return;
+  }
+  throw new CliError(`Unexpected argument for altertable update: ${unexpected}.`, {
+    details:
+      unexpected === "install"
+        ? "Use --install to install the selected release."
+        : "altertable update accepts options only; run altertable update --help for usage.",
+  });
+}
 
 function buildTargetResult(targetVersion: string, source: UpdateSource): UpdateCheckResult {
   const version = normalizeVersion(targetVersion);
@@ -99,7 +145,7 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
       {
         kind: "normalized",
         data: result,
-        humanText: formatUpdateResult(result),
+        humanText: formatUpdateResult(result, targetVersion),
       },
       sink,
     );
@@ -187,7 +233,8 @@ export const updateCommand = defineAltertableCommand({
       description: "Set how often successful human-facing commands may show update notices.",
     },
   },
-  async run({ args, sink }) {
+  async run({ args, rawArgs, sink }) {
+    validateUpdateArguments(rawArgs);
     await runUpdateCommand(args as UpdateCommandArgs, sink);
   },
 });

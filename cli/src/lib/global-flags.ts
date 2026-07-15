@@ -2,9 +2,13 @@ import type { CliContext } from "@/context.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { parseTimeoutSeconds, readArgvFlagValue } from "@/lib/timeout-args.ts";
 
-const GLOBAL_ARGV_FLAGS_WITH_VALUE = new Set(["--profile", "--connect-timeout", "--read-timeout"]);
+export const GLOBAL_ARGV_FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
+  "--profile",
+  "--connect-timeout",
+  "--read-timeout",
+]);
 
-function findFirstSubcommandIndex(argv: readonly string[]): number {
+export function findFirstSubcommandIndex(argv: readonly string[]): number {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === undefined || !arg.startsWith("-")) {
