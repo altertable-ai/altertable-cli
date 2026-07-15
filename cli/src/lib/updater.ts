@@ -12,8 +12,8 @@ import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { terminalAccent, terminalMetadata, terminalSuccess } from "@/ui/terminal/styles.ts";
-import { document, rows, section, type DisplayRow } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
+import { document, rows, section, span, type DisplayRow } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
 import {
@@ -1100,8 +1100,12 @@ function shouldShowAutomaticUpdateNotice(options: {
 function writeAutomaticUpdateNotice(sink: OutputSink, latestVersion: string): void {
   sink.writeMetadata([
     "",
-    terminalMetadata(`Update available: altertable ${latestVersion} (current ${VERSION}).`),
-    terminalMetadata(`Run ${recommendedInstallCommand(latestVersion)} to install it.`),
+    renderDisplayText([
+      span(`Update available: altertable ${latestVersion} (current ${VERSION}).`, "subtle"),
+    ]),
+    renderDisplayText([
+      span(`Run ${recommendedInstallCommand(latestVersion)} to install it.`, "subtle"),
+    ]),
   ]);
 }
 
@@ -1143,12 +1147,25 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
 
 export function formatUpdateResult(result: UpdateCheckResult): string {
   if (!result.update_available) {
-    return `${terminalSuccess("Congrats!")} You're already on the latest version of altertable ${terminalMetadata(`(which is v${normalizeVersion(result.current_version)})`)}`;
+    return renderDisplayText([
+      span("Congrats!", "success"),
+      span(" You're already on the latest version of altertable "),
+      span(`(which is v${normalizeVersion(result.current_version)})`, "subtle"),
+    ]);
   }
 
   return [
-    `A new version of altertable is available: v${normalizeVersion(result.latest_version)} ${terminalMetadata(`(current v${normalizeVersion(result.current_version)})`)}`,
-    `Run ${terminalAccent(result.install_command)} to install it.`,
+    renderDisplayText([
+      span(
+        `A new version of altertable is available: v${normalizeVersion(result.latest_version)} `,
+      ),
+      span(`(current v${normalizeVersion(result.current_version)})`, "subtle"),
+    ]),
+    renderDisplayText([
+      span("Run "),
+      span(result.install_command, "accent"),
+      span(" to install it."),
+    ]),
   ].join("\n");
 }
 

@@ -14,14 +14,8 @@ import {
   defaultConfigurePrompts,
   type ConfigurePrompts,
 } from "@/lib/profile-configure-interactive.ts";
-import { document, rows, section, text } from "@/ui/document.ts";
+import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
-import {
-  formatTerminalMarkdownLinks,
-  terminalAccent,
-  terminalSubtle,
-  terminalSuccess,
-} from "@/ui/terminal/styles.ts";
 import { buildCompletionSpec } from "@/lib/completion-spec.ts";
 import { readEnv } from "@/lib/env.ts";
 import {
@@ -247,11 +241,11 @@ export async function installCompletion(
 }
 
 function formatInstallMessage(result: InstallResult): string {
-  const startup =
+  const startup: DisplayText =
     result.startupAction === "updated"
-      ? `updated ${terminalAccent(result.rcPath ?? "")}`
+      ? [span("updated "), span(result.rcPath ?? "", "accent")]
       : result.startupAction === "skipped"
-        ? `left unchanged ${terminalSubtle("(--no-rc)")}`
+        ? [span("left unchanged "), span("(--no-rc)", "subtle")]
         : "automatic";
   const next =
     result.startupAction === "skipped"
@@ -261,15 +255,15 @@ function formatInstallMessage(result: InstallResult): string {
   return renderDocumentText(
     document(
       section(
-        text([`${terminalSuccess("✓")} Shell completion installed`]),
+        text([[span("✓", "success"), span(" Shell completion installed")]]),
         rows([
           { label: "Shell:", value: result.shell },
-          { label: "Script:", value: terminalAccent(result.completionPath) },
+          { label: "Script:", value: [span(result.completionPath, "accent")] },
           { label: "Startup:", value: startup },
           { label: "Next:", value: next },
           {
             label: "Docs:",
-            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_DOCS_URL})`),
+            value: [span("Shell completion", "accent", COMPLETION_DOCS_URL)],
           },
         ]),
       ),
@@ -282,14 +276,14 @@ function formatCompletionHelpMessage(): string {
   return renderDocumentText(
     document(
       section(
-        text([terminalAccent("Shell completion")]),
+        text([[span("Shell completion", "accent")]]),
         rows([
           { label: "Install:", value: COMPLETION_GUIDANCE.install },
           { label: "Install shell:", value: COMPLETION_GUIDANCE.installShell },
           { label: "Manual:", value: COMPLETION_GUIDANCE.manual },
           {
             label: "Docs:",
-            value: formatTerminalMarkdownLinks(`[Shell completion](${COMPLETION_GUIDANCE.docs})`),
+            value: [span("Shell completion", "accent", COMPLETION_GUIDANCE.docs)],
           },
         ]),
       ),

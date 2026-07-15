@@ -6,7 +6,8 @@ import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";
 import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { terminalMetadata } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export type CommandOutputMode =
   | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
@@ -75,7 +76,7 @@ export async function writeCommandOutput(
       sink.writeJson(mode.data);
       return;
     }
-    sink.writeMetadata([terminalMetadata(mode.metadataMessage)]);
+    sink.writeMetadata([renderDisplayText([span(mode.metadataMessage, "subtle")])]);
     return;
   }
 

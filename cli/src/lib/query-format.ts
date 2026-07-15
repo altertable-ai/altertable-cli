@@ -6,9 +6,11 @@ import type {
 import { getQueryDefaultMaxColumnWidth, getQueryDefaultLayout } from "@/lib/config.ts";
 import {
   getColumnTypeMap,
+  isTimestampValue,
   resolveCellDataType,
   selectDisplayColumnNames,
   type ColumnTypeMap,
+  type QueryDataType,
 } from "@/lib/query-column-types.ts";
 import { pluralizeLabel } from "@/lib/pluralize.ts";
 import { redactPasswordFieldInText } from "@/lib/redact.ts";
@@ -16,24 +18,20 @@ import { formatRelativeTimestamp, formatTimestampWithRelative } from "@/lib/rela
 import {
   getTerminalWidth,
   getVisibleTextWidth,
-  isTimestampValue,
   padVisibleText,
-  parseJsonStringValue,
+  renderDisplayText,
   shouldUseTerminalColor,
-  terminalAccent,
-  terminalDataType,
-  terminalMetadata,
-  terminalSubtle,
-  terminalTimestamp,
+  truncateTerminalText,
   type TerminalTextAlignment,
 } from "@/ui/terminal/styles.ts";
 import type { QueryLayout } from "@/ui/layouts/query.ts";
-import { renderRows } from "@/ui/renderers/terminal.ts";
+import { span, type DisplayTextStyle } from "@/ui/document.ts";
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;
 const NULL_DISPLAY = "NULL";
 const ELLIPSIS = "…";
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 type QueryColumnAlignment = TerminalTextAlignment;
 
@@ -78,22 +76,51 @@ function shouldColorizeQueryCells(colorize: boolean | undefined): boolean {
   return colorize === true && shouldUseTerminalColor();
 }
 
+function queryDataTypeStyle(dataType: QueryDataType): DisplayTextStyle {
+  switch (dataType) {
+    case "null":
+      return "subtle";
+    case "boolean":
+      return "boolean";
+    case "number":
+      return "number";
+    case "uuid":
+      return "accent";
+    case "string":
+    case "timestamp":
+      return "string";
+  }
+}
+
+function parseJsonStringValue(value: string): string | null {
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return null;
+  }
+  try {
+    JSON.parse(trimmed);
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
 function styleQueryHeader(
   name: string,
   width: number,
   colorize: boolean,
   alignment: QueryColumnAlignment,
 ): string {
-  const truncated = truncateText(name, width);
+  const truncated = truncateText(renderDisplayText(name), width);
   const padded = padVisibleText(truncated, width, alignment);
   if (!shouldColorizeQueryCells(colorize)) {
     return padded;
   }
-  return terminalAccent(padded);
+  return renderDisplayText([span(padded, "accent")]);
 }
 
 function styleQueryTableChrome(text: string, colorize: boolean): string {
-  return shouldColorizeQueryCells(colorize) ? terminalMetadata(text) : text;
+  return shouldColorizeQueryCells(colorize) ? renderDisplayText([span(text, "subtle")]) : text;
 }
 
 export function highlightJsonForTerminal(json: string, enabled: boolean): string {
@@ -105,21 +132,21 @@ export function highlightJsonForTerminal(json: string, enabled: boolean): string
     /("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
     (match, keyPart, stringPart, booleanPart) => {
       if (keyPart !== undefined) {
-        return `${terminalAccent(keyPart)}:`;
+        return renderDisplayText([span(keyPart, "accent"), span(":")]);
       }
       if (stringPart !== undefined) {
-        return terminalDataType(stringPart, "string");
+        return renderDisplayText([span(stringPart, "string")]);
       }
       if (booleanPart !== undefined) {
         if (booleanPart === "null") {
-          return terminalDataType(booleanPart, "null");
+          return renderDisplayText([span(booleanPart, "subtle")]);
         }
         if (booleanPart === "false") {
-          return terminalSubtle(booleanPart);
+          return renderDisplayText([span(booleanPart, "subtle")]);
         }
-        return terminalDataType(booleanPart, "boolean");
+        return renderDisplayText([span(booleanPart, "boolean")]);
       }
-      return terminalDataType(match, "number");
+      return renderDisplayText([span(match, "number")]);
     },
   );
 }
@@ -154,10 +181,10 @@ function formatTimestampQueryCell(
   }
 
   if (relative === null || display === value) {
-    return terminalTimestamp(display, null);
+    return renderDisplayText([span(display, "string")]);
   }
 
-  return terminalTimestamp(value, relative);
+  return renderDisplayText([span(value, "string"), span(` ${relative}`, "subtle")]);
 }
 
 function formatStringQueryCell(
@@ -167,7 +194,7 @@ function formatStringQueryCell(
 ): string {
   const sanitized = redactPasswordFieldInText(value);
   if (sanitized.length === 0) {
-    return colorize ? terminalSubtle('""') : '""';
+    return colorize ? renderDisplayText([span('""', "subtle")]) : '""';
   }
 
   const columnTypeMap = options.columnTypeMap ?? new Map();
@@ -181,46 +208,57 @@ function formatStringQueryCell(
   if (jsonText !== null) {
     const displayText = truncateDisplayText(jsonText, options.maxWidth);
     if (!colorize) {
-      return displayText;
+      return renderDisplayText(displayText);
     }
     return highlightJsonForTerminal(displayText, true);
   }
 
+  const safeValue = renderDisplayText(sanitized);
   const display =
     dataType === "uuid"
-      ? truncateDisplayTextMiddle(sanitized, options.maxWidth)
-      : truncateDisplayText(sanitized, options.maxWidth);
+      ? truncateDisplayTextMiddle(safeValue, options.maxWidth)
+      : truncateDisplayText(safeValue, options.maxWidth);
 
   if (!colorize) {
     return display;
   }
 
-  return terminalDataType(display, dataType);
+  return renderDisplayText([span(display, queryDataTypeStyle(dataType))]);
 }
 
 export function truncateText(text: string, maxWidth: number): string {
-  if (text.length <= maxWidth) {
-    return text;
-  }
-  if (maxWidth <= 1) {
-    return ELLIPSIS;
-  }
-  return text.slice(0, maxWidth - ELLIPSIS.length) + ELLIPSIS;
+  return truncateTerminalText(text, maxWidth);
 }
 
 export function truncateTextMiddle(text: string, maxWidth: number): string {
-  if (text.length <= maxWidth) {
+  if (getVisibleTextWidth(text) <= maxWidth) {
     return text;
   }
   if (maxWidth <= 1) {
     return ELLIPSIS;
   }
 
-  const visibleCharacterCount = maxWidth - ELLIPSIS.length;
-  const prefixLength = Math.ceil(visibleCharacterCount / 2);
-  const suffixLength = Math.floor(visibleCharacterCount / 2);
-  const suffix = suffixLength > 0 ? text.slice(text.length - suffixLength) : "";
-  return `${text.slice(0, prefixLength)}${ELLIPSIS}${suffix}`;
+  const characters = Array.from(graphemeSegmenter.segment(text), ({ segment }) => segment);
+  const availableWidth = maxWidth - getVisibleTextWidth(ELLIPSIS);
+  const prefixWidth = Math.ceil(availableWidth / 2);
+  const suffixWidth = Math.floor(availableWidth / 2);
+  let prefix = "";
+  let suffix = "";
+
+  for (const character of characters) {
+    if (getVisibleTextWidth(prefix + character) > prefixWidth) {
+      break;
+    }
+    prefix += character;
+  }
+  for (let index = characters.length - 1; index >= 0; index -= 1) {
+    const character = characters[index] ?? "";
+    if (getVisibleTextWidth(character + suffix) > suffixWidth) {
+      break;
+    }
+    suffix = character + suffix;
+  }
+  return `${prefix}${ELLIPSIS}${suffix}`;
 }
 
 export function formatQueryCellRaw(value: unknown): string {
@@ -243,7 +281,7 @@ export function formatQueryCell(value: unknown, options: QueryCellOptions): stri
   const colorize = shouldColorizeQueryCells(options.colorize);
 
   if (value === null || value === undefined) {
-    return colorize ? terminalDataType(NULL_DISPLAY, "null") : NULL_DISPLAY;
+    return colorize ? renderDisplayText([span(NULL_DISPLAY, "subtle")]) : NULL_DISPLAY;
   }
   if (typeof value === "boolean") {
     const text = String(value);
@@ -251,13 +289,13 @@ export function formatQueryCell(value: unknown, options: QueryCellOptions): stri
       return text;
     }
     if (value === false) {
-      return terminalSubtle(text);
+      return renderDisplayText([span(text, "subtle")]);
     }
-    return terminalDataType(text, "boolean");
+    return renderDisplayText([span(text, "boolean")]);
   }
   if (typeof value === "number" || typeof value === "bigint") {
     const text = String(value);
-    return colorize ? terminalDataType(text, "number") : text;
+    return colorize ? renderDisplayText([span(text, "number")]) : text;
   }
   if (typeof value === "string") {
     return formatStringQueryCell(value, options, colorize);
@@ -335,7 +373,7 @@ function collectQueryDisplayRows(
     const values = getRowCellValues(row, columnNames, allColumnNames);
     return {
       values,
-      rawCells: values.map((value) => formatQueryCellRaw(value)),
+      rawCells: values.map((value) => renderDisplayText(formatQueryCellRaw(value))),
     };
   });
 }
@@ -361,12 +399,15 @@ function computeColumnWidths(
   maxColumnWidth: number,
 ): number[] {
   const naturalWidths = columnNames.map((name, columnIndex) => {
-    const cellWidths = formattedCells.map((cells) => cells[columnIndex]?.length ?? 0);
-    const natural = Math.max(name.length, ...cellWidths);
+    const nameWidth = getVisibleTextWidth(renderDisplayText(name));
+    const cellWidths = formattedCells.map((cells) => getVisibleTextWidth(cells[columnIndex] ?? ""));
+    const natural = Math.max(nameWidth, ...cellWidths);
     return Math.min(natural, maxColumnWidth);
   });
 
-  const minimumWidths = columnNames.map((name) => Math.min(name.length, maxColumnWidth));
+  const minimumWidths = columnNames.map((name) =>
+    Math.min(getVisibleTextWidth(renderDisplayText(name)), maxColumnWidth),
+  );
 
   const totalNatural = naturalWidths.reduce((sum, width) => sum + width, 0);
 
@@ -570,20 +611,25 @@ function renderQueryExpanded(model: QueryRenderModel, options: QueryDisplayOptio
   }
 
   const colorize = options.colorize ?? true;
-  const labelWidth = columnNames.reduce((maxWidth, name) => Math.max(maxWidth, name.length), 0) + 1;
+  const labelWidth =
+    columnNames.reduce(
+      (maxWidth, name) => Math.max(maxWidth, getVisibleTextWidth(renderDisplayText(name))),
+      0,
+    ) + 1;
   const showRowNumbers = rows.length > 1;
 
   const records = rows.map((row, rowIndex) => {
-    const displayRows = columnNames.map((name, columnIndex) => {
+    const lines = columnNames.map((name, columnIndex) => {
       const value = formatQueryCell(row.values[columnIndex], {
         colorize,
         includeRelative: true,
         columnName: name,
         columnTypeMap,
       });
-      return { label: `${name}:`, value };
+      const labelText = padVisibleText(`${renderDisplayText(name)}:`, labelWidth);
+      const label = renderDisplayText([span(labelText, "muted")]);
+      return `${label} ${value}`;
     });
-    const lines = renderRows(displayRows, { indent: "", labelWidth });
     const body = lines.join("\n");
     if (showRowNumbers) {
       return `${styleQueryTableChrome(`#${rowIndex + 1}`, colorize)}\n${body}`;
@@ -621,8 +667,8 @@ export function renderQueryFooter(
     footerParts.push(summary);
   }
 
-  const footer = footerParts.join("\n");
-  return shouldColorizeQueryCells(options.colorize) ? terminalMetadata(footer) : footer;
+  const style = shouldColorizeQueryCells(options.colorize) ? "subtle" : undefined;
+  return footerParts.map((line) => renderDisplayText([span(line, style)])).join("\n");
 }
 
 function escapeMarkdownCell(value: string): string {

@@ -1,42 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
-  classifyStringDataType,
-  formatCommandExamplesSection,
-  formatTerminalMarkdownLinks,
-  formatTerminalLabelValue,
-  formatTerminalSection,
-  formatTerminalUrls,
   getVisibleTextWidth,
-  isTimestampValue,
-  isUuidValue,
   setTerminalColorMode,
   shouldUseTerminalColor,
-  shouldUseTerminalHyperlinks,
-  terminalAccent,
-  terminalDataType,
-  terminalDefaultHint,
-  terminalError,
-  terminalHighlightCommands,
-  terminalHttpMethod,
-  terminalLabel,
-  terminalLink,
-  terminalSectionHeader,
-  terminalStrong,
-  terminalSubtle,
-  terminalSuccess,
-  terminalTableHeader,
-  terminalTimestamp,
-  terminalUrl,
-  terminalWarning,
   truncateTerminalText,
   applyTerminalColorFromContext,
+  renderDisplayText,
 } from "@/ui/terminal/styles.ts";
 import { padLeft } from "@/ui/terminal/spacing.ts";
+import { span } from "@/ui/document.ts";
 
 const originalNoColor = process.env.NO_COLOR;
 const originalTerm = process.env.TERM;
 const originalForceColor = process.env.FORCE_COLOR;
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
+const originalOscHyperlink = process.env.OSC_HYPERLINK;
 const originalStdoutIsTTY = process.stdout.isTTY;
 const originalStderrIsTTY = process.stderr.isTTY;
 
@@ -73,6 +51,11 @@ afterEach(() => {
     delete process.env.ALTERTABLE_COLOR;
   } else {
     process.env.ALTERTABLE_COLOR = originalAltertableColor;
+  }
+  if (originalOscHyperlink === undefined) {
+    delete process.env.OSC_HYPERLINK;
+  } else {
+    process.env.OSC_HYPERLINK = originalOscHyperlink;
   }
   Object.defineProperty(process.stdout, "isTTY", {
     value: originalStdoutIsTTY,
@@ -126,21 +109,17 @@ describe("terminal-style", () => {
 
   test("returns plain text when NO_COLOR is set", () => {
     process.env.NO_COLOR = "1";
-    expect(terminalAccent("altertable")).toBe("altertable");
-    expect(terminalStrong("USAGE")).toBe("USAGE");
-    expect(terminalSubtle("[default]")).toBe("[default]");
-    expect(terminalSuccess("ok")).toBe("ok");
-    expect(terminalWarning("careful")).toBe("careful");
-    expect(terminalError("failed")).toBe("failed");
-    expect(terminalSectionHeader("Options")).toBe("OPTIONS");
-    expect(terminalDefaultHint("production")).toBe("[production]");
-    expect(terminalTableHeader("method")).toBe("METHOD");
-    expect(formatTerminalLabelValue("Path:", "/whoami")).toContain("Path:");
-    expect(terminalHighlightCommands("run altertable profile show")).toContain(
-      "altertable profile show",
-    );
-    expect(formatTerminalSection(["User: alice"])).toBe("User: alice");
-    expect(terminalLabel("Config dir:")).toBe("Config dir:");
+    expect(
+      renderDisplayText([
+        span("altertable", "accent"),
+        span(" USAGE", "strong"),
+        span(" [default]", "subtle"),
+        span(" ok", "success"),
+        span(" careful", "warning"),
+        span(" failed", "error"),
+      ]),
+    ).toBe("altertable USAGE [default] ok careful failed");
+    expect(renderDisplayText([span("Options", "heading")])).toBe("OPTIONS");
   });
 
   test("disables color when stdout and stderr are not TTY in auto mode", () => {
@@ -151,7 +130,7 @@ describe("terminal-style", () => {
     Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
     Object.defineProperty(process.stderr, "isTTY", { value: false, configurable: true });
     expect(shouldUseTerminalColor()).toBe(false);
-    expect(terminalAccent("altertable")).toBe("altertable");
+    expect(renderDisplayText([span("altertable", "accent")])).toBe("altertable");
   });
 
   test("enables color with FORCE_COLOR even when not a TTY", () => {
@@ -173,53 +152,48 @@ describe("terminal-style", () => {
 
   test("wraps text with ANSI codes when color is enabled", () => {
     enableTerminalColorForTests();
-    expect(terminalAccent("configure")).toContain("\u001b[96mconfigure\u001b[39m");
-    expect(terminalSuccess("ok")).toContain("\u001b[32mok\u001b[39m");
-    expect(terminalWarning("careful")).toContain("\u001b[93mcareful\u001b[39m");
-    expect(terminalError("failed")).toContain("\u001b[31mfailed\u001b[39m");
-    expect(terminalSectionHeader("Usage")).toContain("USAGE");
-    expect(terminalLabel("Active profile:")).toContain("\u001b[2mActive profile:\u001b[22m");
+    expect(renderDisplayText([span("configure", "accent")])).toContain(
+      "\u001b[96mconfigure\u001b[39m",
+    );
+    expect(renderDisplayText([span("ok", "success")])).toContain("\u001b[32mok\u001b[39m");
+    expect(renderDisplayText([span("careful", "warning")])).toContain(
+      "\u001b[93mcareful\u001b[39m",
+    );
+    expect(renderDisplayText([span("failed", "error")])).toContain("\u001b[31mfailed\u001b[39m");
+    expect(renderDisplayText([span("Usage", "heading")])).toContain("USAGE");
   });
 
   test("maps each data type to a dedicated color", () => {
     enableTerminalColorForTests();
-    expect(terminalDataType("NULL", "null")).toContain("\u001b[90m");
-    expect(terminalDataType("true", "boolean")).toContain("\u001b[35m");
-    expect(terminalDataType("42", "number")).toContain("\u001b[33m");
-    expect(terminalDataType("hello", "string")).toContain("\u001b[34m");
-    expect(terminalDataType("019ee8e4-1d79-77d9-8693-1f67732b184d", "uuid")).toContain(
-      "\u001b[96m",
-    );
-    expect(terminalDataType("2026-06-21T06:35:24.409Z", "timestamp")).toContain("\u001b[34m");
+    expect(renderDisplayText([span("NULL", "subtle")])).toContain("\u001b[90m");
+    expect(renderDisplayText([span("true", "boolean")])).toContain("\u001b[35m");
+    expect(renderDisplayText([span("42", "number")])).toContain("\u001b[33m");
+    expect(renderDisplayText([span("hello", "string")])).toContain("\u001b[34m");
+    expect(renderDisplayText([span("uuid", "accent")])).toContain("\u001b[96m");
   });
 
   test("styles HTTP methods with semantic colors", () => {
     enableTerminalColorForTests();
-    expect(terminalHttpMethod("GET")).toContain("\u001b[32m");
-    expect(terminalHttpMethod("POST")).toContain("\u001b[96m");
-    expect(terminalHttpMethod("PATCH")).toContain("\u001b[93m");
-    expect(terminalHttpMethod("PUT")).toContain("\u001b[34m");
-    expect(terminalHttpMethod("DELETE")).toContain("\u001b[31m");
+    expect(renderDisplayText([span("GET", "httpMethod")])).toContain("\u001b[32m");
+    expect(renderDisplayText([span("POST", "httpMethod")])).toContain("\u001b[96m");
+    expect(renderDisplayText([span("PATCH", "httpMethod")])).toContain("\u001b[93m");
+    expect(renderDisplayText([span("PUT", "httpMethod")])).toContain("\u001b[34m");
+    expect(renderDisplayText([span("DELETE", "httpMethod")])).toContain("\u001b[31m");
   });
 
   test("styles timestamp absolute and relative parts with distinct contrast", () => {
     enableTerminalColorForTests();
-    const output = terminalTimestamp("2026-06-21T06:35:24.409Z", "6 days ago");
+    const output = renderDisplayText([
+      span("2026-06-21T06:35:24.409Z", "string"),
+      span(" 6 days ago", "subtle"),
+    ]);
     expect(output).toContain("\u001b[34m2026-06-21T06:35:24.409Z\u001b[39m");
-    expect(output).toContain("\u001b[90m6 days ago\u001b[39m");
-  });
-
-  test("classifies string values by shape", () => {
-    expect(isUuidValue("019ee8e4-1d79-77d9-8693-1f67732b184d")).toBe(true);
-    expect(isTimestampValue("2026-06-21T06:35:24.409Z")).toBe(true);
-    expect(classifyStringDataType("mcp_tool_call")).toBe("string");
-    expect(classifyStringDataType("019ee8e4-1d79-77d9-8693-1f67732b184d")).toBe("uuid");
-    expect(classifyStringDataType("2026-06-21T06:35:24.409Z")).toBe("timestamp");
+    expect(output).toContain("\u001b[90m 6 days ago\u001b[39m");
   });
 
   test("truncateTerminalText respects visible width with ANSI codes", () => {
     enableTerminalColorForTests();
-    const styled = terminalAccent("abcdefghijklmnopqrstuvwxyz");
+    const styled = renderDisplayText([span("abcdefghijklmnopqrstuvwxyz", "accent")]);
     const truncated = truncateTerminalText(styled, 10);
     expect(truncated).toContain("…");
     expect(truncated).not.toContain("klmnopqrstuvwxyz");
@@ -229,7 +203,9 @@ describe("terminal-style", () => {
   test("truncateTerminalText keeps terminal hyperlinks non-printing", () => {
     enableTerminalColorForTests();
     process.env.OSC_HYPERLINK = "1";
-    const linked = terminalLink("abcdefghijklmnopqrstuvwxyz", "https://example.com");
+    const linked = renderDisplayText([
+      span("abcdefghijklmnopqrstuvwxyz", "accent", "https://example.com"),
+    ]);
     const truncated = truncateTerminalText(linked, 10);
     expect(truncated).toContain("\u001b]8;;https://example.com\u0007");
     expect(truncated).toContain("\u001b]8;;\u0007");
@@ -239,60 +215,66 @@ describe("terminal-style", () => {
   test("counts wide characters as double width", () => {
     expect(getVisibleTextWidth("日本語")).toBe(6);
     expect(getVisibleTextWidth("abc")).toBe(3);
+    expect(getVisibleTextWidth("e\u0301")).toBe(1);
+    expect(getVisibleTextWidth("👨‍👩‍👧‍👦")).toBe(2);
+    expect(getVisibleTextWidth("🇫🇷")).toBe(2);
+  });
+
+  test("truncates without splitting joined emoji", () => {
+    const truncated = truncateTerminalText("👨‍👩‍👧‍👦abc", 4);
+
+    expect(truncated).toBe("👨‍👩‍👧‍👦a…");
+    expect(getVisibleTextWidth(truncated)).toBe(4);
+
+    const flag = truncateTerminalText("🇫🇷abc", 4);
+    expect(flag).toBe("🇫🇷a…");
+    expect(getVisibleTextWidth(flag)).toBe(4);
   });
 
   test("padLeft indents multi-line terminal output", () => {
     expect(padLeft(["A\nB", "C"], "  ")).toEqual(["  A", "  B", "  C"]);
   });
 
-  test("linkifies URLs and emits OSC 8 hyperlinks when supported", () => {
+  test("renders semantic links as OSC 8 hyperlinks when supported", () => {
     enableTerminalColorForTests();
     process.env.OSC_HYPERLINK = "1";
     const url = "https://api.altertable.ai";
-    const linked = terminalUrl(url);
+    const linked = renderDisplayText([span(url, "accent", url)]);
     expect(linked).toContain("\u001b]8;;https://api.altertable.ai\u0007");
     expect(linked).toContain("\u001b]8;;\u0007");
-    expect(formatTerminalUrls(`Data plane: ${url}`)).toContain("\u001b]8;;");
   });
 
-  test("terminalLink returns plain label when hyperlinks are disabled", () => {
+  test("renders styled presentation spans and links", () => {
     enableTerminalColorForTests();
     process.env.OSC_HYPERLINK = "0";
-    expect(shouldUseTerminalHyperlinks()).toBe(false);
-    expect(terminalLink("docs", "https://example.com")).toBe("docs");
-  });
-
-  test("formatTerminalMarkdownLinks renders clickable labeled links when supported", () => {
-    enableTerminalColorForTests();
-    process.env.OSC_HYPERLINK = "1";
-    const output = formatTerminalMarkdownLinks("[Docs](https://example.com)");
-
-    expect(output).toContain("\u001b]8;;https://example.com\u0007");
-    expect(output).toContain("Docs");
-    expect(output).not.toContain("[Docs]");
-  });
-
-  test("formatTerminalMarkdownLinks falls back to label and URL without color", () => {
-    process.env.NO_COLOR = "1";
-    expect(formatTerminalMarkdownLinks("[Docs](https://example.com)")).toBe(
-      "Docs (https://example.com)",
+    const url = "https://api.altertable.ai";
+    expect(renderDisplayText([span(url, "accent", url)])).toBe(
+      "\u001b[96mhttps://api.altertable.ai\u001b[39m",
+    );
+    expect(renderDisplayText([span("Docs", "accent", "https://example.com")])).toContain(
+      "Docs\u001b[39m \u001b[90m(https://example.com)",
     );
   });
 
-  test("linkifyUrls option decorates configure label values", () => {
-    enableTerminalColorForTests();
-    process.env.OSC_HYPERLINK = "0";
-    const line = formatTerminalLabelValue("Data plane:", "https://api.altertable.ai", {
-      linkifyUrls: true,
-    });
-    expect(line).toContain("\u001b[96mhttps://api.altertable.ai\u001b[39m");
+  test("escapes terminal controls and bidirectional overrides in span text", () => {
+    setTerminalColorMode("never");
+    const output = renderDisplayText("safe\u001b]0;spoofed\u0007\nnext\u202eright");
+
+    expect(output).toBe("safe\\x1b]0;spoofed\\x07\\x0anext\\u202eright");
+    expect(output).not.toContain("\u001b");
+    expect(output).not.toContain("\u0007");
+    expect(output).not.toContain("\u202e");
   });
 
-  test("formatCommandExamplesSection renders EXAMPLES header", () => {
+  test("never emits unsafe hyperlink targets", () => {
     enableTerminalColorForTests();
-    const section = formatCommandExamplesSection(['altertable query "SELECT 1"']);
-    expect(section).toContain("EXAMPLES");
-    expect(section).toContain("altertable query");
-    expect(section).toContain('"SELECT 1"');
+    process.env.OSC_HYPERLINK = "1";
+    const output = renderDisplayText([
+      span("Docs", "accent", "https://example.com\u0007\u001b]0;spoofed"),
+    ]);
+
+    expect(output).not.toContain("\u001b]8;;");
+    expect(output).not.toContain("\u0007");
+    expect(output).toContain("https://example.com\\x07\\x1b]0;spoofed");
   });
 });

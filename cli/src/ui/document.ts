@@ -1,24 +1,35 @@
-export type DisplayRow = {
-  label: string;
-  value: string;
-  level?: 0 | 1;
-  linkifyUrls?: boolean;
-};
-
-export type DisplayTableColumnStyle =
-  | "foreground"
-  | "subtle"
-  | "muted"
+export type DisplayTextStyle =
+  | "strong"
   | "accent"
   | "string"
-  | "strong"
+  | "boolean"
+  | "number"
+  | "muted"
+  | "subtle"
+  | "success"
+  | "warning"
+  | "error"
+  | "heading"
   | "httpMethod";
+
+export type DisplaySpan = {
+  text: string;
+  style?: DisplayTextStyle;
+  href?: string;
+};
+
+export type DisplayText = string | readonly DisplaySpan[];
+
+export type DisplayRow = {
+  label: string;
+  value: DisplayText;
+  level?: 0 | 1;
+};
 
 export type DisplayTableColumn<Row> = {
   header: string;
-  cell: (row: Row) => string;
+  cell: (row: Row) => DisplayText;
   maxWidth?: number;
-  style?: DisplayTableColumnStyle;
   flex?: boolean;
 };
 
@@ -39,7 +50,7 @@ export type DisplayBlock =
     }
   | {
       kind: "text";
-      lines: readonly string[];
+      lines: readonly DisplayText[];
     };
 
 export type DisplaySection = {
@@ -65,8 +76,16 @@ export function table<Row>(displayTable: DisplayTable<Row>): DisplayBlock {
   return { kind: "table", table: displayTable as DisplayTable };
 }
 
-export function text(lines: readonly string[]): DisplayBlock {
+export function text(lines: readonly DisplayText[]): DisplayBlock {
   return { kind: "text", lines };
+}
+
+export function span(text: string, style?: DisplayTextStyle, href?: string): DisplaySpan {
+  return {
+    text,
+    ...(style ? { style } : {}),
+    ...(href ? { href } : {}),
+  };
 }
 
 export function section(...blocks: readonly DisplayBlock[]): DisplaySection {

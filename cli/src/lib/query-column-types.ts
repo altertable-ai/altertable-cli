@@ -1,5 +1,23 @@
 import type { LakehouseColumn, LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
-import { classifyStringDataType, type TerminalDataType } from "@/ui/terminal/styles.ts";
+
+export type QueryDataType = "null" | "boolean" | "number" | "string" | "uuid" | "timestamp";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+export function isTimestampValue(value: string): boolean {
+  return TIMESTAMP_PATTERN.test(value);
+}
+
+function classifyStringDataType(value: string): QueryDataType {
+  if (UUID_PATTERN.test(value)) {
+    return "uuid";
+  }
+  if (isTimestampValue(value)) {
+    return "timestamp";
+  }
+  return "string";
+}
 
 export type ColumnTypeMap = Map<string, string | undefined>;
 
@@ -20,7 +38,7 @@ export function getColumnTypeMap(columns: LakehouseQueryResult["columns"]): Colu
   return typeMap;
 }
 
-export function mapColumnSqlTypeToDataType(sqlType: string | undefined): TerminalDataType | null {
+export function mapColumnSqlTypeToDataType(sqlType: string | undefined): QueryDataType | null {
   if (sqlType === undefined || sqlType.length === 0) {
     return null;
   }
@@ -47,7 +65,7 @@ export function resolveCellDataType(
   value: unknown,
   columnName: string | undefined,
   columnTypeMap: ColumnTypeMap,
-): TerminalDataType {
+): QueryDataType {
   if (value === null || value === undefined) {
     return "null";
   }

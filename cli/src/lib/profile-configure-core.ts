@@ -12,7 +12,8 @@ import { getCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { getCliRuntime, getOutputSink, type OutputSink } from "@/lib/runtime.ts";
-import { terminalMetadata } from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 const ARGV_SECRET_WARNING =
   "Warning: passing secrets on the command line is visible in process listings. Prefer --password-stdin / --api-key-stdin.";
@@ -114,7 +115,7 @@ export async function configureRunSet(
       Boolean(options.password) && !options.passwordStdin && !options.interactive;
     const apiKeyFromArgv = Boolean(options.apiKey) && !options.apiKeyStdin && !options.interactive;
     if (passwordFromArgv || apiKeyFromArgv) {
-      sink.writeMetadata([terminalMetadata(ARGV_SECRET_WARNING)]);
+      sink.writeMetadata([renderDisplayText([span(ARGV_SECRET_WARNING, "subtle")])]);
     }
 
     const hasAnyInput =
@@ -207,13 +208,19 @@ export async function configureRunSet(
     }
 
     if (hasApiKey) {
-      sink.writeMetadata([terminalMetadata(`Saved management API key for environment ${env}.`)]);
+      sink.writeMetadata([
+        renderDisplayText([span(`Saved management API key for environment ${env}.`, "subtle")]),
+      ]);
     } else if (hasLakehouseBasicToken) {
-      sink.writeMetadata([terminalMetadata("Saved lakehouse Basic token.")]);
+      sink.writeMetadata([renderDisplayText([span("Saved lakehouse Basic token.", "subtle")])]);
     } else if (hasLakehouseCredentials) {
-      sink.writeMetadata([terminalMetadata(`Saved lakehouse credentials for user ${user}.`)]);
+      sink.writeMetadata([
+        renderDisplayText([span(`Saved lakehouse credentials for user ${user}.`, "subtle")]),
+      ]);
     } else if (dataPlaneUrl) {
-      sink.writeMetadata([terminalMetadata(`Saved data plane URL ${dataPlaneUrl}.`)]);
+      sink.writeMetadata([
+        renderDisplayText([span(`Saved data plane URL ${dataPlaneUrl}.`, "subtle")]),
+      ]);
     }
     markCurrentProfileUpdated(profileName);
   });
@@ -238,5 +245,7 @@ export function configureRunClear(sink: OutputSink = getOutputSink()): void {
     // already removed
   }
   getCliRuntime().session = undefined;
-  sink.writeMetadata([terminalMetadata("Cleared all altertable configuration.")]);
+  sink.writeMetadata([
+    renderDisplayText([span("Cleared all altertable configuration.", "subtle")]),
+  ]);
 }

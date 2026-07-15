@@ -3,11 +3,11 @@ import {
   document,
   rows,
   section,
+  span,
   table,
   type DisplayDocument,
   type DisplayRow,
 } from "@/ui/document.ts";
-import { terminalAccent } from "@/ui/terminal/styles.ts";
 
 export type ApiRoutesViewOptions = {
   emptyMessage?: string;
@@ -16,7 +16,7 @@ export type ApiRoutesViewOptions = {
 
 function apiOperationRows(operation: ApiOperationDetails): DisplayRow[] {
   return [
-    { label: "Operation:", value: terminalAccent(operation.operationId) },
+    { label: "Operation:", value: [span(operation.operationId, "accent")] },
     { label: "Method:", value: operation.method },
     { label: "Path:", value: operation.path },
     {
@@ -42,23 +42,19 @@ export function buildApiRoutesView(
         columns: [
           {
             header: "METHOD",
-            cell: (row) => row.method,
-            style: "httpMethod",
+            cell: (row) => [span(row.method, "httpMethod")],
           },
           {
             header: "PATH",
             cell: (row) => row.path,
-            style: "foreground",
           },
           {
             header: "OPERATION",
-            cell: (row) => row.operationId,
-            style: "subtle",
+            cell: (row) => [span(row.operationId, "subtle")],
           },
           {
             header: "SUMMARY",
-            cell: (row) => row.summary,
-            style: "muted",
+            cell: (row) => [span(row.summary, "muted")],
           },
         ],
         emptyMessage: options.emptyMessage ?? "No operations found.",

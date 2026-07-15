@@ -22,8 +22,9 @@ import {
   setActiveProfile,
   updateProfile,
 } from "@/features/profile/model.ts";
-import { terminalSuccess } from "@/ui/terminal/styles.ts";
 import { readEnv, setEnv } from "@/lib/env.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 function isInteractiveTerminal(): boolean {
   return process.stdin.isTTY;
@@ -223,7 +224,12 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
     unchanged: `using profile "${profileName}"`,
   } satisfies Record<LoginProfileAction, string>;
   sink.writeMetadata([
-    `${terminalSuccess("✓")} Logged in (${identity}) — ${profileMessages[profileAction]}; environment "${environment}".`,
+    renderDisplayText([
+      span("✓", "success"),
+      span(
+        ` Logged in (${identity}) — ${profileMessages[profileAction]}; environment "${environment}".`,
+      ),
+    ]),
   ]);
 }
 

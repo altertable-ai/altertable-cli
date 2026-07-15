@@ -1,10 +1,6 @@
 import { isJsonOutput } from "@/context.ts";
-import {
-  terminalAccent,
-  terminalError,
-  terminalMuted,
-  terminalSuccess,
-} from "@/ui/terminal/styles.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export type ProgressHandle = {
   done: (message?: string) => void;
@@ -33,21 +29,23 @@ export function shouldShowProgress(): boolean {
 
 export function formatUploadProgress(sentBytes: number, totalBytes: number): string {
   if (totalBytes <= 0) {
-    return terminalMuted(`Uploading ${sentBytes} bytes`);
+    return renderDisplayText([span(`Uploading ${sentBytes} bytes`, "muted")]);
   }
 
   const percent = Math.min(100, Math.round((sentBytes / totalBytes) * 100));
-  return terminalMuted(`Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`);
+  return renderDisplayText([
+    span(`Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`, "muted"),
+  ]);
 }
 
 export function formatProgressStatus(status: ProgressStatus, message: string): string {
   if (status === "success") {
-    return `${terminalSuccess("✓")} ${message}`;
+    return renderDisplayText([span("✓", "success"), span(` ${message}`)]);
   }
   if (status === "error") {
-    return `${terminalError("✗")} ${message}`;
+    return renderDisplayText([span("✗", "error"), span(` ${message}`)]);
   }
-  return terminalMuted(message);
+  return renderDisplayText([span(message, "muted")]);
 }
 
 export type UploadProgressReporter = {
@@ -96,7 +94,9 @@ export function startProgress(message: string): ProgressHandle {
   function writeFrame() {
     const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? "⠋";
     frameIndex += 1;
-    process.stderr.write(`\r${terminalAccent(frame)} ${formatProgressStatus("active", label)}`);
+    process.stderr.write(
+      `\r${renderDisplayText([span(frame, "accent")])} ${formatProgressStatus("active", label)}`,
+    );
   }
 
   writeFrame();
