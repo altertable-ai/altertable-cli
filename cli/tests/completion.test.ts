@@ -68,6 +68,20 @@ function createMockPrompts(selection: string): ConfigurePrompts {
   };
 }
 
+async function captureCompletionOutput(
+  run: () => void | Promise<void>,
+  json = false,
+): Promise<string> {
+  const output: string[] = [];
+  const runtime = createCliRuntime({ debug: false, json, agent: false });
+  runtime.output.writeHuman = (text) => output.push(text);
+  runtime.output.writeJson = (data) => output.push(JSON.stringify(data));
+  runtime.output.writeRaw = (body) => output.push(body);
+
+  await runWithCliRuntime(runtime, run);
+  return output.join("");
+}
+
 async function runCompletion(
   getRootCommand: () => CommandDef,
   shell?: string,
@@ -83,20 +97,10 @@ async function runCompletion(
     throw new Error(`missing completion command for ${shell ?? "detected shell"}`);
   }
 
-  let output = "";
-  const originalLog = console.log;
   const rawArgs = shell ? ["completion", shell] : ["completion"];
-  console.log = (value?: unknown) => {
-    if (typeof value === "string") {
-      output += value;
-    }
-  };
-  try {
-    await command.run({ args: command === completionCommand ? { shell } : {}, rawArgs } as never);
-  } finally {
-    console.log = originalLog;
-  }
-  return output;
+  return await captureCompletionOutput(() =>
+    command.run?.({ args: command === completionCommand ? { shell } : {}, rawArgs } as never),
+  );
 }
 
 async function runCompletionGenerate(shell: string): Promise<string> {
@@ -108,51 +112,32 @@ async function runCompletionGenerate(shell: string): Promise<string> {
     throw new Error("missing completion generate command");
   }
 
-  let output = "";
-  const originalLog = console.log;
-  console.log = (value?: unknown) => {
-    if (typeof value === "string") {
-      output += value;
-    }
-  };
-  try {
-    await command.run({
+  return await captureCompletionOutput(() =>
+    command.run?.({
       args: {},
       rawArgs: ["completion", "generate", shell],
-    } as never);
-  } finally {
-    console.log = originalLog;
-  }
-  return output;
+    } as never),
+  );
 }
 
-async function runCompletionParent(rawArgs: string[]): Promise<string> {
+async function runCompletionParent(rawArgs: string[], json = false): Promise<string> {
   const completionCommand = createCompletionCommand(() => minimalRootCommand);
   if (!completionCommand.run) {
     throw new Error("missing completion command");
   }
 
-  let output = "";
-  const originalLog = console.log;
-  console.log = (value?: unknown) => {
-    if (typeof value === "string") {
-      output += value;
-    }
-  };
-  try {
-    await completionCommand.run({
-      args: {},
-      rawArgs,
-    } as never);
-  } finally {
-    console.log = originalLog;
-  }
-  return output;
+  return await captureCompletionOutput(
+    () =>
+      completionCommand.run?.({
+        args: {},
+        rawArgs,
+      } as never),
+    json,
+  );
 }
 
 async function runCompletionParentJson(rawArgs: string[]): Promise<string> {
-  const runtime = createCliRuntime({ debug: false, json: true, agent: false });
-  return await runWithCliRuntime(runtime, () => runCompletionParent(rawArgs));
+  return await runCompletionParent(rawArgs, true);
 }
 
 async function runCompletionInstall(shell?: string, noRc = false): Promise<string> {
@@ -167,26 +152,16 @@ async function runCompletionInstall(shell?: string, noRc = false): Promise<strin
     throw new Error("missing completion install command");
   }
 
-  let output = "";
-  const originalLog = console.log;
-  console.log = (value?: unknown) => {
-    if (typeof value === "string") {
-      output += value;
-    }
-  };
-  try {
-    const rawArgs = shell ? ["completion", "install", shell] : ["completion", "install"];
-    if (noRc) {
-      rawArgs.push("--no-rc");
-    }
-    await command.run({
+  const rawArgs = shell ? ["completion", "install", shell] : ["completion", "install"];
+  if (noRc) {
+    rawArgs.push("--no-rc");
+  }
+  return await captureCompletionOutput(() =>
+    command.run?.({
       args: shell === undefined ? { shell, "no-rc": noRc } : { "no-rc": noRc },
       rawArgs,
-    } as never);
-  } finally {
-    console.log = originalLog;
-  }
-  return output;
+    } as never),
+  );
 }
 
 async function runInteractiveCompletion(selection: string, shellPath?: string): Promise<string> {
