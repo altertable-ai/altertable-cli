@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/altertable-ai/altertable-cli/compare/v1.1.0...v1.2.0) (2026-07-15)
+
+
+### Features
+
+* **cli:** redesign help across command tree ([#53](https://github.com/altertable-ai/altertable-cli/issues/53)) ([e35c2fe](https://github.com/altertable-ai/altertable-cli/commit/e35c2fe474050c9a8c354b30138b27e45f297f3c))
+* **release:** centralize and harden artifact publishing ([#55](https://github.com/altertable-ai/altertable-cli/issues/55)) ([8db771a](https://github.com/altertable-ai/altertable-cli/commit/8db771a0515927bde31fb5c7b8a8d056051897e9))
+
+
+### Bug Fixes
+
+* forbid profile commands when config is env set ([#48](https://github.com/altertable-ai/altertable-cli/issues/48)) ([63a5fc4](https://github.com/altertable-ai/altertable-cli/commit/63a5fc40718dc8a9d3b9155adf94a16c7496b6fc))
+* sync --version output and wire release-please marker ([#50](https://github.com/altertable-ai/altertable-cli/issues/50)) ([a3e86e8](https://github.com/altertable-ai/altertable-cli/commit/a3e86e818aa7737e5fbf746425cf64d0eb30ad34))
+* **updater:** make CLI updates resilient and actionable ([#52](https://github.com/altertable-ai/altertable-cli/issues/52)) ([5d0c0af](https://github.com/altertable-ai/altertable-cli/commit/5d0c0af511fb1c63fd6f55daf972b8c029d0f5c9))
+
 ## [1.1.0](https://github.com/altertable-ai/altertable-cli/compare/v1.0.0...v1.1.0) (2026-07-10)
 
 
