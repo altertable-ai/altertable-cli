@@ -1,0 +1,87 @@
+name: Canonical verification
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git revision to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  repository:
+    name: Repository and integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      altertable:
+        image: ghcr.io/altertable-ai/altertable-mock@sha256:2e85cecd30b582a28196fc7574b2c7ae323378ccf40abfe658e2692270799977
+        ports:
+          - 15000:15000
+        env:
+          ALTERTABLE_MOCK_USERS: testuser:testpass
+        options: >-
+          --health-cmd "bash -c '</dev/tcp/127.0.0.1/15000'"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
+          --health-start-period 10s
+
+    steps:
+      - name: Check out revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Verify repository and integration paths
+        run: ./scripts/verify.sh --integration
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-coverage-lcov-${{ github.run_id }}-${{ github.run_attempt }}
+          path: cli/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
+
+  npm-runtime:
+    name: npm runtime compatibility (Bun 1.1.0)
+    needs: repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+
+      - name: Install release build toolchain
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Build npm bundle
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+        working-directory: cli
+
+      - name: Install minimum supported runtime
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.1.0
+
+      - name: Smoke test npm bundle on minimum runtime
+        run: bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0

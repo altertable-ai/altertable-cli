@@ -83,6 +83,7 @@ Download the platform binary from [GitHub Releases](https://github.com/altertabl
 | `altertable-linux-arm64`  | Linux ARM64                          |
 | `altertable-cli.js`       | Bun bundle (`bun altertable-cli.js`) |
 | `checksums.txt`           | SHA-256 checksums for all assets     |
+| `release-manifest.json`   | Versioned artifact and build metadata |
 
 Verify and install:
 

@@ -1,4 +1,9 @@
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
+import {
+  RELEASE_CHECKSUMS_ASSET,
+  RELEASE_PLATFORM_CONFIG,
+  type ReleasePlatform,
+} from "@/release-manifest.ts";
 import { objectKeys } from "@/lib/object.ts";
 
 const DAILY_MS = 24 * 60 * 60 * 1000;
@@ -40,13 +45,6 @@ const UpdaterInstallMethodConfig = {
   [UpdaterInstallMethod.githubBinary]: {},
 } as const;
 
-const UpdaterReleasePlatforms = {
-  "darwin-arm64": {},
-  "darwin-x64": {},
-  "linux-arm64": {},
-  "linux-x64": {},
-} as const;
-
 export const UpdaterInstallationKind = {
   nativeBinary: "native-binary",
   packageManager: "package-manager",
@@ -84,10 +82,10 @@ export const UpdaterConfig = {
   automaticCheckSkipCommands: ["completion", "update"],
   installCommands: UpdaterInstallCommands,
   installMethods: UpdaterInstallMethodConfig,
-  releasePlatforms: UpdaterReleasePlatforms,
+  releasePlatforms: RELEASE_PLATFORM_CONFIG,
   installationKinds: UpdaterInstallationKind,
   binaryAssetPrefix: EXECUTABLE_NAME,
-  checksumsAssetName: "checksums.txt",
+  checksumsAssetName: RELEASE_CHECKSUMS_ASSET,
   installationDetection: {
     sourceScriptSuffixes: ["/src/cli.ts"],
     sourceScriptExtensions: [".ts"],
@@ -107,7 +105,7 @@ export type UpdateCheckInterval = keyof typeof UpdaterConfig.intervalsMs;
 export type InstallManager = keyof typeof UpdaterConfig.installCommands;
 export type UpdateInstallMethod = keyof typeof UpdaterConfig.installMethods;
 export type ResolvedUpdateInstallMethod = Exclude<UpdateInstallMethod, "auto">;
-export type ReleasePlatform = keyof typeof UpdaterConfig.releasePlatforms;
+export type { ReleasePlatform };
 export type InstallationKind =
   (typeof UpdaterConfig.installationKinds)[keyof typeof UpdaterConfig.installationKinds];
 

@@ -5,6 +5,7 @@
       "release-type": "node",
       "package-name": "@altertable/cli",
       "component": "altertable-cli",
+      "draft": true,
       "extra-files": [
         {
           "type": "json",

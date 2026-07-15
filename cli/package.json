@@ -30,14 +30,23 @@
     "test:coverage": "bun test --coverage",
     "generate": "bun run scripts/generate-openapi-types.ts && bun run scripts/generate-openapi-index.ts",
     "spec:refresh": "curl -fsSL https://app.altertable.ai/rest/v1/openapi.yaml -o openapi/openapi.yaml && bun run generate && oxfmt openapi/openapi.yaml",
-    "build": "bun build src/cli.ts --outdir dist --target bun",
+    "build": "bun run scripts/npm-bundle.ts",
+    "release:build": "bun run scripts/release.ts build",
+    "release:finalize": "bun run scripts/release.ts finalize",
+    "release:matrix": "bun run scripts/release.ts matrix",
+    "release:publish-github": "bun run scripts/github-release.ts publish",
+    "release:publish-npm": "bun run scripts/publish-npm.ts",
+    "release:smoke": "bun run scripts/release.ts smoke",
+    "release:verify": "bun run scripts/release.ts verify",
+    "release:upload-github": "bun run scripts/github-release.ts upload",
     "pack:check": "bun run build && bun pm pack --dry-run",
     "knip": "knip"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
     "citty": "0.2.2",
-    "oauth4webapi": "3.8.6"
+    "oauth4webapi": "3.8.6",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
@@ -52,5 +61,5 @@
   "engines": {
     "bun": ">=1.1.0"
   },
-  "packageManager": "bun@1.3.9"
+  "packageManager": "bun@1.3.14"
 }
