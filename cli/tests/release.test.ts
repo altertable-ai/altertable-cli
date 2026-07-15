@@ -371,7 +371,7 @@ describe("release infrastructure wiring", () => {
     expect(releasePleaseConfig.packages["."]?.draft).toBe(true);
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(workflowNeeds(verification)).toEqual(["release-please"]);
-    expect(verification.with?.ref).toContain("tag_name");
+    expect(verification.with?.ref).toContain("github.sha");
     expect(workflowNeeds(matrix)).toEqual(["release-please", "verify-release"]);
     expect(workflowNeeds(native)).toEqual(["release-please", "verify-release", "release-matrix"]);
     expect(workflowNeeds(publication)).toEqual(["release-please", "release-native"]);
