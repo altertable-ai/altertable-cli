@@ -20,14 +20,15 @@ import { NPM_BUNDLE_PATH } from "@/../scripts/npm-bundle.ts";
 import {
   githubReleasePublishCommand,
   githubReleaseUploadCommand,
-} from "@/../scripts/github-release.ts";
-import {
   assertTrustedPublishingEnvironment,
   MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
   npmPublicationRequired,
+  parsePackageIdentity,
   parseNpmVersionLookup,
+  releaseAssetNames,
+  readReleaseAssetPaths,
   SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
-} from "@/../scripts/publish-npm.ts";
+} from "@/../scripts/publish-release.ts";
 import { UpdaterConfig } from "@/lib/updater-config.ts";
 import { releaseAssetName } from "@/lib/updater.ts";
 import {
@@ -326,8 +327,29 @@ describe("retry-safe npm publication", () => {
 });
 
 describe("GitHub release publication", () => {
-  test("uploads the complete manifest-owned asset set before publishing the draft", () => {
-    const upload = githubReleaseUploadCommand("v1.1.0");
+  test("uploads the complete manifest-owned asset set before publishing the draft", async () => {
+    const releaseDirectory = await mkdtemp(join(tmpdir(), "altertable-release-upload-test-"));
+    temporaryDirectories.push(releaseDirectory);
+    const assetNames = [
+      ...RELEASE_TARGETS.map(({ asset }) => asset),
+      RELEASE_BUNDLE_ASSET,
+      RELEASE_METADATA_ASSET,
+      RELEASE_CHECKSUMS_ASSET,
+    ];
+    for (const asset of assetNames) await Bun.write(join(releaseDirectory, asset), asset);
+    await Bun.write(
+      join(releaseDirectory, RELEASE_METADATA_ASSET),
+      JSON.stringify({
+        tag: "v1.1.0",
+        artifacts: [
+          ...RELEASE_TARGETS.map(({ asset }) => ({ file: asset })),
+          { file: RELEASE_BUNDLE_ASSET },
+        ],
+      }),
+    );
+
+    const assetPaths = await readReleaseAssetPaths(releaseDirectory, "v1.1.0");
+    const upload = githubReleaseUploadCommand("v1.1.0", assetPaths);
     const publish = githubReleasePublishCommand("v1.1.0");
 
     expect(upload.slice(0, 4)).toEqual(["gh", "release", "upload", "v1.1.0"]);
@@ -337,6 +359,21 @@ describe("GitHub release publication", () => {
     }
     expect(upload.at(-1)).toBe("--clobber");
     expect(publish).toEqual(["gh", "release", "edit", "v1.1.0", "--draft=false", "--latest"]);
+  });
+
+  test("validates the release package identity and manifest-owned asset names", () => {
+    expect(parsePackageIdentity({ name: "@altertable/cli", version: "1.2.0" }, "v1.2.0")).toEqual({
+      name: "@altertable/cli",
+      version: "1.2.0",
+    });
+    expect(() =>
+      parsePackageIdentity({ name: "@altertable/cli", version: "1.2.0" }, "v1.3.0"),
+    ).toThrow("does not match package version");
+    for (const file of ["", ".", "..", "../secret", "nested/secret", "nested\\secret"]) {
+      expect(() => releaseAssetNames({ tag: "v1.2.0", artifacts: [{ file }] }, "v1.2.0")).toThrow(
+        "Unsafe release asset name",
+      );
+    }
   });
 });
 
@@ -414,6 +451,8 @@ describe("release infrastructure wiring", () => {
     expect(contextScript).toContain("already published");
     expect(contextScript).not.toContain("gh release view");
     expect(contextScript).toContain("immutable commit SHA");
+    expect(contextScript).toContain("Release recovery must run from refs/heads/main");
+    expect(contextScript).toContain("orchestration_ref=${TRIGGER_SHA}");
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(workflowNeeds(verification)).toEqual(["release-context"]);
     expect(verification.if).toContain("!cancelled()");
@@ -436,6 +475,16 @@ describe("release infrastructure wiring", () => {
     expect(publication.if).toContain("needs.release-context.result == 'success'");
     expect(publication.if).toContain("needs.release-native.result == 'success'");
     expect(publication.if).not.toContain("always()");
+    const releaseCheckout = publication.steps?.find(
+      ({ name }) => name === "Check out released revision",
+    );
+    const orchestrationCheckout = publication.steps?.find(
+      ({ name }) => name === "Check out current release orchestration",
+    );
+    expect(releaseCheckout?.with?.ref).toContain("release_ref");
+    expect(orchestrationCheckout?.with?.ref).toContain("orchestration_ref");
+    expect(orchestrationCheckout?.with?.path).toBe(".release-orchestration");
+    expect(orchestrationCheckout?.with?.["sparse-checkout"]).toBe("cli/scripts/publish-release.ts");
 
     const orderedSteps = [
       "Download tested release binaries",
@@ -453,9 +502,16 @@ describe("release infrastructure wiring", () => {
     ].map((name) => workflowStepIndex(publication, name));
     expect(orderedSteps.every((index) => index >= 0)).toBe(true);
     expect(orderedSteps).toEqual([...orderedSteps].sort((left, right) => left - right));
-    expect(publication.steps?.[orderedSteps[10] ?? -1]?.run).toBe("bun run release:publish-npm");
-    expect(publication.steps?.[orderedSteps[9] ?? -1]?.run).toBe("bun run release:upload-github");
-    expect(publication.steps?.[orderedSteps[11] ?? -1]?.run).toBe("bun run release:publish-github");
+    const publishScript = "bun run .release-orchestration/cli/scripts/publish-release.ts";
+    expect(publication.steps?.[orderedSteps[9] ?? -1]?.run).toBe(`${publishScript} upload-github`);
+    expect(publication.steps?.[orderedSteps[10] ?? -1]?.run).toBe(`${publishScript} publish-npm`);
+    expect(publication.steps?.[orderedSteps[11] ?? -1]?.run).toBe(
+      `${publishScript} publish-github`,
+    );
+    for (const index of orderedSteps.slice(9)) {
+      expect(publication.steps?.[index]?.env?.RELEASE_ROOT).toBe("${{ github.workspace }}");
+      expect(publication.steps?.[index]?.env?.RELEASE_TAG).toContain("tag_name");
+    }
   });
 
   test("retains recoverable release binaries longer than diagnostic artifacts", async () => {
@@ -484,7 +540,7 @@ describe("release infrastructure wiring", () => {
     const publishStep = publication.steps?.find(({ name }) => name === "Publish npm package");
 
     expect(publication.permissions?.["id-token"]).toBe("write");
-    expect(publishStep?.run).toBe("bun run release:publish-npm");
+    expect(publishStep?.run).toContain(".release-orchestration/cli/scripts/publish-release.ts");
     expect(publishStep?.env?.NODE_AUTH_TOKEN).toBeUndefined();
     expect(publishStep?.env?.NPM_TOKEN).toBeUndefined();
     expect(
