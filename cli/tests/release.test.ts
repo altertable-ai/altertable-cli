@@ -398,10 +398,18 @@ describe("release infrastructure wiring", () => {
     expect(contextScript).toContain("immutable commit SHA");
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(workflowNeeds(verification)).toEqual(["release-context"]);
+    expect(verification.if).toContain("always()");
     expect(verification.with?.ref).toContain("release_ref");
     expect(workflowNeeds(matrix)).toEqual(["release-context", "verify-release"]);
+    expect(matrix.if).toContain("always()");
+    expect(matrix.if).toContain("needs.verify-release.result == 'success'");
     expect(workflowNeeds(native)).toEqual(["release-context", "verify-release", "release-matrix"]);
+    expect(native.if).toContain("always()");
+    expect(native.if).toContain("needs.verify-release.result == 'success'");
+    expect(native.if).toContain("needs.release-matrix.result == 'success'");
     expect(workflowNeeds(publication)).toEqual(["release-context", "release-native"]);
+    expect(publication.if).toContain("always()");
+    expect(publication.if).toContain("needs.release-native.result == 'success'");
 
     const orderedSteps = [
       "Download tested release binaries",

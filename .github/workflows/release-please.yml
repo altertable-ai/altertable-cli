@@ -114,7 +114,10 @@ jobs:
   release-matrix:
     name: Resolve release matrix
     needs: [release-context, verify-release]
-    if: needs.release-context.outputs.should_release == 'true'
+    if: >-
+      always() &&
+      needs.release-context.outputs.should_release == 'true' &&
+      needs.verify-release.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -143,7 +146,11 @@ jobs:
   release-native:
     name: Build and test release binary (${{ matrix.artifact }})
     needs: [release-context, verify-release, release-matrix]
-    if: needs.release-context.outputs.should_release == 'true'
+    if: >-
+      always() &&
+      needs.release-context.outputs.should_release == 'true' &&
+      needs.verify-release.result == 'success' &&
+      needs.release-matrix.result == 'success'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     permissions:
@@ -191,7 +198,8 @@ jobs:
   verify-release:
     name: Canonical release verification
     needs: release-context
-    if: needs.release-context.outputs.should_release == 'true'
+    if: >-
+      always() && needs.release-context.outputs.should_release == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/verify.yml
@@ -201,7 +209,10 @@ jobs:
   release-artifacts:
     name: Verify, attest, and publish release
     needs: [release-context, release-native]
-    if: needs.release-context.outputs.should_release == 'true'
+    if: >-
+      always() &&
+      needs.release-context.outputs.should_release == 'true' &&
+      needs.release-native.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
