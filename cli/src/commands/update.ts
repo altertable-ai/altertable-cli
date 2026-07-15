@@ -3,7 +3,6 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
-import { findFirstSubcommandIndex, GLOBAL_ARGV_FLAGS_WITH_VALUE } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
@@ -30,77 +29,31 @@ export type UpdateCommandDependencies = {
 };
 
 const DEFAULT_DEPENDENCIES: UpdateCommandDependencies = { checkForUpdate, installCliUpdate };
-const UPDATE_COMMAND_NAMES: ReadonlySet<string> = new Set(["update", "upgrade"]);
-const UPDATE_FLAGS: ReadonlySet<string> = new Set([
-  "--check",
-  "--force",
-  "--debug",
-  "-d",
-  "--json",
-  "--agent",
-  "--no-color",
-  "--profile",
-  "--connect-timeout",
-  "--read-timeout",
-]);
+const UPDATE_OPTIONS: ReadonlySet<string> = new Set(["--check", "--force"]);
 
-export function findUnexpectedUpdateArgument(rawArgs: readonly string[]): string | undefined {
-  const commandIndex = findFirstSubcommandIndex(rawArgs);
-  const firstArgumentIndex = UPDATE_COMMAND_NAMES.has(rawArgs[commandIndex] ?? "")
-    ? commandIndex + 1
-    : 0;
+function validateUpdateArguments(rawArgs: readonly string[]): void {
   let versionSeen = false;
 
-  for (let index = firstArgumentIndex; index < rawArgs.length; index += 1) {
-    const argument = rawArgs[index];
-    if (argument === undefined) {
-      continue;
-    }
+  for (const argument of rawArgs) {
     if (argument === "--") {
       continue;
     }
     if (argument.startsWith("-")) {
-      if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(argument)) {
-        index += 1;
+      const option = argument.split("=", 1)[0] ?? argument;
+      if (!UPDATE_OPTIONS.has(option)) {
+        throw new CliError(`Unknown option ${option}.`, {
+          details: "Run altertable update --help for usage.",
+        });
       }
       continue;
     }
     if (versionSeen) {
-      return argument;
+      throw new CliError(`Unexpected argument for altertable update: ${argument}.`, {
+        details: "Pass at most one version; run altertable update --help for usage.",
+      });
     }
     versionSeen = true;
   }
-  return undefined;
-}
-
-function validateUpdateArguments(rawArgs: readonly string[]): void {
-  const commandIndex = findFirstSubcommandIndex(rawArgs);
-  const firstArgumentIndex = UPDATE_COMMAND_NAMES.has(rawArgs[commandIndex] ?? "")
-    ? commandIndex + 1
-    : 0;
-  for (let index = firstArgumentIndex; index < rawArgs.length; index += 1) {
-    const argument = rawArgs[index];
-    if (!argument?.startsWith("-") || argument === "--") {
-      continue;
-    }
-    const flag = argument.split("=", 1)[0] ?? argument;
-    if (!UPDATE_FLAGS.has(flag)) {
-      throw new CliError(`Unknown option ${flag}.`, {
-        details: "Run altertable update --help for usage.",
-      });
-    }
-    if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(flag)) {
-      index += 1;
-    }
-  }
-
-  const unexpected = findUnexpectedUpdateArgument(rawArgs);
-  if (!unexpected) {
-    return;
-  }
-  throw new CliError(`Unexpected argument for altertable update: ${unexpected}.`, {
-    details: "Pass at most one version; run altertable update --help for usage.",
-  });
 }
 
 function buildTargetResult(targetVersion: string): UpdateCheckResult {
@@ -152,13 +105,14 @@ export async function executeUpdateCommand(
     return;
   }
 
-  if (targetVersion && compareVersions(result.latest_version, result.current_version) < 0) {
-    if (!args.force) {
-      throw new CliError(`Target version v${result.latest_version} is older than v${VERSION}.`, {
-        details: `Run altertable update ${result.latest_version} --force to install it anyway.`,
-      });
-    }
-  } else if (!result.update_available && !args.force) {
+  if (
+    !args.force &&
+    targetVersion &&
+    compareVersions(result.latest_version, result.current_version) < 0
+  ) {
+    throw new CliError(`Target version v${result.latest_version} is older than v${VERSION}.`);
+  }
+  if (!args.force && !result.update_available) {
     await writeUpdateCheck(result, targetVersion, sink);
     return;
   }
@@ -170,9 +124,7 @@ export async function executeUpdateCommand(
   await writeCommandOutput(
     {
       kind: "ack",
-      data: {
-        ...installed,
-      },
+      data: installed,
       metadataMessage: `altertable ${installed.verified_version} installed.`,
     },
     sink,
@@ -185,12 +137,7 @@ export const updateCommand = defineAltertableCommand({
     alias: ["upgrade"],
     commandGroup: "platform",
     description: "Update Altertable CLI to the latest release.",
-    examples: [
-      "altertable update",
-      "altertable upgrade",
-      "altertable update --check",
-      "altertable update 1.2.0 --force",
-    ],
+    examples: ["altertable update", "altertable update --check", "altertable update 1.2.0 --force"],
   },
   args: {
     version: {

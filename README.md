@@ -111,7 +111,6 @@ Update to the latest CLI release:
 
 ```bash
 altertable update
-altertable upgrade          # alias
 altertable update --check  # check without installing
 ```
 
