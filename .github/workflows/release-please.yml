@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release tag to recover (for example, v1.2.0)
+        required: true
+        type: string
 
 permissions: {}
 
@@ -14,6 +20,7 @@ concurrency:
 jobs:
   release-please:
     name: Prepare release
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -32,10 +39,67 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+  release-context:
+    name: Resolve release context
+    needs: release-please
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.release-please.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.context.outputs.should_release }}
+      tag_name: ${{ steps.context.outputs.tag_name }}
+      release_ref: ${{ steps.context.outputs.release_ref }}
+
+    steps:
+      - name: Resolve automatic or recovery release
+        id: context
+        env:
+          AUTOMATIC_RELEASE_CREATED: ${{ needs.release-please.outputs.release_created }}
+          AUTOMATIC_TAG: ${{ needs.release-please.outputs.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+          RECOVERY_TAG: ${{ inputs.release_tag }}
+          TRIGGER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ ! "${RECOVERY_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::Invalid recovery release tag: ${RECOVERY_TAG}"
+              exit 1
+            fi
+
+            release_json="$(gh release view "${RECOVERY_TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft,targetCommitish)"
+            is_draft="$(jq -r '.isDraft' <<<"${release_json}")"
+            release_ref="$(jq -r '.targetCommitish' <<<"${release_json}")"
+            if [[ "${is_draft}" != "true" ]]; then
+              echo "::error::Release ${RECOVERY_TAG} is not a draft"
+              exit 1
+            fi
+            if [[ ! "${release_ref}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Draft ${RECOVERY_TAG} is not pinned to an immutable commit SHA"
+              exit 1
+            fi
+
+            {
+              echo "should_release=true"
+              echo "tag_name=${RECOVERY_TAG}"
+              echo "release_ref=${release_ref}"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          {
+            echo "should_release=${AUTOMATIC_RELEASE_CREATED}"
+            echo "tag_name=${AUTOMATIC_TAG}"
+            echo "release_ref=${TRIGGER_SHA}"
+          } >> "${GITHUB_OUTPUT}"
+
   release-matrix:
     name: Resolve release matrix
-    needs: [release-please, verify-release]
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: [release-context, verify-release]
+    if: needs.release-context.outputs.should_release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -50,7 +114,7 @@ jobs:
           persist-credentials: false
           # Draft releases do not create a fetchable Git tag until publication.
           # Verify the release PR merge that triggered this workflow instead.
-          ref: ${{ github.sha }}
+          ref: ${{ needs.release-context.outputs.release_ref }}
 
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -63,8 +127,8 @@ jobs:
 
   release-native:
     name: Build and test release binary (${{ matrix.artifact }})
-    needs: [release-please, verify-release, release-matrix]
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: [release-context, verify-release, release-matrix]
+    if: needs.release-context.outputs.should_release == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     permissions:
@@ -78,7 +142,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-          ref: ${{ github.sha }}
+          ref: ${{ needs.release-context.outputs.release_ref }}
 
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -90,7 +154,7 @@ jobs:
         working-directory: cli
 
       - name: Verify release contract
-        run: bun run release:verify --tag=${{ needs.release-please.outputs.tag_name }}
+        run: bun run release:verify --tag=${{ needs.release-context.outputs.tag_name }}
         working-directory: cli
 
       - name: Compile release binary
@@ -111,18 +175,18 @@ jobs:
 
   verify-release:
     name: Canonical release verification
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: release-context
+    if: needs.release-context.outputs.should_release == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/verify.yml
     with:
-      ref: ${{ github.sha }}
+      ref: ${{ needs.release-context.outputs.release_ref }}
 
   release-artifacts:
     name: Verify, attest, and publish release
-    needs: [release-please, release-native]
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: [release-context, release-native]
+    if: needs.release-context.outputs.should_release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
@@ -136,7 +200,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-          ref: ${{ github.sha }}
+          ref: ${{ needs.release-context.outputs.release_ref }}
           submodules: recursive
 
       - name: Install Bun
@@ -155,7 +219,7 @@ jobs:
         working-directory: cli
 
       - name: Verify release tag and toolchain
-        run: bun run release:verify --tag=${{ needs.release-please.outputs.tag_name }}
+        run: bun run release:verify --tag=${{ needs.release-context.outputs.tag_name }}
         working-directory: cli
 
       - name: Download tested release binaries
@@ -170,7 +234,7 @@ jobs:
         working-directory: cli
 
       - name: Finalize exact release artifacts
-        run: bun run release:finalize --tag=${{ needs.release-please.outputs.tag_name }}
+        run: bun run release:finalize --tag=${{ needs.release-context.outputs.tag_name }}
         working-directory: cli
 
       - name: Smoke test npm bundle on release toolchain
@@ -203,7 +267,7 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
         run: bun run release:upload-github
         working-directory: cli
 
@@ -214,6 +278,6 @@ jobs:
       - name: Publish completed GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
         run: bun run release:publish-github
         working-directory: cli

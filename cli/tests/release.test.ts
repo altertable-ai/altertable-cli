@@ -57,7 +57,14 @@ type WorkflowJob = {
   uses?: string;
   with?: Record<string, string>;
 };
-type Workflow = { jobs: Record<string, WorkflowJob> };
+type Workflow = {
+  jobs: Record<string, WorkflowJob>;
+  on?: {
+    workflow_dispatch?: {
+      inputs?: Record<string, { description?: string; required?: boolean; type?: string }>;
+    };
+  };
+};
 
 async function readWorkflow(name: string): Promise<Workflow> {
   return Bun.YAML.parse(
@@ -363,18 +370,33 @@ describe("release infrastructure wiring", () => {
     const releasePleaseConfig = JSON.parse(
       await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
     ) as { packages: Record<string, { draft?: boolean }> };
+    const preparation = workflow.jobs["release-please"] ?? {};
+    const context = workflow.jobs["release-context"] ?? {};
     const verification = workflow.jobs["verify-release"] ?? {};
     const matrix = workflow.jobs["release-matrix"] ?? {};
     const native = workflow.jobs["release-native"] ?? {};
     const publication = workflow.jobs["release-artifacts"] ?? {};
 
     expect(releasePleaseConfig.packages["."]?.draft).toBe(true);
+    expect(workflow.on?.workflow_dispatch?.inputs?.release_tag).toEqual({
+      description: "Existing draft release tag to recover (for example, v1.2.0)",
+      required: true,
+      type: "string",
+    });
+    expect(preparation.if).toContain("github.event_name == 'push'");
+    expect(workflowNeeds(context)).toEqual(["release-please"]);
+    expect(context.if).toContain("workflow_dispatch");
+    const contextScript = context.steps?.find(
+      ({ name }) => name === "Resolve automatic or recovery release",
+    )?.run;
+    expect(contextScript).toContain("isDraft,targetCommitish");
+    expect(contextScript).toContain("immutable commit SHA");
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
-    expect(workflowNeeds(verification)).toEqual(["release-please"]);
-    expect(verification.with?.ref).toContain("github.sha");
-    expect(workflowNeeds(matrix)).toEqual(["release-please", "verify-release"]);
-    expect(workflowNeeds(native)).toEqual(["release-please", "verify-release", "release-matrix"]);
-    expect(workflowNeeds(publication)).toEqual(["release-please", "release-native"]);
+    expect(workflowNeeds(verification)).toEqual(["release-context"]);
+    expect(verification.with?.ref).toContain("release_ref");
+    expect(workflowNeeds(matrix)).toEqual(["release-context", "verify-release"]);
+    expect(workflowNeeds(native)).toEqual(["release-context", "verify-release", "release-matrix"]);
+    expect(workflowNeeds(publication)).toEqual(["release-context", "release-native"]);
 
     const orderedSteps = [
       "Download tested release binaries",
