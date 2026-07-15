@@ -26,6 +26,7 @@ import {
   MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
   npmPublicationRequired,
   parseNpmVersionLookup,
+  SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
 } from "@/../scripts/publish-npm.ts";
 import { UpdaterConfig } from "@/lib/updater-config.ts";
 import { releaseAssetName } from "@/lib/updater.ts";
@@ -293,6 +294,12 @@ describe("retry-safe npm publication", () => {
     expect(() =>
       assertTrustedPublishingEnvironment(oidcEnvironment, MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION),
     ).not.toThrow();
+    expect(() =>
+      assertTrustedPublishingEnvironment(
+        { ...oidcEnvironment, NODE_AUTH_TOKEN: SETUP_NODE_AUTH_TOKEN_PLACEHOLDER },
+        MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
+      ),
+    ).not.toThrow();
     expect(() => assertTrustedPublishingEnvironment(oidcEnvironment, "12.0.0")).not.toThrow();
     expect(() => assertTrustedPublishingEnvironment(oidcEnvironment, "11.5.0")).toThrow(
       `npm trusted publishing requires npm >=${MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION}`,
@@ -303,6 +310,15 @@ describe("retry-safe npm publication", () => {
     expect(() =>
       assertTrustedPublishingEnvironment(
         { ...oidcEnvironment, NODE_AUTH_TOKEN: "secret" },
+        "12.0.0",
+      ),
+    ).toThrow("npm publishing must use OIDC");
+    expect(() =>
+      assertTrustedPublishingEnvironment({ ...oidcEnvironment, NPM_TOKEN: "secret" }, "12.0.0"),
+    ).toThrow("npm publishing must use OIDC");
+    expect(() =>
+      assertTrustedPublishingEnvironment(
+        { ...oidcEnvironment, NODE_AUTH_TOKEN: `${SETUP_NODE_AUTH_TOKEN_PLACEHOLDER}-modified` },
         "12.0.0",
       ),
     ).toThrow("npm publishing must use OIDC");
