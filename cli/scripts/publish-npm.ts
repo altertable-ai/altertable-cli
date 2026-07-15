@@ -3,6 +3,7 @@ import packageJson from "../package.json" with { type: "json" };
 export type NpmVersionLookup = { status: "published"; version: string } | { status: "missing" };
 
 export const MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION = "11.5.1";
+export const SETUP_NODE_AUTH_TOKEN_PLACEHOLDER = "XXXXX-XXXXX-XXXXX-XXXXX";
 
 function parseVersion(version: string): [number, number, number] {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version.trim());
@@ -14,7 +15,11 @@ export function assertTrustedPublishingEnvironment(
   environment: Record<string, string | undefined>,
   npmVersion: string,
 ): void {
-  if (environment.NODE_AUTH_TOKEN || environment.NPM_TOKEN) {
+  // setup-node exports this non-secret sentinel when registry-url is configured.
+  const nodeAuthToken = environment.NODE_AUTH_TOKEN;
+  const hasLongLivedNodeAuthToken =
+    Boolean(nodeAuthToken) && nodeAuthToken !== SETUP_NODE_AUTH_TOKEN_PLACEHOLDER;
+  if (hasLongLivedNodeAuthToken || environment.NPM_TOKEN) {
     throw new Error("npm publishing must use OIDC; remove long-lived npm publish tokens.");
   }
   if (!environment.ACTIONS_ID_TOKEN_REQUEST_URL || !environment.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
