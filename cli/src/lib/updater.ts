@@ -13,9 +13,9 @@ import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
-import { document, rows, section, span, type DisplayRow } from "@/ui/document.ts";
-import { renderDocumentText } from "@/ui/renderers/terminal.ts";
+import { span } from "@/ui/document.ts";
 import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
+import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
@@ -34,8 +34,6 @@ export {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
   UpdaterInstallMethod,
-  UpdaterInstallMethods,
-  UpdaterSources,
   UpdaterConfig,
   type InstallationKind,
   type InstallManager,
@@ -126,6 +124,7 @@ type RunInstallPlanOptions = {
   stdio?: "inherit" | "pipe";
   spawnImpl?: SpawnSyncImpl;
   verifyCommand?: string;
+  verifyGlobalInstall?: boolean;
   verify?: boolean;
   expectedVersion?: string;
 };
@@ -186,6 +185,10 @@ function comparePrereleaseIdentifier(left: string, right: string): number {
 
 export function normalizeVersion(version: string): string {
   return version.trim().replace(/^v/i, "");
+}
+
+export function isValidVersion(version: string): boolean {
+  return parseVersion(version) !== undefined;
 }
 
 export function compareVersions(leftVersion: string, rightVersion: string): number {
@@ -272,10 +275,6 @@ function tryWriteUpdateState(state: UpdateState): void {
   } catch {
     // Automatic update notices are best-effort and must not fail the user's command.
   }
-}
-
-export function clearUpdateState(): void {
-  rmSync(updaterStateFile(), { force: true });
 }
 
 export function parseUpdateCheckInterval(value: string): UpdateCheckInterval | undefined {
@@ -692,10 +691,16 @@ function pathEndsWithAny(filePath: string, suffixes: readonly string[]): boolean
 export function detectCurrentInstallation(
   options: {
     execPath?: string;
+    argv0?: string;
     argv?: readonly string[];
+    cwd?: string;
+    path?: string;
   } = {},
 ): CurrentInstallation {
-  const execPath = options.execPath ?? process.execPath;
+  const execPath = resolveProcessExecutablePath({
+    ...options,
+    path: options.path ?? readEnv("PATH"),
+  });
   const argv = options.argv ?? process.argv;
   const scriptPath = argv[1] ?? "";
   const execName = basename(execPath);
@@ -851,7 +856,7 @@ function resolveGitHubBinaryTarget(options: InstallCliUpdateOptions): string {
   if (!options.targetPath && installation.kind !== UpdaterInstallationKind.nativeBinary) {
     throw new CliError("Self-update is only supported for native release binaries.", {
       details:
-        "Use --install-method package-manager for npm-style installs, or pass --target-path for controlled binary replacement.",
+        "Install the published package with your package manager, or use a native release binary.",
     });
   }
   return targetPath;
@@ -938,7 +943,8 @@ export async function installGitHubBinaryRelease(
 
 export function runInstallPlan(plan: InstallPlan, options: RunInstallPlanOptions = {}): string {
   const stdio = options.stdio ?? "inherit";
-  const result = (options.spawnImpl ?? spawnSync)(plan.command, plan.args, { stdio });
+  const spawnImpl = options.spawnImpl ?? spawnSync;
+  const result = spawnImpl(plan.command, plan.args, { stdio });
   if (result.error) {
     throw new CliError(`Unable to run ${plan.command}.`, { cause: result.error });
   }
@@ -955,11 +961,44 @@ export function runInstallPlan(plan: InstallPlan, options: RunInstallPlanOptions
   if (options.verify === false) {
     return normalizeVersion(options.expectedVersion ?? "");
   }
+  const verifyCommand =
+    options.verifyCommand ??
+    (options.verifyGlobalInstall
+      ? resolveGlobalInstalledCliPath(plan.manager, spawnImpl)
+      : "altertable");
   return verifyInstalledCliVersion(
     options.expectedVersion ?? plan.args[plan.args.length - 1]?.split("@").pop() ?? "",
-    options.verifyCommand ?? "altertable",
-    options.spawnImpl,
+    verifyCommand,
+    spawnImpl,
   );
+}
+
+function resolveGlobalInstalledCliPath(manager: InstallManager, spawnImpl: SpawnSyncImpl): string {
+  const config = UpdaterConfig.installCommands[manager];
+  const result = spawnImpl(config.command, [...config.globalBinArgs], { encoding: "utf8" });
+  if (result.error) {
+    throw new CliError(`Unable to locate the ${manager} global binary directory.`, {
+      cause: result.error,
+    });
+  }
+  if (result.status !== 0) {
+    throw new CliError(
+      `${manager} global binary directory lookup failed with exit code ${result.status ?? 1}.`,
+    );
+  }
+  const outputPath = spawnOutputText(result.stdout).trim();
+  if (!outputPath) {
+    throw new CliError(`${manager} did not report its global binary directory.`);
+  }
+  const binDirectory =
+    "globalBinIsPrefix" in config && config.globalBinIsPrefix && process.platform !== "win32"
+      ? join(outputPath, "bin")
+      : outputPath;
+  const executableName =
+    process.platform === "win32"
+      ? `${UpdaterConfig.executableName}.cmd`
+      : UpdaterConfig.executableName;
+  return join(binDirectory, executableName);
 }
 
 function installPackageManagerRelease(
@@ -971,6 +1010,7 @@ function installPackageManagerRelease(
     stdio: options.stdio,
     spawnImpl: options.spawnImpl,
     expectedVersion: version,
+    verifyGlobalInstall: options.installation?.kind === UpdaterInstallationKind.source,
     verify: options.verify,
   });
   return {
@@ -994,7 +1034,7 @@ export async function installCliUpdate(
     return await installGitHubBinaryRelease(version, { ...options, installation });
   }
 
-  return installPackageManagerRelease(version, options);
+  return installPackageManagerRelease(version, { ...options, installation });
 }
 
 export function recommendedInstallCommand(
@@ -1145,7 +1185,28 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
   }
 }
 
-export function formatUpdateResult(result: UpdateCheckResult): string {
+export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: string): string {
+  if (targetVersion) {
+    const target = normalizeVersion(targetVersion);
+    const current = normalizeVersion(result.current_version);
+    const comparison = compareVersions(target, current);
+    if (comparison < 0) {
+      return [
+        renderDisplayText([
+          span(`Target version v${target} is older than installed altertable v${current}.`),
+        ]),
+        renderDisplayText([
+          span("Run "),
+          span(`altertable update ${target} --force`, "accent"),
+          span(" to install it anyway."),
+        ]),
+      ].join("\n");
+    }
+    if (comparison === 0) {
+      return renderDisplayText([span(`Target version v${target} is already installed.`)]);
+    }
+  }
+
   if (!result.update_available) {
     return renderDisplayText([
       span("Congrats!", "success"),
@@ -1167,21 +1228,4 @@ export function formatUpdateResult(result: UpdateCheckResult): string {
       span(" to install it."),
     ]),
   ].join("\n");
-}
-
-export function formatUpdateStatus(interval: UpdateCheckInterval, state: UpdateState): string {
-  const statusRows: DisplayRow[] = [{ label: "Auto update checks:", value: interval }];
-  if (state.last_checked_at) {
-    statusRows.push({ label: "Last checked:", value: state.last_checked_at });
-  }
-  if (state.latest_version) {
-    statusRows.push({ label: "Cached latest:", value: state.latest_version });
-  }
-  if (state.last_error) {
-    statusRows.push({ label: "Last error:", value: state.last_error });
-  }
-  if (!existsSync(updaterStateFile())) {
-    statusRows.push({ label: "Cache:", value: "empty" });
-  }
-  return renderDocumentText(document(section(rows(statusRows))));
 }

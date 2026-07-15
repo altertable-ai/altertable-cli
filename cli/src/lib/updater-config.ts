@@ -27,10 +27,27 @@ const UpdaterIntervalsMs = {
 } as const;
 
 const UpdaterInstallCommands = {
-  bun: { command: "bun", argsBeforePackage: ["install", "-g"] },
-  npm: { command: "npm", argsBeforePackage: ["install", "-g"] },
-  pnpm: { command: "pnpm", argsBeforePackage: ["add", "-g"] },
-  yarn: { command: "yarn", argsBeforePackage: ["global", "add"] },
+  bun: {
+    command: "bun",
+    argsBeforePackage: ["install", "-g"],
+    globalBinArgs: ["pm", "bin", "-g"],
+  },
+  npm: {
+    command: "npm",
+    argsBeforePackage: ["install", "-g"],
+    globalBinArgs: ["prefix", "-g"],
+    globalBinIsPrefix: true,
+  },
+  pnpm: {
+    command: "pnpm",
+    argsBeforePackage: ["add", "-g"],
+    globalBinArgs: ["bin", "-g"],
+  },
+  yarn: {
+    command: "yarn",
+    argsBeforePackage: ["global", "add"],
+    globalBinArgs: ["global", "bin"],
+  },
 } as const;
 
 export const UpdaterInstallMethod = {
@@ -79,7 +96,7 @@ export const UpdaterConfig = {
     manual: 10_000,
   },
   intervalsMs: UpdaterIntervalsMs,
-  automaticCheckSkipCommands: ["completion", "update"],
+  automaticCheckSkipCommands: ["completion", "update", "upgrade"],
   installCommands: UpdaterInstallCommands,
   installMethods: UpdaterInstallMethodConfig,
   releasePlatforms: RELEASE_PLATFORM_CONFIG,
@@ -96,7 +113,7 @@ export const UpdaterConfig = {
     bunExecutablePrefix: "bun-",
   },
   commands: {
-    selfUpdate: "altertable update --install",
+    selfUpdate: "altertable update",
   },
 } as const;
 
@@ -109,6 +126,4 @@ export type { ReleasePlatform };
 export type InstallationKind =
   (typeof UpdaterConfig.installationKinds)[keyof typeof UpdaterConfig.installationKinds];
 
-export const UpdaterSources = objectKeys(UpdaterConfig.sources);
 export const UpdaterCheckIntervals = objectKeys(UpdaterConfig.intervalsMs);
-export const UpdaterInstallMethods = objectKeys(UpdaterConfig.installMethods);

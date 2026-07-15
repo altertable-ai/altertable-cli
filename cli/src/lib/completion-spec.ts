@@ -61,15 +61,24 @@ function extractFlags(command: CommandDef): CompletionFlag[] {
   return flags.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function resolveSubcommandName(_key: string, command: CommandDef): string | undefined {
+function resolveAliases(value: unknown): string[] {
+  if (!value) {
+    return [];
+  }
+  const aliases = Array.isArray(value) ? value : [value];
+  return aliases.map(String);
+}
+
+function resolveSubcommandNames(command: CommandDef): string[] {
   const meta = command.meta;
   if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
-    return undefined;
+    return [];
   }
   if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    return String(meta.name);
+    const aliases = "alias" in meta ? resolveAliases(meta.alias) : [];
+    return [...new Set([String(meta.name), ...aliases])];
   }
-  return undefined;
+  return [];
 }
 
 function resolveMetaDescription(command: CommandDef): string | undefined {
@@ -88,6 +97,18 @@ function resolveRootName(root: CommandDef): string {
   return "altertable";
 }
 
+function walkSubcommands(subcommands: CommandDef["subCommands"], depth: number): CompletionNode[] {
+  if (!subcommands) {
+    return [];
+  }
+  return Object.values(subcommands)
+    .flatMap((subcommand) => {
+      const command = subcommand as CommandDef;
+      return resolveSubcommandNames(command).map((name) => walkCommand(name, command, depth));
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 function walkCommand(name: string, command: CommandDef, depth: number): CompletionNode {
   const node: CompletionNode = {
     name,
@@ -100,18 +121,7 @@ function walkCommand(name: string, command: CommandDef, depth: number): Completi
     return node;
   }
 
-  const subcommands = Object.entries(command.subCommands)
-    .map(([key, subcommand]) => {
-      const resolvedName = resolveSubcommandName(key, subcommand as CommandDef);
-      if (!resolvedName) {
-        return undefined;
-      }
-      return walkCommand(resolvedName, subcommand as CommandDef, depth + 1);
-    })
-    .filter((entry): entry is CompletionNode => entry !== undefined)
-    .sort((left, right) => left.name.localeCompare(right.name));
-
-  node.subcommands = subcommands;
+  node.subcommands = walkSubcommands(command.subCommands, depth + 1);
   return node;
 }
 
@@ -127,16 +137,7 @@ export function buildCompletionSpec(root: CommandDef): CompletionNode {
     return spec;
   }
 
-  spec.subcommands = Object.entries(root.subCommands)
-    .map(([key, subcommand]) => {
-      const resolvedName = resolveSubcommandName(key, subcommand as CommandDef);
-      if (!resolvedName) {
-        return undefined;
-      }
-      return walkCommand(resolvedName, subcommand as CommandDef, 1);
-    })
-    .filter((entry): entry is CompletionNode => entry !== undefined)
-    .sort((left, right) => left.name.localeCompare(right.name));
+  spec.subcommands = walkSubcommands(root.subCommands, 1);
 
   return spec;
 }
