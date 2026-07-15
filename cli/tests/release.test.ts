@@ -386,10 +386,15 @@ describe("release infrastructure wiring", () => {
     expect(preparation.if).toContain("github.event_name == 'push'");
     expect(workflowNeeds(context)).toEqual(["release-please"]);
     expect(context.if).toContain("workflow_dispatch");
+    expect(context.permissions?.contents).toBe("write");
     const contextScript = context.steps?.find(
       ({ name }) => name === "Resolve automatic or recovery release",
     )?.run;
-    expect(contextScript).toContain("isDraft,targetCommitish");
+    expect(contextScript).toContain("gh api --paginate --slurp");
+    expect(contextScript).toContain("releases?per_page=100");
+    expect(contextScript).toContain("select(.tag_name == $tag)");
+    expect(contextScript).toContain("already published");
+    expect(contextScript).not.toContain("gh release view");
     expect(contextScript).toContain("immutable commit SHA");
     expect(verification.uses).toBe("./.github/workflows/verify.yml");
     expect(workflowNeeds(verification)).toEqual(["release-context"]);
