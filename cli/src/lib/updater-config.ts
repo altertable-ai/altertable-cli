@@ -79,7 +79,7 @@ export const UpdaterConfig = {
     manual: 10_000,
   },
   intervalsMs: UpdaterIntervalsMs,
-  automaticCheckSkipCommands: ["completion", "update"],
+  automaticCheckSkipCommands: ["completion", "update", "upgrade"],
   installCommands: UpdaterInstallCommands,
   installMethods: UpdaterInstallMethodConfig,
   releasePlatforms: RELEASE_PLATFORM_CONFIG,
@@ -96,7 +96,7 @@ export const UpdaterConfig = {
     bunExecutablePrefix: "bun-",
   },
   commands: {
-    selfUpdate: "altertable update --install",
+    selfUpdate: "altertable update",
   },
 } as const;
 
@@ -109,6 +109,4 @@ export type { ReleasePlatform };
 export type InstallationKind =
   (typeof UpdaterConfig.installationKinds)[keyof typeof UpdaterConfig.installationKinds];
 
-export const UpdaterSources = objectKeys(UpdaterConfig.sources);
 export const UpdaterCheckIntervals = objectKeys(UpdaterConfig.intervalsMs);
-export const UpdaterInstallMethods = objectKeys(UpdaterConfig.installMethods);

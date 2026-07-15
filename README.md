@@ -107,30 +107,29 @@ altertable --version
 
 ### Updates
 
-Check for a newer CLI and install it:
+Update to the latest CLI release:
 
 ```bash
 altertable update
-altertable update --install
+altertable upgrade          # alias
+altertable update --check  # check without installing
 ```
 
-`altertable update --install` is origin-aware:
+Install a specific older release with an explicit force:
+
+```bash
+altertable update 1.1.0 --force
+```
+
+`altertable update` automatically follows the current installation method:
 
 - prebuilt release binaries update from GitHub Releases, verify `checksums.txt`, then replace the current binary atomically;
 - npm-style installs use the package manager (npm, Bun, pnpm, or Yarn) and verify the installed `altertable --version`;
-- source checkouts are not auto-installed by default; update them with `git pull` or choose an explicit install method.
+- source checkouts install the published CLI through the detected package manager.
 
 The CLI also performs a silent daily update check after successful human-facing commands. Notices are written to stderr only, never to stdout, and are disabled for `--json`, `--agent`, CI, and non-TTY output.
 
-Control automatic notices:
-
-```bash
-altertable update --status
-altertable update --check-interval weekly
-altertable update --check-interval never
-```
-
-Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable automatic checks from the environment. Package-manager installs use npm by default and detect Bun, pnpm, or Yarn when available; set `ALTERTABLE_UPDATE_INSTALLER=bun|npm|pnpm|yarn` to override. Set `ALTERTABLE_UPDATE_INSTALL_METHOD=auto|package-manager|github-binary` or pass `--install-method` to choose an installer strategy.
+Set `ALTERTABLE_NO_UPDATE_CHECK=1` or `ALTERTABLE_UPDATE_CHECK=never` to disable automatic checks.
 
 ---
 

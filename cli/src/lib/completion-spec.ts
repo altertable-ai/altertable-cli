@@ -61,15 +61,17 @@ function extractFlags(command: CommandDef): CompletionFlag[] {
   return flags.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function resolveSubcommandName(_key: string, command: CommandDef): string | undefined {
+function resolveSubcommandNames(_key: string, command: CommandDef): string[] {
   const meta = command.meta;
   if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
-    return undefined;
+    return [];
   }
   if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    return String(meta.name);
+    const aliases =
+      "alias" in meta && meta.alias ? (Array.isArray(meta.alias) ? meta.alias : [meta.alias]) : [];
+    return [...new Set([String(meta.name), ...aliases.map(String)])];
   }
-  return undefined;
+  return [];
 }
 
 function resolveMetaDescription(command: CommandDef): string | undefined {
@@ -101,14 +103,11 @@ function walkCommand(name: string, command: CommandDef, depth: number): Completi
   }
 
   const subcommands = Object.entries(command.subCommands)
-    .map(([key, subcommand]) => {
-      const resolvedName = resolveSubcommandName(key, subcommand as CommandDef);
-      if (!resolvedName) {
-        return undefined;
-      }
-      return walkCommand(resolvedName, subcommand as CommandDef, depth + 1);
+    .flatMap(([key, subcommand]) => {
+      return resolveSubcommandNames(key, subcommand as CommandDef).map((name) =>
+        walkCommand(name, subcommand as CommandDef, depth + 1),
+      );
     })
-    .filter((entry): entry is CompletionNode => entry !== undefined)
     .sort((left, right) => left.name.localeCompare(right.name));
 
   node.subcommands = subcommands;
@@ -128,14 +127,11 @@ export function buildCompletionSpec(root: CommandDef): CompletionNode {
   }
 
   spec.subcommands = Object.entries(root.subCommands)
-    .map(([key, subcommand]) => {
-      const resolvedName = resolveSubcommandName(key, subcommand as CommandDef);
-      if (!resolvedName) {
-        return undefined;
-      }
-      return walkCommand(resolvedName, subcommand as CommandDef, 1);
+    .flatMap(([key, subcommand]) => {
+      return resolveSubcommandNames(key, subcommand as CommandDef).map((name) =>
+        walkCommand(name, subcommand as CommandDef, 1),
+      );
     })
-    .filter((entry): entry is CompletionNode => entry !== undefined)
     .sort((left, right) => left.name.localeCompare(right.name));
 
   return spec;

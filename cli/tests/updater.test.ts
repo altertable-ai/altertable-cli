@@ -6,6 +6,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
+import {
+  executeUpdateCommand,
+  type UpdateCommandDependencies,
+  updateCommand,
+} from "@/commands/update.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
@@ -34,9 +39,6 @@ import {
   resolveUpdateSource,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
-  UpdaterCheckIntervals,
-  UpdaterInstallMethods,
-  UpdaterSources,
   UpdaterConfig,
   verifySha256,
 } from "@/lib/updater.ts";
@@ -383,7 +385,7 @@ describe("binary self-update", () => {
         kind: "native-binary",
         executablePath: "/usr/local/bin/altertable",
       }),
-    ).toBe("altertable update --install");
+    ).toBe("altertable update");
     expect(
       recommendedInstallCommand(UPDATE_TEST_VERSION, {
         kind: "package-manager",
@@ -395,13 +397,13 @@ describe("binary self-update", () => {
         kind: "source",
         executablePath: "/repo/cli/src/cli.ts",
       }),
-    ).toBe("altertable update --install");
+    ).toBe("altertable update");
     expect(
       recommendedInstallCommand(UPDATE_TEST_VERSION, {
         kind: "unknown",
         executablePath: "/custom/altertable",
       }),
-    ).toBe("altertable update --install");
+    ).toBe("altertable update");
   });
 
   test("parses and verifies SHA-256 checksums", () => {
@@ -644,7 +646,7 @@ describe("automatic update checks", () => {
     });
 
     expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
-    expect(stderr.join("\n")).toContain("altertable update --install");
+    expect(stderr.join("\n")).toContain("altertable update");
   });
 
   test("writes cached update notices without refreshing release metadata", async () => {
@@ -709,8 +711,8 @@ describe("automatic update checks", () => {
 });
 
 describe("update command", () => {
-  test("reports explicit target version without network", async () => {
-    const output = await runUpdateCommand(["update", "--target-version", UPDATE_TEST_VERSION]);
+  test("checks an explicit target version without network", async () => {
+    const output = await runUpdateCommand(["update", UPDATE_TEST_VERSION, "--check"]);
 
     expect(output.stdout[0]).toBe(
       [
@@ -723,83 +725,100 @@ describe("update command", () => {
   });
 
   test("reports an explicit target that is already installed", async () => {
-    const output = await runUpdateCommand(["update", "--target-version", VERSION]);
+    const output = await runUpdateCommand(["update", VERSION]);
 
     expect(output.stdout[0]).toBe(`Target version v${VERSION} is already installed.`);
   });
 
-  test("reports an explicit target that is older than the installed version", async () => {
+  test("checks an explicit target that is older than the installed version", async () => {
     const targetVersion = "1.1.0";
-    const output = await runUpdateCommand(["update", "--target-version", targetVersion]);
+    const output = await runUpdateCommand(["update", targetVersion, "--check"]);
 
     expect(output.stdout[0]).toBe(
       [
         `Target version v${targetVersion} is older than installed altertable v${VERSION}.`,
-        `Run altertable update --install --target-version ${targetVersion} --force to install it anyway.`,
+        `Run altertable update ${targetVersion} --force to install it anyway.`,
       ].join("\n"),
     );
   });
 
-  test("rejects unexpected positional arguments", () => {
+  test("upgrade aliases update", async () => {
+    const output = await runUpdateCommand(["upgrade", UPDATE_TEST_VERSION, "--check"]);
+
+    expect(output.stdout[0]).toContain(
+      `A new version of altertable is available: v${UPDATE_TEST_VERSION}`,
+    );
+  });
+
+  test("installs the latest release by default", async () => {
+    const output: CapturedCommandOutput = { stdout: [], stderr: [] };
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    runtime.output.writeHuman = (text) => output.stdout.push(text);
+    runtime.output.writeMetadata = (lines) => output.stderr.push(...lines);
+    let installedVersion = "";
+    const dependencies: UpdateCommandDependencies = {
+      async checkForUpdate() {
+        return await checkForUpdate({ fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }) });
+      },
+      async installCliUpdate(version) {
+        installedVersion = version;
+        return {
+          installed_version: version,
+          verified_version: version,
+          method: "github-binary",
+          target_path: "/tmp/altertable",
+        };
+      },
+    };
+
+    await executeUpdateCommand({}, runtime.output, dependencies);
+
+    expect(installedVersion).toBe(UPDATE_TEST_VERSION);
+    expect(output.stderr).toContain(`Updating altertable to ${UPDATE_TEST_VERSION}`);
+    expect(output.stderr).toContain(`altertable ${UPDATE_TEST_VERSION} installed.`);
+  });
+
+  test("rejects a downgrade unless forced", () => {
+    return expect(runUpdateCommand(["update", "1.1.0"])).rejects.toThrow(
+      "Target version v1.1.0 is older",
+    );
+  });
+
+  test("installs an explicit downgrade when forced", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    let installedVersion = "";
+    const dependencies: UpdateCommandDependencies = {
+      checkForUpdate,
+      async installCliUpdate(version) {
+        installedVersion = version;
+        return {
+          installed_version: version,
+          verified_version: version,
+          method: "github-binary",
+          target_path: "/tmp/altertable",
+        };
+      },
+    };
+
+    await executeUpdateCommand({ version: "1.1.0", force: true }, runtime.output, dependencies);
+
+    expect(installedVersion).toBe("1.1.0");
+  });
+
+  test("rejects the removed install positional", () => {
+    return expect(runUpdateCommand(["update", "install", "--check"])).rejects.toThrow(
+      "Invalid update version: install.",
+    );
+  });
+
+  test("rejects extra positional versions", () => {
     return expect(
-      runUpdateCommand(["update", "install", "--target-version", "1.1.0"]),
-    ).rejects.toThrow("Unexpected argument for altertable update: install.");
+      runUpdateCommand(["update", UPDATE_TEST_VERSION, "extra", "--check"]),
+    ).rejects.toThrow("Unexpected argument for altertable update: extra.");
   });
 
-  test("clear-cache forces a fresh update check", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = jsonFetch({ version: UPDATE_TEST_VERSION });
-    try {
-      const output = await runUpdateCommand(["update", "--clear-cache"]);
-
-      expect(output.stdout[0]).toContain(
-        `A new version of altertable is available: v${UPDATE_TEST_VERSION}`,
-      );
-      expect(readUpdateState().latest_version).toBe(UPDATE_TEST_VERSION);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  test("configures automatic check interval", async () => {
-    const output = await runUpdateCommand(["update", "--check-interval", "weekly"]);
-
-    expect(output.stdout[0]).toContain("Auto update checks: weekly");
-    expect(getUpdateCheckInterval()).toBe("weekly");
-  });
-
-  test("accepts every configured update source option", async () => {
-    for (const source of UpdaterSources) {
-      const output = await runUpdateCommand([
-        "update",
-        "--source",
-        source,
-        "--target-version",
-        UPDATE_TEST_VERSION,
-      ]);
-
-      expect(output.stdout[0]).toBe(
-        [
-          `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
-          `Run ${UpdaterConfig.commands.selfUpdate} to install it.`,
-        ].join("\n"),
-      );
-    }
-  });
-
-  test("accepts every configured automatic check interval option", async () => {
-    for (const interval of UpdaterCheckIntervals) {
-      const output = await runUpdateCommand(["update", "--check-interval", interval]);
-
-      expect(output.stdout[0]).toContain(`Auto update checks: ${interval}`);
-      expect(getUpdateCheckInterval()).toBe(interval);
-    }
-  });
-
-  test("exposes every configured install method option", () => {
-    expect(UpdaterInstallMethods).toContain("auto");
-    expect(UpdaterInstallMethods).toContain("package-manager");
-    expect(UpdaterInstallMethods).toContain("github-binary");
+  test("only exposes the simple public arguments", () => {
+    expect(Object.keys(updateCommand.args ?? {}).sort()).toEqual(["check", "force", "version"]);
   });
 
   test("rejects an invalid source environment override", () => {

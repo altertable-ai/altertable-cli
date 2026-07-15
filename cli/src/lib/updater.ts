@@ -13,8 +13,7 @@ import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
-import { document, rows, section, span, type DisplayRow } from "@/ui/document.ts";
-import { renderDocumentText } from "@/ui/renderers/terminal.ts";
+import { span } from "@/ui/document.ts";
 import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
@@ -35,8 +34,6 @@ export {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
   UpdaterInstallMethod,
-  UpdaterInstallMethods,
-  UpdaterSources,
   UpdaterConfig,
   type InstallationKind,
   type InstallManager,
@@ -189,6 +186,10 @@ export function normalizeVersion(version: string): string {
   return version.trim().replace(/^v/i, "");
 }
 
+export function isValidVersion(version: string): boolean {
+  return parseVersion(version) !== undefined;
+}
+
 export function compareVersions(leftVersion: string, rightVersion: string): number {
   const left = parseVersion(leftVersion);
   const right = parseVersion(rightVersion);
@@ -273,10 +274,6 @@ function tryWriteUpdateState(state: UpdateState): void {
   } catch {
     // Automatic update notices are best-effort and must not fail the user's command.
   }
-}
-
-export function clearUpdateState(): void {
-  rmSync(updaterStateFile(), { force: true });
 }
 
 export function parseUpdateCheckInterval(value: string): UpdateCheckInterval | undefined {
@@ -858,7 +855,7 @@ function resolveGitHubBinaryTarget(options: InstallCliUpdateOptions): string {
   if (!options.targetPath && installation.kind !== UpdaterInstallationKind.nativeBinary) {
     throw new CliError("Self-update is only supported for native release binaries.", {
       details:
-        "Use --install-method package-manager for npm-style installs, or pass --target-path for controlled binary replacement.",
+        "Install the published package with your package manager, or use a native release binary.",
     });
   }
   return targetPath;
@@ -1164,7 +1161,7 @@ export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: st
         ]),
         renderDisplayText([
           span("Run "),
-          span(`altertable update --install --target-version ${target} --force`, "accent"),
+          span(`altertable update ${target} --force`, "accent"),
           span(" to install it anyway."),
         ]),
       ].join("\n");
@@ -1195,21 +1192,4 @@ export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: st
       span(" to install it."),
     ]),
   ].join("\n");
-}
-
-export function formatUpdateStatus(interval: UpdateCheckInterval, state: UpdateState): string {
-  const statusRows: DisplayRow[] = [{ label: "Auto update checks:", value: interval }];
-  if (state.last_checked_at) {
-    statusRows.push({ label: "Last checked:", value: state.last_checked_at });
-  }
-  if (state.latest_version) {
-    statusRows.push({ label: "Cached latest:", value: state.latest_version });
-  }
-  if (state.last_error) {
-    statusRows.push({ label: "Last error:", value: state.last_error });
-  }
-  if (!existsSync(updaterStateFile())) {
-    statusRows.push({ label: "Cache:", value: "empty" });
-  }
-  return renderDocumentText(document(section(rows(statusRows))));
 }
