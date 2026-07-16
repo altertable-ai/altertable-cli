@@ -15,6 +15,7 @@ import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
+import { withInstalledVersion } from "@/lib/installed-version.ts";
 import {
   checkForUpdate,
   compareVersions,
@@ -47,6 +48,9 @@ import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 let testHome = "";
 const packageJsonPath = resolve(import.meta.dir, "../package.json");
 const UPDATE_TEST_VERSION = "1.2.3";
+// Pin the "installed" version well below UPDATE_TEST_VERSION so update checks
+// stay meaningful regardless of what release-please stamps into version.ts.
+const INSTALLED_TEST_VERSION = "1.0.0";
 const LINUX_X64_ASSET = "altertable-linux-x64";
 const LINUX_X64_DOWNLOAD_URL = `https://download.example/${LINUX_X64_ASSET}`;
 const CHECKSUMS_DOWNLOAD_URL = "https://download.example/checksums.txt";
@@ -303,13 +307,15 @@ describe("release discovery", () => {
   });
 
   test("checkForUpdate writes cached state", async () => {
-    const result = await checkForUpdate({
-      source: "npm",
-      fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
-    });
+    await withInstalledVersion(INSTALLED_TEST_VERSION, async () => {
+      const result = await checkForUpdate({
+        source: "npm",
+        fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
+      });
 
-    expect(result.update_available).toBe(true);
-    expect(readUpdateState().latest_version).toBe(UPDATE_TEST_VERSION);
+      expect(result.update_available).toBe(true);
+      expect(readUpdateState().latest_version).toBe(UPDATE_TEST_VERSION);
+    });
   });
 });
 
@@ -696,14 +702,16 @@ describe("automatic update checks", () => {
       stderr.push(...lines);
     };
 
-    await runWithCliRuntime(runtime, async () => {
-      await maybeShowUpdateNotice({
-        context: { debug: false, json: false, agent: false },
-        commandName: "context",
-        stderrIsTTY: true,
-        fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
-      });
-    });
+    await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      runWithCliRuntime(runtime, async () => {
+        await maybeShowUpdateNotice({
+          context: { debug: false, json: false, agent: false },
+          commandName: "context",
+          stderrIsTTY: true,
+          fetchImpl: jsonFetch({ version: UPDATE_TEST_VERSION }),
+        });
+      }),
+    );
 
     expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
     expect(stderr.join("\n")).toContain("altertable update");
@@ -714,26 +722,28 @@ describe("automatic update checks", () => {
     const stderr: string[] = [];
     let fetchCalls = 0;
 
-    await maybeShowUpdateNotice({
-      context: { debug: false, json: false, agent: false },
-      commandName: "help",
-      stderrIsTTY: true,
-      fetchImpl: (async () => {
-        fetchCalls += 1;
-        throw new Error("cached notices should not fetch");
-      }) as unknown as typeof fetch,
-      sink: {
-        json: false,
-        debug: false,
-        writeStderr() {},
-        writeJson() {},
-        writeRaw() {},
-        writeHuman() {},
-        writeMetadata(lines) {
-          stderr.push(...lines);
+    await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      maybeShowUpdateNotice({
+        context: { debug: false, json: false, agent: false },
+        commandName: "help",
+        stderrIsTTY: true,
+        fetchImpl: (async () => {
+          fetchCalls += 1;
+          throw new Error("cached notices should not fetch");
+        }) as unknown as typeof fetch,
+        sink: {
+          json: false,
+          debug: false,
+          writeStderr() {},
+          writeJson() {},
+          writeRaw() {},
+          writeHuman() {},
+          writeMetadata(lines) {
+            stderr.push(...lines);
+          },
         },
-      },
-    });
+      }),
+    );
 
     expect(fetchCalls).toBe(0);
     expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
@@ -744,26 +754,28 @@ describe("automatic update checks", () => {
     const state = readUpdateState();
     const stderr: string[] = [];
 
-    await maybeShowUpdateNotice({
-      context: { debug: false, json: false, agent: false },
-      commandName: "context",
-      stderrIsTTY: true,
-      now: new Date(Date.parse(state.last_checked_at ?? "") + 24 * 60 * 60 * 1000),
-      fetchImpl: (async () => {
-        throw new Error("network unavailable");
-      }) as unknown as typeof fetch,
-      sink: {
-        json: false,
-        debug: false,
-        writeStderr() {},
-        writeJson() {},
-        writeRaw() {},
-        writeHuman() {},
-        writeMetadata(lines) {
-          stderr.push(...lines);
+    await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      maybeShowUpdateNotice({
+        context: { debug: false, json: false, agent: false },
+        commandName: "context",
+        stderrIsTTY: true,
+        now: new Date(Date.parse(state.last_checked_at ?? "") + 24 * 60 * 60 * 1000),
+        fetchImpl: (async () => {
+          throw new Error("network unavailable");
+        }) as unknown as typeof fetch,
+        sink: {
+          json: false,
+          debug: false,
+          writeStderr() {},
+          writeJson() {},
+          writeRaw() {},
+          writeHuman() {},
+          writeMetadata(lines) {
+            stderr.push(...lines);
+          },
         },
-      },
-    });
+      }),
+    );
 
     expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
     expect(readUpdateState().last_error).toBe("Unable to check for CLI updates.");
@@ -772,11 +784,13 @@ describe("automatic update checks", () => {
 
 describe("update command", () => {
   test("checks an explicit target version without network", async () => {
-    const output = await runUpdateCommand(["update", UPDATE_TEST_VERSION, "--check"]);
+    const output = await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      runUpdateCommand(["update", UPDATE_TEST_VERSION, "--check"]),
+    );
 
     expect(output.stdout[0]).toBe(
       [
-        `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
+        `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${INSTALLED_TEST_VERSION})`,
         `Run ${UpdaterConfig.commands.selfUpdate} to install it.`,
       ].join("\n"),
     );
@@ -803,7 +817,9 @@ describe("update command", () => {
   });
 
   test("upgrade aliases update", async () => {
-    const output = await runUpdateCommand(["upgrade", UPDATE_TEST_VERSION, "--check"]);
+    const output = await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      runUpdateCommand(["upgrade", UPDATE_TEST_VERSION, "--check"]),
+    );
 
     expect(output.stdout[0]).toContain(
       `A new version of altertable is available: v${UPDATE_TEST_VERSION}`,
@@ -831,7 +847,9 @@ describe("update command", () => {
       },
     };
 
-    await executeUpdateCommand({}, runtime.output, dependencies);
+    await withInstalledVersion(INSTALLED_TEST_VERSION, () =>
+      executeUpdateCommand({}, runtime.output, dependencies),
+    );
 
     expect(installedVersion).toBe(UPDATE_TEST_VERSION);
     expect(output.stderr).toContain(`Updating altertable to ${UPDATE_TEST_VERSION}`);

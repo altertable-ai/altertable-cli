@@ -1,9 +1,9 @@
-import { VERSION } from "@/version.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
 import { GLOBAL_ARGV_FLAGS_WITH_VALUE, isGlobalArgvFlag } from "@/lib/global-flags.ts";
+import { getInstalledVersion } from "@/lib/installed-version.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
@@ -76,9 +76,9 @@ function buildTargetResult(targetVersion: string): UpdateCheckResult {
   }
   const source = resolveUpdateSource();
   return {
-    current_version: VERSION,
+    current_version: getInstalledVersion(),
     latest_version: version,
-    update_available: compareVersions(version, VERSION) > 0,
+    update_available: compareVersions(version, getInstalledVersion()) > 0,
     source,
     release_url: releaseUrlForSource(source, version),
     checked_at: new Date().toISOString(),
@@ -121,7 +121,9 @@ export async function executeUpdateCommand(
     targetVersion &&
     compareVersions(result.latest_version, result.current_version) < 0
   ) {
-    throw new CliError(`Target version v${result.latest_version} is older than v${VERSION}.`);
+    throw new CliError(
+      `Target version v${result.latest_version} is older than v${getInstalledVersion()}.`,
+    );
   }
   if (!args.force && !result.update_available) {
     await writeUpdateCheck(result, targetVersion, sink);

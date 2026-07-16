@@ -5,7 +5,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
-import { USER_AGENT, VERSION } from "@/version.ts";
+import { USER_AGENT } from "@/version.ts";
+import { getInstalledVersion } from "@/lib/installed-version.ts";
 import { configDir, configGetGlobal, configSetGlobal } from "@/lib/config.ts";
 import { urlencode } from "@/lib/encode.ts";
 import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
@@ -1051,9 +1052,9 @@ export async function checkForUpdate(options: FetchLatestOptions = {}): Promise<
   const release = await fetchLatestRelease(options);
   const checkedAt = new Date().toISOString();
   const result: UpdateCheckResult = {
-    current_version: VERSION,
+    current_version: getInstalledVersion(),
     latest_version: release.version,
-    update_available: compareVersions(release.version, VERSION) > 0,
+    update_available: compareVersions(release.version, getInstalledVersion()) > 0,
     source: release.source,
     release_url: release.releaseUrl,
     checked_at: checkedAt,
@@ -1141,7 +1142,10 @@ function writeAutomaticUpdateNotice(sink: OutputSink, latestVersion: string): vo
   sink.writeMetadata([
     "",
     renderDisplayText([
-      span(`Update available: altertable ${latestVersion} (current ${VERSION}).`, "subtle"),
+      span(
+        `Update available: altertable ${latestVersion} (current ${getInstalledVersion()}).`,
+        "subtle",
+      ),
     ]),
     renderDisplayText([
       span(`Run ${recommendedInstallCommand(latestVersion)} to install it.`, "subtle"),
@@ -1177,7 +1181,7 @@ export async function maybeShowUpdateNotice(options: AutomaticNoticeOptions): Pr
       }
     }
 
-    if (latestVersion && compareVersions(latestVersion, VERSION) > 0) {
+    if (latestVersion && compareVersions(latestVersion, getInstalledVersion()) > 0) {
       writeAutomaticUpdateNotice(sink, latestVersion);
     }
   } catch {
