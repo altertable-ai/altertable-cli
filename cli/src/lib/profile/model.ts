@@ -13,6 +13,7 @@ import {
   secretDelete,
   secretExists,
   secretStoreDisplay,
+  type SecretStore,
 } from "@/lib/secrets.ts";
 import {
   assertSafeProfileName,
@@ -39,6 +40,10 @@ const PROFILE_SECRET_ACCOUNTS = [
   "oauth/access-token",
   "oauth/refresh-token",
 ] as const;
+
+type ProfileSecretStore = Pick<SecretStore, "moveProfileSecrets" | "secretDelete">;
+
+const PROFILE_SECRET_STORE: ProfileSecretStore = { moveProfileSecrets, secretDelete };
 
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
@@ -364,7 +369,11 @@ export function updateProfile(name: string, update: ProfileUpdate): ProfileInspe
   return inspectProfile(name);
 }
 
-export function renameProfile(source: string, target: string): void {
+export function renameProfile(
+  source: string,
+  target: string,
+  secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+): void {
   assertSafeProfileName(source);
   assertSafeProfileName(target);
   ensureProfilesLayout();
@@ -382,7 +391,7 @@ export function renameProfile(source: string, target: string): void {
   const active = getActiveProfileName();
   renameSync(profileDir(source), profileDir(target));
   try {
-    moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+    secrets.moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
   } catch (error) {
     if (profileExists(target) && !profileExists(source)) {
       renameSync(profileDir(target), profileDir(source));
@@ -395,7 +404,10 @@ export function renameProfile(source: string, target: string): void {
   }
 }
 
-export function deleteProfile(name: string): void {
+export function deleteProfile(
+  name: string,
+  secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+): void {
   assertSafeProfileName(name);
   ensureProfilesLayout();
 
@@ -411,7 +423,7 @@ export function deleteProfile(name: string): void {
   }
 
   for (const account of PROFILE_SECRET_ACCOUNTS) {
-    secretDelete(account, name);
+    secrets.secretDelete(account, name);
   }
 
   rmSync(profileDir(name), { recursive: true, force: true });
