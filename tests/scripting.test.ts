@@ -109,4 +109,28 @@ describe("scriptable exit codes and JSON errors", () => {
 
     expect(result.exitCode).toBe(1);
   });
+
+  test.each(["update", "upgrade"])("%s checks an explicit version", async (command) => {
+    const result = await workspace.runCommand(`altertable ${command} 1.2.0 --check`);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Target version v1.2.0 is already installed.");
+  });
+
+  test("update accepts inherited global flags after its arguments", async () => {
+    const json = await workspace.runCommand("altertable update 1.2.0 --check --json");
+    const plain = await workspace.runCommand("altertable update 1.2.0 --check --no-color");
+
+    expect(json.exitCode).toBe(0);
+    expect(JSON.parse(json.stdout).latest_version).toBe("1.2.0");
+    expect(plain.exitCode).toBe(0);
+    expect(plain.stdout).not.toContain("\u001B[");
+  });
+
+  test("removed update flags are rejected", async () => {
+    const result = await workspace.runCommand("altertable update --install");
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Unknown option --install.");
+  });
 });

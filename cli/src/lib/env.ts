@@ -96,6 +96,7 @@ const ENV_SCHEMA = {
   HOME: { parse: optional },
   NO_COLOR: { parse: optional },
   OSC_HYPERLINK: { parse: optional },
+  PATH: { parse: optional },
   SHELL: { parse: optional },
   SSH_CONNECTION: { parse: optional },
   TERM: { parse: optional },

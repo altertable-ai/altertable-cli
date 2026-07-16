@@ -3,44 +3,78 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineAltertableCommand } from "@/lib/command-context.ts";
 import { CliError } from "@/lib/errors.ts";
+import { GLOBAL_ARGV_FLAGS_WITH_VALUE, isGlobalArgvFlag } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
-  clearUpdateState,
   compareVersions,
   formatUpdateResult,
-  formatUpdateStatus,
-  getUpdateCheckInterval,
   installCliUpdate,
+  isValidVersion,
   normalizeVersion,
-  readUpdateState,
   recommendedInstallCommand,
   releaseUrlForSource,
-  setUpdateCheckInterval,
-  UpdaterCheckIntervals,
-  UpdaterInstallMethods,
-  UpdaterSources,
-  UpdaterConfig,
-  type UpdateCheckInterval,
+  resolveUpdateSource,
   type UpdateCheckResult,
-  type UpdateInstallMethod,
-  type UpdateSource,
 } from "@/lib/updater.ts";
 
-type UpdateCommandArgs = {
-  install?: boolean;
+export type UpdateCommandArgs = {
+  version?: string;
+  check?: boolean;
   force?: boolean;
-  source?: UpdateSource;
-  "target-version"?: string;
-  "install-method"?: UpdateInstallMethod;
-  "target-path"?: string;
-  status?: boolean;
-  "clear-cache"?: boolean;
-  "check-interval"?: UpdateCheckInterval;
 };
 
-function buildTargetResult(targetVersion: string, source: UpdateSource): UpdateCheckResult {
+export type UpdateCommandDependencies = {
+  checkForUpdate: typeof checkForUpdate;
+  installCliUpdate: typeof installCliUpdate;
+};
+
+const DEFAULT_DEPENDENCIES: UpdateCommandDependencies = { checkForUpdate, installCliUpdate };
+const UPDATE_OPTIONS: ReadonlySet<string> = new Set(["--check", "--force"]);
+
+function validateUpdateArguments(rawArgs: readonly string[]): void {
+  let versionSeen = false;
+
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const argument = rawArgs[index];
+    if (argument === undefined) {
+      continue;
+    }
+    if (argument === "--") {
+      continue;
+    }
+    if (argument.startsWith("-")) {
+      const option = argument.split("=", 1)[0] ?? argument;
+      if (isGlobalArgvFlag(argument)) {
+        if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(option)) {
+          index += 1;
+        }
+        continue;
+      }
+      if (!UPDATE_OPTIONS.has(option)) {
+        throw new CliError(`Unknown option ${option}.`, {
+          details: "Run altertable update --help for usage.",
+        });
+      }
+      continue;
+    }
+    if (versionSeen) {
+      throw new CliError(`Unexpected argument for altertable update: ${argument}.`, {
+        details: "Pass at most one version; run altertable update --help for usage.",
+      });
+    }
+    versionSeen = true;
+  }
+}
+
+function buildTargetResult(targetVersion: string): UpdateCheckResult {
   const version = normalizeVersion(targetVersion);
+  if (!isValidVersion(version)) {
+    throw new CliError(`Invalid update version: ${targetVersion}.`, {
+      details: "Expected a semantic version such as 1.2.0 or 1.3.0-rc.1.",
+    });
+  }
+  const source = resolveUpdateSource();
   return {
     current_version: VERSION,
     latest_version: version,
@@ -52,82 +86,56 @@ function buildTargetResult(targetVersion: string, source: UpdateSource): UpdateC
   };
 }
 
-async function writeStatus(sink: OutputSink): Promise<void> {
-  const interval = getUpdateCheckInterval();
-  const state = readUpdateState();
+async function writeUpdateCheck(
+  result: UpdateCheckResult,
+  targetVersion: string,
+  sink: OutputSink,
+): Promise<void> {
   await writeCommandOutput(
     {
       kind: "normalized",
-      data: {
-        update_check_interval: interval,
-        state,
-      },
-      humanText: formatUpdateStatus(interval, state),
+      data: result,
+      humanText: formatUpdateResult(result, targetVersion),
     },
     sink,
   );
 }
 
-async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Promise<void> {
-  const interval = args["check-interval"];
-  if (interval) {
-    setUpdateCheckInterval(interval);
-  }
-
-  if (args["clear-cache"]) {
-    clearUpdateState();
-  }
-
-  if (args.status && !args.install && !args["target-version"]) {
-    await writeStatus(sink);
-    return;
-  }
-
-  if (interval && !args["clear-cache"] && !args.install && !args["target-version"]) {
-    await writeStatus(sink);
-    return;
-  }
-
-  const source = args.source ?? UpdaterConfig.defaults.source;
-  const targetVersion = asCliArgString(args["target-version"]);
+export async function executeUpdateCommand(
+  args: UpdateCommandArgs,
+  sink: OutputSink,
+  dependencies: UpdateCommandDependencies = DEFAULT_DEPENDENCIES,
+): Promise<void> {
+  const targetVersion = asCliArgString(args.version);
   const result = targetVersion
-    ? buildTargetResult(targetVersion, source)
-    : await checkForUpdate({ source });
+    ? buildTargetResult(targetVersion)
+    : await dependencies.checkForUpdate();
 
-  if (!args.install) {
-    await writeCommandOutput(
-      {
-        kind: "normalized",
-        data: result,
-        humanText: formatUpdateResult(result),
-      },
-      sink,
-    );
+  if (args.check) {
+    await writeUpdateCheck(result, targetVersion, sink);
     return;
   }
 
-  if (!result.update_available && !args.force) {
-    throw new CliError(
-      targetVersion
-        ? "Target version is not newer than the installed CLI. Pass --force to install it anyway."
-        : "altertable is already up to date. Pass --force to reinstall the current latest version.",
-    );
+  if (
+    !args.force &&
+    targetVersion &&
+    compareVersions(result.latest_version, result.current_version) < 0
+  ) {
+    throw new CliError(`Target version v${result.latest_version} is older than v${VERSION}.`);
+  }
+  if (!args.force && !result.update_available) {
+    await writeUpdateCheck(result, targetVersion, sink);
+    return;
   }
 
-  const method = args["install-method"] ?? UpdaterConfig.defaults.installMethod;
-  const methodLabel = method === "auto" ? "automatic installer" : method;
-  sink.writeMetadata([`Running ${methodLabel} for altertable ${result.latest_version}`]);
-  const installed = await installCliUpdate(result.latest_version, {
-    method,
-    targetPath: asCliArgString(args["target-path"]),
+  sink.writeMetadata([`Updating altertable to ${result.latest_version}`]);
+  const installed = await dependencies.installCliUpdate(result.latest_version, {
     stdio: sink.json ? "pipe" : "inherit",
   });
   await writeCommandOutput(
     {
       kind: "ack",
-      data: {
-        ...installed,
-      },
+      data: installed,
       metadataMessage: `altertable ${installed.verified_version} installed.`,
     },
     sink,
@@ -137,57 +145,28 @@ async function runUpdateCommand(args: UpdateCommandArgs, sink: OutputSink): Prom
 export const updateCommand = defineAltertableCommand({
   meta: {
     name: "update",
+    alias: ["upgrade"],
     commandGroup: "platform",
-    description: "Check for a newer Altertable CLI release and optionally install it.",
-    examples: [
-      "altertable update",
-      "altertable update --install",
-      "altertable update --status",
-      "altertable update --check-interval never",
-    ],
+    description: "Update Altertable CLI to the latest release.",
+    examples: ["altertable update", "altertable update --check", "altertable update 1.2.0 --force"],
   },
   args: {
-    install: {
+    version: {
+      type: "positional",
+      description: "Specific version to install (default: latest).",
+      required: false,
+    },
+    check: {
       type: "boolean",
-      description: "Install the latest available release after the update check succeeds.",
+      description: "Check for an update without installing it.",
     },
     force: {
       type: "boolean",
-      description: "Reinstall the selected release even when it is not newer than the current CLI.",
-    },
-    source: {
-      type: "enum",
-      options: [...UpdaterSources],
-      description: `Where to look for release metadata: npm or GitHub (default: ${UpdaterConfig.defaults.source}).`,
-    },
-    "target-version": {
-      type: "string",
-      description: "Use an explicit version instead of discovering the latest release.",
-    },
-    "install-method": {
-      type: "enum",
-      options: [...UpdaterInstallMethods],
-      description: `How --install applies the update: auto, package-manager, or github-binary (default: ${UpdaterConfig.defaults.installMethod}).`,
-    },
-    "target-path": {
-      type: "string",
-      description: "Replace this binary path when using --install-method github-binary.",
-    },
-    status: {
-      type: "boolean",
-      description: "Show the automatic update-check policy and cached latest-release state.",
-    },
-    "clear-cache": {
-      type: "boolean",
-      description: "Delete cached update metadata before continuing.",
-    },
-    "check-interval": {
-      type: "enum",
-      options: [...UpdaterCheckIntervals],
-      description: "Set how often successful human-facing commands may show update notices.",
+      description: "Reinstall or downgrade to the selected release.",
     },
   },
-  async run({ args, sink }) {
-    await runUpdateCommand(args as UpdateCommandArgs, sink);
+  async run({ args, rawArgs, sink }) {
+    validateUpdateArguments(rawArgs);
+    await executeUpdateCommand(args as UpdateCommandArgs, sink);
   },
 });
