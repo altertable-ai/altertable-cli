@@ -8,23 +8,6 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
-export async function runApiSpecCommand(
-  sink: OutputSink,
-  options?: { format?: string },
-): Promise<void> {
-  const format = resolveOpenapiSpecFormat(
-    sink.json,
-    process.stdout.isTTY === true,
-    options?.format,
-  );
-  await writeCommandOutput(
-    format === "json"
-      ? { kind: "raw_api", body: getOpenapiSpecJson() }
-      : { kind: "human", text: getOpenapiSpecYaml() },
-    sink,
-  );
-}
-
 export const apiSpecCommand = defineCommand({
   meta: {
     name: "spec",
@@ -44,3 +27,20 @@ export const apiSpecCommand = defineCommand({
     await runApiSpecCommand(sink, { format: optionalStringArg(args, "format") });
   },
 });
+
+export async function runApiSpecCommand(
+  sink: OutputSink,
+  options?: { format?: string },
+): Promise<void> {
+  const format = resolveOpenapiSpecFormat(
+    sink.json,
+    process.stdout.isTTY === true,
+    options?.format,
+  );
+  await writeCommandOutput(
+    format === "json"
+      ? { kind: "raw_api", body: getOpenapiSpecJson() }
+      : { kind: "human", text: getOpenapiSpecYaml() },
+    sink,
+  );
+}

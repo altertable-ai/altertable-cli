@@ -1,6 +1,6 @@
-import { runCommand } from "citty";
 import { buildMainCommand } from "@/cli.ts";
 import type { CliContext } from "@/context.ts";
+import { runCommandTree } from "@/lib/command.ts";
 import { createCliRuntime, runWithCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
 
 export function createCliTestRuntime(
@@ -20,6 +20,6 @@ export async function runCommandWithTestRuntime(
   context: CliContext = { debug: false, json: true, agent: false },
 ): Promise<void> {
   await runWithCliRuntime(createCliTestRuntime(context), () =>
-    runCommand(buildMainCommand(), { rawArgs }),
+    runCommandTree(buildMainCommand(), { rawArgs }),
   );
 }

@@ -18,6 +18,35 @@ import {
   type UpdateCheckResult,
 } from "@/lib/updater.ts";
 
+export const updateCommand = defineCommand({
+  meta: {
+    name: "update",
+    alias: ["upgrade"],
+    commandGroup: "platform",
+    description: "Update Altertable CLI to the latest release.",
+    examples: ["altertable update", "altertable update --check", "altertable update 1.2.0 --force"],
+  },
+  args: {
+    version: {
+      type: "positional",
+      description: "Specific version to install (default: latest).",
+      required: false,
+    },
+    check: {
+      type: "boolean",
+      description: "Check for an update without installing it.",
+    },
+    force: {
+      type: "boolean",
+      description: "Reinstall or downgrade to the selected release.",
+    },
+  },
+  async run({ args, rawArgs, sink }) {
+    validateUpdateArguments(rawArgs);
+    await executeUpdateCommand(args as UpdateCommandArgs, sink);
+  },
+});
+
 export type UpdateCommandArgs = {
   version?: string;
   check?: boolean;
@@ -141,32 +170,3 @@ export async function executeUpdateCommand(
     sink,
   );
 }
-
-export const updateCommand = defineCommand({
-  meta: {
-    name: "update",
-    alias: ["upgrade"],
-    commandGroup: "platform",
-    description: "Update Altertable CLI to the latest release.",
-    examples: ["altertable update", "altertable update --check", "altertable update 1.2.0 --force"],
-  },
-  args: {
-    version: {
-      type: "positional",
-      description: "Specific version to install (default: latest).",
-      required: false,
-    },
-    check: {
-      type: "boolean",
-      description: "Check for an update without installing it.",
-    },
-    force: {
-      type: "boolean",
-      description: "Reinstall or downgrade to the selected release.",
-    },
-  },
-  async run({ args, rawArgs, sink }) {
-    validateUpdateArguments(rawArgs);
-    await executeUpdateCommand(args as UpdateCommandArgs, sink);
-  },
-});

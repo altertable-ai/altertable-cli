@@ -1,14 +1,12 @@
-import type { ArgsDef } from "citty";
+import type { CommandArgs } from "@/lib/command.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { executeApiHttp, apiHttpResultOutput } from "@/commands/api/lib/http.ts";
+import { API_HTTP_BASE_ARGS, resolveApiCommandRequest } from "@/commands/api/lib/command.ts";
 import {
-  API_HTTP_BASE_ARGS,
-  isDelegatedApiCommand,
-  isApiCommandName,
-  resolveApiCommandRequest,
-} from "@/commands/api/lib/command.ts";
-import { normalizePassthroughCommandRawArgs } from "@/lib/command-delegation.ts";
+  isDelegatedSubCommand,
+  normalizePassthroughCommandRawArgs,
+} from "@/lib/command-delegation.ts";
 import { API_VALUE_FLAGS } from "@/commands/api/lib/command.ts";
 import { apiGetCommand } from "@/commands/api/get.ts";
 import { apiPostCommand } from "@/commands/api/post.ts";
@@ -17,21 +15,6 @@ import { apiDeleteCommand } from "@/commands/api/delete.ts";
 import { apiPutCommand } from "@/commands/api/put.ts";
 import { apiSpecCommand } from "@/commands/api/spec.ts";
 import { apiRoutesCommand } from "@/commands/api/routes.ts";
-
-export { runApiSpecCommand } from "@/commands/api/spec.ts";
-export { runApiRoutesCommand } from "@/commands/api/routes.ts";
-
-export function normalizeApiInvocatorRawArgs(
-  rawArgs: readonly string[],
-  rootArgs: ArgsDef = {},
-): string[] {
-  return normalizePassthroughCommandRawArgs(rawArgs, {
-    commandName: "api",
-    rootArgs,
-    commandValueFlags: API_VALUE_FLAGS,
-    isReservedOperand: isApiCommandName,
-  });
-}
 
 export const apiCommand = defineCommand({
   meta: {
@@ -62,3 +45,28 @@ export const apiCommand = defineCommand({
     if (output) await writeCommandOutput(output, sink);
   },
 });
+
+const API_SUBCOMMAND_NAMES = new Set(Object.keys(apiCommand.subCommands ?? {}));
+
+export function normalizeApiInvocatorRawArgs(
+  rawArgs: readonly string[],
+  rootArgs: CommandArgs = {},
+): string[] {
+  return normalizePassthroughCommandRawArgs(rawArgs, {
+    commandName: "api",
+    rootArgs,
+    commandValueFlags: API_VALUE_FLAGS,
+    isReservedOperand: isApiCommandName,
+  });
+}
+
+function isApiCommandName(value: string): boolean {
+  return API_SUBCOMMAND_NAMES.has(value) || API_SUBCOMMAND_NAMES.has(value.toUpperCase());
+}
+
+function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {
+  return isDelegatedSubCommand(rawArgs, isApiCommandName, { valueFlags: API_VALUE_FLAGS });
+}
+
+export { runApiSpecCommand } from "@/commands/api/spec.ts";
+export { runApiRoutesCommand } from "@/commands/api/routes.ts";

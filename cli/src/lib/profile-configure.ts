@@ -1,4 +1,4 @@
-import type { ArgsDef } from "citty";
+import { defineArgs } from "@/lib/command.ts";
 import {
   configureRunSet,
   withConfigureProfileContext,
@@ -195,7 +195,7 @@ export type ConfigureCommandArgs = {
 };
 
 /** Credential/endpoint flags shared by `profile --configure`; spread into the profile command args. */
-export const configureArgs = {
+export const configureArgs = defineArgs({
   user: { type: "string", description: "Lakehouse username (global)" },
   password: { type: "string", description: "Lakehouse password (global)" },
   "basic-token": { type: "string", description: "Pre-encoded HTTP Basic token" },
@@ -225,7 +225,7 @@ export const configureArgs = {
     options: ["management", "lakehouse"],
     description: "Limit the interactive wizard to one plane (default: both)",
   },
-} satisfies ArgsDef;
+});
 
 function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
   return {

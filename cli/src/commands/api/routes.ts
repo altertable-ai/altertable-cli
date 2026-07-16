@@ -5,24 +5,6 @@ import { apiOperationDetails, apiOperationsJson, apiRouteRows } from "@/commands
 import { formatApiOperationDetails, formatApiRoutes } from "@/commands/api/lib/render.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
-export async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {
-  await writeCommandOutput(
-    operationId
-      ? {
-          kind: "normalized",
-          data: apiOperationDetails(operationId),
-          humanText: formatApiOperationDetails(apiOperationDetails(operationId)),
-        }
-      : {
-          kind: "normalized",
-          data: apiOperationsJson(),
-          humanText: formatApiRoutes(apiRouteRows()),
-          pageHumanText: true,
-        },
-    sink,
-  );
-}
-
 export const apiRoutesCommand = defineCommand({
   meta: {
     name: "routes",
@@ -40,3 +22,22 @@ export const apiRoutesCommand = defineCommand({
     await runApiRoutesCommand(sink, optionalStringArg(args, "operation"));
   },
 });
+
+export async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {
+  const operation = operationId ? apiOperationDetails(operationId) : undefined;
+  await writeCommandOutput(
+    operation
+      ? {
+          kind: "normalized",
+          data: operation,
+          humanText: formatApiOperationDetails(operation),
+        }
+      : {
+          kind: "normalized",
+          data: apiOperationsJson(),
+          humanText: formatApiRoutes(apiRouteRows()),
+          pageHumanText: true,
+        },
+    sink,
+  );
+}

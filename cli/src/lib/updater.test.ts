@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { runCommand } from "citty";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -10,10 +9,11 @@ import {
   executeUpdateCommand,
   type UpdateCommandDependencies,
   updateCommand,
-} from "@/commands/update.ts";
+} from "@/commands/update/index.ts";
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
+import { runCommandTree } from "@/lib/command.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
   checkForUpdate,
@@ -136,7 +136,7 @@ async function runUpdateCommand(rawArgs: string[]): Promise<CapturedCommandOutpu
   };
 
   await runWithCliRuntime(runtime, async () => {
-    await runCommand(buildMainCommand(), { rawArgs });
+    await runCommandTree(buildMainCommand(), { rawArgs });
   });
 
   return output;

@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { runCommand, type ArgsDef, type CommandDef } from "citty";
 import { VERSION } from "@/version.ts";
 import {
   getCliContext,
@@ -21,7 +20,7 @@ import {
   renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
-import { defineRootCommand } from "@/lib/command.ts";
+import { defineArgs, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
@@ -41,7 +40,7 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
   return parseGlobalFlags(argv);
 }
 
-const ROOT_ARGS = {
+const ROOT_ARGS = defineArgs({
   debug: { type: "boolean", alias: "d", description: "Enable debug output" },
   json: { type: "boolean", description: "Machine-readable JSON output" },
   agent: {
@@ -64,7 +63,7 @@ const ROOT_ARGS = {
     type: "string",
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
   },
-} satisfies ArgsDef;
+});
 
 const ROOT_VALUE_FLAGS = valueFlagsFor(ROOT_ARGS);
 
@@ -72,8 +71,8 @@ export function resolveTopLevelCommandName(rawArgs: readonly string[]): string |
   return findFirstPositionalToken(rawArgs, { valueFlags: ROOT_VALUE_FLAGS })?.value;
 }
 
-export function buildMainCommand(): CommandDef {
-  let mainCommand: CommandDef;
+export function buildMainCommand(): Command {
+  let mainCommand: Command;
 
   const topLevelCommands = buildTopLevelCommands(() => mainCommand);
 
@@ -150,7 +149,7 @@ async function bootstrap(): Promise<void> {
     }
 
     validateEnvironment();
-    await runCommand(main, { rawArgs });
+    await runCommandTree(main, { rawArgs });
     await maybeShowUpdateNotice({
       context: getCliContext(),
       commandName: resolveTopLevelCommandName(rawArgs),

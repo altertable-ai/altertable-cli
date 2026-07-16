@@ -1,5 +1,4 @@
-import type { CommandDef } from "citty";
-import { defineCommand } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import {
   formatCompletionScript,
@@ -12,7 +11,7 @@ import {
 export function createShellCompletionCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
-): CommandDef {
+): Command {
   return defineCommand({
     meta: { name: shell, description: `Generate ${shell} completion script.` },
     async run({ sink }) {
@@ -27,7 +26,7 @@ export function createShellCompletionCommand(
 export function createInstallShellCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
-): CommandDef {
+): Command {
   return defineCommand({
     meta: { name: shell, description: `Install ${shell} completion.` },
     args: {

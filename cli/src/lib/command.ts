@@ -1,7 +1,12 @@
 import type { ArgsDef, CommandContext, CommandDef, CommandMeta, Resolvable } from "citty";
+export { runCommand as runCommandTree } from "citty";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
+
+export type Command = CommandDef;
+export type CommandArg = import("citty").ArgDef;
+export type CommandArgs = ArgsDef;
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
@@ -29,6 +34,10 @@ export type AltertableCommandDef<T extends ArgsDef = ArgsDef> = Omit<
 };
 
 export type CommandTreeDef<T extends ArgsDef = ArgsDef> = AltertableCommandDef<T> | CommandDef<T>;
+
+export function defineArgs<const T extends ArgsDef>(args: T): T {
+  return args;
+}
 
 function withCommandRuntime<T extends ArgsDef>(context: CommandContext<T>): CommandRunContext<T> {
   const runtime = getCliRuntime();

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CommandDef } from "citty";
+import type { Command } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import {
   buildCompletionSpec,
@@ -22,7 +22,7 @@ function findNode(spec: ReturnType<typeof buildCompletionSpec>, name: string) {
 
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", () => {
-    const root: CommandDef = {
+    const root: Command = {
       meta: { name: "altertable" },
       args: {
         json: { type: "boolean", description: "Output raw JSON" },
@@ -53,7 +53,7 @@ describe("buildCompletionSpec", () => {
   });
 
   test("skips nested commands without meta.name", () => {
-    const root: CommandDef = {
+    const root: Command = {
       subCommands: {
         visible: { meta: { name: "visible" } },
         hidden: { meta: { description: "no name" } },
@@ -65,7 +65,7 @@ describe("buildCompletionSpec", () => {
   });
 
   test("skips commands marked hidden", () => {
-    const root: CommandDef = {
+    const root: Command = {
       subCommands: {
         visible: { meta: { name: "visible" } },
         hidden: { meta: { name: "hidden", hidden: true } },

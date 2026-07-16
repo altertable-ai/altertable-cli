@@ -1,4 +1,4 @@
-import type { ArgsDef } from "citty";
+import type { CommandArgs } from "@/lib/command.ts";
 import { isJsonOutput } from "@/context.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
@@ -101,7 +101,7 @@ export function renderManagementOutput(body: string, format: ManagementOutputFor
   return renderTabularOutput(managementDataToTabularResult(data), format);
 }
 
-export function withManagementFormatArg<T extends ArgsDef>(
+export function withManagementFormatArg<T extends CommandArgs>(
   args: T,
 ): T & typeof MANAGEMENT_FORMAT_ARG {
   return {

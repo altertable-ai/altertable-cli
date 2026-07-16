@@ -18,21 +18,6 @@ import { profileStatusCommand } from "@/commands/profile/status.ts";
 import { profileSwitchCommand } from "@/commands/profile/switch.ts";
 import { profileUseCommand } from "@/commands/profile/use.ts";
 
-export { promptProfileSwitch } from "@/commands/profile/lib/profile.ts";
-
-const profileValueFlags = valueFlagsFor(configureArgs);
-
-function profileSubcommandInvoked(rawArgs: readonly string[]): boolean {
-  return findFirstPositionalToken(rawArgs, { valueFlags: profileValueFlags }) !== undefined;
-}
-
-function throwNoProfileCommand(): never {
-  const error = new Error("No command specified.") as Error & { code: string };
-  error.name = "CLIError";
-  error.code = "E_NO_COMMAND";
-  throw error;
-}
-
 export const profileCommand = defineCommand({
   meta: {
     name: "profile",
@@ -83,3 +68,18 @@ export const profileCommand = defineCommand({
     throwNoProfileCommand();
   },
 });
+
+const profileValueFlags = valueFlagsFor(configureArgs);
+
+function profileSubcommandInvoked(rawArgs: readonly string[]): boolean {
+  return findFirstPositionalToken(rawArgs, { valueFlags: profileValueFlags }) !== undefined;
+}
+
+function throwNoProfileCommand(): never {
+  const error = new Error("No command specified.") as Error & { code: string };
+  error.name = "CLIError";
+  error.code = "E_NO_COMMAND";
+  throw error;
+}
+
+export { promptProfileSwitch } from "@/commands/profile/lib/profile.ts";

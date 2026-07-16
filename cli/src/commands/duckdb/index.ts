@@ -12,6 +12,24 @@ import { fetchManagementCatalogRows } from "@/commands/catalogs/lib/requests.ts"
 import type { CatalogRow } from "@/lib/management/model.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 
+export const duckdbCommand = defineCommand({
+  meta: {
+    name: "duckdb",
+    commandGroup: "query",
+    description: "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",
+    examples: ["altertable duckdb", "altertable duckdb my_catalog"],
+  },
+  args: {
+    catalog: {
+      type: "positional",
+      description: "Catalog to attach (defaults to all catalogs)",
+      required: false,
+    },
+  },
+  run: ({ args, execution }) =>
+    runDuckdb({ catalog: optionalStringArg(args, "catalog") }, execution),
+});
+
 const LOGIN_PROMPT = "Log in with 'altertable login' to use altertable duckdb.";
 
 function escapeSql(value: string): string {
@@ -90,21 +108,3 @@ async function runDuckdb(input: DuckdbInput, execution: ExecutionContext): Promi
     throw new ConfigurationError(`Failed to launch duckdb: ${result.error.message}`);
   }
 }
-
-export const duckdbCommand = defineCommand({
-  meta: {
-    name: "duckdb",
-    commandGroup: "query",
-    description: "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",
-    examples: ["altertable duckdb", "altertable duckdb my_catalog"],
-  },
-  args: {
-    catalog: {
-      type: "positional",
-      description: "Catalog to attach (defaults to all catalogs)",
-      required: false,
-    },
-  },
-  run: ({ args, execution }) =>
-    runDuckdb({ catalog: optionalStringArg(args, "catalog") }, execution),
-});

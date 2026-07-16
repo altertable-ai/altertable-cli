@@ -48,7 +48,10 @@ Use these boundaries when adding or changing commands:
 - Request builders should return data structures. They should not perform transport as a side effect.
 - Keep request descriptions declarative so a future dry-run mode can inspect them without performing I/O.
 - Presentation should return `CommandOutputMode` or write through the command output sink. Avoid mixing transport, parsing, and terminal output in the same function.
-- Define commands with `defineCommand` and register top-level commands in `cli/src/commands/index.ts`.
+- Declare the exported command immediately after imports, then place its helpers and types below it so reviewers see the public shape first.
+- Define commands and argument schemas through `cli/src/lib/command.ts`; Citty is an implementation detail of that boundary.
+- Derive related argument schemas from one shared definition instead of repeating flags and descriptions.
+- Register top-level commands in `cli/src/commands/index.ts`.
 - Colocate unit tests beside their subject as `<name>.test.ts`; reserve root `tests/` for black-box behavior.
 
 If a path needs sharing, start at the narrowest common owner and move it to top-level `lib/` only when multiple command families use it.

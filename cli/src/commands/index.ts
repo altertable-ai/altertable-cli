@@ -1,4 +1,4 @@
-import type { ArgsDef, CommandDef } from "citty";
+import type { Command, CommandArgs } from "@/lib/command.ts";
 import { loginCommand } from "@/commands/login/index.ts";
 import { logoutCommand } from "@/commands/logout/index.ts";
 import { profileCommand } from "@/commands/profile/index.ts";
@@ -13,9 +13,7 @@ import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.t
 import { createCompletionCommand } from "@/commands/completion/index.ts";
 import { updateCommand } from "@/commands/update/index.ts";
 
-export function buildTopLevelCommands(
-  getMainCommand: () => CommandDef,
-): Record<string, CommandDef> {
+export function buildTopLevelCommands(getMainCommand: () => Command): Record<string, Command> {
   return {
     login: loginCommand,
     logout: logoutCommand,
@@ -33,6 +31,9 @@ export function buildTopLevelCommands(
   };
 }
 
-export function normalizeCommandRawArgs(rawArgs: readonly string[], rootArgs: ArgsDef): string[] {
+export function normalizeCommandRawArgs(
+  rawArgs: readonly string[],
+  rootArgs: CommandArgs,
+): string[] {
   return normalizeQueryInvocatorRawArgs(normalizeApiInvocatorRawArgs(rawArgs, rootArgs), rootArgs);
 }

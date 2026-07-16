@@ -51,6 +51,9 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 ## Conventions
 
+- Declare and export each command immediately after its imports; keep supporting helpers and types below it.
+- Import command types and `defineArgs` from `src/lib/command.ts`; only that boundary should depend on Citty's types.
+- Derive related argument schemas from shared fragments instead of repeating flag definitions.
 - Function declarations over const function expressions (except one-liners)
 - Types over interfaces
 - Explicit variable names; match surrounding file style

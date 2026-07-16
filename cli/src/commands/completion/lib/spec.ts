@@ -1,7 +1,7 @@
-import type { CommandDef } from "citty";
+import type { Command } from "@/lib/command.ts";
 
 /**
- * Static completion spec derived from the Citty command tree.
+ * Static completion spec derived from the command tree.
  *
  * Subcommand nesting is limited to two levels below the root command
  * (e.g. `altertable api connections`). Flag extraction applies to each visited
@@ -40,7 +40,7 @@ type ArgDef = {
   options?: string[];
 };
 
-function extractFlags(command: CommandDef): CompletionFlag[] {
+function extractFlags(command: Command): CompletionFlag[] {
   const flags: CompletionFlag[] = [];
   const args = command.args ?? {};
 
@@ -69,7 +69,7 @@ function resolveAliases(value: unknown): string[] {
   return aliases.map(String);
 }
 
-function resolveSubcommandNames(command: CommandDef): string[] {
+function resolveSubcommandNames(command: Command): string[] {
   const meta = command.meta;
   if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
     return [];
@@ -81,7 +81,7 @@ function resolveSubcommandNames(command: CommandDef): string[] {
   return [];
 }
 
-function resolveMetaDescription(command: CommandDef): string | undefined {
+function resolveMetaDescription(command: Command): string | undefined {
   const meta = command.meta;
   if (meta && typeof meta === "object" && "description" in meta && meta.description) {
     return String(meta.description);
@@ -89,7 +89,7 @@ function resolveMetaDescription(command: CommandDef): string | undefined {
   return undefined;
 }
 
-function resolveRootName(root: CommandDef): string {
+function resolveRootName(root: Command): string {
   const meta = root.meta;
   if (meta && typeof meta === "object" && "name" in meta && meta.name) {
     return String(meta.name);
@@ -97,19 +97,19 @@ function resolveRootName(root: CommandDef): string {
   return "altertable";
 }
 
-function walkSubcommands(subcommands: CommandDef["subCommands"], depth: number): CompletionNode[] {
+function walkSubcommands(subcommands: Command["subCommands"], depth: number): CompletionNode[] {
   if (!subcommands) {
     return [];
   }
   return Object.values(subcommands)
     .flatMap((subcommand) => {
-      const command = subcommand as CommandDef;
+      const command = subcommand as Command;
       return resolveSubcommandNames(command).map((name) => walkCommand(name, command, depth));
     })
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function walkCommand(name: string, command: CommandDef, depth: number): CompletionNode {
+function walkCommand(name: string, command: Command, depth: number): CompletionNode {
   const node: CompletionNode = {
     name,
     description: resolveMetaDescription(command),
@@ -125,7 +125,7 @@ function walkCommand(name: string, command: CommandDef, depth: number): Completi
   return node;
 }
 
-export function buildCompletionSpec(root: CommandDef): CompletionNode {
+export function buildCompletionSpec(root: Command): CompletionNode {
   const spec: CompletionNode = {
     name: resolveRootName(root),
     description: resolveMetaDescription(root),
@@ -138,7 +138,6 @@ export function buildCompletionSpec(root: CommandDef): CompletionNode {
   }
 
   spec.subcommands = walkSubcommands(root.subCommands, 1);
-
   return spec;
 }
 

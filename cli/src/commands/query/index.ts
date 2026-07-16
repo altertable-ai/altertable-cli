@@ -1,26 +1,10 @@
-import type { ArgsDef } from "citty";
+import type { CommandArgs } from "@/lib/command.ts";
 import { normalizeDefaultSubCommandRawArgs, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { queryRunArgs } from "@/lib/lakehouse/args.ts";
 import { queryRunCommand } from "@/commands/query/run.ts";
 import { queryShowCommand } from "@/commands/query/show.ts";
 import { queryCancelCommand } from "@/commands/query/cancel.ts";
-
-const QUERY_SUBCOMMAND_NAMES = new Set(["run", "show", "cancel"]);
-const QUERY_VALUE_FLAGS = valueFlagsFor(queryRunArgs);
-
-export function normalizeQueryInvocatorRawArgs(
-  rawArgs: readonly string[],
-  rootArgs: ArgsDef = {},
-): string[] {
-  return normalizeDefaultSubCommandRawArgs(rawArgs, {
-    commandName: "query",
-    subCommand: "run",
-    rootArgs,
-    commandValueFlags: QUERY_VALUE_FLAGS,
-    isReservedOperand: (value) => QUERY_SUBCOMMAND_NAMES.has(value),
-  });
-}
 
 export const queryCommand = defineCommand({
   meta: {
@@ -41,3 +25,19 @@ export const queryCommand = defineCommand({
     cancel: queryCancelCommand,
   },
 });
+
+const QUERY_SUBCOMMAND_NAMES = new Set(Object.keys(queryCommand.subCommands ?? {}));
+const QUERY_VALUE_FLAGS = valueFlagsFor(queryRunArgs);
+
+export function normalizeQueryInvocatorRawArgs(
+  rawArgs: readonly string[],
+  rootArgs: CommandArgs = {},
+): string[] {
+  return normalizeDefaultSubCommandRawArgs(rawArgs, {
+    commandName: "query",
+    subCommand: "run",
+    rootArgs,
+    commandValueFlags: QUERY_VALUE_FLAGS,
+    isReservedOperand: (value) => QUERY_SUBCOMMAND_NAMES.has(value),
+  });
+}

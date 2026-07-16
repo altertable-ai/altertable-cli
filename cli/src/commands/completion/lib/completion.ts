@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import type { CommandDef } from "citty";
+import type { Command } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
 import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
@@ -14,7 +14,7 @@ import {
   formatZshCompletion,
 } from "@/commands/completion/lib/format.ts";
 
-export type GetRootCommand = () => CommandDef;
+export type GetRootCommand = () => Command;
 export type SupportedShell = "bash" | "zsh" | "fish";
 export type CompletionRootInput =
   | { kind: "help" }
@@ -143,7 +143,7 @@ function upsertManagedBlock(existing: string, block: string): string {
   return prefix ? `${prefix}\n\n${block}` : block;
 }
 
-export function formatCompletionScript(shell: SupportedShell, rootCommand: CommandDef): string {
+export function formatCompletionScript(shell: SupportedShell, rootCommand: Command): string {
   const spec = buildCompletionSpec(rootCommand);
   if (shell === "bash") return formatBashCompletion(spec);
   if (shell === "zsh") return formatZshCompletion(spec);

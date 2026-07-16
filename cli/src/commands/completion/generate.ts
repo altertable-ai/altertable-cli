@@ -1,11 +1,10 @@
-import type { CommandDef } from "citty";
-import { defineCommand } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { createBashCompletionCommand } from "@/commands/completion/bash.ts";
 import { createFishCompletionCommand } from "@/commands/completion/fish.ts";
 import { createZshCompletionCommand } from "@/commands/completion/zsh.ts";
 import type { GetRootCommand } from "@/commands/completion/lib/completion.ts";
 
-export function createGenerateCommand(getRootCommand: GetRootCommand): CommandDef {
+export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
     meta: {
       name: "generate",

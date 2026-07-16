@@ -25,6 +25,37 @@ import { readEnv, setEnv } from "@/lib/env.ts";
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
+export const loginCommand = defineCommand({
+  meta: {
+    name: "login",
+    commandGroup: "platform",
+    description: "Sign in with your browser (OAuth) and store the session.",
+    examples: ["altertable login", "altertable login --replace-profile"],
+  },
+  args: {
+    "control-plane-url": {
+      type: "string",
+      description:
+        "Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai",
+    },
+    "data-plane-url": {
+      type: "string",
+      description:
+        "Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai",
+    },
+    "allow-insecure-http": {
+      type: "boolean",
+      description:
+        "Allow http:// URLs other than localhost for --control-plane-url (for development only)",
+    },
+    "replace-profile": {
+      type: "boolean",
+      description: "Store the login session in the current profile instead of switching profiles",
+    },
+  },
+  run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
+});
+
 function isInteractiveTerminal(): boolean {
   return process.stdin.isTTY;
 }
@@ -48,6 +79,13 @@ type LoginProfileMetadata = {
 };
 
 type LoginProfileAction = LoginProfileMetadata["profileAction"];
+
+const LOGIN_PROFILE_MESSAGES = {
+  created: "created profile",
+  reused: "using existing profile",
+  replaced: "replaced current profile with",
+  unchanged: "using profile",
+} satisfies Record<LoginProfileAction, string>;
 
 function loginProfileName(whoami: WhoamiResponse, environment: string, fallback: string): string {
   const organizationSlug = whoami.organization?.slug;
@@ -216,49 +254,11 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   }
 
   const identity = formatWhoamiPrincipalLine(whoami);
-  const profileMessages = {
-    created: `created profile "${profileName}"`,
-    reused: `using existing profile "${profileName}"`,
-    replaced: `replaced current profile with "${profileName}"`,
-    unchanged: `using profile "${profileName}"`,
-  } satisfies Record<LoginProfileAction, string>;
+  const profileMessage = `${LOGIN_PROFILE_MESSAGES[profileAction]} "${profileName}"`;
   sink.writeMetadata([
     renderDisplayText([
       span("✓", "success"),
-      span(
-        ` Logged in (${identity}) — ${profileMessages[profileAction]}; environment "${environment}".`,
-      ),
+      span(` Logged in (${identity}) — ${profileMessage}; environment "${environment}".`),
     ]),
   ]);
 }
-
-export const loginCommand = defineCommand({
-  meta: {
-    name: "login",
-    commandGroup: "platform",
-    description: "Sign in with your browser (OAuth) and store the session.",
-    examples: ["altertable login", "altertable login --replace-profile"],
-  },
-  args: {
-    "control-plane-url": {
-      type: "string",
-      description:
-        "Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai",
-    },
-    "data-plane-url": {
-      type: "string",
-      description:
-        "Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai",
-    },
-    "allow-insecure-http": {
-      type: "boolean",
-      description:
-        "Allow http:// URLs other than localhost for --control-plane-url (for development only)",
-    },
-    "replace-profile": {
-      type: "boolean",
-      description: "Store the login session in the current profile instead of switching profiles",
-    },
-  },
-  run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
-});

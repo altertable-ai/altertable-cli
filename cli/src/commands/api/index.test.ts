@@ -1,6 +1,4 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import type { ArgsDef, CommandDef } from "citty";
-import { runCommand } from "citty";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -16,6 +14,7 @@ import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-support/cli-test-runtime.ts";
+import { runCommandTree, type Command, type CommandArgs } from "@/lib/command.ts";
 
 function createCaptureSink(json: boolean) {
   const stdout: string[] = [];
@@ -89,7 +88,9 @@ describe("api", () => {
     setCliRuntime(runtime);
 
     try {
-      await runCommand(buildMainCommand(), { rawArgs: ["api", "spec", "--format", "yaml"] });
+      await runCommandTree(buildMainCommand(), {
+        rawArgs: ["api", "spec", "--format", "yaml"],
+      });
     } finally {
       setCliRuntime(previousRuntime);
     }
@@ -133,7 +134,7 @@ describe("api", () => {
   });
 
   test("api command tree exposes spec and routes subcommands", () => {
-    const subCommands = apiCommand.subCommands as Record<string, CommandDef>;
+    const subCommands = apiCommand.subCommands as Record<string, Command>;
     expect(subCommands.spec?.run).toBeDefined();
     expect(subCommands.routes?.run).toBeDefined();
   });
@@ -141,7 +142,7 @@ describe("api", () => {
   test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
     const rootArgs = {
       profile: { type: "string", description: "Use a named profile" },
-    } satisfies ArgsDef;
+    } satisfies CommandArgs;
 
     expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
     expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([

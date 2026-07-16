@@ -1,5 +1,4 @@
-import type { CommandDef } from "citty";
-import { defineCommand } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { createBashInstallCommand } from "@/commands/completion/bash.ts";
 import { createFishInstallCommand } from "@/commands/completion/fish.ts";
 import { createZshInstallCommand } from "@/commands/completion/zsh.ts";
@@ -12,7 +11,7 @@ import {
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
 
-export function createInstallCommand(getRootCommand: GetRootCommand): CommandDef {
+export function createInstallCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
     meta: {
       name: "install",

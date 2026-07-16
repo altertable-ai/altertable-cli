@@ -1,17 +1,15 @@
-import type { ArgsDef } from "citty";
 import { extractFieldArgs, extractRawFieldArgs } from "@/commands/api/lib/body.ts";
 import { executeApiHttp, apiHttpResultOutput, resolveApiHttp } from "@/commands/api/lib/http.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command.ts";
+import { defineArgs, defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { isDelegatedSubCommand, valueFlagsFor } from "@/lib/command-delegation.ts";
+import { valueFlagsFor } from "@/lib/command-delegation.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 
 export const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
-const API_COMMAND_NAMES = new Set<string>(["spec", "routes", ...HTTP_METHOD_NAMES]);
 
-export const API_HTTP_BASE_ARGS = {
+export const API_HTTP_BASE_ARGS = defineArgs({
   method: {
     type: "enum",
     alias: "X",
@@ -36,18 +34,10 @@ export const API_HTTP_BASE_ARGS = {
   body: { type: "string", description: "JSON body or @file" },
   input: { type: "string", description: "Alias for --body (file path or - for stdin)" },
   env: { type: "string", description: "Replace {environment_id} in the path" },
-} satisfies ArgsDef;
+});
 
 export const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
 export const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
-
-export function isApiCommandName(value: string): boolean {
-  return API_COMMAND_NAMES.has(value) || API_COMMAND_NAMES.has(value.toUpperCase());
-}
-
-export function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {
-  return isDelegatedSubCommand(rawArgs, isApiCommandName, { valueFlags: API_VALUE_FLAGS });
-}
 
 export function resolveApiCommandRequest(
   args: Record<string, unknown>,

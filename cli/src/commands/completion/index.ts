@@ -1,5 +1,4 @@
-import type { CommandDef } from "citty";
-import { defineCommand } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { defaultConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
 import { createBashCompletionCommand } from "@/commands/completion/bash.ts";
 import { createFishCompletionCommand } from "@/commands/completion/fish.ts";
@@ -23,7 +22,7 @@ import {
 export function createCompletionCommand(
   getRootCommand: GetRootCommand,
   options: CompletionCommandOptions = {},
-): CommandDef {
+): Command {
   const prompts = options.prompts ?? defaultConfigurePrompts;
   return defineCommand({
     meta: {

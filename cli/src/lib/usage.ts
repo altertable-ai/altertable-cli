@@ -1,4 +1,4 @@
-import type { ArgDef, ArgsDef, CommandDef } from "citty";
+import type { Command, CommandArg, CommandArgs } from "@/lib/command.ts";
 import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
@@ -54,7 +54,7 @@ async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>) | Promi
   return await input;
 }
 
-function isValueFlag(flag: string, argsDef: ArgsDef): boolean {
+function isValueFlag(flag: string, argsDef: CommandArgs): boolean {
   const name = flag.replace(/^-{1,2}/, "");
   const normalized = camelCase(name);
   for (const [key, definition] of Object.entries(argsDef)) {
@@ -76,7 +76,7 @@ function isValueFlag(flag: string, argsDef: ArgsDef): boolean {
   return false;
 }
 
-function findSubCommandIndex(rawArgs: string[], argsDef: ArgsDef): number {
+function findSubCommandIndex(rawArgs: string[], argsDef: CommandArgs): number {
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (arg === undefined) {
@@ -99,10 +99,10 @@ function findSubCommandIndex(rawArgs: string[], argsDef: ArgsDef): number {
 async function findSubCommand(
   subCommands: Record<
     string,
-    CommandDef | (() => CommandDef) | (() => Promise<CommandDef>) | Promise<CommandDef>
+    Command | (() => Command) | (() => Promise<Command>) | Promise<Command>
   >,
   name: string | undefined,
-): Promise<CommandDef | undefined> {
+): Promise<Command | undefined> {
   if (!name) {
     return undefined;
   }
@@ -120,10 +120,10 @@ async function findSubCommand(
 }
 
 export async function resolveSubCommandForUsage(
-  command: CommandDef,
+  command: Command,
   rawArgs: string[],
-  parent?: CommandDef,
-): Promise<[CommandDef, CommandDef | undefined]> {
+  parent?: Command,
+): Promise<[Command, Command | undefined]> {
   const subCommands = await resolveValue(command.subCommands);
   if (subCommands && Object.keys(subCommands).length > 0) {
     const subCommandArgIndex = findSubCommandIndex(rawArgs, await resolveValue(command.args ?? {}));
@@ -136,11 +136,11 @@ export async function resolveSubCommandForUsage(
   return [command, parent];
 }
 
-async function resolveCommandMeta(command: CommandDef): Promise<AltertableCommandMeta> {
+async function resolveCommandMeta(command: Command): Promise<AltertableCommandMeta> {
   return (await resolveValue(command.meta ?? {})) as AltertableCommandMeta;
 }
 
-async function resolveCommandExamples(command: CommandDef): Promise<readonly string[]> {
+async function resolveCommandExamples(command: Command): Promise<readonly string[]> {
   const meta = await resolveCommandMeta(command);
   return meta.examples ?? [];
 }
@@ -150,7 +150,7 @@ type VisibleSubCommand = {
   meta: AltertableCommandMeta;
 };
 
-async function visibleSubCommands(command: CommandDef): Promise<VisibleSubCommand[]> {
+async function visibleSubCommands(command: Command): Promise<VisibleSubCommand[]> {
   const subCommands = await resolveValue(command.subCommands);
   if (!subCommands || Object.keys(subCommands).length === 0) {
     return [];
@@ -278,7 +278,7 @@ function formatHelpGuidance(commandName: string): string[] {
   });
 }
 
-function valueHint(name: string, definition: ArgDef): string | undefined {
+function valueHint(name: string, definition: CommandArg): string | undefined {
   if (definition.type === "enum" && definition.options?.length) {
     return definition.valueHint ?? definition.options.join("|");
   }
@@ -288,7 +288,7 @@ function valueHint(name: string, definition: ArgDef): string | undefined {
   return undefined;
 }
 
-function flagLabel(name: string, definition: ArgsDef[string]): string {
+function flagLabel(name: string, definition: CommandArgs[string]): string {
   const aliases = ("alias" in definition ? toArray(definition.alias) : []).map(
     (alias) => `-${alias}`,
   );
@@ -298,11 +298,11 @@ function flagLabel(name: string, definition: ArgsDef[string]): string {
   return [...aliases, `${longFlag}${value}`].join(", ");
 }
 
-function positionalLabel(name: string, definition: ArgDef): string {
+function positionalLabel(name: string, definition: CommandArg): string {
   return (definition.valueHint ?? name).toUpperCase();
 }
 
-function argumentDescription(definition: ArgDef): string {
+function argumentDescription(definition: CommandArg): string {
   const required =
     definition.default === undefined &&
     (definition.type === "positional"
@@ -328,7 +328,7 @@ function usageCommandName(meta: AltertableCommandMeta, parentMeta?: AltertableCo
 
 function usageTokens(
   commandName: string,
-  args: ArgsDef,
+  args: CommandArgs,
   subCommands: readonly VisibleSubCommand[],
 ): string {
   const positionalArgs = Object.entries(args)
@@ -350,7 +350,7 @@ function usageTokens(
     .join(" ");
 }
 
-async function renderCommandUsage(command: CommandDef, parent?: CommandDef): Promise<string> {
+async function renderCommandUsage(command: Command, parent?: Command): Promise<string> {
   const meta = await resolveCommandMeta(command);
   const parentMeta = parent ? await resolveCommandMeta(parent) : undefined;
   const args = await resolveValue(command.args ?? {});
@@ -416,7 +416,7 @@ async function renderCommandUsage(command: CommandDef, parent?: CommandDef): Pro
   return lines.join("\n");
 }
 
-async function renderRootUsage(command: CommandDef, meta: AltertableCommandMeta): Promise<string> {
+async function renderRootUsage(command: Command, meta: AltertableCommandMeta): Promise<string> {
   const args = await resolveValue(command.args ?? {});
   const groupedEntries: Record<AltertableCommandGroup, HelpEntry[]> = {
     platform: [],
@@ -486,10 +486,7 @@ async function renderRootUsage(command: CommandDef, meta: AltertableCommandMeta)
   return lines.join("\n");
 }
 
-export async function renderAltertableUsage(
-  command: CommandDef,
-  parent?: CommandDef,
-): Promise<string> {
+export async function renderAltertableUsage(command: Command, parent?: Command): Promise<string> {
   const meta = await resolveCommandMeta(command);
   if (parent === undefined && meta.name === "altertable") {
     return renderRootUsage(command, meta);
@@ -498,14 +495,11 @@ export async function renderAltertableUsage(
   return renderCommandUsage(command, parent);
 }
 
-export async function showAltertableUsage(command: CommandDef, parent?: CommandDef): Promise<void> {
+export async function showAltertableUsage(command: Command, parent?: Command): Promise<void> {
   console.log(`${await renderAltertableUsage(command, parent)}\n`);
 }
 
-export async function showCommandExamplesForArgs(
-  root: CommandDef,
-  rawArgs: string[],
-): Promise<void> {
+export async function showCommandExamplesForArgs(root: Command, rawArgs: string[]): Promise<void> {
   const [command] = await resolveSubCommandForUsage(root, rawArgs);
   const section = formatCommandExamplesSection(await resolveCommandExamples(command));
   if (section.length === 0) {
