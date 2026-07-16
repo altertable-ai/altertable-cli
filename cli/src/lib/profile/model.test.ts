@@ -93,8 +93,8 @@ describe("profile model", () => {
   });
 
   test("deletes stored Keychain secrets before removing a profile", () => {
-    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     createEmptyProfile("staging");
+    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     const keychain = createFakeKeychain();
     keychain.store.secretSet("api-key", "atm_staging", "staging");
     keychain.store.secretSet("lakehouse/password", "lakehouse-secret", "staging");
@@ -113,8 +113,8 @@ describe("profile model", () => {
   });
 
   test("keeps the profile when Keychain secret deletion fails", () => {
-    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     createEmptyProfile("staging");
+    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     const keychain = createFakeKeychain();
     keychain.store.secretSet("api-key", "atm_staging", "staging");
     keychain.failingDeletes.add("profile/staging/api-key");
@@ -141,8 +141,8 @@ describe("profile model", () => {
   });
 
   test("rolls back profile config and Keychain secrets after a rename failure", () => {
-    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     createEmptyProfile("staging");
+    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
     const keychain = createFakeKeychain();
     keychain.store.secretSet("api-key", "atm_staging", "staging");
     keychain.store.secretSet("lakehouse/password", "lakehouse-secret", "staging");
