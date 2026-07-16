@@ -41,7 +41,8 @@ bun test "$PWD"/tests/integration.e2e.ts
 ## Architecture
 
 - **Dual-plane auth**: lakehouse data plane (HTTP Basic) vs management REST (Bearer API key). See root README credential tables.
-- **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineAltertableCommand` injects `sink` into every command `run` handler. Commands pass `sink` to output helpers — not raw `console.log` / `console.error` (completion scripts are the exception; they must emit raw script text).
+- **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineCommand` injects `runtime`, `sink`, and a lazy `execution` context into every command handler. Commands pass `sink` to output helpers rather than writing to the console.
+- **Direct execution**: a leaf command parses its arguments, builds a plain request value, sends it, and presents the result. Request values stay declarative as the seam for a future dry-run mode; there is no operation/effect framework.
 - **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Accepts `sink` as the last argument; lib callers may omit it (defaults to `getOutputSink()`).
 - Helpers: `writeManagementOutput`, `writeLakehouseOutput`, `writeJsonOrRaw` (thin wrappers around `writeCommandOutput`).
 - **When to use `sink` directly**: bespoke output (custom tables, metadata messages) — `sink.writeJson`, `sink.writeHuman`, `sink.writeMetadata`.
@@ -78,39 +79,42 @@ bun test "$PWD"/tests/integration.e2e.ts
 | ------------------------------------- | ---------------------------------------------------------- |
 | `src/cli.ts`                          | Citty root command, global flags, error bootstrap          |
 | `src/context.ts`                      | Parsed global flags (`json`, `debug`, `profile`, timeouts) |
-| `src/commands/*`                      | One file per top-level command group                       |
-| `src/lib/*`                           | Shared clients, formatting, config, completion             |
+| `src/commands/<family>/index.ts`      | One top-level command group                                |
+| `src/commands/<family>/<name>.ts`     | One leaf command                                           |
+| `src/commands/<family>/lib/*`         | Implementation private to that command family              |
+| `src/lib/*`                           | Code shared by multiple command families                   |
 | `src/generated/openapi-types.ts`      | Generated — run `bun run generate` after OpenAPI changes   |
 | `src/generated/openapi-operations.ts` | Generated operation index for `api routes`                 |
-| `tests/*.test.ts`                     | Bun unit tests under `cli/tests/`                          |
+| `src/**/*.test.ts`                    | Unit tests colocated beside their subject                  |
 | `../tests/*.test.ts`                  | Black-box end-user CLI tests at repo root                  |
 | `../tests/integration.e2e.ts`         | Mock-server lakehouse integration test                     |
 
-**Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `lib/api-http.ts`.
+**Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `commands/api/lib/http.ts`.
 
-| Module                                 | Role                                                                             |
-| -------------------------------------- | -------------------------------------------------------------------------------- |
-| `commands/lakehouse.ts`                | Data-plane commands (query, upload, append, …)                                   |
-| `commands/api.ts`                      | Management HTTP invoker (`api GET /path`), spec, routes                          |
-| `lib/api-http.ts`                      | HTTP invoker logic for `api`                                                     |
-| `lib/api-body.ts`                      | `--body`, `@file`, `-f key=value` body builders                                  |
-| `lib/profile-configure-core.ts`        | Credential store (`configureRunSet`, show, clear)                                |
-| `lib/profile-configure.ts`             | `profile --configure` dispatch (flags vs wizard, `--scope`) + interactive wizard |
-| `lib/profile-configure-interactive.ts` | Wizard prompts + credential collection                                           |
-| `lib/profile-status.ts`                | Post-configure credential verification (`configureVerify`)                       |
-| `features/profile/model.ts`            | Profile store/inspect + credential presence (stored + env)                       |
-| `commands/profile.ts`                  | Profile subcommands, `profile --configure`, `profile show`                       |
-| `lib/lakehouse-client.ts`              | Lakehouse HTTP + query rendering                                                 |
-| `lib/http.ts`                          | Shared HTTP transport, logging, mock file support                                |
-| `lib/management-transport.ts`          | Management API HTTP transport                                                    |
-| `lib/management-formatters.ts`         | Human formatters for identity and `catalogs`                                     |
-| `lib/catalog-rows.ts`                  | Catalog list row builder for `catalogs list`                                     |
-| `lib/errors.ts`                        | Exit codes, `CliError`, JSON error envelope                                      |
-| `lib/completion-spec.ts`               | Walks Citty tree for shell completion                                            |
+| Module                                  | Role                                                                             |
+| --------------------------------------- | -------------------------------------------------------------------------------- |
+| `commands/query/`, `append/`, `upload/` | Data-plane commands                                                              |
+| `commands/api/`                         | Management HTTP invoker (`api GET /path`), spec, routes                          |
+| `commands/api/lib/http.ts`              | HTTP invoker logic for `api`                                                     |
+| `commands/api/lib/body.ts`              | `--body`, `@file`, `-f key=value` body builders                                  |
+| `lib/profile-configure-core.ts`         | Credential store (`configureRunSet`, show, clear)                                |
+| `lib/profile-configure.ts`              | `profile --configure` dispatch (flags vs wizard, `--scope`) + interactive wizard |
+| `lib/profile-configure-interactive.ts`  | Wizard prompts + credential collection                                           |
+| `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)                       |
+| `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands              |
+| `commands/profile/`                     | Profile subcommands, `profile --configure`, `profile show`                       |
+| `lib/lakehouse-client.ts`               | Lakehouse HTTP + query rendering                                                 |
+| `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                                |
+| `lib/management-transport.ts`           | Management API HTTP transport                                                    |
+| `lib/management/`                       | Shared management identity and catalog presentation                              |
+| `lib/catalogs/rows.ts`                  | Catalog rows shared by `catalogs` and `duckdb`                                   |
+| `commands/catalogs/lib/requests.ts`     | Declarative catalog request builders and execution                               |
+| `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                                      |
+| `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                                            |
 
 ## Command tree
 
-Source of truth: `src/cli.ts` + `commands/api.ts`. Verify with `bin/altertable --help`.
+Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 
 ```
 altertable
@@ -133,27 +137,25 @@ altertable
 
 ### Recipe A — New top-level product command
 
-1. Create `src/commands/myfeature.ts` exporting `myfeatureCommand` via `defineAltertableCommand`
-2. Register in `src/cli.ts` `topLevelCommands`
-3. Pass `sink` from `run({ sink })` to `writeCommandOutput` or plane-specific wrappers (`writeManagementOutput`, `writeLakehouseOutput`)
-4. Management plane: `managementRequest()` from `lib/management-transport.ts`
-5. Lakehouse plane: functions from `lib/lakehouse-client.ts`
-6. Add unit test in `cli/tests/`; black-box test in `tests/` if integration-worthy
-7. Flags on command `args` are picked up by `completion-spec.ts` — run completion tests after structural changes
+1. Create `src/commands/myfeature/index.ts` exporting `myfeatureCommand` via `defineCommand`.
+2. Put each subcommand in `src/commands/myfeature/<name>.ts`.
+3. Put private helpers and request builders in `src/commands/myfeature/lib/`.
+4. Register the top-level command in `src/commands/index.ts`.
+5. Add `<name>.test.ts` beside the command or library under test; add a root `tests/` case only for black-box behavior.
+6. Flags on command `args` are picked up by completion automatically; run completion tests after structural changes.
 
 Minimal pattern (management HTTP command):
 
 ```typescript
-import { defineAltertableCommand } from "@/lib/command-context.ts";
-import { writeJsonOrRaw } from "@/lib/command-output.ts";
-import { formatWhoami, type WhoamiResponse } from "@/lib/management-formatters.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
+import { defineCommand } from "@/lib/command.ts";
+import { sendHttp } from "@/lib/http-request.ts";
 
-export const myfeatureCommand = defineAltertableCommand({
+export const myfeatureCommand = defineCommand({
   meta: { name: "myfeature", description: "…" },
-  async run({ sink }) {
-    const response = await managementRequest("GET", "/path");
-    writeJsonOrRaw(response, (data) => formatWhoami(data as WhoamiResponse), sink);
+  async run({ execution, sink }) {
+    const request = { plane: "management", method: "GET", endpoint: "/path" } as const;
+    const response = await sendHttp(request, execution);
+    sink.writeJson(JSON.parse(response));
   },
 });
 ```
@@ -174,24 +176,24 @@ Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder 
 ### Recipe C — Change exit codes or JSON errors
 
 1. Edit `src/lib/errors.ts` only
-2. Update `cli/tests/errors.test.ts` and `tests/scripting.test.ts`
+2. Update `cli/src/lib/errors.test.ts` and `tests/scripting.test.ts`
 3. Update README scripting table — do not renumber existing codes
 
 ## Testing guide
 
-| Change type          | Run                                                                       |
-| -------------------- | ------------------------------------------------------------------------- |
-| lib pure function    | `cd cli && bun test path/to.test.ts`                                      |
-| command validation   | `commands-*.test.ts` pattern                                              |
-| HTTP behavior        | mock file via `ALTERTABLE_MOCK_HTTP_FILE` (see `tests/helpers.ts`)        |
-| end-to-end lakehouse | `./scripts/verify.sh --integration`                                       |
-| completion structure | `bun test cli/tests/completion-spec.test.ts cli/tests/completion.test.ts` |
+| Change type          | Run                                              |
+| -------------------- | ------------------------------------------------ |
+| lib pure function    | `cd cli && bun test path/to.test.ts`             |
+| command validation   | colocated `src/commands/<family>/<name>.test.ts` |
+| HTTP behavior        | mock file via `ALTERTABLE_MOCK_HTTP_FILE`        |
+| end-to-end lakehouse | `./scripts/verify.sh --integration`              |
+| completion structure | `cd cli && bun test src/commands/completion`     |
 
 Test env vars: `ALTERTABLE_CONFIG_HOME`, `ALTERTABLE_SECRET_BACKEND=file`, `ALTERTABLE_MOCK_HTTP_FILE`, `ALTERTABLE_HTTP_LOG`.
 
 Lakehouse endpoint coverage: [DEVELOPMENT.md spec conformance table](../DEVELOPMENT.md#cli-spec-conformance-lakehouse).
 
-Example mock HTTP test pattern: `cli/tests/lakehouse.test.ts` sets `ALTERTABLE_MOCK_HTTP_FILE`. Root black-box tests use `tests/helpers.ts`.
+Example mock HTTP test pattern: `cli/src/lib/lakehouse/query.test.ts` sets `ALTERTABLE_MOCK_HTTP_FILE`. Root black-box tests use `tests/helpers.ts`.
 
 ## Invariants (do not break)
 
@@ -200,7 +202,7 @@ Example mock HTTP test pattern: `cli/tests/lakehouse.test.ts` sets `ALTERTABLE_M
 - Dual-plane configure: one authentication mechanism per flag-based invocation; the interactive wizard may configure both planes in one session
 - HTTP log redaction in tests (`setupHttpLog` / `readHttpLog` in `tests/helpers.ts`)
 - `bin/altertable` launcher unchanged
-- No raw `console.log` in commands except `completion.ts`
+- No raw `console.log` in commands
 
 ## Plans
 
