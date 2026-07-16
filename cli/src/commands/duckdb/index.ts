@@ -6,11 +6,11 @@ import {
 } from "@/lib/auth.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
-import { optionalStringArg } from "@/lib/operation-codec.ts";
-import { fetchManagementCatalogRows } from "@/lib/management-operations.ts";
+import { defineCommand } from "@/lib/command-context.ts";
+import { optionalStringArg } from "@/lib/args.ts";
+import { fetchManagementCatalogRows } from "@/lib/catalogs/requests.ts";
 import type { CatalogRow } from "@/features/management/model.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
+import type { ExecutionContext } from "@/lib/execution-context.ts";
 
 const LOGIN_PROMPT = "Log in with 'altertable login' to use altertable duckdb.";
 
@@ -64,7 +64,7 @@ export function selectCatalogsToAttach(
 
 type DuckdbInput = { catalog: string | undefined };
 
-async function runDuckdb(input: DuckdbInput, context: OperationContext): Promise<void> {
+async function runDuckdb(input: DuckdbInput, execution: ExecutionContext): Promise<void> {
   if (!Bun.which("duckdb")) {
     throw new ConfigurationError(
       "duckdb is not installed. Install it from https://duckdb.org/install/ and try again.",
@@ -76,15 +76,12 @@ async function runDuckdb(input: DuckdbInput, context: OperationContext): Promise
     throw new ConfigurationError(LOGIN_PROMPT);
   }
 
-  const credentials = getLoginLakehouseCredentials(context.execution.profile);
+  const credentials = getLoginLakehouseCredentials(execution.profile);
   if (!credentials) {
     throw new ConfigurationError(LOGIN_PROMPT);
   }
 
-  const rows = await fetchManagementCatalogRows(
-    requireManagementEnv(context.execution.profile),
-    context,
-  );
+  const rows = await fetchManagementCatalogRows(requireManagementEnv(execution.profile), execution);
   const catalogs = selectCatalogsToAttach(rows, input.catalog);
 
   const snippet = buildDuckdbAttachSnippet(credentials, catalogs);
@@ -94,10 +91,7 @@ async function runDuckdb(input: DuckdbInput, context: OperationContext): Promise
   }
 }
 
-export const duckdbCommand = defineLocalCommand<DuckdbInput>({
-  id: "duckdb",
-  output: "none",
-  capabilities: ["management-http"],
+export const duckdbCommand = defineCommand({
   meta: {
     name: "duckdb",
     commandGroup: "query",
@@ -111,8 +105,6 @@ export const duckdbCommand = defineLocalCommand<DuckdbInput>({
       required: false,
     },
   },
-  parse({ args }) {
-    return { catalog: optionalStringArg(args, "catalog") };
-  },
-  local: (input, context) => runDuckdb(input, context),
+  run: ({ args, execution }) =>
+    runDuckdb({ catalog: optionalStringArg(args, "catalog") }, execution),
 });

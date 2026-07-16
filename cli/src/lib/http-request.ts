@@ -13,7 +13,7 @@ import {
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 
-export type OperationHttpRequest = {
+export type HttpRequest = {
   plane: AuthPlane;
   method: string;
   endpoint: string;
@@ -32,12 +32,12 @@ const PLANE_URL_BUILDERS = {
     `${resolveManagementApiBase(context.profile)}${encodeManagementEndpoint(endpoint)}`,
 } satisfies Record<AuthPlane, PlaneUrlBuilder>;
 
-function resolvePlaneUrl(request: OperationHttpRequest, context: ExecutionContext): string {
+function resolvePlaneUrl(request: HttpRequest, context: ExecutionContext): string {
   return PLANE_URL_BUILDERS[request.plane](request.endpoint, context);
 }
 
 async function resolveRequestAuthHeader(
-  request: OperationHttpRequest,
+  request: HttpRequest,
   context: ExecutionContext,
 ): Promise<string> {
   if (request.plane === "management") {
@@ -57,7 +57,7 @@ async function resolveRequestAuthHeader(
 }
 
 async function toHttpSendOptions(
-  request: OperationHttpRequest,
+  request: HttpRequest,
   context: ExecutionContext,
 ): Promise<HttpSendOptions> {
   return {
@@ -76,7 +76,7 @@ async function toHttpSendOptions(
 }
 
 function isRecoverableLakehouseAuthFailure(
-  request: OperationHttpRequest,
+  request: HttpRequest,
   error: unknown,
   profileName: string,
 ): boolean {
@@ -91,7 +91,7 @@ function isRecoverableLakehouseAuthFailure(
 }
 
 async function sendWithAuthRecovery<T>(
-  request: OperationHttpRequest,
+  request: HttpRequest,
   context: ExecutionContext,
   send: (options: HttpSendOptions) => Promise<T>,
 ): Promise<T> {
@@ -109,15 +109,12 @@ async function sendWithAuthRecovery<T>(
   }
 }
 
-export async function sendOperationHttp(
-  request: OperationHttpRequest,
-  context: ExecutionContext,
-): Promise<string> {
+export async function sendHttp(request: HttpRequest, context: ExecutionContext): Promise<string> {
   return sendWithAuthRecovery(request, context, httpSend);
 }
 
-export async function sendOperationHttpStream(
-  request: OperationHttpRequest,
+export async function sendHttpStream(
+  request: HttpRequest,
   context: ExecutionContext,
 ): Promise<ReadableStream<Uint8Array>> {
   return sendWithAuthRecovery(request, context, httpSendStream);

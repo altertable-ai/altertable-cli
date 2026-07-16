@@ -1,6 +1,6 @@
 import { getCliRuntime } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
-import { sendOperationHttp } from "@/lib/operation-transport.ts";
+import { sendHttp } from "@/lib/http-request.ts";
 export { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 
 export async function managementRequest(
@@ -9,7 +9,7 @@ export async function managementRequest(
   body?: string,
   execution: ExecutionContext = createExecutionContext(getCliRuntime()),
 ): Promise<string> {
-  return sendOperationHttp(
+  return sendHttp(
     {
       plane: "management",
       method,

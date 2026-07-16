@@ -5,15 +5,14 @@ import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { buildBodyFromFields, readJsonBody, resolveApiBody } from "@/lib/api-body.ts";
 import {
-  apiHttpOperationPlan,
   apiHttpResultOutput,
+  executeApiHttp,
   normalizeApiEndpoint,
+  resolveApiHttp,
   type ApiHttpArgs,
 } from "@/lib/api-http.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { runOperationPlan } from "@/lib/operation-effect.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { ParseError } from "@/lib/errors.ts";
 
@@ -56,17 +55,10 @@ afterEach(() => {
 
 async function runApiOperation(args: ApiHttpArgs): Promise<void> {
   const runtime = getCliRuntime();
-  const context: OperationContext = {
-    args: {},
-    rawArgs: [],
-    runtime,
-    sink: runtime.output,
-    execution: createExecutionContext(runtime),
-  };
-  const result = await runOperationPlan(apiHttpOperationPlan(args, context), context);
-  const output = apiHttpResultOutput(result, context.sink);
+  const result = await executeApiHttp(resolveApiHttp(args), createExecutionContext(runtime));
+  const output = apiHttpResultOutput(result, runtime.output);
   if (output) {
-    await writeCommandOutput(output, context.sink);
+    await writeCommandOutput(output, runtime.output);
   }
 }
 
@@ -164,7 +156,7 @@ describe("normalizeApiEndpoint", () => {
   });
 });
 
-describe("apiHttpOperationPlan", () => {
+describe("executeApiHttp", () => {
   test("GET writes generic tabular output in human mode", async () => {
     writeFileSync(
       mockFile,

@@ -2,13 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { CommandDef } from "citty";
-import { defineOperationCommand } from "@/lib/operation-command.ts";
-import {
-  defineGroupCommand,
-  defineLocalCommand,
-  defineOutputCommand,
-} from "@/lib/operation-command-builders.ts";
-import { localPlan, noopPlan } from "@/lib/operation-effect.ts";
+import { defineCommand } from "@/lib/command-context.ts";
+import { writeCommandOutput } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   defaultConfigurePrompts,
@@ -40,14 +35,7 @@ type InstallResult = {
   rcUpdated: boolean;
   startupAction: "updated" | "skipped" | "not-needed";
 };
-type CompletionInstallInput = {
-  explicitShell?: SupportedShell;
-  updateRc: boolean;
-};
 type CompletionRootInput =
-  | {
-      kind: "delegated";
-    }
   | {
       kind: "help";
     }
@@ -56,15 +44,6 @@ type CompletionRootInput =
       shell?: SupportedShell;
       updateRc: boolean;
     };
-type CompletionRootOutput =
-  | {
-      kind: "help";
-    }
-  | {
-      kind: "install";
-      result: InstallResult;
-    }
-  | undefined;
 type CompletionCommandOptions = {
   prompts?: ConfigurePrompts;
 };
@@ -323,18 +302,17 @@ async function promptCompletionInput(prompts: ConfigurePrompts): Promise<Complet
 function createShellCompletionCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
-  id = `completion.${shell}`,
 ): CommandDef {
-  return defineOutputCommand({
-    id,
-    capabilities: ["raw-stdout"],
-    output: "raw-api",
+  return defineCommand({
     meta: {
       name: shell,
       description: `Generate ${shell} completion script.`,
     },
-    render() {
-      return { kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) };
+    async run({ sink }) {
+      await writeCommandOutput(
+        { kind: "raw_api", body: formatCompletionScript(shell, getRootCommand()) },
+        sink,
+      );
     },
   });
 }
@@ -343,10 +321,7 @@ function createInstallShellCommand(
   shell: SupportedShell,
   getRootCommand: GetRootCommand,
 ): CommandDef {
-  return defineLocalCommand({
-    id: `completion.install.${shell}`,
-    mutates: true,
-    output: "human",
+  return defineCommand({
     meta: {
       name: shell,
       description: `Install ${shell} completion.`,
@@ -357,16 +332,11 @@ function createInstallShellCommand(
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    parse({ args, rawArgs }) {
-      return {
-        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
-      };
-    },
-    local(input) {
+    async run({ args, rawArgs, sink }) {
       const script = formatCompletionScript(shell, getRootCommand());
-      return installCompletion(shell, script, input);
-    },
-    present(result, { sink }) {
+      const result = await installCompletion(shell, script, {
+        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
+      });
       if (sink.json) {
         sink.writeJson(result);
         return;
@@ -377,7 +347,7 @@ function createInstallShellCommand(
 }
 
 function createGenerateCommand(getRootCommand: GetRootCommand): CommandDef {
-  return defineGroupCommand({
+  return defineCommand({
     meta: {
       name: "generate",
       description: "Generate a shell completion script.",
@@ -387,9 +357,9 @@ function createGenerateCommand(getRootCommand: GetRootCommand): CommandDef {
       ],
     },
     subCommands: {
-      bash: createShellCompletionCommand("bash", getRootCommand, "completion.generate.bash"),
-      fish: createShellCompletionCommand("fish", getRootCommand, "completion.generate.fish"),
-      zsh: createShellCompletionCommand("zsh", getRootCommand, "completion.generate.zsh"),
+      bash: createShellCompletionCommand("bash", getRootCommand),
+      fish: createShellCompletionCommand("fish", getRootCommand),
+      zsh: createShellCompletionCommand("zsh", getRootCommand),
     },
   });
 }
@@ -399,10 +369,7 @@ export function createCompletionCommand(
   options: CompletionCommandOptions = {},
 ): CommandDef {
   const prompts = options.prompts ?? defaultConfigurePrompts;
-  const installCommand = defineOperationCommand<CompletionInstallInput, InstallResult | undefined>({
-    id: "completion.install",
-    capabilities: ["local-file-write"],
-    catalog: { effects: ["local", "value"], mutates: true, output: "human" },
+  const installCommand = defineCommand({
     meta: {
       name: "install",
       description: "Install shell completion for the current shell.",
@@ -423,30 +390,14 @@ export function createCompletionCommand(
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    parse({ args, rawArgs }) {
+    async run({ args, rawArgs, sink }) {
       const explicitShell = rawArgs.slice(rawArgs.indexOf("install") + 1).find(isSupportedShell);
-      return {
-        explicitShell,
+      if (explicitShell) return;
+      const shell = resolveShell(undefined);
+      const script = formatCompletionScript(shell, getRootCommand());
+      const result = await installCompletion(shell, script, {
         updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
-      };
-    },
-    run(input) {
-      if (input.explicitShell) {
-        return noopPlan<InstallResult | undefined>();
-      }
-
-      return localPlan(() => {
-        const shell = resolveShell(undefined);
-        const script = formatCompletionScript(shell, getRootCommand());
-        return installCompletion(shell, script, {
-          updateRc: input.updateRc,
-        });
       });
-    },
-    present(result, { sink }) {
-      if (result === undefined) {
-        return;
-      }
       if (sink.json) {
         sink.writeJson(result);
         return;
@@ -455,10 +406,7 @@ export function createCompletionCommand(
     },
   });
 
-  return defineOperationCommand<CompletionRootInput, CompletionRootOutput>({
-    id: "completion",
-    capabilities: ["raw-stdout", "local-file-write"],
-    catalog: { effects: ["local", "output", "value"], mutates: true, output: "human" },
+  return defineCommand({
     meta: {
       name: "completion",
       commandGroup: "platform",
@@ -476,55 +424,30 @@ export function createCompletionCommand(
       install: installCommand,
       zsh: createShellCompletionCommand("zsh", getRootCommand),
     },
-    async parse({ rawArgs, runtime, sink }): Promise<CompletionRootInput> {
+    async run({ rawArgs, runtime, sink }) {
       if (rawArgs.some((arg) => arg === "install" || arg === "generate" || isSupportedShell(arg))) {
-        return { kind: "delegated" };
+        return;
       }
 
+      let action: CompletionRootInput;
       if (process.stdin.isTTY === true && !runtime.context.agent && !sink.json) {
-        return await promptCompletionInput(prompts);
-      }
-
-      return { kind: "help" };
-    },
-    run(action) {
-      if (action.kind === "delegated") {
-        return noopPlan();
+        action = await promptCompletionInput(prompts);
+      } else {
+        action = { kind: "help" };
       }
 
       if (action.kind === "help") {
-        return localPlan<CompletionRootOutput>(() => ({ kind: "help" }));
-      }
-
-      return localPlan<CompletionRootOutput>(async () => {
+        if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
+        else sink.writeHuman(formatCompletionHelpMessage());
+      } else {
         const shell = action.shell ?? resolveShell(undefined);
         const script = formatCompletionScript(shell, getRootCommand());
         const result = await installCompletion(shell, script, {
           updateRc: action.updateRc,
         });
-        return { kind: "install", result };
-      });
-    },
-    present(result, { sink }) {
-      if (result === undefined) {
-        return;
+        if (sink.json) sink.writeJson(result);
+        else sink.writeHuman(formatInstallMessage(result));
       }
-
-      if (result.kind === "install") {
-        if (sink.json) {
-          sink.writeJson(result.result);
-          return;
-        }
-        sink.writeHuman(formatInstallMessage(result.result));
-        return;
-      }
-
-      if (sink.json) {
-        sink.writeJson(COMPLETION_GUIDANCE);
-        return;
-      }
-
-      sink.writeHuman(formatCompletionHelpMessage());
     },
   });
 }

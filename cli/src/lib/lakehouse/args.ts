@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { ArgsDef } from "citty";
 import { isAgentMode } from "@/context.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError } from "@/lib/errors.ts";
@@ -7,11 +8,47 @@ import { resolvePagerOptions, type PagerMode, type PagerOptions } from "@/lib/pa
 import { parseTimeoutSeconds } from "@/lib/timeout-args.ts";
 import type { QueryDisplayOptions } from "@/lib/query-format.ts";
 import { parseQueryResultFormat, type QueryResultFormat } from "@/lib/lakehouse-client.ts";
-import { isQueryLayout, type QueryLayout } from "@/ui/layouts/query.ts";
+import { isQueryLayout, QUERY_LAYOUT_OPTIONS, type QueryLayout } from "@/ui/layouts/query.ts";
 
 const MIN_MAX_COLUMN_WIDTH = 8;
 export const QUERY_RESULT_FORMAT_OPTIONS = ["human", "json", "csv", "markdown"] as const;
 export const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
+
+export const queryRunArgs = {
+  statement: { type: "positional", description: "SQL statement to run", required: false },
+  format: {
+    type: "enum",
+    description: "Output format: human, json, csv, or markdown",
+    default: "human",
+    options: [...QUERY_RESULT_FORMAT_OPTIONS],
+  },
+  layout: {
+    type: "enum",
+    description: "Human layout: auto, table, or line",
+    options: [...QUERY_LAYOUT_OPTIONS],
+  },
+  "query-id": { type: "string", description: "Optional stable query id" },
+  "session-id": { type: "string", description: "Optional session id" },
+  columns: {
+    type: "string",
+    description: "Comma-separated columns to show",
+  },
+  "max-width": {
+    type: "string",
+    description: "Maximum display width for table columns",
+    default: "32",
+  },
+  pager: {
+    type: "enum",
+    description: "Pager mode for human output: auto, always, or never",
+    default: "auto",
+    options: [...PAGER_MODE_OPTIONS],
+  },
+  "read-timeout": {
+    type: "string",
+    description: "Read timeout in seconds for this request (overrides global --read-timeout)",
+  },
+} satisfies ArgsDef;
 
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;

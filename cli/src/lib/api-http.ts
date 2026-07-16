@@ -4,8 +4,8 @@ import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
-import { defineHttpOperation, type HttpOperationDescriptor } from "@/lib/http-operation.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
+import type { ExecutionContext } from "@/lib/execution-context.ts";
+import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 
 export type ApiHttpArgs = {
   method?: string;
@@ -32,22 +32,26 @@ export type ApiHttpResult = {
   format?: string;
 };
 
-export const API_HTTP_OPERATION: HttpOperationDescriptor<ResolvedApiHttp, ApiHttpResult> =
-  defineHttpOperation({
-    id: "api.http",
-    request: (resolved) => ({
-      plane: "management",
-      method: resolved.method,
-      endpoint: resolved.endpoint,
-      body: resolved.body,
-      contentType: resolved.body ? "application/json" : undefined,
-    }),
-    decode: (response, _context, resolved) => ({
-      method: resolved.method,
-      response,
-      format: resolved.format,
-    }),
-  });
+export function buildApiHttpRequest(resolved: ResolvedApiHttp): HttpRequest {
+  return {
+    plane: "management",
+    method: resolved.method,
+    endpoint: resolved.endpoint,
+    body: resolved.body,
+    contentType: resolved.body ? "application/json" : undefined,
+  };
+}
+
+export async function executeApiHttp(
+  resolved: ResolvedApiHttp,
+  execution: ExecutionContext,
+): Promise<ApiHttpResult> {
+  return {
+    method: resolved.method,
+    response: await sendHttp(buildApiHttpRequest(resolved), execution),
+    format: resolved.format,
+  };
+}
 
 export function normalizeApiEndpoint(endpoint: string, env?: string): string {
   const trimmed = endpoint.trim();
@@ -132,10 +136,6 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
     body: payload.body,
     format: args.format ? String(args.format) : undefined,
   };
-}
-
-export function apiHttpOperationPlan(args: ApiHttpArgs, context: OperationContext) {
-  return API_HTTP_OPERATION.plan(resolveApiHttp(args), context);
 }
 
 export function apiHttpResultOutput(

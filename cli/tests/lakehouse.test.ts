@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
-  buildLakehouseQueryPayload,
   csvEscapeCell,
   getQueryColumnNames,
   parseLakehouseQueryResponse,
@@ -13,13 +12,11 @@ import {
   renderQueryCsv,
   renderQueryJson,
   renderQueryTable,
-  type LakehouseQueryResult,
   type LakehouseRow,
 } from "@/lib/lakehouse-client.ts";
 import { httpSendStream } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
+import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
 import { normalizeQueryInvocatorRawArgs } from "@/commands/query/index.ts";
@@ -47,29 +44,6 @@ beforeEach(() => {
   setCliContext({ debug: false, json: false, agent: false });
   refreshCliRuntimeContext(getCliRuntime().context);
 });
-
-function createOperationContext(): OperationContext {
-  const runtime = getCliRuntime();
-  return {
-    args: {},
-    rawArgs: [],
-    runtime,
-    sink: runtime.output,
-    execution: createExecutionContext(runtime),
-  };
-}
-
-async function collectLakehouseQueryStream(
-  stream: ReadableStream<Uint8Array>,
-): Promise<LakehouseQueryResult> {
-  const parser = parseLakehouseQueryStream(stream);
-  while (true) {
-    const next = await parser.next();
-    if (next.done) {
-      return next.value;
-    }
-  }
-}
 
 function readLoggedPayloads(): string[] {
   return readFileSync(logFile, "utf8")
@@ -282,7 +256,7 @@ describe("parseLakehouseQueryStream", () => {
   });
 });
 
-describe("lakehouse query stream effect", () => {
+describe("executeLakehouseQuery", () => {
   test("returns the same result as parseLakehouseQueryResponse", async () => {
     writeFileSync(
       mockFile,
@@ -296,19 +270,11 @@ describe("lakehouse query stream effect", () => {
       ]),
     );
 
-    const streamedResult = await runOperationEffect(
-      httpStreamEffect(
-        {
-          plane: "lakehouse",
-          method: "POST",
-          endpoint: "/query",
-          body: JSON.stringify(buildLakehouseQueryPayload("SELECT 1")),
-          contentType: "application/json",
-          retry: false,
-        },
-        collectLakehouseQueryStream,
-      ),
-      createOperationContext(),
+    const runtime = getCliRuntime();
+    const streamedResult = await executeLakehouseQuery(
+      { statement: "SELECT 1" },
+      createExecutionContext(runtime),
+      true,
     );
     const bufferedResult = parseLakehouseQueryResponse(SAMPLE_NDJSON);
 

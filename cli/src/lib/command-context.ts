@@ -1,6 +1,7 @@
 import type { ArgsDef, CommandContext, CommandDef, CommandMeta, Resolvable } from "citty";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
+import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
@@ -13,6 +14,7 @@ export type AltertableCommandMeta = CommandMeta & {
 export type CommandRunContext<T extends ArgsDef = ArgsDef> = CommandContext<T> & {
   runtime: CliRuntime;
   sink: OutputSink;
+  readonly execution: ExecutionContext;
 };
 
 export type AltertableCommandDef<T extends ArgsDef = ArgsDef> = Omit<
@@ -30,7 +32,16 @@ export type CommandTreeDef<T extends ArgsDef = ArgsDef> = AltertableCommandDef<T
 
 function withCommandRuntime<T extends ArgsDef>(context: CommandContext<T>): CommandRunContext<T> {
   const runtime = getCliRuntime();
-  return { ...context, runtime, sink: runtime.output };
+  let execution: ExecutionContext | undefined;
+  return {
+    ...context,
+    runtime,
+    sink: runtime.output,
+    get execution() {
+      execution ??= createExecutionContext(runtime);
+      return execution;
+    },
+  };
 }
 
 function bindCommandTree<T extends ArgsDef>(def: CommandTreeDef<T>): CommandDef {
@@ -62,6 +73,8 @@ export function defineAltertableCommand<const T extends ArgsDef = ArgsDef>(
 ): CommandDef {
   return bindCommandTree(def);
 }
+
+export const defineCommand = defineAltertableCommand;
 
 /** Erases citty's inferred args generic so the root command fits heterogeneous trees. */
 export type RootCommandDef<T extends ArgsDef = ArgsDef> = Omit<CommandDef<T>, "meta"> & {

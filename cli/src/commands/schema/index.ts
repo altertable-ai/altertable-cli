@@ -1,15 +1,14 @@
 import type { ArgsDef } from "citty";
-import { stringArg } from "@/lib/operation-codec.ts";
-import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";
+import { stringArg } from "@/lib/args.ts";
+import { defineCommand } from "@/lib/command-context.ts";
 import {
-  planQueryRun,
-  presentQueryRun,
+  parseQueryOutputOptions,
+  parseRequestReadTimeoutMs,
   queryRunArgs,
-  type QueryRunInput,
-} from "@/commands/query/index.ts";
+} from "@/lib/lakehouse/args.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
-import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
+import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 import { formatSchemaTree } from "@/features/lakehouse/schema/render.ts";
 
 export function buildSchemaStatement(catalog: string): string {
@@ -62,16 +61,7 @@ const schemaArgs = {
   "read-timeout": queryRunArgs["read-timeout"],
 } satisfies ArgsDef;
 
-type SchemaRunInput = QueryRunInput & { catalog: string };
-
-export const schemaCommand = defineOperationCommand<SchemaRunInput, LakehouseQueryResult>({
-  id: "lakehouse.schema",
-  capabilities: ["lakehouse-http", "streaming"],
-  catalog: {
-    effects: ["http", "http-stream"],
-    planes: ["lakehouse"],
-    output: "normalized",
-  },
+export const schemaCommand = defineCommand({
   meta: {
     name: "schema",
     commandGroup: "query",
@@ -79,7 +69,7 @@ export const schemaCommand = defineOperationCommand<SchemaRunInput, LakehouseQue
     examples: ["altertable schema my-catalog", "altertable schema my-catalog --format json"],
   },
   args: schemaArgs,
-  parse({ args, rawArgs }) {
+  async run({ args, rawArgs, execution, sink }) {
     const catalog = stringArg(args, "catalog");
     // --layout is not supported: human output is always the schema tree.
     const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
@@ -87,25 +77,19 @@ export const schemaCommand = defineOperationCommand<SchemaRunInput, LakehouseQue
       rawArgs,
     );
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    return {
-      catalog,
+    const queryInput = {
       statement: buildSchemaStatement(catalog),
-      format,
-      displayOptions,
-      pagerOptions,
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
-  },
-  run: planQueryRun,
-  async present(result, context, input) {
-    if (input.format !== "human" || context.sink.json) {
-      await presentQueryRun(result, context, input);
+    const result = await executeLakehouseQuery(
+      queryInput,
+      execution,
+      format !== "json" && !sink.json,
+    );
+    if (format !== "human" || sink.json) {
+      await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
       return;
     }
-    await writePagedOutput(
-      formatSchemaTree(result, input.catalog),
-      input.pagerOptions,
-      context.sink,
-    );
+    await writePagedOutput(formatSchemaTree(result, catalog), pagerOptions, sink);
   },
 });

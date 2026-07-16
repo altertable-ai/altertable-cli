@@ -1,25 +1,12 @@
-import { optionalStringArg, stringArg } from "@/lib/operation-codec.ts";
-import { httpEffect, scopedPlan } from "@/lib/operation-effect.ts";
-import { defineOperationCommand } from "@/lib/operation-command.ts";
-import {
-  parseLakehouseFileContentType,
-  parseRequestReadTimeoutMs,
-} from "@/lib/lakehouse/args.ts";
-import {
-  getUploadFileSizeBytes,
-  LAKEHOUSE_FILE_FORMAT_OPTIONS,
-} from "@/commands/upload/index.ts";
+import { optionalStringArg, stringArg } from "@/lib/args.ts";
+import { defineCommand } from "@/lib/command-context.ts";
+import { writeCommandOutput } from "@/lib/command-output.ts";
+import { sendHttp } from "@/lib/http-request.ts";
+import { parseLakehouseFileContentType, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";
+import { getUploadFileSizeBytes, LAKEHOUSE_FILE_FORMAT_OPTIONS } from "@/commands/upload/index.ts";
 import { createLakehouseUpsertRequest } from "@/lib/lakehouse-transport.ts";
 
-export const upsertCommand = defineOperationCommand({
-  id: "lakehouse.upsert",
-  capabilities: ["lakehouse-http", "local-file-read", "progress"],
-  catalog: {
-    effects: ["scope", "http"],
-    planes: ["lakehouse"],
-    mutates: true,
-    output: "raw-api",
-  },
+export const upsertCommand = defineCommand({
   meta: {
     name: "upsert",
     commandGroup: "ingest",
@@ -48,12 +35,12 @@ export const upsertCommand = defineOperationCommand({
       description: "Read timeout in seconds for this request (overrides global --read-timeout)",
     },
   },
-  async parse({ args }) {
+  async run({ args, execution, sink }) {
     const filePath = stringArg(args, "file");
     const fileSizeBytes = getUploadFileSizeBytes(filePath);
 
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    return {
+    const scope = createLakehouseUpsertRequest({
       catalog: stringArg(args, "catalog"),
       schema: stringArg(args, "schema"),
       table: stringArg(args, "table"),
@@ -62,27 +49,12 @@ export const upsertCommand = defineOperationCommand({
       fileSizeBytes,
       contentType: parseLakehouseFileContentType(optionalStringArg(args, "format")),
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
-    };
-  },
-  run(input) {
-    return scopedPlan(() => {
-      const scope = createLakehouseUpsertRequest({
-        catalog: input.catalog,
-        schema: input.schema,
-        table: input.table,
-        primaryKey: input.primaryKey,
-        filePath: input.filePath,
-        fileSizeBytes: input.fileSizeBytes,
-        contentType: input.contentType,
-        httpOptions: input.httpOptions,
-      });
-      return {
-        effect: httpEffect(scope.request),
-        release: scope.release,
-      };
     });
-  },
-  present(response) {
-    return { kind: "raw_api", body: response };
+    try {
+      const response = await sendHttp(scope.request, execution);
+      await writeCommandOutput({ kind: "raw_api", body: response }, sink);
+    } finally {
+      scope.release();
+    }
   },
 });

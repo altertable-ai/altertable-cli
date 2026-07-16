@@ -1,4 +1,4 @@
-import { defineLocalCommand } from "@/lib/operation-command-builders.ts";
+import { defineCommand } from "@/lib/command-context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
@@ -11,7 +11,6 @@ import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import type { WhoamiResponse } from "@/features/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
-import { configureRunClear } from "@/lib/profile-configure-core.ts";
 import {
   assertNoEnvConfigMode,
   createEmptyProfile,
@@ -233,11 +232,7 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   ]);
 }
 
-export const loginCommand = defineLocalCommand({
-  id: "login",
-  mutates: true,
-  localConfig: true,
-  output: "none",
+export const loginCommand = defineCommand({
   meta: {
     name: "login",
     commandGroup: "platform",
@@ -265,21 +260,5 @@ export const loginCommand = defineLocalCommand({
       description: "Store the login session in the current profile instead of switching profiles",
     },
   },
-  local: (_input, context) => runLogin(context.args as LoginArgs, context.sink),
-});
-
-export const logoutCommand = defineLocalCommand({
-  id: "logout",
-  mutates: true,
-  localConfig: true,
-  output: "none",
-  meta: {
-    name: "logout",
-    commandGroup: "platform",
-    description: "Remove stored credentials and settings for all profiles.",
-    examples: ["altertable logout"],
-  },
-  local: (_input, { sink }) => {
-    configureRunClear(sink);
-  },
+  run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
 });

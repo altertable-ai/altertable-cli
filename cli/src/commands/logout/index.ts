@@ -1,1 +1,14 @@
-export { logoutCommand } from "@/commands/login/index.ts";
+import { defineCommand } from "@/lib/command-context.ts";
+import { configureRunClear } from "@/lib/profile-configure-core.ts";
+
+export const logoutCommand = defineCommand({
+  meta: {
+    name: "logout",
+    commandGroup: "platform",
+    description: "Remove stored credentials and settings for all profiles.",
+    examples: ["altertable logout"],
+  },
+  run({ sink }) {
+    configureRunClear(sink);
+  },
+});

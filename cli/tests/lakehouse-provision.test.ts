@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { configGet, configSet } from "@/lib/config.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { sendOperationHttp } from "@/lib/operation-transport.ts";
+import { sendHttp } from "@/lib/http-request.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { USER_AGENT } from "@/version.ts";
@@ -66,7 +66,7 @@ function writeMocks(credentialBody: string = CREDENTIAL_BODY): void {
 }
 
 async function sendLakehouseRequest(): Promise<string> {
-  return sendOperationHttp(
+  return sendHttp(
     { plane: "lakehouse", method: "GET", endpoint: "/tables" },
     createExecutionContext(getCliRuntime()),
   );

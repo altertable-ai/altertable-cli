@@ -1,6 +1,6 @@
 import { type HttpSendOptions } from "@/lib/http.ts";
 import { createUploadProgressReporter, shouldShowProgress } from "@/lib/progress.ts";
-import type { OperationHttpRequest } from "@/lib/operation-transport.ts";
+import type { HttpRequest } from "@/lib/http-request.ts";
 
 export type LakehouseAppendOptions = {
   sync?: boolean;
@@ -37,7 +37,7 @@ export type LakehouseUpsertRequestInput = {
 };
 
 export type LakehouseUploadRequestScope = {
-  request: OperationHttpRequest;
+  request: HttpRequest;
   release: () => void;
 };
 
@@ -56,9 +56,7 @@ export function buildLakehouseQueryPayload(
   return payload;
 }
 
-export function buildLakehouseAppendRequest(
-  input: LakehouseAppendRequestInput,
-): OperationHttpRequest {
+export function buildLakehouseAppendRequest(input: LakehouseAppendRequestInput): HttpRequest {
   const params = new URLSearchParams({
     catalog: input.catalog,
     schema: input.schema,
