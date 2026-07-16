@@ -6,10 +6,10 @@ import {
 } from "@/lib/auth.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { fetchManagementCatalogRows } from "@/lib/catalogs/requests.ts";
-import type { CatalogRow } from "@/features/management/model.ts";
+import { fetchManagementCatalogRows } from "@/commands/catalogs/lib/requests.ts";
+import type { CatalogRow } from "@/lib/management/model.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 
 const LOGIN_PROMPT = "Log in with 'altertable login' to use altertable duckdb.";

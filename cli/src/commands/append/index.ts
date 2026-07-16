@@ -1,4 +1,4 @@
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { appendRunCommand } from "@/commands/append/run.ts";
 import { appendStatusCommand } from "@/commands/append/status.ts";
 import { appendGroupArgs } from "@/commands/append/lib/args.ts";

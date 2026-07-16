@@ -1,6 +1,6 @@
-import { assertNoEnvConfigMode, setActiveProfile } from "@/features/profile/model.ts";
+import { assertNoEnvConfigMode, setActiveProfile } from "@/lib/profile/model.ts";
 import { requireProfileName } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileUseCommand = defineCommand({

@@ -1,6 +1,6 @@
-import { listProfiles } from "@/features/profile/model.ts";
-import { formatProfileList } from "@/features/profile/render.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { listProfiles } from "@/lib/profile/model.ts";
+import { formatProfileList } from "@/lib/profile/render.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileListCommand = defineCommand({

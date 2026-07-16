@@ -3,15 +3,15 @@ import {
   createEmptyProfile,
   inspectProfile,
   setActiveProfile,
-} from "@/features/profile/model.ts";
-import { formatProfileInspect } from "@/features/profile/render.ts";
+} from "@/lib/profile/model.ts";
+import { formatProfileInspect } from "@/lib/profile/render.ts";
 import {
   configureArgs,
   runProfileConfigure,
   type ConfigureCommandArgs,
 } from "@/lib/profile-configure.ts";
 import { requireProfileName } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileCreateCommand = defineCommand({

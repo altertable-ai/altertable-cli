@@ -1,7 +1,7 @@
-import { inspectProfile } from "@/features/profile/model.ts";
-import { formatProfileInspect } from "@/features/profile/render.ts";
+import { inspectProfile } from "@/lib/profile/model.ts";
+import { formatProfileInspect } from "@/lib/profile/render.ts";
 import { existingProfileName, profileShowTargetName } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileShowCommand = defineCommand({

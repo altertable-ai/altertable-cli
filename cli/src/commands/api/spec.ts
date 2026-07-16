@@ -4,7 +4,7 @@ import {
   resolveOpenapiSpecFormat,
 } from "@/lib/openapi-spec.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 

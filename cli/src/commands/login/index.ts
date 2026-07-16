@@ -1,4 +1,4 @@
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
@@ -9,8 +9,8 @@ import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
-import type { WhoamiResponse } from "@/features/management/model.ts";
-import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
+import type { WhoamiResponse } from "@/lib/management/model.ts";
+import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
 import {
   assertNoEnvConfigMode,
   createEmptyProfile,
@@ -20,7 +20,7 @@ import {
   resolveWorkingProfile,
   setActiveProfile,
   updateProfile,
-} from "@/features/profile/model.ts";
+} from "@/lib/profile/model.ts";
 import { readEnv, setEnv } from "@/lib/env.ts";
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";

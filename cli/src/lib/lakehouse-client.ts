@@ -14,7 +14,6 @@ import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/
 
 export {
   buildLakehouseAppendRequest,
-  buildLakehouseQueryPayload,
   createLakehouseUploadRequest,
   createLakehouseUpsertRequest,
   type LakehouseAppendRequestInput,

@@ -1,7 +1,7 @@
 import { VERSION } from "@/version.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineAltertableCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { GLOBAL_ARGV_FLAGS_WITH_VALUE, isGlobalArgvFlag } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -142,7 +142,7 @@ export async function executeUpdateCommand(
   );
 }
 
-export const updateCommand = defineAltertableCommand({
+export const updateCommand = defineCommand({
   meta: {
     name: "update",
     alias: ["upgrade"],

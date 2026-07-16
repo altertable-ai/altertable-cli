@@ -1,5 +1,5 @@
 import type { ArgDef, ArgsDef, CommandDef } from "citty";
-import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command-context.ts";
+import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";

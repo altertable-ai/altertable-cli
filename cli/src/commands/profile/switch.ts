@@ -1,8 +1,8 @@
 import { getCliContext, isJsonOutput } from "@/context.ts";
-import { assertNoEnvConfigMode, setActiveProfile } from "@/features/profile/model.ts";
+import { assertNoEnvConfigMode, setActiveProfile } from "@/lib/profile/model.ts";
 import { CliError } from "@/lib/errors.ts";
 import { promptProfileSwitch, requireProfileName } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileSwitchCommand = defineCommand({

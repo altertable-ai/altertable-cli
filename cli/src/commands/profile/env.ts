@@ -1,10 +1,10 @@
-import { buildProfileShellExportView } from "@/features/profile/views.ts";
+import { buildProfileShellExportView } from "@/lib/profile/views.ts";
 import {
   profileNameArgOrActive,
   requireStoredProfileForExport,
 } from "@/commands/profile/lib/profile.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileEnvCommand = defineCommand({

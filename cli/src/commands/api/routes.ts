@@ -1,8 +1,8 @@
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { apiOperationDetails, apiOperationsJson, apiRouteRows } from "@/features/api/model.ts";
-import { formatApiOperationDetails, formatApiRoutes } from "@/features/api/render.ts";
+import { apiOperationDetails, apiOperationsJson, apiRouteRows } from "@/commands/api/lib/model.ts";
+import { formatApiOperationDetails, formatApiRoutes } from "@/commands/api/lib/render.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
 export async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {

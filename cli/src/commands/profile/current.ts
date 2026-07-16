@@ -1,5 +1,5 @@
-import { getActiveProfileName } from "@/features/profile/model.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { getActiveProfileName } from "@/lib/profile/model.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileCurrentCommand = defineCommand({

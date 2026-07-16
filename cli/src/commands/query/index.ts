@@ -1,6 +1,6 @@
 import type { ArgsDef } from "citty";
 import { normalizeDefaultSubCommandRawArgs, valueFlagsFor } from "@/lib/command-delegation.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { queryRunArgs } from "@/lib/lakehouse/args.ts";
 import { queryRunCommand } from "@/commands/query/run.ts";
 import { queryShowCommand } from "@/commands/query/show.ts";

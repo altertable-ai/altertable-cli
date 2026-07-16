@@ -3,14 +3,14 @@ import { configGet } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import { buildLakehouseVerifyRequest } from "@/lib/lakehouse/query.ts";
-import type { WhoamiResponse } from "@/features/management/model.ts";
-import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
+import type { WhoamiResponse } from "@/lib/management/model.ts";
+import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
 import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 
-export { configureCredentialStatus } from "@/features/profile/model.ts";
+export { configureCredentialStatus } from "@/lib/profile/model.ts";
 
 export type ConfigureAuthPlane = "management" | "lakehouse";
 

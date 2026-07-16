@@ -2,7 +2,7 @@ import { appendRunArgs } from "@/commands/append/lib/args.ts";
 import { parseAppendJsonContent } from "@/lib/lakehouse/args.ts";
 import { buildLakehouseAppendRequest } from "@/lib/lakehouse-transport.ts";
 import { booleanArg, stringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 import { startProgress } from "@/lib/progress.ts";

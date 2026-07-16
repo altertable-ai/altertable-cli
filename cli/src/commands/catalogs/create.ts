@@ -1,8 +1,8 @@
 import { CliError } from "@/lib/errors.ts";
 import { requireManagementEnv } from "@/lib/auth.ts";
 import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
-import { buildCatalogCreateRequest } from "@/lib/catalogs/requests.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { buildCatalogCreateRequest } from "@/commands/catalogs/lib/requests.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 

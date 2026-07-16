@@ -3,4 +3,4 @@ coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true
 coverageThreshold = { line = 0.8, function = 0.8 }
-coveragePathIgnorePatterns = ["src/generated/**", "tests/**"]
+coveragePathIgnorePatterns = ["src/generated/**"]

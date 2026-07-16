@@ -1,5 +1,5 @@
 import { optionalStringArg, stringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 import { parseLakehouseFileContentType, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";

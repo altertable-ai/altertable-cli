@@ -1,4 +1,4 @@
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 
 export const logoutCommand = defineCommand({

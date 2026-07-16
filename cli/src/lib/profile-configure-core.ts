@@ -1,7 +1,7 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
+import { deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
 import {
   ensureProfileExists,
   profileConfigFile,

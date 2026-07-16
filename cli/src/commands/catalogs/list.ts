@@ -1,8 +1,8 @@
 import { requireManagementEnv } from "@/lib/auth.ts";
-import { fetchManagementCatalogRows } from "@/lib/catalogs/requests.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { fetchManagementCatalogRows } from "@/commands/catalogs/lib/requests.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { formatCatalogsSummary, formatCatalogsTable } from "@/features/management/render.ts";
+import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/render.ts";
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 

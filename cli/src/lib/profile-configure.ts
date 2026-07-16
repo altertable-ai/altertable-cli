@@ -4,7 +4,7 @@ import {
   withConfigureProfileContext,
   type ConfigureOptions,
 } from "@/lib/profile-configure-core.ts";
-import { formatConfigureSessionSummary } from "@/features/profile/render.ts";
+import { formatConfigureSessionSummary } from "@/lib/profile/render.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { ConfigurationError, CliError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput } from "@/context.ts";
@@ -21,7 +21,7 @@ import {
   type ConfigureWizardScope,
 } from "@/lib/profile-configure-interactive.ts";
 import { getTerminalWidth, getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
-import { deriveProfileName } from "@/features/profile/model.ts";
+import { deriveProfileName } from "@/lib/profile/model.ts";
 import { document, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 

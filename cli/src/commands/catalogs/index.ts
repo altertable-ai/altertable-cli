@@ -1,4 +1,4 @@
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { catalogsCreateCommand } from "@/commands/catalogs/create.ts";
 import { catalogsListCommand } from "@/commands/catalogs/list.ts";
 

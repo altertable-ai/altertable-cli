@@ -1,6 +1,6 @@
 import type { ArgsDef } from "citty";
 import { stringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import {
   parseQueryOutputOptions,
   parseRequestReadTimeoutMs,
@@ -9,7 +9,7 @@ import {
 import { writePagedOutput } from "@/lib/pager.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
-import { formatSchemaTree } from "@/features/lakehouse/schema/render.ts";
+import { formatSchemaTree } from "@/commands/schema/lib/render.ts";
 
 export function buildSchemaStatement(catalog: string): string {
   const catSql = `'${catalog.replaceAll("'", "''")}'`;

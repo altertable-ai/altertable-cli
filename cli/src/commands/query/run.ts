@@ -1,6 +1,6 @@
 import { CliError } from "@/lib/errors.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import {
   parseQueryOutputOptions,

@@ -41,21 +41,6 @@ export type LakehouseUploadRequestScope = {
   release: () => void;
 };
 
-export function buildLakehouseQueryPayload(
-  statement: string,
-  queryId?: string,
-  sessionId?: string,
-): Record<string, string> {
-  const payload: Record<string, string> = { statement };
-  if (queryId) {
-    payload.query_id = queryId;
-  }
-  if (sessionId) {
-    payload.session_id = sessionId;
-  }
-  return payload;
-}
-
 export function buildLakehouseAppendRequest(input: LakehouseAppendRequestInput): HttpRequest {
   const params = new URLSearchParams({
     catalog: input.catalog,

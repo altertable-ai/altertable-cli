@@ -14,7 +14,7 @@ import {
   configureCredentialStatus,
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
-} from "@/features/profile/model.ts";
+} from "@/lib/profile/model.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import { span } from "@/ui/document.ts";
 import { ensurePromptColorAlignment, renderDisplayText } from "@/ui/terminal/styles.ts";

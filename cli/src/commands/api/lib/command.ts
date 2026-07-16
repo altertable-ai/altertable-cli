@@ -1,8 +1,8 @@
 import type { ArgsDef } from "citty";
-import { extractFieldArgs, extractRawFieldArgs } from "@/lib/api-body.ts";
-import { executeApiHttp, apiHttpResultOutput, resolveApiHttp } from "@/lib/api-http.ts";
+import { extractFieldArgs, extractRawFieldArgs } from "@/commands/api/lib/body.ts";
+import { executeApiHttp, apiHttpResultOutput, resolveApiHttp } from "@/commands/api/lib/http.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { isDelegatedSubCommand, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { withManagementFormatArg } from "@/lib/management-output.ts";

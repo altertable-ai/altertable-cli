@@ -1,5 +1,5 @@
-import { defineCommand } from "@/lib/command-context.ts";
-import { assertNoEnvConfigMode } from "@/features/profile/model.ts";
+import { defineCommand } from "@/lib/command.ts";
+import { assertNoEnvConfigMode } from "@/lib/profile/model.ts";
 import {
   configureArgs,
   runProfileConfigure,

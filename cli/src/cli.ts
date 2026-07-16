@@ -21,7 +21,7 @@ import {
   renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
-import { defineRootCommand } from "@/lib/command-context.ts";
+import { defineRootCommand } from "@/lib/command.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,

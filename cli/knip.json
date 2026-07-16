@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/**/*.test.ts", "tests/**/*.test.ts", "scripts/**/*.ts"],
-  "project": ["src/**/*.ts", "tests/**/*.test.ts", "scripts/**/*.ts"],
+  "entry": ["src/**/*.test.ts", "scripts/**/*.test.ts", "scripts/**/*.ts"],
+  "project": ["src/**/*.ts", "scripts/**/*.ts"],
   "ignore": ["src/generated/**"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["undici"],

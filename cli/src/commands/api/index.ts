@@ -1,7 +1,7 @@
 import type { ArgsDef } from "citty";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
-import { executeApiHttp, apiHttpResultOutput } from "@/lib/api-http.ts";
+import { executeApiHttp, apiHttpResultOutput } from "@/commands/api/lib/http.ts";
 import {
   API_HTTP_BASE_ARGS,
   isDelegatedApiCommand,

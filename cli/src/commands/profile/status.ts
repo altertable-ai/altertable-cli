@@ -1,7 +1,7 @@
 import { getCliContext, setCliContext } from "@/context.ts";
-import { inspectProfile } from "@/features/profile/model.ts";
-import { formatProfileStatus } from "@/features/profile/render.ts";
-import { profileStatusToJson } from "@/features/profile/views.ts";
+import { inspectProfile } from "@/lib/profile/model.ts";
+import { formatProfileStatus } from "@/lib/profile/render.ts";
+import { profileStatusToJson } from "@/lib/profile/views.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import { refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import {
@@ -9,7 +9,7 @@ import {
   existingProfileName,
   profileShowTargetName,
 } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command-context.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileStatusCommand = defineCommand({
