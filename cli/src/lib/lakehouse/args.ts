@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import type { ArgsDef } from "citty";
+import { defineArgs } from "@/lib/command.ts";
 import { isAgentMode } from "@/context.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { CliError } from "@/lib/errors.ts";
@@ -13,8 +12,30 @@ import { isQueryLayout, QUERY_LAYOUT_OPTIONS, type QueryLayout } from "@/ui/layo
 const MIN_MAX_COLUMN_WIDTH = 8;
 export const QUERY_RESULT_FORMAT_OPTIONS = ["human", "json", "csv", "markdown"] as const;
 export const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
+export const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;
+const requestReadTimeoutArg = {
+  type: "string",
+  description: "Read timeout in seconds for this request (overrides global --read-timeout)",
+} as const;
 
-export const queryRunArgs = {
+export const lakehouseTableArgs = defineArgs({
+  catalog: { type: "string", description: "Catalog name", required: true },
+  schema: { type: "string", description: "Schema name", required: true },
+  table: { type: "string", description: "Table name", required: true },
+});
+
+export const lakehouseFileArgs = defineArgs({
+  ...lakehouseTableArgs,
+  format: {
+    type: "enum",
+    description: "Optional file format hint for the Content-Type header",
+    options: [...LAKEHOUSE_FILE_FORMAT_OPTIONS],
+  },
+  file: { type: "string", description: "Local file to upload", required: true },
+  "read-timeout": requestReadTimeoutArg,
+});
+
+export const queryRunArgs = defineArgs({
   statement: { type: "positional", description: "SQL statement to run", required: false },
   format: {
     type: "enum",
@@ -44,11 +65,8 @@ export const queryRunArgs = {
     default: "auto",
     options: [...PAGER_MODE_OPTIONS],
   },
-  "read-timeout": {
-    type: "string",
-    description: "Read timeout in seconds for this request (overrides global --read-timeout)",
-  },
-} satisfies ArgsDef;
+  "read-timeout": requestReadTimeoutArg,
+});
 
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;
@@ -185,30 +203,6 @@ export function parseRequestReadTimeoutMs(args: Record<string, unknown>): number
     return undefined;
   }
   return parseTimeoutSeconds(args["read-timeout"], "--read-timeout");
-}
-
-export function parseAppendJsonContent(dataArg: string): string {
-  let jsonContent = dataArg;
-  if (jsonContent.startsWith("@")) {
-    const filePath = jsonContent.slice(1);
-    try {
-      jsonContent = readFileSync(filePath, "utf8");
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
-  }
-
-  const trimmed = jsonContent.replace(/\s/g, "");
-  const firstChar = trimmed[0];
-  if (firstChar !== "{" && firstChar !== "[") {
-    throw new CliError("Data must be a JSON object or array.");
-  }
-
-  try {
-    return JSON.stringify(JSON.parse(jsonContent));
-  } catch {
-    throw new CliError("Data must be valid JSON.");
-  }
 }
 
 export function parseLakehouseFileContentType(format: string | undefined): string | undefined {

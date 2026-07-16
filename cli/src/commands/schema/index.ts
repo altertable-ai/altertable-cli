@@ -1,15 +1,44 @@
-import type { ArgsDef } from "citty";
 import { stringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
-import {
-  parseQueryOutputOptions,
-  parseRequestReadTimeoutMs,
-  queryRunArgs,
-} from "@/lib/lakehouse/args.ts";
+import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 import { formatSchemaTree } from "@/commands/schema/lib/render.ts";
+import { schemaArgs } from "@/commands/schema/lib/args.ts";
+
+export const schemaCommand = defineCommand({
+  meta: {
+    name: "schema",
+    commandGroup: "query",
+    description: "List schemas, tables, and columns for a catalog.",
+    examples: ["altertable schema my-catalog", "altertable schema my-catalog --format json"],
+  },
+  args: schemaArgs,
+  async run({ args, rawArgs, execution, sink }) {
+    const catalog = stringArg(args, "catalog");
+    // --layout is not supported: human output is always the schema tree.
+    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
+      { ...args, layout: undefined },
+      rawArgs,
+    );
+    const readTimeoutMs = parseRequestReadTimeoutMs(args);
+    const queryInput = {
+      statement: buildSchemaStatement(catalog),
+      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
+    };
+    const result = await executeLakehouseQuery(
+      queryInput,
+      execution,
+      format !== "json" && !sink.json,
+    );
+    if (format !== "human" || sink.json) {
+      await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
+      return;
+    }
+    await writePagedOutput(formatSchemaTree(result, catalog), pagerOptions, sink);
+  },
+});
 
 export function buildSchemaStatement(catalog: string): string {
   const catSql = `'${catalog.replaceAll("'", "''")}'`;
@@ -51,45 +80,3 @@ FROM (
 )
 ORDER BY table_name ASC NULLS FIRST, ordinal_position ASC`;
 }
-
-const schemaArgs = {
-  catalog: { type: "positional", description: "Catalog name", required: true },
-  format: queryRunArgs.format,
-  columns: queryRunArgs.columns,
-  "max-width": queryRunArgs["max-width"],
-  pager: queryRunArgs.pager,
-  "read-timeout": queryRunArgs["read-timeout"],
-} satisfies ArgsDef;
-
-export const schemaCommand = defineCommand({
-  meta: {
-    name: "schema",
-    commandGroup: "query",
-    description: "List schemas, tables, and columns for a catalog.",
-    examples: ["altertable schema my-catalog", "altertable schema my-catalog --format json"],
-  },
-  args: schemaArgs,
-  async run({ args, rawArgs, execution, sink }) {
-    const catalog = stringArg(args, "catalog");
-    // --layout is not supported: human output is always the schema tree.
-    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
-      { ...args, layout: undefined },
-      rawArgs,
-    );
-    const readTimeoutMs = parseRequestReadTimeoutMs(args);
-    const queryInput = {
-      statement: buildSchemaStatement(catalog),
-      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
-    };
-    const result = await executeLakehouseQuery(
-      queryInput,
-      execution,
-      format !== "json" && !sink.json,
-    );
-    if (format !== "human" || sink.json) {
-      await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
-      return;
-    }
-    await writePagedOutput(formatSchemaTree(result, catalog), pagerOptions, sink);
-  },
-});

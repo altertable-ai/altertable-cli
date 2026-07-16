@@ -1,5 +1,5 @@
 import { appendRunArgs } from "@/commands/append/lib/args.ts";
-import { parseAppendJsonContent } from "@/lib/lakehouse/args.ts";
+import { parseAppendJsonContent } from "@/commands/append/lib/data.ts";
 import { buildLakehouseAppendRequest } from "@/lib/lakehouse-transport.ts";
 import { booleanArg, stringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
