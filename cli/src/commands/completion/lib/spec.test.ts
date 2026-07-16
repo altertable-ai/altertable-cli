@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Command } from "@/lib/command.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import {
   buildCompletionSpec,
@@ -22,7 +22,7 @@ function findNode(spec: ReturnType<typeof buildCompletionSpec>, name: string) {
 
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", () => {
-    const root: Command = {
+    const root = defineCommand({
       meta: { name: "altertable" },
       args: {
         json: { type: "boolean", description: "Output raw JSON" },
@@ -41,7 +41,7 @@ describe("buildCompletionSpec", () => {
           },
         },
       },
-    };
+    });
 
     const spec = buildCompletionSpec(root);
     expect(spec.flags.map((flag) => flag.name)).toEqual(["format", "json"]);
@@ -53,24 +53,24 @@ describe("buildCompletionSpec", () => {
   });
 
   test("skips nested commands without meta.name", () => {
-    const root: Command = {
+    const root = defineCommand({
       subCommands: {
         visible: { meta: { name: "visible" } },
         hidden: { meta: { description: "no name" } },
       },
-    };
+    });
 
     const spec = buildCompletionSpec(root);
     expect(flattenTopLevelNames(spec)).toEqual(["visible"]);
   });
 
   test("skips commands marked hidden", () => {
-    const root: Command = {
+    const root = defineCommand({
       subCommands: {
         visible: { meta: { name: "visible" } },
         hidden: { meta: { name: "hidden", hidden: true } },
       },
-    };
+    });
 
     const spec = buildCompletionSpec(root);
     expect(flattenTopLevelNames(spec)).toEqual(["visible"]);

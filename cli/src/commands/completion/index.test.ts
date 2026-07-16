@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Command } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
 import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
@@ -14,7 +14,7 @@ const TERMINAL_CONTROL_PATTERN = new RegExp(
   "g",
 );
 
-const minimalRootCommand: Command = {
+const minimalRootCommand = defineCommand({
   meta: { name: "altertable" },
   args: {
     json: { type: "boolean", description: "Output raw JSON responses" },
@@ -42,7 +42,7 @@ const minimalRootCommand: Command = {
     },
     completion: { meta: { name: "completion" } },
   },
-};
+});
 
 let testHome: string | undefined;
 

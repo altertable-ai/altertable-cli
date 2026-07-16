@@ -14,7 +14,7 @@ import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-support/cli-test-runtime.ts";
-import { runCommandTree, type Command, type CommandArgs } from "@/lib/command.ts";
+import { defineArgs, runCommandTree, type Command } from "@/lib/command.ts";
 
 function createCaptureSink(json: boolean) {
   const stdout: string[] = [];
@@ -140,9 +140,9 @@ describe("api", () => {
   });
 
   test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
-    const rootArgs = {
+    const rootArgs = defineArgs({
       profile: { type: "string", description: "Use a named profile" },
-    } satisfies CommandArgs;
+    });
 
     expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
     expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([

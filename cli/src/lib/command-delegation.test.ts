@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CommandArgs } from "@/lib/command.ts";
+import { defineArgs } from "@/lib/command.ts";
 import {
   findFirstPositionalToken,
   isDelegatedSubCommand,
@@ -7,16 +7,16 @@ import {
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
 
-const rootArgs = {
+const rootArgs = defineArgs({
   profile: { type: "string", description: "Use a named profile" },
   json: { type: "boolean", description: "JSON output" },
-} satisfies CommandArgs;
+});
 
-const passthroughArgs = {
+const passthroughArgs = defineArgs({
   method: { type: "enum", alias: "X", options: ["GET", "POST"] },
   field: { type: "string", alias: "f" },
   verbose: { type: "boolean" },
-} satisfies CommandArgs;
+});
 
 describe("command delegation helpers", () => {
   test("valueFlagsFor extracts string and enum flags with aliases", () => {
