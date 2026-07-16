@@ -744,20 +744,6 @@ export function detectCurrentInstallation(
   };
 }
 
-export function resolveCurrentExecutablePath(): string {
-  return detectCurrentInstallation().executablePath;
-}
-
-export function isNativeCompiledInstall(
-  executablePath: string = process.execPath,
-  argv: readonly string[] = process.argv,
-): boolean {
-  return (
-    detectCurrentInstallation({ execPath: executablePath, argv }).kind ===
-    UpdaterInstallationKind.nativeBinary
-  );
-}
-
 function resolveInstallMethodForInstallation(
   requestedMethod: UpdateInstallMethod,
   installation: CurrentInstallation,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderFixedTable } from "@/ui/terminal/table.ts";
-import { renderApiRoutesTable, renderApiRoutesTableSection } from "@/commands/api/lib/render.ts";
+import { formatApiRoutes } from "@/commands/api/lib/render.ts";
 import { setTerminalColorMode, getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 import { span } from "@/ui/document.ts";
 
@@ -132,9 +132,9 @@ describe("renderFixedTable", () => {
   });
 });
 
-describe("renderApiRoutesTable", () => {
+describe("formatApiRoutes", () => {
   test("renders method, path, operation, and summary columns", () => {
-    const output = renderApiRoutesTable([
+    const output = formatApiRoutes([
       {
         method: "POST",
         path: "/environments",
@@ -157,7 +157,7 @@ describe("renderApiRoutesTable", () => {
     process.env.ALTERTABLE_COLOR = "always";
     setTerminalColorMode("always");
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    const output = renderApiRoutesTable([
+    const output = formatApiRoutes([
       {
         method: "DELETE",
         path: "/items",
@@ -169,7 +169,7 @@ describe("renderApiRoutesTable", () => {
   });
 
   test("keeps long routes on one horizontally scrollable row", () => {
-    const output = renderApiRoutesTable(
+    const output = formatApiRoutes(
       [
         {
           method: "POST",
@@ -192,7 +192,7 @@ describe("renderApiRoutesTable", () => {
   });
 
   test("does not truncate long paths on very narrow terminals", () => {
-    const output = renderApiRoutesTable(
+    const output = formatApiRoutes(
       [
         {
           method: "DELETE",
@@ -213,7 +213,7 @@ describe("renderApiRoutesTable", () => {
   });
 
   test("inserts a blank line between routes with different path roots", () => {
-    const output = renderApiRoutesTable([
+    const output = formatApiRoutes([
       {
         method: "GET",
         path: "/environments/{id}",
@@ -239,7 +239,7 @@ describe("renderApiRoutesTable", () => {
   });
 
   test("wraps route list without a section title", () => {
-    const output = renderApiRoutesTableSection([
+    const output = formatApiRoutes([
       {
         method: "GET",
         path: "/whoami",

@@ -1,8 +1,10 @@
-import type { CommandArgs } from "@/lib/command.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
-import { type ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
-import { renderTabularOutput, type TabularResult } from "@/lib/tabular-result.ts";
+import {
+  renderTabularOutput,
+  type ManagementOutputFormat,
+  type TabularResult,
+} from "@/lib/tabular-result.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -55,16 +57,6 @@ function redactSensitiveRowValue(key: string, value: unknown): unknown {
   return redacted[key];
 }
 
-export const MANAGEMENT_FORMAT_OPTIONS = ["json", "table", "csv", "markdown"] as const;
-
-export const MANAGEMENT_FORMAT_ARG = {
-  format: {
-    type: "enum" as const,
-    description: "Output format: json, table, csv, or markdown",
-    options: [...MANAGEMENT_FORMAT_OPTIONS],
-  },
-};
-
 function collectColumnNames(rows: Record<string, unknown>[]): string[] {
   const columnNames = new Set<string>();
   for (const row of rows) {
@@ -91,13 +83,4 @@ export function renderManagementOutput(body: string, format: ManagementOutputFor
   }
 
   return renderTabularOutput(managementDataToTabularResult(data), format);
-}
-
-export function withManagementFormatArg<T extends CommandArgs>(
-  args: T,
-): T & typeof MANAGEMENT_FORMAT_ARG {
-  return {
-    ...MANAGEMENT_FORMAT_ARG,
-    ...args,
-  };
 }

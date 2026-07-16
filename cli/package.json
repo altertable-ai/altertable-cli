@@ -40,7 +40,8 @@
     "release:verify": "bun run scripts/release.ts verify",
     "release:upload-github": "bun run scripts/publish-release.ts upload-github",
     "pack:check": "bun run build && bun pm pack --dry-run",
-    "knip": "knip"
+    "knip": "knip --no-config-hints",
+    "knip:production": "knip --production --no-config-hints"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",

@@ -15,11 +15,9 @@ import {
   EXIT_SUCCESS,
   getCliExitCode,
   isCittyCliError,
-  renderCliError,
-  renderCliErrorDetails,
-  renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
+import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
 import { defineArgs, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
 import {
   resolveSubCommandForUsage,

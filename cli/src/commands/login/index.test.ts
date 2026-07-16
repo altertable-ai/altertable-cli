@@ -3,7 +3,8 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configGet } from "@/lib/config.ts";
-import { getStoredAccessToken, storeOAuthTokens } from "@/lib/oauth-profile.ts";
+import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
+import { secretGet } from "@/lib/secrets.ts";
 import { getActiveProfileName, profileExists } from "@/lib/profile-store.ts";
 import { createCliTestHarness, runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { delay } from "@/test-utils/time.ts";
@@ -25,6 +26,10 @@ let testHome = "";
 let mockFile = "";
 let originalPath: string | undefined;
 let stdinIsTty: PropertyDescriptor | undefined;
+
+function storedAccessToken(profileName: string): string {
+  return secretGet("oauth/access-token", profileName);
+}
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-login-test-"));
@@ -122,7 +127,7 @@ describe("login command", () => {
     expect(configGet("api_key_env", "default")).toBe("production");
     expect(configGet("organization_slug", "default")).toBe("altertable");
     expect(configGet("principal_email", "default")).toBe("test.user@altertable.test");
-    expect(getStoredAccessToken("default")).toBe("access_token");
+    expect(storedAccessToken("default")).toBe("access_token");
     expect(cli.stderr.join("\n")).toContain('using profile "default"');
   });
 
@@ -141,9 +146,9 @@ describe("login command", () => {
       "org_b_token",
     );
 
-    expect(getStoredAccessToken("default")).toBe("org_a_token");
+    expect(storedAccessToken("default")).toBe("org_a_token");
     expect(getActiveProfileName()).toBe("org-b_production");
-    expect(getStoredAccessToken("org-b_production")).toBe("org_b_token");
+    expect(storedAccessToken("org-b_production")).toBe("org_b_token");
   });
 
   test("stores endpoint overrides only after a successful login", async () => {

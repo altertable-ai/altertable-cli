@@ -7,7 +7,6 @@ import {
   applyTerminalColorFromContext,
   renderDisplayText,
 } from "@/ui/terminal/styles.ts";
-import { padLeft } from "@/ui/terminal/spacing.ts";
 import { span } from "@/ui/document.ts";
 
 const originalNoColor = process.env.NO_COLOR;
@@ -229,10 +228,6 @@ describe("terminal-style", () => {
     const flag = truncateTerminalText("🇫🇷abc", 4);
     expect(flag).toBe("🇫🇷a…");
     expect(getVisibleTextWidth(flag)).toBe(4);
-  });
-
-  test("padLeft indents multi-line terminal output", () => {
-    expect(padLeft(["A\nB", "C"], "  ")).toEqual(["  A", "  B", "  C"]);
   });
 
   test("renders semantic links as OSC 8 hyperlinks when supported", () => {

@@ -3,11 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { exchangeCode } from "@/lib/oauth-flow.ts";
-import {
-  ensureFreshAccessToken,
-  storeOAuthTokens,
-  getStoredAccessToken,
-} from "@/lib/oauth-profile.ts";
+import { ensureFreshAccessToken, storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
 import { configGet, configSet, resolveOAuthBase } from "@/lib/config.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
@@ -15,11 +11,16 @@ import { setCliContext, getCliContext } from "@/context.ts";
 import { ConfigurationError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttp } from "@/lib/http-request.ts";
-import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 const profileName = "default";
 let testHome = "";
 let mockFile = "";
+
+function storedAccessToken(): string {
+  return secretGet("oauth/access-token", profileName);
+}
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-oauth-refresh-"));
@@ -72,24 +73,24 @@ describe("exchangeCode", () => {
 describe("ensureFreshAccessToken", () => {
   test("no-op when not logged in via OAuth", async () => {
     await ensureFreshAccessToken(profileName);
-    expect(getStoredAccessToken(profileName)).toBe(""); // nothing stored, nothing refreshed
+    expect(storedAccessToken()).toBe(""); // nothing stored, nothing refreshed
   });
 
   test("no-op when the token is still fresh", async () => {
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 }, profileName);
     await ensureFreshAccessToken(profileName);
-    expect(getStoredAccessToken(profileName)).toBe("acc"); // unchanged — no refresh
+    expect(storedAccessToken()).toBe("acc"); // unchanged — no refresh
   });
 
   test("no-op when ALTERTABLE_API_KEY is set (env key short-circuits refresh)", async () => {
     // Expired OAuth session, but no /oauth/token mock — a refresh attempt would throw.
     secretSet("oauth/refresh-token", "ref", profileName);
     configSet("oauth_expiry", String(Date.now() - 1000), profileName);
-    const tokenBefore = getStoredAccessToken(profileName);
+    const tokenBefore = storedAccessToken();
 
     process.env.ALTERTABLE_API_KEY = "atm_env";
     await ensureFreshAccessToken(profileName);
-    expect(getStoredAccessToken(profileName)).toBe(tokenBefore); // tokens must not be cleared
+    expect(storedAccessToken()).toBe(tokenBefore); // tokens must not be cleared
   });
 
   test("refreshes and persists when expired", async () => {
@@ -107,7 +108,7 @@ describe("ensureFreshAccessToken", () => {
     configSet("oauth_expiry", String(Date.now() - 1000), profileName);
 
     await ensureFreshAccessToken(profileName);
-    expect(getStoredAccessToken(profileName)).toBe("acc2");
+    expect(storedAccessToken()).toBe("acc2");
     expect(Number.parseInt(configGet("oauth_expiry", profileName), 10)).toBeGreaterThan(Date.now());
   });
 
@@ -134,7 +135,7 @@ describe("ensureFreshAccessToken", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigurationError);
-    expect(getStoredAccessToken(profileName)).toBe("");
+    expect(storedAccessToken()).toBe("");
   });
 
   test("keeps tokens and rethrows when refresh returns 404 (wrong URL, not a dead session)", async () => {
@@ -160,7 +161,7 @@ describe("ensureFreshAccessToken", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(HttpError);
-    expect(getStoredAccessToken(profileName)).toBe("acc"); // session preserved
+    expect(storedAccessToken()).toBe("acc"); // session preserved
     expect(secretGet("oauth/refresh-token", profileName)).toBe("ref");
   });
 
@@ -179,7 +180,7 @@ describe("ensureFreshAccessToken", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(NetworkError);
-    expect(getStoredAccessToken(profileName)).toBe("acc");
+    expect(storedAccessToken()).toBe("acc");
     expect(secretGet("oauth/refresh-token", profileName)).toBe("ref");
   });
 });
@@ -210,7 +211,7 @@ describe("management request auth resolution", () => {
       );
     });
 
-    expect(getStoredAccessToken(profileName)).toBe("acc3");
+    expect(storedAccessToken()).toBe("acc3");
     expect(Number.parseInt(configGet("oauth_expiry", profileName), 10)).toBeGreaterThan(Date.now());
   });
 

@@ -6,7 +6,7 @@ import { buildMainCommand } from "@/cli.ts";
 import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
-import { buildCompletionSpec, flattenTopLevelNames } from "@/commands/completion/lib/spec.ts";
+import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { defineArgs, runCommandTree, type Command } from "@/lib/command.ts";
@@ -111,7 +111,7 @@ describe("api", () => {
 
   test("buildMainCommand top-level names include api and exclude connections", () => {
     const spec = buildCompletionSpec(buildMainCommand());
-    const topLevelNames = flattenTopLevelNames(spec);
+    const topLevelNames = spec.subcommands.map((command) => command.name);
     expect(topLevelNames).toContain("api");
     expect(topLevelNames).not.toContain("connections");
     expect(topLevelNames).not.toContain("service-accounts");

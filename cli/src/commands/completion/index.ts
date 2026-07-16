@@ -1,5 +1,5 @@
 import { defineCommand, type Command } from "@/lib/command.ts";
-import { defaultConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
+import { defaultPrompts } from "@/ui/prompts.ts";
 import { createBashCompletionCommand } from "@/commands/completion/bash.ts";
 import { createFishCompletionCommand } from "@/commands/completion/fish.ts";
 import { createGenerateCommand } from "@/commands/completion/generate.ts";
@@ -23,7 +23,7 @@ export function createCompletionCommand(
   getRootCommand: GetRootCommand,
   options: CompletionCommandOptions = {},
 ): Command {
-  const prompts = options.prompts ?? defaultConfigurePrompts;
+  const prompts = options.prompts ?? defaultPrompts;
   return defineCommand({
     meta: {
       name: "completion",

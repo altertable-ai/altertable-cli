@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { createCliSession } from "@/lib/cli-session.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import { setCliContext } from "@/context.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 let testHome = "";
 

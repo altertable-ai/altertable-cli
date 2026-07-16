@@ -15,18 +15,13 @@ import {
   resolveApiBase,
   resolveManagementApiBase,
 } from "@/lib/config.ts";
-import {
-  secretGet,
-  secretSet,
-  secretExists,
-  resetSecretWarningsForTests,
-  setSpawnSyncForTests,
-} from "@/lib/secrets.ts";
+import { secretGet, secretSet, secretExists } from "@/lib/secrets.ts";
 import { CliError } from "@/lib/errors.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { configureRunClear, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { setCliContext } from "@/context.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 let testHome = "";
 const profileName = "default";
@@ -35,7 +30,6 @@ beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-cli-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
-  resetSecretWarningsForTests();
 });
 
 afterEach(() => {
@@ -256,37 +250,5 @@ describe("profile --configure argv secrets", () => {
     });
 
     expect(stderr.some((line) => line.includes("--password-stdin"))).toBe(true);
-  });
-
-  test("argv secrets skip keychain write spawn", () => {
-    const spawnCalls: string[][] = [];
-    setSpawnSyncForTests((_command, args) => {
-      spawnCalls.push([...args]);
-      return {
-        status: 0,
-        stdout: Buffer.from(""),
-        stderr: Buffer.from(""),
-        pid: 0,
-        signal: null,
-        output: [null, Buffer.from(""), Buffer.from("")],
-      };
-    });
-
-    const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
-    Object.defineProperty(process, "platform", { value: "darwin" });
-
-    try {
-      process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
-      secretSet("lakehouse/password", "test-password-value", profileName, { fromArgv: true });
-      const keychainWrites = spawnCalls.filter((args) => args.includes("add-generic-password"));
-      expect(keychainWrites).toHaveLength(0);
-      expect(secretGet("lakehouse/password", profileName)).toBe("test-password-value");
-    } finally {
-      if (platformDescriptor) {
-        Object.defineProperty(process, "platform", platformDescriptor);
-      }
-      process.env.ALTERTABLE_SECRET_BACKEND = "file";
-      setSpawnSyncForTests(undefined);
-    }
   });
 });

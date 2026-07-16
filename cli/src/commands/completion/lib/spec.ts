@@ -162,7 +162,3 @@ export function collectCompletionContexts(root: CompletionNode): CompletionConte
 
   return contexts;
 }
-
-export function flattenTopLevelNames(spec: CompletionNode): string[] {
-  return spec.subcommands.map((node) => node.name);
-}

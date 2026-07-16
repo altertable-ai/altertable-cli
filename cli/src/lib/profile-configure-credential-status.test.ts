@@ -8,7 +8,6 @@ import {
   lakehousePlaneStatusDetail,
   managementPlaneStatusDetail,
 } from "@/lib/profile/model.ts";
-import { buildConfigureShowView } from "@/lib/profile/views.ts";
 import {
   formatConfigureAuthenticationLines,
   formatConfigureSessionSummary,
@@ -193,44 +192,5 @@ describe("buildConfigureShowData", () => {
       api_key: true,
     });
     expect(JSON.stringify(data)).not.toContain("atm_override");
-  });
-
-  test("configure show view separates summary and authentication sections", () => {
-    secretSet("api-key", "atm_test", profileName);
-    configSet("api_key_env", "production", profileName);
-
-    const view = buildConfigureShowView(buildConfigureShowData(profileName));
-    const [summary, authentication] = view.sections;
-    const [summaryRows] = summary?.blocks ?? [];
-    const [authenticationRows] = authentication?.blocks ?? [];
-
-    expect(summaryRows?.kind).toBe("rows");
-    if (summaryRows?.kind === "rows") {
-      expect(summaryRows.rows).toEqual(
-        expect.arrayContaining([
-          { label: "Active profile:", value: "default" },
-          {
-            label: "Data plane:",
-            value: [
-              {
-                text: "https://api.altertable.ai",
-                style: "accent",
-                href: "https://api.altertable.ai",
-              },
-            ],
-          },
-        ]),
-      );
-    }
-
-    expect(authenticationRows?.kind).toBe("rows");
-    if (authenticationRows?.kind === "rows") {
-      expect(authenticationRows.rows).toEqual(
-        expect.arrayContaining([
-          { label: "Authentication:", value: "management API key" },
-          { label: "environment:", value: "production", level: 1 },
-        ]),
-      );
-    }
   });
 });

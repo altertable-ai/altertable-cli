@@ -3,10 +3,7 @@ import { getCliContext } from "@/context.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import type { ProfileInspect } from "@/lib/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
-import {
-  defaultConfigurePrompts,
-  type ConfigurePrompts,
-} from "@/lib/profile-configure-interactive.ts";
+import { defaultPrompts, type Prompts } from "@/ui/prompts.ts";
 import { profileSwitchOption } from "@/lib/profile/views.ts";
 import {
   envConfigMode,
@@ -57,9 +54,7 @@ export function configuredVerificationPlanes(profile: ProfileInspect): Configure
   return planes;
 }
 
-export async function promptProfileSwitch(
-  prompts: ConfigurePrompts = defaultConfigurePrompts,
-): Promise<string> {
+export async function promptProfileSwitch(prompts: Prompts = defaultPrompts): Promise<string> {
   const profiles = listProfiles();
   return prompts.readSelect(
     "Switch profile",

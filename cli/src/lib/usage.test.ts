@@ -6,8 +6,9 @@ import { buildMainCommand } from "@/cli.ts";
 import { getBootstrapCliContext } from "@/context.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/usage.ts";
-import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
-import { createCliRuntime, runWithCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
+import { configureRunSet } from "@/lib/profile-configure-core.ts";
+import { createCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { VERSION } from "@/version.ts";
 import { span } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
@@ -175,11 +176,6 @@ describe("renderAltertableUsage active context", () => {
 
   afterEach(() => {
     restoreTerminalState(terminalState);
-    runWithCliRuntime(createCliRuntime(getBootstrapCliContext()), () => {
-      process.env.ALTERTABLE_CONFIG_HOME = testHome;
-      process.env.ALTERTABLE_SECRET_BACKEND = "file";
-      configureClearAll("default");
-    });
     rmSync(testHome, { recursive: true, force: true });
     delete process.env.ALTERTABLE_CONFIG_HOME;
     delete process.env.ALTERTABLE_SECRET_BACKEND;

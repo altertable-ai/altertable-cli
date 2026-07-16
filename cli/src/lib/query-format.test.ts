@@ -15,7 +15,7 @@ import {
   truncateText,
   truncateTextMiddle,
 } from "@/lib/query-format.ts";
-import { renderQueryCsv, renderQueryJson } from "@/lib/lakehouse-client.ts";
+import { renderQueryCsv, renderQueryJson } from "@/lib/query-output.ts";
 import { getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 import {
   forceTerminalColorForTests,

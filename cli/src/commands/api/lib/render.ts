@@ -14,11 +14,7 @@ export function formatApiOperationDetails(operation: ApiOperationDetails): strin
   }).join("\n");
 }
 
-export function formatApiRoutes(rows: readonly ApiRouteRow[]): string {
-  return renderApiRoutesTableSection(rows);
-}
-
-export function renderApiRoutesTable(
+export function formatApiRoutes(
   rows: readonly ApiRouteRow[],
   emptyMessage = "No operations found.",
   options: ApiRoutesRenderOptions = {},
@@ -29,11 +25,4 @@ export function renderApiRoutesTable(
       terminalWidth: options.terminalWidth,
     }),
   );
-}
-
-export function renderApiRoutesTableSection(
-  rows: readonly ApiRouteRow[],
-  emptyMessage = "No operations found.",
-): string {
-  return renderDocumentText(buildApiRoutesView(rows, { emptyMessage }));
 }

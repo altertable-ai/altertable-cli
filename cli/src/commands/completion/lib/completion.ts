@@ -4,7 +4,7 @@ import { basename, dirname, join } from "node:path";
 import type { Command } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
-import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
+import type { Prompts } from "@/ui/prompts.ts";
 import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
@@ -19,7 +19,7 @@ export type SupportedShell = "bash" | "zsh" | "fish";
 export type CompletionRootInput =
   | { kind: "help" }
   | { kind: "install"; shell?: SupportedShell; updateRc: boolean };
-export type CompletionCommandOptions = { prompts?: ConfigurePrompts };
+export type CompletionCommandOptions = { prompts?: Prompts };
 export type InstallResult = {
   shell: SupportedShell;
   completionPath: string;
@@ -231,9 +231,7 @@ export function formatCompletionHelpMessage(): string {
   );
 }
 
-export async function promptCompletionInput(
-  prompts: ConfigurePrompts,
-): Promise<CompletionRootInput> {
+export async function promptCompletionInput(prompts: Prompts): Promise<CompletionRootInput> {
   const selected = (await prompts.readSelect(
     "Shell completion",
     [

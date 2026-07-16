@@ -8,7 +8,6 @@ import {
 } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
-import type { WhoamiResponse } from "@/lib/management/model.ts";
 import {
   moveProfileSecrets,
   secretDelete,
@@ -699,71 +698,4 @@ export function lakehousePlaneStatusDetail(profileName: string): string | null {
     return "basic token";
   }
   return configGet("user", profileName) || "unknown";
-}
-
-export type ActiveContext = {
-  profile: string;
-  environment?: string;
-  data_plane: string;
-  control_plane: string;
-  management: string | null;
-  lakehouse: string | null;
-  credentialStatus: ReturnType<typeof configureCredentialStatus>;
-  credentials: ConfigureShowData["credentials"];
-  overrides: ConfigureShowData["overrides"];
-  principal?: WhoamiResponse["principal"];
-  organization?: WhoamiResponse["organization"];
-};
-
-function resolveEnvironment(showData: ConfigureShowData): string | undefined {
-  const envOverride = readEnv("ALTERTABLE_ENV");
-  if (envOverride && envOverride.length > 0) {
-    return envOverride;
-  }
-  const managementCredential = showData.credentials.management;
-  return managementCredential.configured ? managementCredential.environment : undefined;
-}
-
-export function buildActiveContext(profileName: string): ActiveContext {
-  ensureProfileExists(profileName);
-  const showData = buildConfigureShowData(profileName);
-  const credentialStatus = configureCredentialStatus(profileName);
-
-  return {
-    profile: showData.profile,
-    environment: resolveEnvironment(showData),
-    data_plane: showData.data_plane,
-    control_plane: showData.control_plane,
-    management: managementPlaneStatusDetail(profileName),
-    lakehouse: lakehousePlaneStatusDetail(profileName),
-    credentialStatus,
-    credentials: showData.credentials,
-    overrides: showData.overrides,
-  };
-}
-
-export function withAuthenticatedIdentity(
-  context: ActiveContext,
-  whoami: WhoamiResponse,
-): ActiveContext {
-  return {
-    ...context,
-    principal: whoami.principal,
-    organization: whoami.organization,
-  };
-}
-
-export function activeContextToJson(context: ActiveContext): Record<string, unknown> {
-  return {
-    profile: context.profile,
-    environment: context.environment ?? null,
-    data_plane: context.data_plane,
-    control_plane: context.control_plane,
-    management: context.management,
-    lakehouse: context.lakehouse,
-    credentials: context.credentials,
-    overrides: context.overrides,
-    ...(context.principal !== undefined ? { principal: context.principal } : {}),
-    ...(context.organization !== undefined ? { organization: context.organization } : {}),
-  };
 }

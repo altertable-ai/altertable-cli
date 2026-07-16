@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { buildBodyFromFields, readJsonBody, resolveApiBody } from "@/commands/api/lib/body.ts";
+import { readJsonBody, resolveApiRequestPayload } from "@/commands/api/lib/body.ts";
 import {
   apiHttpResultOutput,
   executeApiHttp,
@@ -63,41 +63,47 @@ async function runApiOperation(args: ApiHttpArgs): Promise<void> {
 }
 
 describe("api-body", () => {
-  test("buildBodyFromFields merges key=value pairs into JSON", () => {
-    const body = buildBodyFromFields(["label=CI Bot", "name=Analytics"]);
-    expect(JSON.parse(body ?? "")).toEqual({ label: "CI Bot", name: "Analytics" });
+  test("builds a JSON body from request fields", () => {
+    const payload = resolveApiRequestPayload({
+      method: "POST",
+      rawFields: ["label=CI Bot", "name=Analytics"],
+    });
+    expect(JSON.parse(payload.body ?? "")).toEqual({ label: "CI Bot", name: "Analytics" });
   });
 
-  test("resolveApiBody returns body when only --body is provided", () => {
-    const body = resolveApiBody({
+  test("keeps an explicit JSON request body", () => {
+    const payload = resolveApiRequestPayload({
       method: "POST",
       body: '{"label":"raw"}',
     });
-    expect(body).toBe('{"label":"raw"}');
+    expect(payload).toEqual({ body: '{"label":"raw"}', queryFields: [] });
   });
 
-  test("resolveApiBody rejects mixing body and fields", () => {
-    const body = resolveApiBody({
+  test("keeps fields in the query when an explicit POST body is provided", () => {
+    const payload = resolveApiRequestPayload({
       method: "POST",
       body: '{"label":"raw"}',
       rawFields: ["label=flags"],
     });
 
-    expect(body).toBe('{"label":"raw"}');
+    expect(payload).toEqual({
+      body: '{"label":"raw"}',
+      queryFields: [{ key: "label", value: "flags" }],
+    });
   });
 
-  test("resolveApiBody keeps fields out of GET request bodies", () => {
-    const body = resolveApiBody({
+  test("keeps GET fields out of the request body", () => {
+    const payload = resolveApiRequestPayload({
       method: "GET",
       rawFields: ["label=query"],
     });
 
-    expect(body).toBeUndefined();
+    expect(payload).toEqual({ queryFields: [{ key: "label", value: "query" }] });
   });
 
-  test("resolveApiBody rejects explicit body input for methods without request bodies", () => {
+  test("rejects explicit body input for methods without request bodies", () => {
     expect(() =>
-      resolveApiBody({
+      resolveApiRequestPayload({
         method: "GET",
         body: '{"label":"bad"}',
       }),
@@ -117,28 +123,28 @@ describe("api-body", () => {
     expect(() => readJsonBody(`@${filePath}`)).toThrow(ParseError);
   });
 
-  test("resolveApiBody rejects invalid JSON from --input @file payloads", () => {
+  test("rejects invalid JSON from --input @file payloads", () => {
     const filePath = join(testHome, "invalid-input.json");
     writeFileSync(filePath, "{not-json", "utf8");
 
     expect(() =>
-      resolveApiBody({
+      resolveApiRequestPayload({
         method: "POST",
         input: `@${filePath}`,
       }),
     ).toThrow(ParseError);
   });
 
-  test("resolveApiBody returns valid --input @file payloads unchanged", () => {
+  test("returns valid --input @file payloads unchanged", () => {
     const filePath = join(testHome, "valid-input.json");
     writeFileSync(filePath, '{"name":"from-input-file"}', "utf8");
 
-    const body = resolveApiBody({
+    const payload = resolveApiRequestPayload({
       method: "POST",
       input: `@${filePath}`,
     });
 
-    expect(body).toBe('{"name":"from-input-file"}');
+    expect(payload).toEqual({ body: '{"name":"from-input-file"}', queryFields: [] });
   });
 });
 

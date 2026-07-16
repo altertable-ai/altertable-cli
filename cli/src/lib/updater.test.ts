@@ -27,7 +27,6 @@ import {
   getUpdateCheckInterval,
   installCliUpdate,
   installGitHubBinaryRelease,
-  isNativeCompiledInstall,
   maybeShowUpdateNotice,
   packageReleaseUrl,
   parseChecksums,
@@ -35,14 +34,14 @@ import {
   recommendedInstallCommand,
   releaseAssetName,
   releaseUrlForSource,
-  resolveCurrentExecutablePath,
   resolveUpdateSource,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
   verifySha256,
 } from "@/lib/updater.ts";
 import { UpdaterConfig } from "@/lib/updater-config.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 let testHome = "";
 const packageJsonPath = resolve(import.meta.dir, "../../package.json");
@@ -341,10 +340,6 @@ describe("binary self-update", () => {
         argv: ["/usr/local/bin/altertable"],
       }).kind,
     ).toBe("native-binary");
-    expect(
-      isNativeCompiledInstall("/usr/local/bin/altertable", ["/usr/local/bin/altertable"]),
-    ).toBe(true);
-    expect(resolveCurrentExecutablePath()).toBeTruthy();
   });
 
   test("resolves relative compiled executable paths from the original invocation", () => {

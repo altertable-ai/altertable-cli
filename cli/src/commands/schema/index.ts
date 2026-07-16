@@ -3,7 +3,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
 import { parseRequestReadTimeoutMs } from "@/lib/timeout-args.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
-import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import { writeQueryOutput } from "@/lib/query-output.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 import { buildSchemaTreeView } from "@/commands/schema/lib/views.ts";
 import { schemaArgs } from "@/commands/schema/lib/args.ts";

@@ -1,6 +1,4 @@
 import {
-  buildActiveContextDetailsView,
-  buildActiveContextSummaryView,
   buildProfileInspectView,
   buildProfileListView,
   buildProfileStatusView,
@@ -8,18 +6,14 @@ import {
   type ProfileStatusResult,
 } from "@/lib/profile/views.ts";
 import {
-  buildActiveContext,
   buildConfigureShowData,
-  type ActiveContext,
   type ProfileInspect,
   type ProfileSummary,
 } from "@/lib/profile/model.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { renderDocument, renderDocumentText, renderRows } from "@/ui/renderers/terminal.ts";
+import { renderDocumentText, renderRows } from "@/ui/renderers/terminal.ts";
 import {
   nestedIndent,
-  padLeft,
   TERMINAL_INDENT,
   TERMINAL_LABEL_WIDTH,
   TERMINAL_NESTED_LABEL_WIDTH,
@@ -70,28 +64,4 @@ export function formatConfigureSessionSummary(
   configuredPlanes: ConfigureAuthPlane[],
 ): string[] {
   return formatConfigureAuthenticationLines(profileName, { planes: configuredPlanes });
-}
-
-export function formatActiveContextSummary(context: ActiveContext): string {
-  const lines = renderDocument(buildActiveContextSummaryView(context));
-  return `\n\n${padLeft(lines).join("\n")}`;
-}
-
-export function formatActiveContextDetails(context: ActiveContext): string {
-  const lines = renderDocument(buildActiveContextDetailsView(context), {
-    indent: TERMINAL_INDENT,
-    labelWidth: TERMINAL_LABEL_WIDTH,
-  });
-  return lines.join("\n");
-}
-
-export function tryFormatActiveContextSummary(profileName: string): string {
-  try {
-    return formatActiveContextSummary(buildActiveContext(profileName));
-  } catch (error) {
-    if (error instanceof ConfigurationError) {
-      return "";
-    }
-    throw error;
-  }
 }

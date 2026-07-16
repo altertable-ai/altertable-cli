@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderQueryCsv, renderQueryJson } from "@/lib/lakehouse-client.ts";
+import { renderQueryCsv, renderQueryJson } from "@/lib/query-output.ts";
 import { renderQueryMarkdown } from "@/lib/query-format.ts";
 
 describe("script output lossless guarantees", () => {

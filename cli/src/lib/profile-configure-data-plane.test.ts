@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getBootstrapCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
-import { configureClearAll, configureRunSet } from "@/lib/profile-configure-core.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import { configureRunSet } from "@/lib/profile-configure-core.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { secretGet } from "@/lib/secrets.ts";
 
 let testHome = "";
@@ -22,10 +23,7 @@ beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-configure-url-test-"));
 });
 
-afterEach(async () => {
-  await runInTestHome(async () => {
-    configureClearAll(profileName);
-  });
+afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
   delete process.env.ALTERTABLE_SECRET_BACKEND;

@@ -2,13 +2,14 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
+import type { Prompts } from "@/ui/prompts.ts";
 import { hasConfigureCredentialFlags, runConfigureWizard } from "@/lib/profile-configure.ts";
 import { configureRunSet, withConfigureProfileContext } from "@/lib/profile-configure-core.ts";
 import { configGet } from "@/lib/config.ts";
 import { secretGet } from "@/lib/secrets.ts";
 import { setCliContext } from "@/context.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 
 const profileName = "default";
@@ -20,7 +21,7 @@ function createMockPrompts(responses: {
   confirms?: boolean[];
   lines?: string[];
   passwords?: string[];
-}): ConfigurePrompts {
+}): Prompts {
   let selectIndex = 0;
   let confirmIndex = 0;
   let lineIndex = 0;

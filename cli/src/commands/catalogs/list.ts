@@ -1,5 +1,5 @@
 import { requireManagementEnv } from "@/lib/auth.ts";
-import { fetchManagementCatalogRows } from "@/commands/catalogs/lib/requests.ts";
+import { fetchManagementCatalogRows } from "@/lib/management/catalogs.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/render.ts";

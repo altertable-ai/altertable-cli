@@ -16,12 +16,10 @@ import {
   errorCodeFromError,
   getCliExitCode,
   httpStatusMessage,
-  renderCliError,
-  renderCliErrorDetails,
-  renderCliErrorJson,
   serializeCliError,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
+import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
 import {
   forceNoTerminalColorForTests,
   restoreTerminalState,

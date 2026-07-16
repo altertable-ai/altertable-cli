@@ -2,7 +2,7 @@ import { resolveApiRequestPayload, type ParsedApiField } from "@/commands/api/li
 import type { CommandOutputMode } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { parseManagementOutputFormat } from "@/lib/lakehouse-client.ts";
+import { parseManagementOutputFormat } from "@/lib/tabular-result.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";

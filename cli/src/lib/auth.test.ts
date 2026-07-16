@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth.ts";
 import { configSet } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { resetSecretWarningsForTests, secretSet } from "@/lib/secrets.ts";
+import { secretSet } from "@/lib/secrets.ts";
 
 let testHome = "";
 const profileName = "default";
@@ -18,7 +18,6 @@ beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-auth-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
-  resetSecretWarningsForTests();
 });
 
 afterEach(() => {

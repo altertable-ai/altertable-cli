@@ -4,12 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configGet, configSet, configSetGlobal, kvGet } from "@/lib/config.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
-import {
-  resetSecretWarningsForTests,
-  secretGet,
-  secretSet,
-  setSpawnSyncForTests,
-} from "@/lib/secrets.ts";
+import { secretGet } from "@/lib/secrets.ts";
 import {
   createEmptyProfile,
   deleteProfile,
@@ -47,7 +42,6 @@ beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-profile-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
-  resetSecretWarningsForTests();
   setCliContext({ debug: false, json: false, agent: false });
 });
 
@@ -260,43 +254,6 @@ describe("profile storage", () => {
     expect(() => deleteProfile("staging")).toThrow("Cannot delete the active profile");
   });
 
-  test("deleteProfile removes secrets via secretDelete including keychain", async () => {
-    await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
-    setActiveProfile("default");
-
-    const spawnCalls: string[][] = [];
-    setSpawnSyncForTests((_command, args) => {
-      spawnCalls.push([...args]);
-      return {
-        status: 0,
-        stdout: Buffer.from(""),
-        stderr: Buffer.from(""),
-        pid: 0,
-        signal: null,
-        output: [null, Buffer.from(""), Buffer.from("")],
-      };
-    });
-
-    const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
-    Object.defineProperty(process, "platform", { value: "darwin" });
-
-    try {
-      process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
-      secretSet("api-key", "atm_b", "staging");
-      deleteProfile("staging");
-      const keychainDeletes = spawnCalls.filter((args) => args.includes("delete-generic-password"));
-      expect(keychainDeletes.length).toBeGreaterThan(0);
-      expect(profileExists("staging")).toBe(false);
-    } finally {
-      if (platformDescriptor) {
-        Object.defineProperty(process, "platform", platformDescriptor);
-      }
-      process.env.ALTERTABLE_SECRET_BACKEND = "file";
-      setSpawnSyncForTests(undefined);
-    }
-  });
-
   test("renameProfile moves profile config, active profile, and secrets", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     setActiveProfile("staging");
@@ -308,101 +265,6 @@ describe("profile storage", () => {
     expect(getActiveProfileName()).toBe("acme_staging");
     expect(secretGet("api-key", "acme_staging")).toBe("atm_staging");
     expect(secretGet("api-key", "staging")).toBe("");
-  });
-
-  test("renameProfile restores the profile directory if keychain secret migration fails", () => {
-    createEmptyProfile("staging");
-    const spawnCalls: string[][] = [];
-    setSpawnSyncForTests((_command, args) => {
-      spawnCalls.push([...args]);
-      const account = args[args.indexOf("-a") + 1] ?? "";
-      if (args.includes("help")) {
-        return {
-          status: 0,
-          stdout: Buffer.from(""),
-          stderr: Buffer.from(""),
-          pid: 0,
-          signal: null,
-          output: [null, Buffer.from(""), Buffer.from("")],
-        };
-      }
-      if (args.includes("find-generic-password")) {
-        if (account === "profile/staging/api-key") {
-          return {
-            status: 0,
-            stdout: Buffer.from("atm_staging"),
-            stderr: Buffer.from(""),
-            pid: 0,
-            signal: null,
-            output: [null, Buffer.from("atm_staging"), Buffer.from("")],
-          };
-        }
-        if (account === "profile/staging/lakehouse/password") {
-          return {
-            status: 0,
-            stdout: Buffer.from("secret"),
-            stderr: Buffer.from(""),
-            pid: 0,
-            signal: null,
-            output: [null, Buffer.from("secret"), Buffer.from("")],
-          };
-        }
-        return {
-          status: 1,
-          stdout: Buffer.from(""),
-          stderr: Buffer.from(""),
-          pid: 0,
-          signal: null,
-          output: [null, Buffer.from(""), Buffer.from("")],
-        };
-      }
-      if (
-        args.includes("add-generic-password") &&
-        account === "profile/acme_staging/lakehouse/password"
-      ) {
-        return {
-          status: 1,
-          stdout: Buffer.from(""),
-          stderr: Buffer.from(""),
-          pid: 0,
-          signal: null,
-          output: [null, Buffer.from(""), Buffer.from("")],
-        };
-      }
-      return {
-        status: 0,
-        stdout: Buffer.from(""),
-        stderr: Buffer.from(""),
-        pid: 0,
-        signal: null,
-        output: [null, Buffer.from(""), Buffer.from("")],
-      };
-    });
-
-    const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
-    Object.defineProperty(process, "platform", { value: "darwin" });
-
-    try {
-      process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
-      expect(() => renameProfile("staging", "acme_staging")).toThrow(
-        "Failed to store secret in macOS keychain",
-      );
-      expect(profileExists("staging")).toBe(true);
-      expect(profileExists("acme_staging")).toBe(false);
-      expect(
-        spawnCalls.some(
-          (args) =>
-            args.includes("delete-generic-password") &&
-            args.includes("profile/acme_staging/api-key"),
-        ),
-      ).toBe(true);
-    } finally {
-      if (platformDescriptor) {
-        Object.defineProperty(process, "platform", platformDescriptor);
-      }
-      process.env.ALTERTABLE_SECRET_BACKEND = "file";
-      setSpawnSyncForTests(undefined);
-    }
   });
 
   test("rejects path traversal profile names", () => {

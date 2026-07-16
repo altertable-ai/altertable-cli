@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { isAgentMode, isJsonOutput, setCliContext } from "@/context.ts";
+import { isJsonOutput, setCliContext } from "@/context.ts";
 import { parseGlobalFlags } from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
   refreshCliRuntimeContext,
-  runWithCliRuntime,
   setCliRuntime,
 } from "@/lib/runtime.ts";
-import { renderCliErrorJson } from "@/lib/errors.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { CliError } from "@/lib/errors.ts";
+import { renderCliErrorJson } from "@/ui/error.ts";
 
 describe("parseGlobalFlags", () => {
   test("parses --agent", () => {
@@ -58,7 +58,6 @@ describe("agent output preset", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: true });
     runWithCliRuntime(runtime, () => {
       expect(isJsonOutput()).toBe(true);
-      expect(isAgentMode()).toBe(true);
     });
   });
 

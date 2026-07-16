@@ -4,7 +4,6 @@ import { optionalStringArg } from "@/lib/args.ts";
 import { defineArgs, defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { valueFlagsFor } from "@/lib/command-delegation.ts";
-import { withManagementFormatArg } from "@/lib/management-output.ts";
 import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 
 export const HTTP_METHOD_NAMES = ["GET", "POST", "PATCH", "DELETE", "PUT"] as const;
@@ -37,7 +36,14 @@ export const API_HTTP_BASE_ARGS = defineArgs({
 });
 
 export const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
-export const API_HTTP_ARGS = withManagementFormatArg(API_HTTP_BASE_ARGS);
+export const API_HTTP_ARGS = defineArgs({
+  format: {
+    type: "enum",
+    description: "Output format: json, table, csv, or markdown",
+    options: ["json", "table", "csv", "markdown"],
+  },
+  ...API_HTTP_BASE_ARGS,
+});
 
 export function resolveApiCommandRequest(
   args: Record<string, unknown>,

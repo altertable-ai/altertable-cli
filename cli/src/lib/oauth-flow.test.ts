@@ -5,10 +5,15 @@ import { tmpdir } from "node:os";
 import { configGet, resolveOAuthBase } from "@/lib/config.ts";
 import { setCliContext } from "@/context.ts";
 import { buildAuthorizeUrl, parseCallback, startLoopbackServer } from "@/lib/oauth-flow.ts";
-import { clearOAuthTokens, getStoredAccessToken, storeOAuthTokens } from "@/lib/oauth-profile.ts";
+import { clearOAuthTokens, storeOAuthTokens } from "@/lib/oauth-profile.ts";
+import { secretGet } from "@/lib/secrets.ts";
 
 const profileName = "default";
 let testHome = "";
+
+function storedAccessToken(): string {
+  return secretGet("oauth/access-token", profileName);
+}
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-oauth-test-"));
@@ -128,7 +133,7 @@ describe("token storage", () => {
   test("round-trips tokens and stamps expiry", () => {
     const before = Date.now();
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 }, profileName);
-    expect(getStoredAccessToken(profileName)).toBe("acc");
+    expect(storedAccessToken()).toBe("acc");
     expect(Number.parseInt(configGet("oauth_expiry", profileName), 10)).toBeGreaterThanOrEqual(
       before + 3600 * 1000,
     );
@@ -137,7 +142,7 @@ describe("token storage", () => {
   test("clear removes tokens and expiry", () => {
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 }, profileName);
     clearOAuthTokens(profileName);
-    expect(getStoredAccessToken(profileName)).toBe("");
+    expect(storedAccessToken()).toBe("");
     expect(configGet("oauth_expiry", profileName)).toBe("");
   });
 });

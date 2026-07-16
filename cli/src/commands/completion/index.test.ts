@@ -5,9 +5,10 @@ import { join } from "node:path";
 import { defineCommand, type Command } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
-import type { ConfigurePrompts } from "@/lib/profile-configure-interactive.ts";
-import { buildCompletionSpec, flattenTopLevelNames } from "@/commands/completion/lib/spec.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
+import type { Prompts } from "@/ui/prompts.ts";
+import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
+import { createCliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 const TERMINAL_CONTROL_PATTERN = new RegExp(
   `${String.fromCharCode(27)}\\[[0-9;]*m|${String.fromCharCode(27)}\\]8;;[^\\u0007]*\\u0007`,
@@ -58,7 +59,7 @@ function setTestHome(): string {
   return testHome;
 }
 
-function createMockPrompts(selection: string): ConfigurePrompts {
+function createMockPrompts(selection: string): Prompts {
   return {
     writePrompt() {},
     readLine: async () => "",
@@ -85,7 +86,7 @@ async function captureCompletionOutput(
 async function runCompletion(
   getRootCommand: () => Command,
   shell?: string,
-  prompts?: ConfigurePrompts,
+  prompts?: Prompts,
 ): Promise<string> {
   const completionCommand = createCompletionCommand(getRootCommand, { prompts });
   const supportedShells = new Set(["bash", "zsh", "fish"]);
@@ -352,7 +353,7 @@ describe("completion command", () => {
   test("integration root command top-level count matches registry", async () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const output = await runCompletion(buildMainCommand, "bash");
-    const topLevelCount = flattenTopLevelNames(spec).length;
+    const topLevelCount = spec.subcommands.length;
     expect(topLevelCount).toBe(14);
     expect(output).toContain("completion");
     expect(output).toContain("upgrade");

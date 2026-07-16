@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
-import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
 
 let testHome = "";
 let mockFile = "";
@@ -49,7 +51,10 @@ describe("configureVerify", () => {
       await configureRunSet({ user: "alice", password: "secret" });
       refreshCliRuntimeContext(runtime.context);
 
-      const result = await configureVerify(["management", "lakehouse"]);
+      const result = await configureVerify(
+        ["management", "lakehouse"],
+        createExecutionContext(runtime),
+      );
       expect(result.verified.management).toBe(true);
       expect(result.verified.lakehouse).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -69,7 +74,7 @@ describe("configureVerify", () => {
       await configureRunSet({ apiKey: "atm_bad", env: "prod" });
       refreshCliRuntimeContext(runtime.context);
 
-      const result = await configureVerify(["management"]);
+      const result = await configureVerify(["management"], createExecutionContext(runtime));
       expect(result.verified.management).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]?.plane).toBe("management");

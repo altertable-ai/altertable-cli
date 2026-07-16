@@ -89,13 +89,6 @@ function configureClearManagementCredentials(profileName: string): void {
   configSet("oauth_expiry", "", profileName);
 }
 
-export function configureClearAll(profileName: string): void {
-  configureClearLakehouseCredentials(profileName);
-  configureClearManagementCredentials(profileName);
-  clearProfileEndpoint("api_base", profileName);
-  clearProfileEndpoint("management_api_base", profileName);
-}
-
 export async function configureRunSet(
   options: ConfigureOptions,
   sink: OutputSink = getOutputSink(),

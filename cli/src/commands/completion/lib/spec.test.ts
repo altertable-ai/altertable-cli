@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { defineCommand } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
-import {
-  buildCompletionSpec,
-  collectCompletionContexts,
-  flattenTopLevelNames,
-} from "@/commands/completion/lib/spec.ts";
+import { buildCompletionSpec, collectCompletionContexts } from "@/commands/completion/lib/spec.ts";
 import {
   formatBashCompletion,
   formatBashFlagWordList,
@@ -61,7 +57,7 @@ describe("buildCompletionSpec", () => {
     });
 
     const spec = buildCompletionSpec(root);
-    expect(flattenTopLevelNames(spec)).toEqual(["visible"]);
+    expect(spec.subcommands.map((command) => command.name)).toEqual(["visible"]);
   });
 
   test("skips commands marked hidden", () => {
@@ -73,7 +69,7 @@ describe("buildCompletionSpec", () => {
     });
 
     const spec = buildCompletionSpec(root);
-    expect(flattenTopLevelNames(spec)).toEqual(["visible"]);
+    expect(spec.subcommands.map((command) => command.name)).toEqual(["visible"]);
   });
 
   test("real root command includes expected top-level and nested commands", () => {
@@ -137,7 +133,7 @@ describe("buildCompletionSpec", () => {
 
   test("sorts subcommands alphabetically", () => {
     const spec = buildCompletionSpec(buildMainCommand());
-    const names = flattenTopLevelNames(spec);
+    const names = spec.subcommands.map((command) => command.name);
     expect(names).toEqual([...names].sort((left, right) => left.localeCompare(right)));
   });
 });

@@ -158,17 +158,6 @@ function parsedFieldsToRecord(fields: ParsedApiField[]): Record<string, ApiField
   return body;
 }
 
-export function buildBodyFromFields(
-  fields: Record<string, string> | string[] | string | undefined,
-): string | undefined {
-  const parsedFields = parseRawFields(fields);
-  if (parsedFields.length === 0) {
-    return undefined;
-  }
-
-  return JSON.stringify(parsedFieldsToRecord(parsedFields));
-}
-
 export type ResolveApiBodyOptions = {
   method: string;
   body?: string;
@@ -243,8 +232,4 @@ export function resolveApiRequestPayload(
   }
 
   return { queryFields: [] };
-}
-
-export function resolveApiBody(options: ResolveApiBodyOptions): string | undefined {
-  return resolveApiRequestPayload(options).body;
 }

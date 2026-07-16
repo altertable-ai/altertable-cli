@@ -1,6 +1,5 @@
-import type { CliContext } from "@/context.ts";
-import { getBootstrapCliContext, isJsonOutput } from "@/context.ts";
 import { existsSync } from "node:fs";
+import { getBootstrapCliContextState, isJsonOutput, type CliContext } from "@/lib/cli-context.ts";
 import { createCliSession, type CliSession } from "@/lib/cli-session.ts";
 import { configFile } from "@/lib/config.ts";
 import { profilesDir } from "@/lib/profile-store.ts";
@@ -61,31 +60,13 @@ export function createCliRuntime(context: CliContext): CliRuntime {
 
 export function getCliRuntime(): CliRuntime {
   if (!cliRuntime) {
-    cliRuntime = createCliRuntime(getBootstrapCliContext());
+    cliRuntime = createCliRuntime(getBootstrapCliContextState());
   }
   return cliRuntime;
 }
 
 export function setCliRuntime(runtime: CliRuntime): void {
   cliRuntime = runtime;
-}
-
-export function runWithCliRuntime<T>(runtime: CliRuntime, fn: () => T): T {
-  const previous = cliRuntime;
-  cliRuntime = runtime;
-  try {
-    const result = fn();
-    if (result instanceof Promise) {
-      return result.finally(() => {
-        cliRuntime = previous;
-      }) as T;
-    }
-    cliRuntime = previous;
-    return result;
-  } catch (error) {
-    cliRuntime = previous;
-    throw error;
-  }
 }
 
 export function refreshCliRuntimeContext(context: CliContext): void {

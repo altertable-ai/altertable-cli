@@ -11,36 +11,14 @@ import {
 import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/pager.ts";
 
 export type QueryResultFormat = "human" | "json" | "csv" | "markdown";
-export type ManagementOutputFormat = "json" | "table" | "csv" | "markdown";
 
 const QUERY_RESULT_FORMATS = new Set<QueryResultFormat>(["human", "json", "csv", "markdown"]);
-const MANAGEMENT_OUTPUT_FORMATS = new Set<ManagementOutputFormat>([
-  "json",
-  "table",
-  "csv",
-  "markdown",
-]);
 
 export function parseQueryResultFormat(format: string): QueryResultFormat {
   if (!QUERY_RESULT_FORMATS.has(format as QueryResultFormat)) {
     throw new CliError(`Unsupported format: ${format}. Use human, json, csv, or markdown.`);
   }
   return format as QueryResultFormat;
-}
-
-export function parseManagementOutputFormat(format: string): ManagementOutputFormat {
-  if (!MANAGEMENT_OUTPUT_FORMATS.has(format as ManagementOutputFormat)) {
-    throw new CliError(`Unsupported format: ${format}. Use json, table, csv, or markdown.`);
-  }
-  return format as ManagementOutputFormat;
-}
-
-export function renderQueryTable(
-  result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
-  options?: Partial<QueryDisplayOptions>,
-): string {
-  const displayOptions = { ...defaultDisplayOptions(), layout: "table" as const, ...options };
-  return renderQueryHumanOutput(result, displayOptions);
 }
 
 export function csvEscapeCell(value: unknown): string {
@@ -94,23 +72,6 @@ export function renderQueryOutputText(
     return renderQueryMarkdown(result, columnNames, displayOptions ?? defaultDisplayOptions());
   }
   return renderQueryHumanOutput(result, displayOptions ?? defaultDisplayOptions());
-}
-
-export function renderManagementTabularOutput(
-  result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
-  format: ManagementOutputFormat,
-): string {
-  if (format === "json") {
-    return renderQueryJson(result);
-  }
-  if (format === "csv") {
-    return renderQueryCsv(result);
-  }
-  if (format === "markdown") {
-    const columnNames = getQueryColumnNames(result);
-    return renderQueryMarkdown(result, columnNames, defaultDisplayOptions());
-  }
-  return renderQueryHumanOutput(result, { ...defaultDisplayOptions(), layout: "table" });
 }
 
 export async function writeQueryOutput(

@@ -1,7 +1,8 @@
 import { buildMainCommand } from "@/cli.ts";
 import type { CliContext } from "@/context.ts";
 import { runCommandTree } from "@/lib/command.ts";
-import { createCliRuntime, runWithCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
+import { createCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
+import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 export type CliTestHarness = {
   runtime: CliRuntime;

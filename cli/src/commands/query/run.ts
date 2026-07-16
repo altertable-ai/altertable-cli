@@ -1,7 +1,7 @@
 import { CliError } from "@/lib/errors.ts";
 import { optionalStringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
-import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
+import { writeQueryOutput } from "@/lib/query-output.ts";
 import { queryRunArgs } from "@/commands/query/lib/args.ts";
 import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
 import { parseRequestReadTimeoutMs } from "@/lib/timeout-args.ts";

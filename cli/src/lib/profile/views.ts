@@ -3,7 +3,7 @@ import {
   type ConfigureVerifyResult,
   formatConfigureVerifyRemediation,
 } from "@/lib/profile-status.ts";
-import type { ConfigureSelectOption } from "@/lib/profile-configure-interactive.ts";
+import type { SelectOption } from "@/ui/prompts.ts";
 import {
   document,
   rows,
@@ -14,16 +14,12 @@ import {
   type DisplayDocument,
   type DisplayRow,
   type DisplayText,
-  type DisplayTextStyle,
 } from "@/ui/document.ts";
 import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
 import type {
-  ActiveContext,
-  ConfigureCredentialStatus,
   ConfigureLakehouseCredential,
   ConfigureManagementCredential,
   ConfigureShowData,
-  ConfigureShowOverrides,
   ProfileInspect,
   ProfileSummary,
 } from "@/lib/profile/model.ts";
@@ -36,10 +32,6 @@ const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
 
 function linkedUrl(value: string): DisplayText {
   return /^https?:\/\//.test(value) ? [span(value, "accent", value)] : value;
-}
-
-function notConfigured(): DisplayText {
-  return [span("not set", "muted")];
 }
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
@@ -155,7 +147,7 @@ export function buildProfileListView(profiles: readonly ProfileSummary[]): Displ
   );
 }
 
-export function profileSwitchOption(profile: ProfileSummary): ConfigureSelectOption {
+export function profileSwitchOption(profile: ProfileSummary): SelectOption {
   const details = [
     profile.active && "active",
     profile.organization && `org: ${profile.organization}`,
@@ -236,10 +228,6 @@ export function profileStatusToJson(result: ProfileStatusResult): Record<string,
     },
   };
 }
-
-export type ConfigureAuthenticationViewOptions = {
-  planes?: ConfigureAuthPlane[];
-};
 
 function timestampMsDisplay(raw: string | undefined): string {
   if (!raw) {
@@ -338,33 +326,6 @@ function lakehouseCredentialRows(credential: ConfigureLakehouseCredential): Disp
   ];
 }
 
-function configureSummaryRows(data: ConfigureShowData): DisplayRow[] {
-  return [
-    { label: "Config dir:", value: data.config_dir },
-    { label: "Active profile:", value: data.profile },
-    { label: "Secret store:", value: data.secret_store },
-    { label: "Data plane:", value: linkedUrl(data.data_plane) },
-    { label: "Control plane:", value: linkedUrl(data.control_plane) },
-  ];
-}
-
-export function configureOverrideRows(overrides: ConfigureShowOverrides): DisplayRow[] {
-  const rows: DisplayRow[] = [];
-  if (overrides.environment) {
-    rows.push({
-      label: "Environment override:",
-      value: `ALTERTABLE_ENV=${overrides.environment} (stored: ${overrides.stored_environment ?? "none"})`,
-    });
-  }
-  if (overrides.api_key) {
-    rows.push({
-      label: "API key override:",
-      value: "ALTERTABLE_API_KEY is set via environment",
-    });
-  }
-  return rows;
-}
-
 export function configureAuthenticationRows(
   data: ConfigureShowData,
   planes: readonly ConfigureAuthPlane[] | undefined,
@@ -377,193 +338,4 @@ export function configureAuthenticationRows(
       : []),
     ...(includePlane("lakehouse") ? lakehouseCredentialRows(data.credentials.lakehouse) : []),
   ];
-}
-
-export function configureSetupHintLines(status: ConfigureCredentialStatus): DisplayText[] {
-  if (!status.hasManagement && !status.hasLakehouse) {
-    return [
-      [
-        span(
-          `${TERMINAL_INDENT}No credentials configured. Run: altertable profile --configure`,
-          "subtle",
-        ),
-      ],
-      [
-        span(`${TERMINAL_INDENT}Hint: run '`),
-        span("altertable profile --configure --scope management", "accent"),
-        span("' (or '"),
-        span("altertable profile --configure --api-key atm_xxx --env <name>", "accent"),
-        span("') for management commands, then '"),
-        span("altertable profile --configure --scope lakehouse", "accent"),
-        span("' (or '"),
-        span("altertable profile --configure --user <u> --password <p>", "accent"),
-        span("') for lakehouse queries."),
-      ],
-    ];
-  }
-
-  if (status.hasManagement && !status.hasLakehouse) {
-    return [
-      [
-        span(`${TERMINAL_INDENT}Hint: run '`),
-        span("altertable profile --configure --scope lakehouse", "accent"),
-        span("' or '"),
-        span("altertable profile --configure --user <u> --password <p>", "accent"),
-        span("' for lakehouse query, upload, upsert, and append commands."),
-      ],
-    ];
-  }
-
-  if (status.hasLakehouse && !status.hasManagement) {
-    return [
-      [
-        span(`${TERMINAL_INDENT}Hint: run '`),
-        span("altertable profile --configure --scope management", "accent"),
-        span("' or '"),
-        span("altertable profile --configure --api-key atm_xxx --env <name>", "accent"),
-        span("' for profile show, catalogs, and other management commands."),
-      ],
-    ];
-  }
-
-  return [];
-}
-
-export function buildConfigureShowView(
-  data: ConfigureShowData,
-  options: ConfigureAuthenticationViewOptions = {},
-): DisplayDocument {
-  const authentication = configureAuthenticationRows(data, options.planes);
-  const hints = configureSetupHintLines({
-    hasManagement: data.credentials.management.configured,
-    hasLakehouse: data.credentials.lakehouse.configured,
-  });
-  const overrides = configureOverrideRows(data.overrides);
-
-  return document(
-    section(rows(configureSummaryRows(data))),
-    section(
-      rows(authentication),
-      ...(hints.length > 0 ? [text(hints)] : []),
-      ...(overrides.length > 0 ? [rows(overrides)] : []),
-    ),
-  );
-}
-
-type ContextSummaryRow = {
-  profile: string;
-  environment: string;
-  management: string;
-  lakehouse: string;
-};
-
-function formatConfiguredValue(detail: string | null | undefined): DisplayText {
-  if (detail === null || detail === undefined || detail.length === 0) {
-    return notConfigured();
-  }
-  return detail;
-}
-
-function plainStatus(detail: string | null | undefined): string {
-  if (detail === null || detail === undefined || detail.length === 0) {
-    return "not set";
-  }
-  return detail;
-}
-
-function formatStatusCell(value: string, style: DisplayTextStyle): DisplayText {
-  if (value === "not set") {
-    return notConfigured();
-  }
-  return [span(value, style)];
-}
-
-function contextSummaryRow(context: ActiveContext): ContextSummaryRow {
-  return {
-    profile: context.profile,
-    environment: plainStatus(context.environment),
-    management: plainStatus(context.management),
-    lakehouse: plainStatus(context.lakehouse),
-  };
-}
-
-function identityRows(context: ActiveContext): DisplayRow[] {
-  if (context.principal !== undefined || context.organization !== undefined) {
-    const principal = context.principal ?? {};
-    const organization = context.organization ?? {};
-    const identity: DisplayRow[] = [];
-    if (principal.type === "ServiceAccount") {
-      identity.push({
-        label: "Service account:",
-        value: `${principal.name ?? ""} (${principal.slug ?? ""})`,
-      });
-    } else if (principal.email) {
-      identity.push({ label: "User:", value: `${principal.name ?? ""} <${principal.email}>` });
-    } else if (principal.name) {
-      identity.push({ label: "User:", value: principal.name });
-    }
-    if (organization.name || organization.slug) {
-      identity.push({
-        label: "Organization:",
-        value: `${organization.name ?? ""} (${organization.slug ?? ""})`,
-      });
-    }
-    return identity;
-  }
-  return [];
-}
-
-function contextDetailRows(context: ActiveContext): DisplayRow[] {
-  return [
-    { label: "Profile:", value: context.profile },
-    { label: "Environment:", value: formatConfiguredValue(context.environment) },
-    ...identityRows(context),
-    { label: "Data plane:", value: linkedUrl(context.data_plane) },
-    { label: "Control plane:", value: linkedUrl(context.control_plane) },
-    { label: "Lakehouse:", value: formatConfiguredValue(context.lakehouse) },
-  ];
-}
-
-export function buildActiveContextSummaryView(context: ActiveContext): DisplayDocument {
-  const summaryBlocks = [
-    table({
-      rows: [contextSummaryRow(context)],
-      columns: [
-        {
-          header: "PROFILE",
-          cell: (entry) => formatStatusCell(entry.profile, "strong"),
-        },
-        {
-          header: "ENV",
-          cell: (entry) => formatStatusCell(entry.environment, "accent"),
-        },
-        {
-          header: "MGMT",
-          cell: (entry) => formatStatusCell(entry.management, "muted"),
-        },
-        {
-          header: "LAKEHOUSE",
-          cell: (entry) => formatStatusCell(entry.lakehouse, "string"),
-          flex: true,
-        },
-      ],
-    }),
-    ...(!context.credentialStatus.hasManagement && !context.credentialStatus.hasLakehouse
-      ? [text([[span("Hint: run `"), span("altertable profile --configure", "accent"), span("`")]])]
-      : []),
-  ];
-
-  return document(section(...summaryBlocks));
-}
-
-export function buildActiveContextDetailsView(context: ActiveContext): DisplayDocument {
-  const hints = configureSetupHintLines(context.credentialStatus);
-  const overrides = configureOverrideRows(context.overrides);
-  const detailBlocks = [
-    rows(contextDetailRows(context)),
-    ...(hints.length > 0 ? [text(["", ...hints])] : []),
-    ...(overrides.length > 0 ? [rows(overrides)] : []),
-  ];
-
-  return document(section(...detailBlocks));
 }

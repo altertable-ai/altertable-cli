@@ -1,14 +1,11 @@
-import { getCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
+import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { buildLakehouseVerifyRequest } from "@/lib/lakehouse/query.ts";
 import type { WhoamiResponse } from "@/lib/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
 import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 
 export type ConfigureAuthPlane = "management" | "lakehouse";
 
@@ -76,11 +73,10 @@ async function verifyPlane(
 
 export async function configureVerify(
   planes: ConfigureAuthPlane[],
+  execution: ExecutionContext,
 ): Promise<ConfigureVerifyResult> {
-  refreshCliRuntimeContext(getCliContext());
-
   const result: ConfigureVerifyResult = {
-    profile: resolveWorkingProfile(getCliContext().profile),
+    profile: execution.profile,
     configured: [...planes],
     verified: { management: false, lakehouse: false },
     errors: [],
@@ -90,7 +86,7 @@ export async function configureVerify(
     const verifier = CONFIGURE_VERIFY_PLANES[plane];
     const progress = startProgress(verifier.progressLabel);
     try {
-      const successMessage = await verifyPlane(plane, createExecutionContext(getCliRuntime()));
+      const successMessage = await verifyPlane(plane, execution);
       progress.done(formatProgressStatus("success", successMessage));
       result.verified[plane] = true;
     } catch (error) {

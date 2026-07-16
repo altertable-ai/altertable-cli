@@ -1,4 +1,4 @@
-import type { ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
+import type { ManagementOutputFormat } from "@/lib/tabular-result.ts";
 import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";

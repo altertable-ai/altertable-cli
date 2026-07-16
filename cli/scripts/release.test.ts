@@ -37,7 +37,7 @@ import {
   RELEASE_METADATA_ASSET,
   RELEASE_TARGETS,
   releaseCiMatrix,
-} from "@/release-manifest.ts";
+} from "@/../scripts/release-manifest.ts";
 import { VERSION } from "@/version.ts";
 
 const temporaryDirectories: string[] = [];

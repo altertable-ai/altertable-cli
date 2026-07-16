@@ -8,8 +8,8 @@ import {
   csvEscapeCell,
   renderQueryCsv,
   renderQueryJson,
-  renderQueryTable,
-} from "@/lib/lakehouse-client.ts";
+  renderQueryOutputText,
+} from "@/lib/query-output.ts";
 import {
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
@@ -274,8 +274,8 @@ describe("executeLakehouseQuery", () => {
 describe("query renderers", () => {
   const parsedResult = parseLakehouseQueryResponse(SAMPLE_NDJSON);
 
-  test("renderQueryTable prints a padded table", () => {
-    const table = renderQueryTable(parsedResult);
+  test("human query output prints a padded table", () => {
+    const table = renderQueryOutputText(parsedResult, "human");
     expect(table).toContain("id");
     expect(table).toContain("name");
     expect(table).toContain("Alice");

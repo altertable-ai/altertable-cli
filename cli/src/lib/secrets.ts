@@ -81,25 +81,12 @@ export type SecretSetOptions = {
   fromArgv?: boolean;
 };
 
-type SpawnSyncFn = (
-  command: string,
-  args: string[],
-  options: SpawnSyncOptions,
-) => SpawnSyncReturns<Buffer>;
-
-let spawnSyncOverride: SpawnSyncFn | undefined;
-
-export function setSpawnSyncForTests(fn: SpawnSyncFn | undefined): void {
-  spawnSyncOverride = fn;
-}
-
 function runSpawnSync(
   command: string,
   args: string[],
   options: SpawnSyncOptions,
 ): SpawnSyncReturns<Buffer> {
-  const spawnFn = spawnSyncOverride ?? spawnSync;
-  return spawnFn(command, args, options);
+  return spawnSync(command, args, options) as SpawnSyncReturns<Buffer>;
 }
 
 function secretSetMacos(storageAccount: string, value: string): void {
@@ -247,9 +234,4 @@ export function moveProfileSecrets(
 
 export function secretStoreDisplay(): string {
   return secretBackend() === "macos" ? "MacOS keychain" : credentialsFile();
-}
-
-// Reset warning flag for tests
-export function resetSecretWarningsForTests(): void {
-  fileBackendWarned = false;
 }

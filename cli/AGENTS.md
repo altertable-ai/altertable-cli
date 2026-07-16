@@ -43,11 +43,10 @@ bun test "$PWD"/tests/integration.e2e.ts
 - **Dual-plane auth**: lakehouse data plane (HTTP Basic) vs management REST (Bearer API key). See root README credential tables.
 - **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineCommand` injects `runtime`, `sink`, and a lazy `execution` context into every command handler. Commands pass `sink` to output helpers rather than writing to the console.
 - **Direct execution**: a leaf command parses its arguments, builds a plain request value, sends it, and presents the result. Request values stay declarative as the seam for a future dry-run mode; there is no operation/effect framework.
-- **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Accepts `sink` as the last argument; lib callers may omit it (defaults to `getOutputSink()`).
-- Helpers: `writeManagementOutput`, `writeLakehouseOutput`, `writeJsonOrRaw` (thin wrappers around `writeCommandOutput`).
+- **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Commands pass their injected `sink` explicitly.
 - **When to use `sink` directly**: bespoke output (custom tables, metadata messages) — `sink.writeJson`, `sink.writeHuman`, `sink.writeMetadata`.
 - **When to use helpers**: API-shaped responses with `--json` parity — pass `sink` as the last argument.
-- Lakehouse streaming/query formatting lives in `lakehouse-client.ts` and `query-format.ts`.
+- Lakehouse streaming lives in `lakehouse/`; query presentation lives in `query-output.ts` and `query-format.ts`.
 
 ## Conventions
 
@@ -107,12 +106,11 @@ bun test "$PWD"/tests/integration.e2e.ts
 | `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)                       |
 | `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands              |
 | `commands/profile/`                     | Profile subcommands, `profile --configure`, `profile show`                       |
-| `lib/lakehouse-client.ts`               | Lakehouse HTTP + query rendering                                                 |
+| `lib/query-output.ts`                   | Shared query output formats and sink dispatch                                    |
 | `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                                |
-| `lib/management-transport.ts`           | Management API HTTP transport                                                    |
-| `lib/management/`                       | Shared management identity and catalog presentation                              |
-| `lib/catalogs/rows.ts`                  | Catalog rows shared by `catalogs` and `duckdb`                                   |
-| `commands/catalogs/lib/requests.ts`     | Declarative catalog request builders and execution                               |
+| `lib/management/`                       | Shared management identity, catalogs, and presentation                           |
+| `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                                       |
+| `ui/prompts.ts`                         | Shared interactive prompt adapter and types                                      |
 | `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                                      |
 | `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                                            |
 

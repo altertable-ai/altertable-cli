@@ -13,13 +13,12 @@ import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   collectLakehouseCredentials,
   collectManagementCredentials,
-  ConfigurePromptCancelled,
-  defaultConfigurePrompts,
   planesForConfigureScope,
   promptConfigureScope,
   type ConfigureWizardOptions,
   type ConfigureWizardScope,
 } from "@/lib/profile-configure-interactive.ts";
+import { defaultPrompts, PromptCancelled } from "@/ui/prompts.ts";
 import { getTerminalWidth, getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { deriveProfileName } from "@/lib/profile/model.ts";
 import { document, section, span, text, type DisplayText } from "@/ui/document.ts";
@@ -95,7 +94,7 @@ async function runConfigureWizardInCurrentProfile(
   profileName: string,
 ): Promise<void> {
   const sink = options.sink ?? getOutputSink();
-  const prompts = options.prompts ?? defaultConfigurePrompts;
+  const prompts = options.prompts ?? defaultPrompts;
 
   if (isJsonOutput(getCliContext())) {
     throw new ConfigurationError(
@@ -148,7 +147,7 @@ async function runConfigureWizardInCurrentProfile(
 
     writeOutro(sink, configuredPlanes, targetProfile);
   } catch (error) {
-    if (error instanceof ConfigurePromptCancelled) {
+    if (error instanceof PromptCancelled) {
       sink.writeMetadata([renderDisplayText([span("Configuration cancelled.", "subtle")])]);
       throw error;
     }
