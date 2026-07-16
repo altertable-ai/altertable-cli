@@ -9,6 +9,9 @@ import { assertSafeProfileName, isFromEnvProfile } from "@/lib/profile-store.ts"
 
 type SecretBackend = "macos" | "file";
 
+// `security` returns errSecItemNotFound (-25300) modulo 256 as its process status.
+const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
+
 type SecretProcessResult = {
   status: number | null;
   stdout: string | Buffer;
@@ -184,11 +187,14 @@ export function createSecretStore(
 
     const secretKey = resolveSecretKey(key, profileName);
     if (secretBackend() === "macos") {
-      secretProcess.spawnSync(
+      const result = secretProcess.spawnSync(
         "security",
         ["delete-generic-password", "-s", "altertable", "-a", secretKey],
         { stdio: "ignore" },
       );
+      if (result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS) {
+        throw new CliError(`Failed to delete secret from macOS keychain (${secretKey}).`);
+      }
       kvUnset(credentialsFile(), secretKey);
       return;
     }

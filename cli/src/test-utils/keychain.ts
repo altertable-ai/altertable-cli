@@ -4,6 +4,7 @@ type FakeKeychain = {
   store: SecretStore;
   calls: string[][];
   failingWrites: Set<string>;
+  failingDeletes: Set<string>;
 };
 
 function argumentAfter(args: string[], flag: string): string {
@@ -15,6 +16,7 @@ export function createFakeKeychain(): FakeKeychain {
   const calls: string[][] = [];
   const values = new Map<string, string>();
   const failingWrites = new Set<string>();
+  const failingDeletes = new Set<string>();
 
   const store = createSecretStore({
     platform: "darwin",
@@ -35,6 +37,8 @@ export function createFakeKeychain(): FakeKeychain {
           : { status: 0, stdout: Buffer.from(value) };
       }
       if (args.includes("delete-generic-password")) {
+        if (failingDeletes.has(account)) return { status: 1, stdout: Buffer.from("") };
+        if (!values.has(account)) return { status: 44, stdout: Buffer.from("") };
         values.delete(account);
         return { status: 0, stdout: Buffer.from("") };
       }
@@ -42,5 +46,5 @@ export function createFakeKeychain(): FakeKeychain {
     },
   });
 
-  return { store, calls, failingWrites };
+  return { store, calls, failingWrites, failingDeletes };
 }

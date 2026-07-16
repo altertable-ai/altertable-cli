@@ -40,3 +40,23 @@ describe("secretSet", () => {
     expect(keychain.store.secretGet("lakehouse/password", "default")).toBe("secret");
   });
 });
+
+describe("secretDelete", () => {
+  test("fails closed when Keychain deletion fails", () => {
+    const keychain = createFakeKeychain();
+    const account = "profile/default/api-key";
+    keychain.store.secretSet("api-key", "atm_test", "default");
+    keychain.failingDeletes.add(account);
+
+    expect(() => keychain.store.secretDelete("api-key", "default")).toThrow(
+      "Failed to delete secret from macOS keychain",
+    );
+    expect(keychain.store.secretGet("api-key", "default")).toBe("atm_test");
+  });
+
+  test("accepts an already absent Keychain item", () => {
+    const keychain = createFakeKeychain();
+
+    expect(() => keychain.store.secretDelete("api-key", "default")).not.toThrow();
+  });
+});

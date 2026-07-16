@@ -112,6 +112,21 @@ describe("profile model", () => {
     ).toBe(true);
   });
 
+  test("keeps the profile when Keychain secret deletion fails", () => {
+    process.env.ALTERTABLE_SECRET_BACKEND = "keychain";
+    createEmptyProfile("staging");
+    const keychain = createFakeKeychain();
+    keychain.store.secretSet("api-key", "atm_staging", "staging");
+    keychain.failingDeletes.add("profile/staging/api-key");
+
+    expect(() => deleteProfile("staging", keychain.store)).toThrow(
+      "Failed to delete secret from macOS keychain",
+    );
+
+    expect(profileExists("staging")).toBe(true);
+    expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
+  });
+
   test("renames profile config, active selection, and secrets", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     setActiveProfile("staging");
