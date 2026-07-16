@@ -104,7 +104,7 @@ test("production modules access the environment only through env.ts", async () =
       relativePath === "lib/env.ts" ||
       relativePath.endsWith(".test.ts") ||
       relativePath.startsWith("generated/") ||
-      relativePath.startsWith("test-support/")
+      relativePath.startsWith("test-utils/")
     ) {
       continue;
     }

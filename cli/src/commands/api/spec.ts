@@ -28,10 +28,7 @@ export const apiSpecCommand = defineCommand({
   },
 });
 
-export async function runApiSpecCommand(
-  sink: OutputSink,
-  options?: { format?: string },
-): Promise<void> {
+async function runApiSpecCommand(sink: OutputSink, options?: { format?: string }): Promise<void> {
   const format = resolveOpenapiSpecFormat(
     sink.json,
     process.stdout.isTTY === true,

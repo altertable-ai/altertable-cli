@@ -16,7 +16,7 @@ import {
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
-} from "@/test-support/terminal-test-utils.ts";
+} from "@/test-utils/terminal.ts";
 
 describe("renderAltertableUsage", () => {
   test("groups root commands before global flags in a custom help panel", async () => {

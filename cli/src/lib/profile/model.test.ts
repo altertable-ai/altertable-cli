@@ -11,23 +11,24 @@ import {
   setSpawnSyncForTests,
 } from "@/lib/secrets.ts";
 import {
-  DEFAULT_PROFILE_NAME,
   createEmptyProfile,
   deleteProfile,
   deriveProfileName,
-  ensureProfilesLayout,
-  getActiveProfileName,
   inspectProfile,
   listProfiles,
-  profileConfigFile,
-  profileExists,
   renameProfile,
-  resolveWorkingProfile,
-  setActiveProfile,
   updateProfile,
 } from "@/lib/profile/model.ts";
-import { promptProfileSwitch } from "@/commands/profile/index.ts";
-import { ConfigurationError, CliError } from "@/lib/errors.ts";
+import {
+  DEFAULT_PROFILE_NAME,
+  ensureProfilesLayout,
+  getActiveProfileName,
+  profileConfigFile,
+  profileExists,
+  resolveWorkingProfile,
+  setActiveProfile,
+} from "@/lib/profile-store.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 import {
   buildProfileDirenvView,
   buildProfileInspectView,
@@ -37,15 +38,8 @@ import {
   type ProfileStatusResult,
 } from "@/lib/profile/views.ts";
 import { formatProfileInspect, formatProfileStatus } from "@/lib/profile/render.ts";
-import { runProfileConfigure } from "@/lib/profile-configure.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
-import {
-  createCliTestRuntime,
-  runCommandWithTestRuntime,
-} from "@/test-support/cli-test-runtime.ts";
 import { renderShellExportView } from "@/ui/shell/render.ts";
-
-const profileName = "default";
 
 let testHome = "";
 
@@ -133,23 +127,6 @@ describe("profile storage", () => {
     expect(created.environment).toBe("production");
 
     expect(inspectProfile("acme_prod").endpoints.data_plane).toBe("https://api.example.com");
-  });
-
-  test("profile create configures and switches to the created profile", async () => {
-    await configureRunSet({ apiKey: "atm_a", env: "prod" });
-
-    await runCommandWithTestRuntime([
-      "profile",
-      "create",
-      "acme_stage",
-      "--api-key",
-      "atm_stage",
-      "--env",
-      "staging",
-    ]);
-
-    expect(getActiveProfileName()).toBe("acme_stage");
-    expect(secretGet("api-key", "acme_stage")).toBe("atm_stage");
   });
 
   test("inspectProfile reports profile-scoped auth status", async () => {
@@ -439,54 +416,6 @@ describe("profile storage", () => {
     await configureRunSet({ profile: "prod-eu", apiKey: "atm_prod", env: "prod" });
     expect(profileExists("staging")).toBe(true);
     expect(profileExists("prod-eu")).toBe(true);
-  });
-
-  test("promptProfileSwitch selects from configured profiles", async () => {
-    await configureRunSet({ apiKey: "atm_a", env: "prod" });
-    await configureRunSet({ profile: "staging", apiKey: "atm_b", env: "staging" });
-
-    const selected = await promptProfileSwitch({
-      writePrompt() {},
-      readLine: async () => "",
-      readPassword: async () => "",
-      readConfirm: async () => true,
-      readSelect: async (title, options, defaultValue) => {
-        expect(title).toBe("Switch profile");
-        expect(defaultValue).toBe("default");
-        expect(options.map((option) => option.value)).toContain("staging");
-        expect(options.find((option) => option.value === "staging")?.label).toContain(
-          "env: staging",
-        );
-        return "staging";
-      },
-    });
-
-    expect(selected).toBe("staging");
-  });
-});
-
-describe("profile --configure dispatch", () => {
-  test("flag-based configure writes credentials to the active profile", async () => {
-    const sink = createCliTestRuntime({ debug: false, json: false, agent: false }).output;
-
-    await runProfileConfigure({ "api-key": "atm_flagkey", env: "staging" }, sink);
-
-    expect(secretGet("api-key", profileName)).toBe("atm_flagkey");
-    expect(configGet("api_key_env", profileName)).toBe("staging");
-  });
-
-  test("rejects --scope combined with credential flags", async () => {
-    const sink = createCliTestRuntime({ debug: false, json: false, agent: false }).output;
-
-    let caught: unknown;
-    try {
-      await runProfileConfigure({ "api-key": "atm_x", env: "prod", scope: "management" }, sink);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(CliError);
-    expect(secretGet("api-key", profileName)).toBe("");
   });
 });
 

@@ -1,25 +1,25 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { ParseError } from "@/lib/errors.ts";
 import {
   csvEscapeCell,
-  getQueryColumnNames,
-  parseLakehouseQueryResponse,
-  parseLakehouseQueryStream,
   renderQueryCsv,
   renderQueryJson,
   renderQueryTable,
-  type LakehouseRow,
 } from "@/lib/lakehouse-client.ts";
+import {
+  parseLakehouseQueryResponse,
+  parseLakehouseQueryStream,
+  type LakehouseRow,
+} from "@/lib/lakehouse-ndjson.ts";
+import { getQueryColumnNames } from "@/lib/query-format.ts";
 import { httpSendStream } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { runCommandWithTestRuntime } from "@/test-support/cli-test-runtime.ts";
-import { normalizeQueryInvocatorRawArgs } from "@/commands/query/index.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',
@@ -30,14 +30,11 @@ const SAMPLE_NDJSON = [
 
 let testHome = "";
 let mockFile = "";
-let logFile = "";
 
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-lakehouse-test-"));
   mockFile = join(testHome, "mocks.json");
-  logFile = join(testHome, "http.log");
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
-  process.env.ALTERTABLE_HTTP_LOG = logFile;
   process.env.ALTERTABLE_API_BASE = "https://example.com";
   process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "testuser";
   process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "testpass";
@@ -45,17 +42,9 @@ beforeEach(() => {
   refreshCliRuntimeContext(getCliRuntime().context);
 });
 
-function readLoggedPayloads(): string[] {
-  return readFileSync(logFile, "utf8")
-    .split("\n")
-    .filter((line) => line.startsWith("PAYLOAD="))
-    .map((line) => line.slice("PAYLOAD=".length));
-}
-
 afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
-  delete process.env.ALTERTABLE_HTTP_LOG;
   delete process.env.ALTERTABLE_API_BASE;
   delete process.env.ALTERTABLE_LAKEHOUSE_USERNAME;
   delete process.env.ALTERTABLE_LAKEHOUSE_PASSWORD;
@@ -321,320 +310,5 @@ describe("query renderers", () => {
       rows: [{ id: 1, name: "Alice" }],
     });
     expect(names).toEqual(["id", "name"]);
-  });
-});
-
-describe("normalizeQueryInvocatorRawArgs", () => {
-  test("routes a bare SQL statement to the run subcommand", () => {
-    expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1"])).toEqual([
-      "query",
-      "run",
-      "SELECT 1",
-    ]);
-  });
-
-  test("keeps flags citty-parsed on either side of the statement", () => {
-    expect(normalizeQueryInvocatorRawArgs(["query", "--format", "json", "SELECT 1"])).toEqual([
-      "query",
-      "run",
-      "--format",
-      "json",
-      "SELECT 1",
-    ]);
-    expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1", "--format", "json"])).toEqual([
-      "query",
-      "run",
-      "SELECT 1",
-      "--format",
-      "json",
-    ]);
-  });
-
-  test("leaves real subcommands, flag-only invocations, and other commands untouched", () => {
-    expect(normalizeQueryInvocatorRawArgs(["query", "show", "abc"])).toEqual([
-      "query",
-      "show",
-      "abc",
-    ]);
-    expect(normalizeQueryInvocatorRawArgs(["query", "--format", "json"])).toEqual([
-      "query",
-      "--format",
-      "json",
-    ]);
-    expect(normalizeQueryInvocatorRawArgs(["schema", "analytics"])).toEqual([
-      "schema",
-      "analytics",
-    ]);
-  });
-});
-
-describe("lakehouse command HTTP behavior", () => {
-  test("query command sends optional query and session identifiers", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/query",
-          method: "POST",
-          body: SAMPLE_NDJSON,
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime(
-      normalizeQueryInvocatorRawArgs([
-        "query",
-        "SELECT 1",
-        "--format",
-        "json",
-        "--query-id",
-        "query-1",
-        "--session-id",
-        "session-1",
-      ]),
-    );
-
-    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({
-      statement: "SELECT 1",
-      query_id: "query-1",
-      session_id: "session-1",
-    });
-  });
-
-  test("query runs a positional SQL statement without --statement", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([{ urlPattern: "/query", method: "POST", body: SAMPLE_NDJSON }]),
-    );
-
-    await runCommandWithTestRuntime(
-      normalizeQueryInvocatorRawArgs(["query", "SELECT 1", "--format", "json"]),
-    );
-
-    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({ statement: "SELECT 1" });
-  });
-
-  test("query subcommands dispatch without requiring --statement", async () => {
-    const queryId = "11111111-2222-3333-4444-555555555555";
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: `/query/${queryId}`,
-          method: "GET",
-          body: '{"uuid":"11111111-2222-3333-4444-555555555555"}',
-        },
-        {
-          urlPattern: `/query/${queryId}`,
-          method: "DELETE",
-          body: '{"cancelled":true}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime(["query", "show", queryId]);
-    await runCommandWithTestRuntime(["query", "cancel", queryId, "--session-id", "session-1"]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("METHOD=GET");
-    expect(logContent).toContain(`URL=https://example.com/query/${queryId}`);
-    expect(logContent).toContain("METHOD=DELETE");
-    expect(logContent).toContain(`URL=https://example.com/query/${queryId}?session_id=session-1`);
-  });
-
-  test("append --sync sends sync=true query param", async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/append",
-          method: "POST",
-          body: '{"ok":true}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime([
-      "append",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--data",
-      '{"id":1}',
-      "--sync",
-    ]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("URL=https://example.com/append?");
-    expect(logContent).toContain("sync=true");
-    expect(JSON.parse(readLoggedPayloads()[0] ?? "")).toEqual({ id: 1 });
-  });
-
-  test("append status calls /tasks/{append_id}", async () => {
-    const appendId = "11111111-2222-3333-4444-555555555555";
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: `/tasks/${appendId}`,
-          method: "GET",
-          body: '{"task_id":"11111111-2222-3333-4444-555555555555","status":"completed"}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime(["append", "status", appendId]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain(`URL=https://example.com/tasks/${appendId}`);
-  });
-
-  test("upload command sends mode without exposing file contents", async () => {
-    const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/upload",
-          method: "POST",
-          body: '{"ok":true}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime([
-      "upload",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--format",
-      "csv",
-      "--mode",
-      "overwrite",
-      "--file",
-      uploadFile,
-    ]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("URL=https://example.com/upload?");
-    expect(logContent).toContain("mode=overwrite");
-    expect(logContent).not.toContain("format=csv");
-    expect(logContent).not.toContain("primary_key=id");
-    expect(logContent).toContain("PAYLOAD=@blob");
-    expect(logContent).not.toContain("id,name");
-  });
-
-  test("upsert command sends primary key without upload mode", async () => {
-    const uploadFile = join(testHome, "data.csv");
-    writeFileSync(uploadFile, "id,name\n1,Alice", "utf8");
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/upsert",
-          method: "POST",
-          body: '{"ok":true}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime([
-      "upsert",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--primary-key",
-      "id",
-      "--format",
-      "csv",
-      "--file",
-      uploadFile,
-    ]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("URL=https://example.com/upsert?");
-    expect(logContent).toContain("primary_key=id");
-    expect(logContent).not.toContain("mode=upsert");
-    expect(logContent).toMatch(/PAYLOAD=@(?:blob|stream)/);
-  });
-
-  test("upload command rejects missing files and directories", async () => {
-    const directoryPath = join(testHome, "upload-directory");
-    mkdirSync(directoryPath);
-
-    try {
-      await runCommandWithTestRuntime([
-        "upload",
-        "--catalog",
-        "memory",
-        "--schema",
-        "main",
-        "--table",
-        "users",
-        "--format",
-        "csv",
-        "--mode",
-        "overwrite",
-        "--file",
-        join(testHome, "missing.csv"),
-      ]);
-      throw new Error("expected missing file failure");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain("File not found");
-    }
-
-    try {
-      await runCommandWithTestRuntime([
-        "upload",
-        "--catalog",
-        "memory",
-        "--schema",
-        "main",
-        "--table",
-        "users",
-        "--format",
-        "csv",
-        "--mode",
-        "overwrite",
-        "--file",
-        directoryPath,
-      ]);
-      throw new Error("expected directory failure");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain("File not found");
-    }
-  });
-
-  test("cancel URL-encodes query id in path", async () => {
-    const queryId = "query/id+special";
-    const encodedQueryId = encodeURIComponent(queryId);
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: `/query/${encodedQueryId}`,
-          method: "DELETE",
-          body: '{"cancelled":true}',
-        },
-      ]),
-    );
-
-    await runCommandWithTestRuntime(["query", "cancel", queryId, "--session-id", "session-1"]);
-
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain(`URL=https://example.com/query/${encodedQueryId}`);
-    expect(logContent).toContain("session_id=session-1");
   });
 });

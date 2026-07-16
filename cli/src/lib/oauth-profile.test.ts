@@ -9,13 +9,12 @@ import {
   getStoredAccessToken,
 } from "@/lib/oauth-profile.ts";
 import { getManagementAuthHeader } from "@/lib/auth.ts";
-import { configGet, configSet, resolveManagementApiBase, resolveOAuthBase } from "@/lib/config.ts";
+import { configGet, configSet, resolveOAuthBase } from "@/lib/config.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { ConfigurationError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
-import { fetchLoginWhoami, storeLoginProfileMetadata } from "@/commands/login/index.ts";
 
 const profileName = "default";
 let testHome = "";
@@ -209,52 +208,6 @@ describe("management request auth resolution", () => {
 
     expect(getStoredAccessToken(profileName)).toBe("acc3");
     expect(Number.parseInt(configGet("oauth_expiry", profileName), 10)).toBeGreaterThan(Date.now());
-  });
-
-  // Regression: logging into org B while org A's session lives in `default`.
-  // whoami during login must use the freshly minted org B token — not org A's
-  // stored session — otherwise it identifies org A and the login wrongly derives
-  // an `org-a_*` profile instead of branching to org B.
-  test("whoami during login honors the freshly minted token, not the stored session", async () => {
-    // "Org A login" already landed in the default profile.
-    storeOAuthTokens(
-      { access_token: "org_a_token", refresh_token: "ref_a", expires_in: 3600 },
-      profileName,
-    );
-    configSet("organization_slug", "org-a", profileName);
-
-    // The management server identifies the caller from its bearer token.
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: "/whoami",
-          method: "GET",
-          authPattern: "org_a_token",
-          body: '{"principal":{},"organization":{"slug":"org-a","name":"Org A"},"environment_slug":"production"}',
-        },
-        {
-          urlPattern: "/whoami",
-          method: "GET",
-          authPattern: "org_b_token",
-          body: '{"principal":{},"organization":{"slug":"org-b","name":"Org B"},"environment_slug":"production"}',
-        },
-      ]),
-    );
-
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    const metadata = await runWithCliRuntime(runtime, async () => {
-      refreshCliRuntimeContext(getCliContext());
-      // The org B browser flow just minted this token.
-      const whoami = await fetchLoginWhoami(
-        { access_token: "org_b_token", refresh_token: "ref_b", expires_in: 3600 },
-        resolveManagementApiBase(profileName),
-      );
-      return storeLoginProfileMetadata(whoami, {});
-    });
-
-    // Logging into org B must branch to org B's profile, not org A's.
-    expect(metadata.profileName).toBe("org-b_production");
   });
 
   test("resolves the header live from the store, not a bootstrap cache", async () => {

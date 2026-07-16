@@ -6,7 +6,7 @@ import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { executeApiHttp, resolveApiHttp } from "@/commands/api/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { encodeManagementEndpoint } from "@/lib/management-transport.ts";
+import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 const PLACEHOLDER_VALUES: Record<string, string> = {

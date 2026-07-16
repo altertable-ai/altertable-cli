@@ -86,6 +86,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 | `src/commands/<family>/<name>.ts`     | One leaf command                                           |
 | `src/commands/<family>/lib/*`         | Implementation private to that command family              |
 | `src/lib/*`                           | Code shared by multiple command families                   |
+| `src/test-utils/*`                    | Shared CLI test harnesses and temporary workspaces         |
 | `src/generated/openapi-types.ts`      | Generated — run `bun run generate` after OpenAPI changes   |
 | `src/generated/openapi-operations.ts` | Generated operation index for `api routes`                 |
 | `src/**/*.test.ts`                    | Unit tests colocated beside their subject                  |
@@ -196,7 +197,7 @@ Test env vars: `ALTERTABLE_CONFIG_HOME`, `ALTERTABLE_SECRET_BACKEND=file`, `ALTE
 
 Lakehouse endpoint coverage: [DEVELOPMENT.md spec conformance table](../DEVELOPMENT.md#cli-spec-conformance-lakehouse).
 
-Example mock HTTP test pattern: `cli/src/lib/lakehouse/query.test.ts` sets `ALTERTABLE_MOCK_HTTP_FILE`. Root black-box tests use `tests/helpers.ts`.
+Example mock HTTP test pattern: command tests use `src/test-utils/lakehouse.ts` with `ALTERTABLE_MOCK_HTTP_FILE`. Root black-box tests use `tests/helpers.ts`.
 
 ## Invariants (do not break)
 

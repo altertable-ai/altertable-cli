@@ -28,7 +28,7 @@ import {
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
-} from "@/test-support/terminal-test-utils.ts";
+} from "@/test-utils/terminal.ts";
 
 let terminalState: TerminalTestState;
 

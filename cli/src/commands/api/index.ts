@@ -67,6 +67,3 @@ function isApiCommandName(value: string): boolean {
 function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {
   return isDelegatedSubCommand(rawArgs, isApiCommandName, { valueFlags: API_VALUE_FLAGS });
 }
-
-export { runApiSpecCommand } from "@/commands/api/spec.ts";
-export { runApiRoutesCommand } from "@/commands/api/routes.ts";

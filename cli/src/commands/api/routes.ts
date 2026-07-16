@@ -23,7 +23,7 @@ export const apiRoutesCommand = defineCommand({
   },
 });
 
-export async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {
+async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {
   const operation = operationId ? apiOperationDetails(operationId) : undefined;
   await writeCommandOutput(
     operation

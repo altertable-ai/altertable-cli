@@ -39,9 +39,9 @@ import {
   resolveUpdateSource,
   setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
-  UpdaterConfig,
   verifySha256,
 } from "@/lib/updater.ts";
+import { UpdaterConfig } from "@/lib/updater-config.ts";
 import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 let testHome = "";

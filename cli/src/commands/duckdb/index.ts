@@ -11,6 +11,7 @@ import { optionalStringArg } from "@/lib/args.ts";
 import { fetchManagementCatalogRows } from "@/commands/catalogs/lib/requests.ts";
 import type { CatalogRow } from "@/lib/management/model.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
+import { readEnv } from "@/lib/env.ts";
 
 export const duckdbCommand = defineCommand({
   meta: {
@@ -47,10 +48,7 @@ function attachStatement(credentials: LakehouseCredentials, catalog: string): st
 AS ${quoteIdentifier(catalog)} (TYPE ALTERTABLE);`;
 }
 
-export function buildDuckdbAttachSnippet(
-  credentials: LakehouseCredentials,
-  catalogs: string[],
-): string {
+function buildDuckdbAttachSnippet(credentials: LakehouseCredentials, catalogs: string[]): string {
   return [
     "INSTALL altertable FROM community;",
     "LOAD altertable;",
@@ -59,10 +57,7 @@ export function buildDuckdbAttachSnippet(
 }
 
 // Attach the requested catalog (verified against the environment) or every available one.
-export function selectCatalogsToAttach(
-  rows: CatalogRow[],
-  requested: string | undefined,
-): string[] {
+function selectCatalogsToAttach(rows: CatalogRow[], requested: string | undefined): string[] {
   const available = [
     ...new Set(rows.map((row) => row.catalog).filter((catalog) => catalog.length > 0)),
   ];
@@ -83,7 +78,8 @@ export function selectCatalogsToAttach(
 type DuckdbInput = { catalog: string | undefined };
 
 async function runDuckdb(input: DuckdbInput, execution: ExecutionContext): Promise<void> {
-  if (!Bun.which("duckdb")) {
+  const duckdb = Bun.which("duckdb", { PATH: readEnv("PATH") });
+  if (!duckdb) {
     throw new ConfigurationError(
       "duckdb is not installed. Install it from https://duckdb.org/install/ and try again.",
     );
@@ -103,7 +99,7 @@ async function runDuckdb(input: DuckdbInput, execution: ExecutionContext): Promi
   const catalogs = selectCatalogsToAttach(rows, input.catalog);
 
   const snippet = buildDuckdbAttachSnippet(credentials, catalogs);
-  const result = spawnSync("duckdb", ["-cmd", snippet], { stdio: "inherit" });
+  const result = spawnSync(duckdb, ["-cmd", snippet], { stdio: "inherit" });
   if (result.error) {
     throw new ConfigurationError(`Failed to launch duckdb: ${result.error.message}`);
   }

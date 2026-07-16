@@ -5,19 +5,17 @@ import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { CliError, HttpError, NetworkError, TimeoutError } from "@/lib/errors.ts";
 import {
-  computeRetryDelayMs,
   getSharedDispatcher,
   httpSend,
   httpSendStream,
-  isRetryableMethod,
-  parseRetryAfterMs,
   redactAuthHeader,
   redactHeaderValue,
-  redactResponseBodyForDebug,
   resolveFetchTimeoutMs,
   resolveReadTimeoutMs,
 } from "@/lib/http.ts";
-import { delay } from "@/test-support/test-utils.ts";
+import { computeRetryDelayMs, isRetryableMethod, parseRetryAfterMs } from "@/lib/http-retry.ts";
+import { redactResponseBodyForDebug } from "@/lib/redact.ts";
+import { delay } from "@/test-utils/time.ts";
 
 const fakeBearerKey = "atm_fake_test_key_for_redaction";
 const fakeBasicToken = "fake_basic_token_value";

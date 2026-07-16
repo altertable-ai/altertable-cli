@@ -3,45 +3,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import {
-  apiCommand,
-  normalizeApiInvocatorRawArgs,
-  runApiRoutesCommand,
-  runApiSpecCommand,
-} from "@/commands/api/index.ts";
+import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
-import { runCommandWithTestRuntime } from "@/test-support/cli-test-runtime.ts";
+import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { defineArgs, runCommandTree, type Command } from "@/lib/command.ts";
-
-function createCaptureSink(json: boolean) {
-  const stdout: string[] = [];
-  const runtime = createCliRuntime({ debug: false, json, agent: false });
-  runtime.output.writeRaw = (body) => {
-    stdout.push(body);
-  };
-  runtime.output.writeHuman = (text) => {
-    stdout.push(text);
-  };
-  runtime.output.writeJson = (data) => {
-    stdout.push(JSON.stringify(data));
-  };
-  return { sink: runtime.output, stdout };
-}
-
-async function runApiSpec(json: boolean, format?: string): Promise<string> {
-  const { sink, stdout } = createCaptureSink(json);
-  await runApiSpecCommand(sink, { format });
-  return stdout.join("");
-}
-
-async function runApiRoutes(json: boolean, operation?: string): Promise<string> {
-  const { sink, stdout } = createCaptureSink(json);
-  await runApiRoutesCommand(sink, operation);
-  return stdout.join("");
-}
 
 describe("api", () => {
   beforeEach(() => {
@@ -53,15 +21,24 @@ describe("api", () => {
   });
 
   test("api spec prints YAML containing Altertable Management API", async () => {
-    const output = await runApiSpec(false, "yaml");
+    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "yaml"], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+    const output = result.stdout.join("");
     expect(output).toContain("Altertable Management API");
     expect(output).toContain("openapi: 3.1.0");
     expect(output).not.toContain("AUTO-GENERATED");
   });
 
   test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    setCliContext({ debug: false, json: true, agent: false });
-    const output = await runApiSpec(true);
+    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "json"], {
+      debug: false,
+      json: true,
+      agent: false,
+    });
+    const output = result.stdout.join("");
     const document = JSON.parse(output) as { openapi?: string; info?: { title?: string } };
     expect(document.openapi).toBe("3.1.0");
     expect(document.info?.title).toBe("Altertable Management API");
@@ -109,7 +86,12 @@ describe("api", () => {
   });
 
   test("api routes inspects one operation in human mode", async () => {
-    const output = await runApiRoutes(false, "createDatabase");
+    const result = await runCommandWithTestRuntime(["api", "routes", "createDatabase"], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+    const output = result.stdout.join("");
     expect(output).toContain("createDatabase");
     expect(output).toContain("Path:");
     expect(output).toContain("/environments/{environment_id}/databases");
@@ -117,7 +99,11 @@ describe("api", () => {
   });
 
   test("api routes operation detail includes path parameters in JSON mode", async () => {
-    const output = await runApiRoutes(true, "createServiceAccountCredential");
+    const result = await runCommandWithTestRuntime(
+      ["api", "routes", "createServiceAccountCredential"],
+      { debug: false, json: true, agent: false },
+    );
+    const output = result.stdout.join("");
     const operation = JSON.parse(output) as { operationId?: string; parameters?: string[] };
     expect(operation.operationId).toBe("createServiceAccountCredential");
     expect(operation.parameters).toEqual(["service_account_id", "environment_id"]);

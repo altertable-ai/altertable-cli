@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configSetGlobal } from "@/lib/config.ts";
-import { parseLakehouseQueryResponse } from "@/lib/lakehouse-client.ts";
+import { parseLakehouseQueryResponse } from "@/lib/lakehouse-ndjson.ts";
 import {
   defaultDisplayOptions,
   formatQueryCell,
@@ -22,7 +22,7 @@ import {
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
-} from "@/test-support/terminal-test-utils.ts";
+} from "@/test-utils/terminal.ts";
 
 let terminalState: TerminalTestState | undefined;
 
