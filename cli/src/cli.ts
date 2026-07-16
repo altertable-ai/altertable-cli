@@ -163,7 +163,6 @@ async function bootstrap(): Promise<void> {
   setCliContext(earlyContext);
 
   try {
-    validateEnvironment();
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
@@ -180,6 +179,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
+    validateEnvironment();
     await runCommand(main, { rawArgs });
     await maybeShowUpdateNotice({
       context: getCliContext(),

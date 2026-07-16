@@ -157,17 +157,6 @@ export function copyProcessEnv(): NodeJS.ProcessEnv {
 }
 
 export function validateEnvironment(source: EnvSource = process.env): void {
-  const knownNames = new Set<string>(Object.keys(ENV_SCHEMA));
-  const unknownNames = Object.keys(source)
-    .filter((name) => name.startsWith("ALTERTABLE_") && !knownNames.has(name))
-    .sort();
-  if (unknownNames.length > 0) {
-    const noun = unknownNames.length === 1 ? "variable" : "variables";
-    throw new ConfigurationError(
-      `Unknown Altertable environment ${noun}: ${unknownNames.join(", ")}. Check the spelling against the documented ALTERTABLE_* variables.`,
-    );
-  }
-
   for (const name of Object.keys(ENV_SCHEMA) as EnvName[]) {
     if (name.startsWith("ALTERTABLE_")) {
       readEnvFrom(source, name);

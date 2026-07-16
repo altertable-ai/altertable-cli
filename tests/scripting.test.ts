@@ -32,6 +32,30 @@ describe("scriptable exit codes and JSON errors", () => {
     expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
   });
 
+  test("ignores unrelated Altertable workflow variables", async () => {
+    const result = await workspace.runCommand("altertable --json profile show", {
+      env: {
+        ALTERTABLE_CATALOG: "analytics",
+        ALTERTABLE_SCHEMA: "reporting",
+        ALTERTABLE_TABLE: "events",
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
+  });
+
+  test.each(["--help", "--version"])("%s bypasses environment validation", async (flag) => {
+    const result = await workspace.runCommand(`altertable ${flag}`, {
+      env: { ALTERTABLE_UPDATE_SOURCE: "gitlab" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.length).toBeGreaterThan(0);
+  });
+
   test.each([
     ["auth", statusMocks.auth, "altertable --json api GET /whoami", 2, "auth_failed"],
     ["not found", statusMocks.missing, "altertable --json api GET /environments/production/connections/missing", 4, undefined],

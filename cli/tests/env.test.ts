@@ -77,10 +77,14 @@ describe("environment schema", () => {
     ).toThrow("Secret environment variables must declare secret: true: ALTERTABLE_NEW_TOKEN");
   });
 
-  test("rejects misspelled Altertable variable names", () => {
+  test("ignores unknown Altertable variable names", () => {
     expect(() =>
-      validateEnvironment({ ALTERTABLE_API_KEI: "secret", ALTERTABLE_API_KEY: "valid" }),
-    ).toThrow("Unknown Altertable environment variable: ALTERTABLE_API_KEI");
+      validateEnvironment({
+        ALTERTABLE_CATALOG: "analytics",
+        ALTERTABLE_SCHEMA: "reporting",
+        ALTERTABLE_TABLE: "events",
+      }),
+    ).not.toThrow();
   });
 
   test("validates every configured Altertable value at startup", () => {
