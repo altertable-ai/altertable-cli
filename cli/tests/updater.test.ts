@@ -46,7 +46,7 @@ import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 
 let testHome = "";
 const packageJsonPath = resolve(import.meta.dir, "../package.json");
-const UPDATE_TEST_VERSION = "1.2.3";
+const UPDATE_TEST_VERSION = `${Number(VERSION.split(".")[0]) + 1}.0.0`;
 const LINUX_X64_ASSET = "altertable-linux-x64";
 const LINUX_X64_DOWNLOAD_URL = `https://download.example/${LINUX_X64_ASSET}`;
 const CHECKSUMS_DOWNLOAD_URL = "https://download.example/checksums.txt";
