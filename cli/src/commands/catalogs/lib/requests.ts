@@ -25,9 +25,10 @@ export async function fetchManagementCatalogRows(
   env: string,
   execution: ExecutionContext,
 ): Promise<CatalogRow[]> {
-  const [databasesResponse, connectionsResponse] = await Promise.all([
-    sendHttp(buildCatalogListRequest(env, "databases"), execution),
-    sendHttp(buildCatalogListRequest(env, "connections"), execution),
-  ]);
+  const databasesResponse = await sendHttp(buildCatalogListRequest(env, "databases"), execution);
+  const connectionsResponse = await sendHttp(
+    buildCatalogListRequest(env, "connections"),
+    execution,
+  );
   return buildCatalogRowsFromResponses(databasesResponse, connectionsResponse);
 }
