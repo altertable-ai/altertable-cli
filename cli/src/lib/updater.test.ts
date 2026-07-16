@@ -14,6 +14,7 @@ import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { runCommandTree } from "@/lib/command.ts";
+import { configFile, kvSet } from "@/lib/config.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
   checkForUpdate,
@@ -35,7 +36,6 @@ import {
   releaseAssetName,
   releaseUrlForSource,
   resolveUpdateSource,
-  setUpdateCheckInterval,
   shouldRunAutomaticUpdateCheck,
   verifySha256,
 } from "@/lib/updater.ts";
@@ -613,7 +613,7 @@ describe("automatic update checks", () => {
   });
 
   test("honors interval policy and environment opt-out", () => {
-    setUpdateCheckInterval("never");
+    kvSet(configFile(), UpdaterConfig.configKeys.checkInterval, "never");
     expect(getUpdateCheckInterval()).toBe("never");
     expect(
       shouldRunAutomaticUpdateCheck({
@@ -624,7 +624,7 @@ describe("automatic update checks", () => {
       }),
     ).toBe(false);
 
-    setUpdateCheckInterval("daily");
+    kvSet(configFile(), UpdaterConfig.configKeys.checkInterval, "daily");
     process.env.ALTERTABLE_NO_UPDATE_CHECK = "1";
     expect(
       shouldRunAutomaticUpdateCheck({

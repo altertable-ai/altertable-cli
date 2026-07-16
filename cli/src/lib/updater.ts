@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
 import { USER_AGENT, VERSION } from "@/version.ts";
-import { configDir, configGetGlobal, configSetGlobal } from "@/lib/config.ts";
+import { configDir, configGetGlobal } from "@/lib/config.ts";
 import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -274,10 +274,6 @@ export function getUpdateCheckInterval(): UpdateCheckInterval {
     configGetGlobal(UpdaterConfig.configKeys.checkInterval),
   );
   return fromConfig ?? UpdaterConfig.defaults.checkInterval;
-}
-
-export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
-  configSetGlobal(UpdaterConfig.configKeys.checkInterval, interval);
 }
 
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {

@@ -1,6 +1,5 @@
 import { configGet, configSet } from "@/lib/profile-store.ts";
 import {
-  chmodConfigFile,
   configDir,
   configFile,
   credentialsFile,
@@ -17,11 +16,6 @@ export { configGet, configSet };
 
 export function configGetGlobal(key: string): string {
   return kvGet(configFile(), key);
-}
-
-export function configSetGlobal(key: string, value: string): void {
-  kvSet(configFile(), key, value);
-  chmodConfigFile(configFile());
 }
 
 function resolveAllowInsecureHttp(): boolean {

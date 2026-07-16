@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   configDir,
+  configFile,
   configGet,
   configSet,
-  configSetGlobal,
   getQueryDefaultLayout,
   getQueryDefaultMaxColumnWidth,
   getQueryDefaultPager,
@@ -67,23 +67,23 @@ describe("config", () => {
   });
 
   test("reads valid query display defaults and ignores invalid values", () => {
-    configSetGlobal("query_max_width", "48");
-    configSetGlobal("query_layout", "line");
-    configSetGlobal("query_pager", "always");
+    kvSet(configFile(), "query_max_width", "48");
+    kvSet(configFile(), "query_layout", "line");
+    kvSet(configFile(), "query_pager", "always");
     expect(getQueryDefaultMaxColumnWidth()).toBe(48);
     expect(getQueryDefaultLayout()).toBe("line");
     expect(getQueryDefaultPager()).toBe("always");
 
-    configSetGlobal("query_max_width", "4");
-    configSetGlobal("query_layout", "invalid");
-    configSetGlobal("query_pager", "sometimes");
+    kvSet(configFile(), "query_max_width", "4");
+    kvSet(configFile(), "query_layout", "invalid");
+    kvSet(configFile(), "query_pager", "sometimes");
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
     expect(getQueryDefaultPager()).toBeUndefined();
   });
 
   test("keeps global query defaults outside profile config", () => {
-    configSetGlobal("query_layout", "line");
+    kvSet(configFile(), "query_layout", "line");
     configSet("api_key_env", "staging", "staging");
 
     expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
