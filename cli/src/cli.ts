@@ -10,18 +10,7 @@ import {
 } from "@/context.ts";
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
-import { loginCommand, logoutCommand } from "@/commands/login.ts";
-import { profileCommand } from "@/commands/profile.ts";
-import { catalogsCommand } from "@/commands/catalogs.ts";
-import { duckdbCommand } from "@/commands/duckdb.ts";
-import { appendCommand } from "@/commands/lakehouse/append.ts";
-import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
-import { schemaCommand } from "@/commands/lakehouse/schema.ts";
-import { uploadCommand } from "@/commands/lakehouse/upload.ts";
-import { upsertCommand } from "@/commands/lakehouse/upsert.ts";
-import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
-import { createCompletionCommand } from "@/commands/completion.ts";
-import { updateCommand } from "@/commands/update.ts";
+import { buildTopLevelCommands, normalizeCommandRawArgs } from "@/commands/index.ts";
 import {
   CliError,
   EXIT_SUCCESS,
@@ -86,23 +75,7 @@ export function resolveTopLevelCommandName(rawArgs: readonly string[]): string |
 export function buildMainCommand(): CommandDef {
   let mainCommand: CommandDef;
 
-  const completionCommand = createCompletionCommand(() => mainCommand);
-
-  const topLevelCommands: Record<string, CommandDef> = {
-    login: loginCommand,
-    logout: logoutCommand,
-    profile: profileCommand,
-    catalogs: catalogsCommand,
-    query: queryCommand,
-    schema: schemaCommand,
-    duckdb: duckdbCommand,
-    append: appendCommand,
-    upload: uploadCommand,
-    upsert: upsertCommand,
-    api: apiCommand,
-    update: updateCommand,
-    completion: completionCommand,
-  };
+  const topLevelCommands = buildTopLevelCommands(() => mainCommand);
 
   mainCommand = defineRootCommand({
     meta: {
@@ -153,10 +126,7 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = normalizeQueryInvocatorRawArgs(
-    normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS),
-    ROOT_ARGS,
-  );
+  const rawArgs = normalizeCommandRawArgs(process.argv.slice(2), ROOT_ARGS);
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);
