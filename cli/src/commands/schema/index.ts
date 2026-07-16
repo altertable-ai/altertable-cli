@@ -1,6 +1,7 @@
 import { stringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
-import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";
+import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
+import { parseRequestReadTimeoutMs } from "@/lib/timeout-args.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
@@ -18,11 +19,10 @@ export const schemaCommand = defineCommand({
   args: schemaArgs,
   async run({ args, rawArgs, execution, sink }) {
     const catalog = stringArg(args, "catalog");
-    // --layout is not supported: human output is always the schema tree.
-    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
-      { ...args, layout: undefined },
+    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, {
+      agent: execution.cli.agent,
       rawArgs,
-    );
+    });
     const readTimeoutMs = parseRequestReadTimeoutMs(args);
     const queryInput = {
       statement: buildSchemaStatement(catalog),

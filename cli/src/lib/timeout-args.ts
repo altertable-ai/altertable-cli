@@ -1,4 +1,12 @@
 import { CliError } from "@/lib/errors.ts";
+import { defineArgs } from "@/lib/command.ts";
+
+export const requestReadTimeoutArgs = defineArgs({
+  "read-timeout": {
+    type: "string",
+    description: "Read timeout in seconds for this request (overrides global --read-timeout)",
+  },
+});
 
 export function parseTimeoutSeconds(value: unknown, flagName: string): number {
   const text = String(value).trim();
@@ -23,4 +31,9 @@ export function readArgvFlagValue(argv: readonly string[], flagName: string): st
     }
   }
   return undefined;
+}
+
+export function parseRequestReadTimeoutMs(args: Record<string, unknown>): number | undefined {
+  if (args["read-timeout"] === undefined) return undefined;
+  return parseTimeoutSeconds(args["read-timeout"], "--read-timeout");
 }

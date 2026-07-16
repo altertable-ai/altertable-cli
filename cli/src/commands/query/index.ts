@@ -1,7 +1,7 @@
 import type { CommandArgs } from "@/lib/command.ts";
 import { normalizeDefaultSubCommandRawArgs, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { defineCommand } from "@/lib/command.ts";
-import { queryRunArgs } from "@/lib/lakehouse/args.ts";
+import { queryRunArgs } from "@/commands/query/lib/args.ts";
 import { queryRunCommand } from "@/commands/query/run.ts";
 import { queryShowCommand } from "@/commands/query/show.ts";
 import { queryCancelCommand } from "@/commands/query/cancel.ts";

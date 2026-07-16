@@ -97,8 +97,18 @@ describe("schema command", () => {
     );
   });
 
-  test("rejects query layout flags because human output is always the tree", () => {
-    const result = runCommandWithTestRuntime(["schema", "analytics", "--layout", "line"]);
-    return expect(result).rejects.toThrow();
+  test("rejects query-only presentation flags because human output is always the tree", async () => {
+    for (const args of [
+      ["--layout", "line"],
+      ["--columns", "id"],
+      ["--max-width", "40"],
+    ]) {
+      try {
+        await runCommandWithTestRuntime(["schema", "analytics", ...args]);
+        throw new Error(`Expected ${args[0]} to be rejected`);
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+      }
+    }
   });
 });
