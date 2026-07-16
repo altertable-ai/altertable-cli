@@ -99,6 +99,12 @@ describe("lakehouse credential auto-provisioning", () => {
     expect(logContent).toContain(
       "URL=https://app.example.com/rest/v1/users/user-1/environments/env-1/credentials",
     );
+    console.log(
+      "[leak-check] test USER_AGENT =",
+      USER_AGENT,
+      "| logged label =",
+      logContent.match(/"label":"[^"]*"/)?.[0],
+    );
     expect(logContent).toContain(`"label":"${USER_AGENT}"`);
   });
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { runCommand } from "citty";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -57,6 +57,10 @@ type CapturedCommandOutput = {
 };
 
 beforeEach(() => {
+  mock.module("@/version.ts", () => ({
+    VERSION: "1.2.0",
+    USER_AGENT: "tototutu",
+  }));
   testHome = mkdtempSync(join(tmpdir(), "altertable-updater-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
 });
@@ -72,6 +76,8 @@ afterEach(() => {
   delete process.env.ALTERTABLE_UPDATE_INSTALL_METHOD;
   delete process.env.CI;
   delete process.env.TEST;
+  mock.restore();
+  mock.clearAllMocks();
 });
 
 function jsonFetch(data: unknown): typeof fetch {
