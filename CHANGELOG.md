@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/altertable-ai/altertable-cli/compare/v1.2.0...v1.3.0) (2026-07-16)
+
+
+### Features
+
+* **update:** simplify `update` command behavior and API ([#64](https://github.com/altertable-ai/altertable-cli/issues/64)) ([310acdf](https://github.com/altertable-ai/altertable-cli/commit/310acdf0be659100e06ed016aa58d7b518d6631a))
+
+
+### Bug Fixes
+
+* **cli:** ignore unrelated Altertable environment variables ([#67](https://github.com/altertable-ai/altertable-cli/issues/67)) ([8fe9041](https://github.com/altertable-ai/altertable-cli/commit/8fe9041bf4af2695e2373c9873afe61ae64a4f19))
+* **release:** checkout merge commit for draft release verification ([#58](https://github.com/altertable-ai/altertable-cli/issues/58)) ([988c95d](https://github.com/altertable-ai/altertable-cli/commit/988c95d922c8efcc4fe78e3d4edfd7f827fa6dc0))
+* **release:** run recovery with current publication code ([#63](https://github.com/altertable-ai/altertable-cli/issues/63)) ([eab2c4a](https://github.com/altertable-ai/altertable-cli/commit/eab2c4a09164f0da75b1a6a08021f50146c64287))
+
 ## [Unreleased]
 
 ### Fixed

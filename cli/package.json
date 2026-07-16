@@ -1,6 +1,6 @@
 {
   "name": "@altertable/cli",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Altertable CLI — query and manage your data platform",
   "homepage": "https://github.com/altertable-ai/altertable-cli#readme",
   "bugs": {
