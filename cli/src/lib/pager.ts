@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { getQueryDefaultPager } from "@/lib/config.ts";
-import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import type { OutputSink } from "@/lib/runtime.ts";
 import { getVisibleTextWidth } from "@/ui/terminal/styles.ts";
 import { copyProcessEnv } from "@/lib/env.ts";
 
@@ -43,7 +43,7 @@ export function buildPagerEnv(env: NodeJS.ProcessEnv = copyProcessEnv()): NodeJS
 export async function writePagedOutput(
   text: string,
   options: PagerOptions,
-  sink: OutputSink = getOutputSink(),
+  sink: OutputSink,
 ): Promise<void> {
   if (!shouldUsePager(text, options)) {
     sink.writeHuman(text);

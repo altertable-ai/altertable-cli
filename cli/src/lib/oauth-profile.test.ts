@@ -13,7 +13,8 @@ import { configGet, configSet, resolveOAuthBase } from "@/lib/config.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { setCliContext, getCliContext } from "@/context.ts";
 import { ConfigurationError, HttpError, NetworkError } from "@/lib/errors.ts";
-import { managementRequest } from "@/lib/management-transport.ts";
+import { createExecutionContext } from "@/lib/execution-context.ts";
+import { sendHttp } from "@/lib/http-request.ts";
 import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
 
 const profileName = "default";
@@ -203,7 +204,10 @@ describe("management request auth resolution", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     await runWithCliRuntime(runtime, async () => {
       refreshCliRuntimeContext(getCliContext());
-      await managementRequest("GET", "/whoami");
+      await sendHttp(
+        { plane: "management", method: "GET", endpoint: "/whoami" },
+        createExecutionContext(runtime),
+      );
     });
 
     expect(getStoredAccessToken(profileName)).toBe("acc3");
@@ -225,7 +229,10 @@ describe("management request auth resolution", () => {
       refreshCliRuntimeContext(getCliContext());
       // Simulate an out-of-band token rotation (e.g. a prior refresh in this process).
       secretSet("oauth/access-token", "tok_b", profileName);
-      await managementRequest("GET", "/whoami");
+      await sendHttp(
+        { plane: "management", method: "GET", endpoint: "/whoami" },
+        createExecutionContext(runtime),
+      );
     });
 
     // The header reflects the rotated token, resolved live at send time.

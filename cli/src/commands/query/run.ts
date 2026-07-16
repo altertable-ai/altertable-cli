@@ -33,6 +33,6 @@ export const queryRunCommand = defineCommand({
       httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
     const result = await executeLakehouseQuery(input, execution, format !== "json" && !sink.json);
-    await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
+    await writeQueryOutput(result, format, sink, displayOptions, pagerOptions);
   },
 });

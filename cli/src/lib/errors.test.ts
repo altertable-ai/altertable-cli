@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { createCliRuntime, runWithCliRuntime, writeRawIfJsonElseHuman } from "@/lib/runtime.ts";
 import {
   CliError,
   ConfigurationError,
@@ -116,13 +115,6 @@ describe("transport error exit codes", () => {
 
   test("ParseError uses EXIT_VALIDATION", () => {
     expect(new ParseError("bad json").exitCode).toBe(EXIT_VALIDATION);
-  });
-
-  test("writeRawIfJsonElseHuman throws ParseError on malformed JSON", () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    expect(
-      runWithCliRuntime(runtime, () => writeRawIfJsonElseHuman("not json", () => "")),
-    ).rejects.toThrow(ParseError);
   });
 });
 

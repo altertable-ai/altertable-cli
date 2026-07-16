@@ -1,5 +1,4 @@
 import type { CommandArgs } from "@/lib/command.ts";
-import { isJsonOutput } from "@/context.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
 import { type ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
@@ -14,8 +13,6 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     return [];
   }
 
-  const shouldRedact = !isJsonOutput();
-
   const arrayValues = Object.values(data).filter(Array.isArray) as unknown[][];
   if (arrayValues.length === 1) {
     const rows = arrayValues[0];
@@ -23,7 +20,7 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
       return [];
     }
     const plainRows = rows.filter(isPlainObject);
-    return shouldRedact ? plainRows.map(redactSensitiveRow) : plainRows;
+    return plainRows.map(redactSensitiveRow);
   }
 
   const nestedObjects = Object.entries(data).filter(([, value]) => isPlainObject(value));
@@ -32,21 +29,18 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     if (!isPlainObject(nestedObject)) {
       return [];
     }
-    const row = shouldRedact ? redactSensitiveRow(nestedObject) : nestedObject;
-    return [row];
+    return [redactSensitiveRow(nestedObject)];
   }
 
   const row: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (isPlainObject(value)) {
       for (const [nestedKey, nestedValue] of Object.entries(value)) {
-        row[nestedKey] = shouldRedact
-          ? redactSensitiveRowValue(nestedKey, nestedValue)
-          : nestedValue;
+        row[nestedKey] = redactSensitiveRowValue(nestedKey, nestedValue);
       }
       continue;
     }
-    row[key] = shouldRedact ? redactSensitiveRowValue(key, value) : value;
+    row[key] = redactSensitiveRowValue(key, value);
   }
 
   return Object.keys(row).length > 0 ? [row] : [];

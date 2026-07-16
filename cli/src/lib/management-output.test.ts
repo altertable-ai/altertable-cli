@@ -1,6 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { writeManagementOutput } from "@/lib/command-output.ts";
-import { createCliRuntime, runWithCliRuntime } from "@/lib/runtime.ts";
 import { extractManagementRows, renderManagementOutput } from "@/lib/management-output.ts";
 
 describe("extractManagementRows", () => {
@@ -77,19 +75,6 @@ describe("renderManagementOutput", () => {
   test("pretty-prints json", () => {
     const output = renderManagementOutput(listBody, "json");
     expect(JSON.parse(output)).toEqual(JSON.parse(listBody));
-  });
-
-  test("writeManagementOutput defaults to table in human mode", async () => {
-    const stdout: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeHuman = (text) => {
-      stdout.push(text);
-    };
-    await runWithCliRuntime(runtime, async () => {
-      await writeManagementOutput(listBody);
-    });
-    expect(stdout[0]).toContain("id");
-    expect(stdout[0]).toContain("Analytics");
   });
 
   test("table format redacts credential password values", () => {

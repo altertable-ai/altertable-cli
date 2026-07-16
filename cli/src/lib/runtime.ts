@@ -1,7 +1,6 @@
 import type { CliContext } from "@/context.ts";
 import { getBootstrapCliContext, isJsonOutput } from "@/context.ts";
 import { existsSync } from "node:fs";
-import { writeLakehouseCommandOutput } from "@/lib/command-output.ts";
 import { createCliSession, type CliSession } from "@/lib/cli-session.ts";
 import { configFile } from "@/lib/config.ts";
 import { profilesDir } from "@/lib/profile-store.ts";
@@ -104,11 +103,4 @@ export function refreshCliRuntimeContext(context: CliContext): void {
 
 export function getOutputSink(): OutputSink {
   return getCliRuntime().output;
-}
-
-export async function writeRawIfJsonElseHuman(
-  rawBody: string,
-  humanFormatter?: (parsed: unknown) => string,
-): Promise<void> {
-  await writeLakehouseCommandOutput(rawBody, { humanFormatter });
 }

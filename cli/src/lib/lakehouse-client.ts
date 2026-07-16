@@ -1,6 +1,4 @@
-import { isJsonOutput } from "@/context.ts";
-import { writeLakehouseCommandOutput, type LakehouseOutputOptions } from "@/lib/command-output.ts";
-import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import type { OutputSink } from "@/lib/runtime.ts";
 import { CliError } from "@/lib/errors.ts";
 import {
   defaultDisplayOptions,
@@ -80,19 +78,12 @@ export function renderQueryJson(
   return JSON.stringify(result, null, 2);
 }
 
-export async function writeLakehouseOutput(
-  body: string,
-  options?: LakehouseOutputOptions,
-): Promise<void> {
-  await writeLakehouseCommandOutput(body, options);
-}
-
 export function renderQueryOutputText(
   result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
   format: QueryResultFormat,
   displayOptions?: QueryDisplayOptions,
 ): string {
-  if (isJsonOutput() || format === "json") {
+  if (format === "json") {
     return renderQueryJson(result);
   }
   if (format === "csv") {
@@ -125,11 +116,11 @@ export function renderManagementTabularOutput(
 export async function writeQueryOutput(
   result: import("./lakehouse-ndjson.ts").LakehouseQueryResult,
   format: QueryResultFormat,
+  sink: OutputSink,
   displayOptions?: QueryDisplayOptions,
   pagerOptions?: PagerOptions,
-  sink: OutputSink = getOutputSink(),
 ): Promise<void> {
-  const outputText = renderQueryOutputText(result, format, displayOptions);
+  const outputText = renderQueryOutputText(result, sink.json ? "json" : format, displayOptions);
   const usePager = format === "human" && !sink.json;
 
   if (usePager) {

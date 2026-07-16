@@ -34,7 +34,7 @@ export const schemaCommand = defineCommand({
       format !== "json" && !sink.json,
     );
     if (format !== "human" || sink.json) {
-      await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
+      await writeQueryOutput(result, format, sink, displayOptions, pagerOptions);
       return;
     }
     await writePagedOutput(
