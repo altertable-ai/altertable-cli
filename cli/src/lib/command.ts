@@ -80,7 +80,7 @@ function bindCommandTree<T extends ArgsDef>(def: CommandTreeDef<T>): CommandDef 
 export function defineCommand<const T extends ArgsDef = ArgsDef>(
   def: AltertableCommandDef<T>,
 ): CommandDef {
-  return bindCommandTree(def);
+  return def as CommandDef;
 }
 
 /** Erases citty's inferred args generic so the root command fits heterogeneous trees. */

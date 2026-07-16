@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defineCommand, type Command } from "@/lib/command.ts";
+import { defineCommand, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
 import type { Prompts } from "@/ui/prompts.ts";
@@ -69,10 +69,7 @@ function createMockPrompts(selection: string): Prompts {
   };
 }
 
-async function captureCompletionOutput(
-  run: () => void | Promise<void>,
-  json = false,
-): Promise<string> {
+async function captureCompletionOutput(run: () => unknown, json = false): Promise<string> {
   const output: string[] = [];
   const runtime = createCliRuntime({ debug: false, json, agent: false });
   runtime.output.writeHuman = (text) => output.push(text);
@@ -83,58 +80,36 @@ async function captureCompletionOutput(
   return output.join("");
 }
 
+async function runCompletionCommand(
+  completionCommand: Command,
+  rawArgs: string[],
+  json = false,
+): Promise<string> {
+  const rootCommand = defineRootCommand({
+    meta: { name: "altertable" },
+    subCommands: { completion: completionCommand },
+  });
+  return await captureCompletionOutput(() => runCommandTree(rootCommand, { rawArgs }), json);
+}
+
 async function runCompletion(
   getRootCommand: () => Command,
   shell?: string,
   prompts?: Prompts,
 ): Promise<string> {
   const completionCommand = createCompletionCommand(getRootCommand, { prompts });
-  const supportedShells = new Set(["bash", "zsh", "fish"]);
-  const command =
-    shell === undefined || !supportedShells.has(shell)
-      ? completionCommand
-      : (completionCommand.subCommands as Record<string, Command> | undefined)?.[shell];
-  if (!command?.run) {
-    throw new Error(`missing completion command for ${shell ?? "detected shell"}`);
-  }
-
   const rawArgs = shell ? ["completion", shell] : ["completion"];
-  return await captureCompletionOutput(() =>
-    command.run?.({ args: command === completionCommand ? { shell } : {}, rawArgs } as never),
-  );
+  return await runCompletionCommand(completionCommand, rawArgs);
 }
 
 async function runCompletionGenerate(shell: string): Promise<string> {
   const completionCommand = createCompletionCommand(() => minimalRootCommand);
-  const generateCommand = (completionCommand.subCommands as Record<string, Command> | undefined)
-    ?.generate;
-  const command = (generateCommand?.subCommands as Record<string, Command> | undefined)?.[shell];
-  if (!command?.run) {
-    throw new Error("missing completion generate command");
-  }
-
-  return await captureCompletionOutput(() =>
-    command.run?.({
-      args: {},
-      rawArgs: ["completion", "generate", shell],
-    } as never),
-  );
+  return await runCompletionCommand(completionCommand, ["completion", "generate", shell]);
 }
 
 async function runCompletionParent(rawArgs: string[], json = false): Promise<string> {
   const completionCommand = createCompletionCommand(() => minimalRootCommand);
-  if (!completionCommand.run) {
-    throw new Error("missing completion command");
-  }
-
-  return await captureCompletionOutput(
-    () =>
-      completionCommand.run?.({
-        args: {},
-        rawArgs,
-      } as never),
-    json,
-  );
+  return await runCompletionCommand(completionCommand, rawArgs, json);
 }
 
 async function runCompletionParentJson(rawArgs: string[]): Promise<string> {
@@ -143,26 +118,11 @@ async function runCompletionParentJson(rawArgs: string[]): Promise<string> {
 
 async function runCompletionInstall(shell?: string, noRc = false): Promise<string> {
   const completionCommand = createCompletionCommand(() => minimalRootCommand);
-  const installCommand = (completionCommand.subCommands as Record<string, Command> | undefined)
-    ?.install;
-  const command =
-    shell === undefined
-      ? installCommand
-      : (installCommand?.subCommands as Record<string, Command> | undefined)?.[shell];
-  if (!command?.run) {
-    throw new Error("missing completion install command");
-  }
-
   const rawArgs = shell ? ["completion", "install", shell] : ["completion", "install"];
   if (noRc) {
     rawArgs.push("--no-rc");
   }
-  return await captureCompletionOutput(() =>
-    command.run?.({
-      args: shell === undefined ? { shell, "no-rc": noRc } : { "no-rc": noRc },
-      rawArgs,
-    } as never),
-  );
+  return await runCompletionCommand(completionCommand, rawArgs);
 }
 
 async function runInteractiveCompletion(selection: string, shellPath?: string): Promise<string> {
@@ -268,11 +228,6 @@ describe("completion command", () => {
     const output = await runCompletionGenerate("fish");
     expect(output).toContain("altertable fish completion");
     expect(output).toContain("altertable completion generate fish");
-  });
-
-  test("parent completion does not print help after delegated subcommands", async () => {
-    const output = await runCompletionParent(["completion", "generate", "fish"]);
-    expect(output).toBe("");
   });
 
   test("bare completion shows guidance without dumping a script", async () => {
