@@ -26,7 +26,7 @@ import {
   setActiveProfile,
   updateProfile,
 } from "@/features/profile/model.ts";
-import { promptProfileSwitch } from "@/commands/profile.ts";
+import { promptProfileSwitch } from "@/commands/profile/index.ts";
 import { ConfigurationError, CliError } from "@/lib/errors.ts";
 import {
   buildProfileDirenvView,

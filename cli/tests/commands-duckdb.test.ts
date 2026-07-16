@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildDuckdbAttachSnippet, selectCatalogsToAttach } from "@/commands/duckdb.ts";
+import { buildDuckdbAttachSnippet, selectCatalogsToAttach } from "@/commands/duckdb/index.ts";
 import type { CatalogRow } from "@/features/management/model.ts";
 
 function catalogRow(catalog: string): CatalogRow {

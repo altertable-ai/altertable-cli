@@ -10,7 +10,7 @@ import {
   normalizeApiInvocatorRawArgs,
   runApiRoutesCommand,
   runApiSpecCommand,
-} from "@/commands/api.ts";
+} from "@/commands/api/index.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec, flattenTopLevelNames } from "@/lib/completion-spec.ts";

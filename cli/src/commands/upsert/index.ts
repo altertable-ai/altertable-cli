@@ -4,11 +4,11 @@ import { defineOperationCommand } from "@/lib/operation-command.ts";
 import {
   parseLakehouseFileContentType,
   parseRequestReadTimeoutMs,
-} from "@/commands/lakehouse-args.ts";
+} from "@/lib/lakehouse/args.ts";
 import {
   getUploadFileSizeBytes,
   LAKEHOUSE_FILE_FORMAT_OPTIONS,
-} from "@/commands/lakehouse/upload.ts";
+} from "@/commands/upload/index.ts";
 import { createLakehouseUpsertRequest } from "@/lib/lakehouse-transport.ts";
 
 export const upsertCommand = defineOperationCommand({

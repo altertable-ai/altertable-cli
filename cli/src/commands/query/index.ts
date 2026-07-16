@@ -9,7 +9,7 @@ import {
   parseQueryOutputOptions,
   parseRequestReadTimeoutMs,
   QUERY_RESULT_FORMAT_OPTIONS,
-} from "@/commands/lakehouse-args.ts";
+} from "@/lib/lakehouse/args.ts";
 import { QUERY_LAYOUT_OPTIONS } from "@/ui/layouts/query.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";

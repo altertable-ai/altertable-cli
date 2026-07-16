@@ -1,13 +1,13 @@
 import type { ArgsDef } from "citty";
 import { stringArg } from "@/lib/operation-codec.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
-import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/commands/lakehouse-args.ts";
+import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/lib/lakehouse/args.ts";
 import {
   planQueryRun,
   presentQueryRun,
   queryRunArgs,
   type QueryRunInput,
-} from "@/commands/lakehouse/query.ts";
+} from "@/commands/query/index.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
 import type { LakehouseQueryResult } from "@/lib/lakehouse-ndjson.ts";
 import { formatSchemaTree } from "@/features/lakehouse/schema/render.ts";

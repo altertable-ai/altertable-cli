@@ -161,7 +161,7 @@ import {
   applyControlPlaneOverride,
   sameWhoamiContext,
   storeLoginProfileMetadata,
-} from "@/commands/login.ts";
+} from "@/commands/login/index.ts";
 import { assertNoEnvConfigMode, resolveActiveProfileName } from "@/features/profile/model.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";

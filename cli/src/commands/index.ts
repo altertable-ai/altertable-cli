@@ -1,16 +1,17 @@
 import type { ArgsDef, CommandDef } from "citty";
-import { loginCommand, logoutCommand } from "@/commands/login.ts";
-import { profileCommand } from "@/commands/profile.ts";
-import { catalogsCommand } from "@/commands/catalogs.ts";
-import { duckdbCommand } from "@/commands/duckdb.ts";
-import { appendCommand } from "@/commands/lakehouse/append.ts";
-import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
-import { schemaCommand } from "@/commands/lakehouse/schema.ts";
-import { uploadCommand } from "@/commands/lakehouse/upload.ts";
-import { upsertCommand } from "@/commands/lakehouse/upsert.ts";
-import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
-import { createCompletionCommand } from "@/commands/completion.ts";
-import { updateCommand } from "@/commands/update.ts";
+import { loginCommand } from "@/commands/login/index.ts";
+import { logoutCommand } from "@/commands/logout/index.ts";
+import { profileCommand } from "@/commands/profile/index.ts";
+import { catalogsCommand } from "@/commands/catalogs/index.ts";
+import { duckdbCommand } from "@/commands/duckdb/index.ts";
+import { appendCommand } from "@/commands/append/index.ts";
+import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/query/index.ts";
+import { schemaCommand } from "@/commands/schema/index.ts";
+import { uploadCommand } from "@/commands/upload/index.ts";
+import { upsertCommand } from "@/commands/upsert/index.ts";
+import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.ts";
+import { createCompletionCommand } from "@/commands/completion/index.ts";
+import { updateCommand } from "@/commands/update/index.ts";
 
 export function buildTopLevelCommands(
   getMainCommand: () => CommandDef,

@@ -6,7 +6,7 @@ import { defineOperationCommand } from "@/lib/operation-command.ts";
 import {
   parseLakehouseFileContentType,
   parseRequestReadTimeoutMs,
-} from "@/commands/lakehouse-args.ts";
+} from "@/lib/lakehouse/args.ts";
 import { createLakehouseUploadRequest } from "@/lib/lakehouse-transport.ts";
 
 export const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;

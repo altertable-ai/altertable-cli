@@ -22,7 +22,7 @@ import { httpStreamEffect, runOperationEffect } from "@/lib/operation-effect.ts"
 import type { OperationContext } from "@/lib/operation-command.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@tests/cli-test-runtime.ts";
-import { normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
+import { normalizeQueryInvocatorRawArgs } from "@/commands/query/index.ts";
 
 const SAMPLE_NDJSON = [
   '{"statement":"SELECT 1","session_id":"abc","query_id":"def"}',

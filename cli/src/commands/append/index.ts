@@ -3,7 +3,7 @@ import { booleanArg, stringArg } from "@/lib/operation-codec.ts";
 import { progressPlan } from "@/lib/operation-effect.ts";
 import { defineOperationCommand } from "@/lib/operation-command.ts";
 import { defineGroupCommand, defineHttpCommand } from "@/lib/operation-command-builders.ts";
-import { parseAppendJsonContent } from "@/commands/lakehouse-args.ts";
+import { parseAppendJsonContent } from "@/lib/lakehouse/args.ts";
 import {
   lakehouseAppendOperation,
   lakehouseAppendTaskOperation,

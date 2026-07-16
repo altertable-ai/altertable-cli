@@ -15,7 +15,7 @@ import { setCliContext, getCliContext } from "@/context.ts";
 import { ConfigurationError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { managementRequest } from "@/lib/management-transport.ts";
 import { createCliRuntime, refreshCliRuntimeContext, runWithCliRuntime } from "@/lib/runtime.ts";
-import { fetchLoginWhoami, storeLoginProfileMetadata } from "@/commands/login.ts";
+import { fetchLoginWhoami, storeLoginProfileMetadata } from "@/commands/login/index.ts";
 
 const profileName = "default";
 let testHome = "";
