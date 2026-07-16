@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configGet } from "@/lib/config.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
-import { secretGet } from "@/lib/secrets.ts";
-import { getActiveProfileName, profileExists } from "@/lib/profile-store.ts";
+import { secretGet, secretSet } from "@/lib/secrets.ts";
+import { getActiveProfileName, profileExists, setActiveProfile } from "@/lib/profile-store.ts";
 import { createEmptyProfile, updateProfile } from "@/lib/profile/model.ts";
 import { createCliTestHarness, runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { delay } from "@/test-utils/time.ts";
@@ -150,6 +150,48 @@ describe("login command", () => {
     expect(storedAccessToken("default")).toBe("org_a_token");
     expect(getActiveProfileName()).toBe("org-b_production");
     expect(storedAccessToken("org-b_production")).toBe("org_b_token");
+  });
+
+  test("signs into a fresh empty profile without deriving another profile", async () => {
+    createEmptyProfile("new");
+    setActiveProfile("new");
+
+    await completeBrowserLogin();
+
+    expect(getActiveProfileName()).toBe("new");
+    expect(profileExists("altertable_production")).toBe(false);
+    expect(storedAccessToken("new")).toBe("access_token");
+  });
+
+  test("preserves lakehouse-only authentication by creating a login profile", async () => {
+    secretSet("lakehouse/password", "lakehouse-secret", "default");
+
+    await completeBrowserLogin();
+
+    expect(getActiveProfileName()).toBe("altertable_production");
+    expect(secretGet("lakehouse/password", "default")).toBe("lakehouse-secret");
+    expect(storedAccessToken("altertable_production")).toBe("access_token");
+  });
+
+  test("--replace-profile replaces the current login without creating a profile", async () => {
+    storeOAuthTokens(
+      { access_token: "old_token", refresh_token: "old_refresh", expires_in: 3600 },
+      "default",
+    );
+
+    await completeBrowserLogin(
+      ["login", "--replace-profile"],
+      {
+        ...DEFAULT_WHOAMI,
+        organization: { name: "Org B", slug: "org-b" },
+      },
+      "replacement_token",
+    );
+
+    expect(getActiveProfileName()).toBe("default");
+    expect(profileExists("org-b_production")).toBe(false);
+    expect(configGet("organization_slug", "default")).toBe("org-b");
+    expect(storedAccessToken("default")).toBe("replacement_token");
   });
 
   test("reused profiles inherit the control plane that authenticated the session", async () => {

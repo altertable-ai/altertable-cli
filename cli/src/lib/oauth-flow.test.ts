@@ -143,6 +143,7 @@ describe("token storage", () => {
     storeOAuthTokens({ access_token: "acc", refresh_token: "ref", expires_in: 3600 }, profileName);
     clearOAuthTokens(profileName);
     expect(storedAccessToken()).toBe("");
+    expect(secretGet("oauth/refresh-token", profileName)).toBe("");
     expect(configGet("oauth_expiry", profileName)).toBe("");
   });
 });
