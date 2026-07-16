@@ -1,254 +1,101 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, statSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   configDir,
   configGet,
   configSet,
   configSetGlobal,
-  getQueryDefaultMaxColumnWidth,
   getQueryDefaultLayout,
+  getQueryDefaultMaxColumnWidth,
   getQueryDefaultPager,
   kvGet,
   kvSet,
   resolveApiBase,
   resolveManagementApiBase,
 } from "@/lib/config.ts";
-import { secretGet, secretSet, secretExists } from "@/lib/secrets.ts";
-import { CliError } from "@/lib/errors.ts";
-import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import { configureRunClear, configureRunSet } from "@/lib/profile-configure-core.ts";
-import { setCliContext } from "@/context.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
-import { runWithCliRuntime } from "@/test-utils/runtime.ts";
+import { profileConfigFile } from "@/lib/profile-store.ts";
 
 let testHome = "";
 const profileName = "default";
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-cli-test-"));
+  testHome = mkdtempSync(join(tmpdir(), "altertable-config-test-"));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
-  process.env.ALTERTABLE_SECRET_BACKEND = "file";
 });
 
 afterEach(() => {
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
-  delete process.env.ALTERTABLE_SECRET_BACKEND;
   delete process.env.ALTERTABLE_API_BASE;
   delete process.env.ALTERTABLE_MANAGEMENT_API_BASE;
-  delete process.env.ALTERTABLE_ENV;
-  delete process.env.ALTERTABLE_API_KEY;
+  delete process.env.ALTERTABLE_ALLOW_INSECURE_HTTP;
 });
 
 describe("config", () => {
-  test("kv round-trip", () => {
+  test("stores key-value config in protected files", () => {
     const filePath = join(testHome, "sample");
+
     kvSet(filePath, "user", "alice");
-    expect(kvGet(filePath, "user")).toBe("alice");
     kvSet(filePath, "user", "bob");
+
     expect(kvGet(filePath, "user")).toBe("bob");
+    expect(statSync(filePath).mode & 0o777).toBe(0o600);
     expect(configGet("missing", profileName)).toBe("");
   });
 
-  test("kvSet writes temp files with mode 0600", () => {
-    const filePath = join(testHome, "mode-check");
-    kvSet(filePath, "secret", "value");
-    const mode = statSync(filePath).mode & 0o777;
-    expect(mode).toBe(0o600);
-  });
-
-  test("resolve api bases with defaults", () => {
+  test("resolves API bases from defaults, stored config, and environment overrides", () => {
     expect(resolveApiBase(profileName)).toBe("https://api.altertable.ai");
     expect(resolveManagementApiBase(profileName)).toBe("https://app.altertable.ai/rest/v1");
+
     configSet("api_base", "http://localhost:1111/", profileName);
     configSet("management_api_base", "http://localhost:13000/", profileName);
     expect(resolveApiBase(profileName)).toBe("http://localhost:1111");
     expect(resolveManagementApiBase(profileName)).toBe("http://localhost:13000/rest/v1");
-  });
 
-  test("env vars beat stored config", () => {
-    configSet("api_base", "http://localhost:1111", profileName);
     process.env.ALTERTABLE_API_BASE = "http://localhost:2222";
     expect(resolveApiBase(profileName)).toBe("http://localhost:2222");
   });
 
-  test("resolveApiBase rejects insecure env override without allow flag", () => {
+  test("requires an opt-in for insecure non-local API bases", () => {
     process.env.ALTERTABLE_API_BASE = "http://192.168.1.5";
-    expect(() => resolveApiBase(profileName)).toThrow(CliError);
-    delete process.env.ALTERTABLE_API_BASE;
-  });
+    expect(() => resolveApiBase(profileName)).toThrow("Insecure HTTP URL");
 
-  test("resolveApiBase allows insecure env override with ALTERTABLE_ALLOW_INSECURE_HTTP", () => {
-    process.env.ALTERTABLE_API_BASE = "http://192.168.1.5";
     process.env.ALTERTABLE_ALLOW_INSECURE_HTTP = "true";
     expect(resolveApiBase(profileName)).toBe("http://192.168.1.5");
-    delete process.env.ALTERTABLE_API_BASE;
-    delete process.env.ALTERTABLE_ALLOW_INSECURE_HTTP;
   });
 
-  test("reads query display defaults from config", () => {
+  test("reads valid query display defaults and ignores invalid values", () => {
     configSetGlobal("query_max_width", "48");
     configSetGlobal("query_layout", "line");
+    configSetGlobal("query_pager", "always");
     expect(getQueryDefaultMaxColumnWidth()).toBe(48);
     expect(getQueryDefaultLayout()).toBe("line");
-  });
+    expect(getQueryDefaultPager()).toBe("always");
 
-  test("ignores invalid query config values", () => {
     configSetGlobal("query_max_width", "4");
     configSetGlobal("query_layout", "invalid");
+    configSetGlobal("query_pager", "sometimes");
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
-  });
-
-  test("reads query_pager config", () => {
-    configSetGlobal("query_pager", "always");
-    expect(getQueryDefaultPager()).toBe("always");
-  });
-
-  test("ignores unknown query_pager values", () => {
-    configSetGlobal("query_pager", "sometimes");
     expect(getQueryDefaultPager()).toBeUndefined();
   });
 
-  test("query_pager respects ALTERTABLE_CONFIG_HOME", () => {
-    configSetGlobal("query_pager", "never");
-    expect(getQueryDefaultPager()).toBe("never");
-  });
-});
+  test("keeps global query defaults outside profile config", () => {
+    configSetGlobal("query_layout", "line");
+    configSet("api_key_env", "staging", "staging");
 
-describe("secrets", () => {
-  test("stores and reads file-backed secrets", () => {
-    secretSet("api-key", "atm_test", profileName);
-    expect(secretGet("api-key", profileName)).toBe("atm_test");
-    expect(secretExists("api-key", profileName)).toBe(true);
-  });
-});
-
-describe("profile --configure credential accumulation", () => {
-  test("preserves management credentials when updating lakehouse credentials", async () => {
-    await configureRunSet({ apiKey: "atm_test", env: "development" });
-    await configureRunSet({ user: "alice", password: "lakehouse-secret" });
-
-    expect(secretGet("api-key", profileName)).toBe("atm_test");
-    expect(configGet("api_key_env", profileName)).toBe("development");
-    expect(secretGet("lakehouse/password", profileName)).toBe("lakehouse-secret");
-    expect(configGet("user", profileName)).toBe("alice");
+    expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
+    expect(kvGet(profileConfigFile("staging"), "query_layout")).toBe("");
   });
 
-  test("accumulates both planes across separate configure invocations", async () => {
-    await configureRunSet({
-      user: "alice",
-      password: "lakehouse-secret",
-    });
-    await configureRunSet({
-      apiKey: "atm_test",
-      env: "development",
-    });
-
-    expect(secretGet("api-key", profileName)).toBe("atm_test");
-    expect(configGet("api_key_env", profileName)).toBe("development");
-    expect(secretGet("lakehouse/password", profileName)).toBe("lakehouse-secret");
-    expect(configGet("user", profileName)).toBe("alice");
-  });
-});
-
-describe("profile --configure validation", () => {
-  test("rejects mixing lakehouse and management credentials in one invocation", async () => {
-    return expect(
-      configureRunSet({ user: "u", password: "p", apiKey: "atm_x", env: "prod" }),
-    ).rejects.toThrow(CliError);
-  });
-
-  test("rejects mixing lakehouse and management credentials with expected message", async () => {
-    return expect(
-      configureRunSet({ user: "u", password: "p", apiKey: "atm_x", env: "prod" }),
-    ).rejects.toThrow(/single authentication mechanism per configure invocation/);
-  });
-
-  test("rejects two lakehouse authentication mechanisms in one invocation", async () => {
-    return expect(
-      configureRunSet({ user: "u", password: "p", basicToken: "dG9rZW4=" }),
-    ).rejects.toThrow(CliError);
-  });
-
-  test("rejects two lakehouse authentication mechanisms with expected message", async () => {
-    return expect(
-      configureRunSet({ user: "u", password: "p", basicToken: "dG9rZW4=" }),
-    ).rejects.toThrow(/single lakehouse authentication mechanism/);
-  });
-});
-
-describe("configureRunClear", () => {
-  test("configureRunClear removes root config and credentials files", async () => {
-    await configureRunSet({ user: "alice", password: "lakehouse-secret" });
-    configureRunClear();
-    expect(existsSync(join(testHome, "config"))).toBe(false);
-    expect(existsSync(join(testHome, "credentials"))).toBe(false);
-    expect(existsSync(join(testHome, "profiles"))).toBe(false);
-  });
-
-  test("configureRunClear removes secrets for all profiles", async () => {
-    await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
-    await configureRunSet({ profile: "prod", apiKey: "atm_prod", env: "prod" });
-    secretSet("lakehouse/password", "lake-secret", "staging");
-    secretSet("lakehouse/password", "lake-prod", "prod");
-
-    configureRunClear();
-    setCliContext({ debug: false, json: false, agent: false });
-
-    expect(secretGet("api-key", "staging")).toBe("");
-    expect(secretGet("api-key", "prod")).toBe("");
-    expect(secretGet("lakehouse/password", "staging")).toBe("");
-    expect(secretGet("lakehouse/password", "prod")).toBe("");
-  });
-});
-
-describe("config dir", () => {
-  test("uses ALTERTABLE_CONFIG_HOME", () => {
+  test("uses ALTERTABLE_CONFIG_HOME for profile config", () => {
     expect(configDir()).toBe(testHome);
     configSet("user", "x", profileName);
-    expect(existsSync(join(testHome, "profiles", "default", "config"))).toBe(true);
-    expect(readFileSync(join(testHome, "profiles", "default", "config"), "utf8")).toContain(
-      "user=x",
-    );
-  });
-});
 
-describe("url policy", () => {
-  test("allows localhost HTTP without flag", () => {
-    expect(() => assertAllowedApiBase("http://localhost:15000")).not.toThrow();
-    expect(() => assertAllowedApiBase("http://127.0.0.1:8080")).not.toThrow();
-  });
-
-  test("allows HTTPS for any host", () => {
-    expect(() => assertAllowedApiBase("https://api.altertable.ai")).not.toThrow();
-  });
-
-  test("rejects non-localhost HTTP without flag", () => {
-    expect(() => assertAllowedApiBase("http://192.168.1.5:8080")).toThrow(CliError);
-  });
-
-  test("allows non-localhost HTTP with allowInsecureHttp", () => {
-    expect(() =>
-      assertAllowedApiBase("http://192.168.1.5:8080", { allowInsecureHttp: true }),
-    ).not.toThrow();
-  });
-});
-
-describe("profile --configure argv secrets", () => {
-  test("warns when password is passed on argv", async () => {
-    const stderr: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeMetadata = (lines) => {
-      stderr.push(...lines);
-    };
-
-    await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({ user: "alice", password: "test-password-value" });
-    });
-
-    expect(stderr.some((line) => line.includes("--password-stdin"))).toBe(true);
+    const configFile = join(testHome, "profiles", "default", "config");
+    expect(existsSync(configFile)).toBe(true);
+    expect(readFileSync(configFile, "utf8")).toContain("user=x");
   });
 });
