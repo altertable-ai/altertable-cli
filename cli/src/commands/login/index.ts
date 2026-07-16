@@ -4,7 +4,7 @@ import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
 import { httpSend } from "@/lib/http.ts";
-import { resolveManagementApiBase, resolveOAuthBase } from "@/lib/config.ts";
+import { resolveManagementApiRoot } from "@/lib/config.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
@@ -121,7 +121,11 @@ function selectLoginProfile(
   return { profileName: targetProfile, profileAction };
 }
 
-function storeLoginProfileMetadata(whoami: WhoamiResponse, args: LoginArgs): LoginProfileMetadata {
+function storeLoginProfileMetadata(
+  whoami: WhoamiResponse,
+  args: LoginArgs,
+  controlPlane: string,
+): LoginProfileMetadata {
   const environment = whoami.environment_slug;
 
   // OAuth login must always return an environment.
@@ -149,7 +153,7 @@ function storeLoginProfileMetadata(whoami: WhoamiResponse, args: LoginArgs): Log
     principalEmail: whoami.principal?.email,
     principalSlug: whoami.principal?.slug,
     ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
-    ...(args["control-plane-url"] ? { controlPlane: args["control-plane-url"] } : {}),
+    controlPlane,
   });
 
   return { environment, profileName, profileAction };
@@ -165,18 +169,19 @@ type LoginArgs = {
 function resolveLoginEndpoints(
   args: LoginArgs,
   profileName: string,
-): { oauthBase: string; managementApiBase: string } {
+): { controlPlane: string; oauthBase: string; managementApiBase: string } {
   const override = args["control-plane-url"];
-  if (!override) {
-    return {
-      oauthBase: resolveOAuthBase(profileName),
-      managementApiBase: resolveManagementApiBase(profileName),
-    };
-  }
-
-  const root = override.replace(/\/$/, "");
-  assertAllowedApiBase(root, { allowInsecureHttp: Boolean(args["allow-insecure-http"]) });
-  return { oauthBase: `${root}/oauth`, managementApiBase: `${root}/rest/v1` };
+  const controlPlane = override
+    ? override.replace(/\/$/, "")
+    : resolveManagementApiRoot(profileName);
+  assertAllowedApiBase(controlPlane, {
+    allowInsecureHttp: Boolean(args["allow-insecure-http"]),
+  });
+  return {
+    controlPlane,
+    oauthBase: `${controlPlane}/oauth`,
+    managementApiBase: `${controlPlane}/rest/v1`,
+  };
 }
 
 // Profile-free on purpose: the minted token — not the current profile's stored
@@ -199,14 +204,21 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   assertInteractiveLogin();
 
   const currentProfile = resolveWorkingProfile(getCliContext().profile);
-  const { oauthBase, managementApiBase } = resolveLoginEndpoints(args, currentProfile);
+  const { controlPlane, oauthBase, managementApiBase } = resolveLoginEndpoints(
+    args,
+    currentProfile,
+  );
 
   // Past this point the flow is profile-free so it can't accidentally read another org's stored session.
   const oauthResponse = await runLoginFlow(sink, oauthBase);
   const whoami = await fetchLoginWhoami(oauthResponse, managementApiBase);
 
   // Login succeeded and we can now persist whoami metadata and any control-plane override to the profile so later commands target it.
-  const { environment, profileName, profileAction } = storeLoginProfileMetadata(whoami, args);
+  const { environment, profileName, profileAction } = storeLoginProfileMetadata(
+    whoami,
+    args,
+    controlPlane,
+  );
   storeOAuthTokens(oauthResponse, profileName);
   refreshCliRuntimeContext(getCliContext());
 

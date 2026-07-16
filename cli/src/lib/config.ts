@@ -41,7 +41,7 @@ export function resolveApiBase(profileName: string): string {
   return normalized;
 }
 
-function resolveManagementApiRoot(profileName: string): string {
+export function resolveManagementApiRoot(profileName: string): string {
   let root = readEnv("ALTERTABLE_MANAGEMENT_API_BASE") ?? "";
   if (!root) {
     root = configGet("management_api_base", profileName);

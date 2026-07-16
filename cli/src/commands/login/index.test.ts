@@ -6,6 +6,7 @@ import { configGet } from "@/lib/config.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { secretGet } from "@/lib/secrets.ts";
 import { getActiveProfileName, profileExists } from "@/lib/profile-store.ts";
+import { createEmptyProfile, updateProfile } from "@/lib/profile/model.ts";
 import { createCliTestHarness, runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { delay } from "@/test-utils/time.ts";
 import { forceNoTerminalColorForTests } from "@/test-utils/terminal.ts";
@@ -148,6 +149,31 @@ describe("login command", () => {
 
     expect(storedAccessToken("default")).toBe("org_a_token");
     expect(getActiveProfileName()).toBe("org-b_production");
+    expect(storedAccessToken("org-b_production")).toBe("org_b_token");
+  });
+
+  test("reused profiles inherit the control plane that authenticated the session", async () => {
+    storeOAuthTokens(
+      { access_token: "org_a_token", refresh_token: "org_a_refresh", expires_in: 3600 },
+      "default",
+    );
+    updateProfile("default", { controlPlane: "https://login.altertable.test" });
+    createEmptyProfile("org-b_production");
+    updateProfile("org-b_production", { controlPlane: "https://stale.altertable.test" });
+
+    await completeBrowserLogin(
+      ["login"],
+      {
+        ...DEFAULT_WHOAMI,
+        organization: { name: "Org B", slug: "org-b" },
+      },
+      "org_b_token",
+    );
+
+    expect(getActiveProfileName()).toBe("org-b_production");
+    expect(configGet("management_api_base", "org-b_production")).toBe(
+      "https://login.altertable.test",
+    );
     expect(storedAccessToken("org-b_production")).toBe("org_b_token");
   });
 
