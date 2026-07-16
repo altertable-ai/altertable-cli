@@ -6,7 +6,6 @@ import {
   resolveApiBase,
   resolveManagementApiBase,
 } from "@/lib/config.ts";
-import { getCliContext } from "@/context.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
 import type { WhoamiResponse } from "@/lib/management/model.ts";
@@ -31,24 +30,6 @@ import {
   profileDir,
   profileExists,
   readProfileConfigRecord,
-  resolveWorkingProfile,
-  setActiveProfile,
-} from "@/lib/profile-store.ts";
-
-export {
-  assertSafeProfileName,
-  DEFAULT_PROFILE_NAME,
-  ensureProfileExists,
-  ensureProfilesLayout,
-  envConfigMode,
-  FROM_ENV_PSEUDOPROFILE_NAME,
-  getActiveProfileName,
-  isFromEnvProfile,
-  profileConfigFile,
-  profileExists,
-  profilesDir,
-  readProfileConfigRecord,
-  resolveWorkingProfile,
   setActiveProfile,
 } from "@/lib/profile-store.ts";
 
@@ -539,15 +520,6 @@ function hasStoredLakehouseCredentials(profileName: string): boolean {
     secretExists("lakehouse/basic-token", profileName) ||
     secretExists("lakehouse/password", profileName)
   );
-}
-
-/**
- * The profile identity currently in effect. Normally the active stored profile,
- * but env configuration isolates the identity to the reserved `_from_env`
- * pseudo-profile (see `envConfigMode`).
- */
-export function resolveActiveProfileName(): string {
-  return resolveWorkingProfile(getCliContext().profile);
 }
 
 /** The profile-configuring env vars currently set, with secrets masked. */

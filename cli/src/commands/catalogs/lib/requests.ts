@@ -3,12 +3,12 @@ import type { CatalogRow } from "@/lib/management/model.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 
-export function buildCatalogCreateRequest(env: string, body: string): HttpRequest {
+export function buildCatalogCreateRequest(env: string, name: string): HttpRequest {
   return {
     plane: "management",
     method: "POST",
     endpoint: `/environments/${env}/databases`,
-    body,
+    body: JSON.stringify({ name, engine: "altertable" }),
     contentType: "application/json",
   };
 }

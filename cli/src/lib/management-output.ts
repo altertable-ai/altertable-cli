@@ -5,8 +5,6 @@ import { redactSensitiveJsonValue } from "@/lib/redact.ts";
 import { type ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
 import { renderTabularOutput, type TabularResult } from "@/lib/tabular-result.ts";
 
-export type { ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

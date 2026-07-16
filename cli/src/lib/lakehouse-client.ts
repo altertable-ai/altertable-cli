@@ -12,28 +12,6 @@ import {
 } from "@/lib/query-format.ts";
 import { resolvePagerOptions, writePagedOutput, type PagerOptions } from "@/lib/pager.ts";
 
-export {
-  buildLakehouseAppendRequest,
-  createLakehouseUploadRequest,
-  createLakehouseUpsertRequest,
-  type LakehouseAppendRequestInput,
-  type LakehouseUploadRequestInput,
-  type LakehouseUploadRequestScope,
-  type LakehouseUpsertRequestInput,
-} from "@/lib/lakehouse-transport.ts";
-
-export {
-  parseLakehouseQueryResponse,
-  parseLakehouseQueryStream,
-  type LakehouseColumn,
-  type LakehouseQueryResult,
-  type LakehouseQueryStreamResult,
-  type LakehouseRow,
-} from "@/lib/lakehouse-ndjson.ts";
-
-export { getQueryColumnNames } from "@/lib/query-format.ts";
-export type { QueryDisplayOptions } from "@/lib/query-format.ts";
-
 export type QueryResultFormat = "human" | "json" | "csv" | "markdown";
 export type ManagementOutputFormat = "json" | "table" | "csv" | "markdown";
 

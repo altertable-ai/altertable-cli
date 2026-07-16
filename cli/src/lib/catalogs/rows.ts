@@ -1,6 +1,5 @@
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import type { CatalogRow } from "@/lib/management/model.ts";
-import { formatCatalogsTable } from "@/lib/management/render.ts";
 
 type DatabaseSummary = {
   name?: string;
@@ -44,5 +43,3 @@ export function buildCatalogRowsFromResponses(
   }
   return rows;
 }
-
-export { formatCatalogsTable };

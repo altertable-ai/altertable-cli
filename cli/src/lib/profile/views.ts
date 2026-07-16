@@ -27,7 +27,7 @@ import type {
   ProfileInspect,
   ProfileSummary,
 } from "@/lib/profile/model.ts";
-import { isFromEnvProfile } from "@/lib/profile/model.ts";
+import { isFromEnvProfile } from "@/lib/profile-store.ts";
 import type { ShellExportView } from "@/ui/shell/model.ts";
 
 const ACTIVE_PROFILE_MARK = "✓";

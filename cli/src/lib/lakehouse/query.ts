@@ -1,5 +1,4 @@
 import type { ExecutionContext } from "@/lib/execution-context.ts";
-import { urlencode } from "@/lib/encode.ts";
 import {
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
@@ -73,7 +72,7 @@ export function buildLakehouseQueryShowRequest(queryId: string): HttpRequest {
   return {
     plane: "lakehouse",
     method: "GET",
-    endpoint: `/query/${urlencode(queryId)}`,
+    endpoint: `/query/${encodeURIComponent(queryId)}`,
     retry: true,
   };
 }
@@ -83,7 +82,7 @@ export function buildLakehouseQueryCancelRequest(input: LakehouseCancelInput): H
   return {
     plane: "lakehouse",
     method: "DELETE",
-    endpoint: `/query/${urlencode(input.queryId)}?${params.toString()}`,
+    endpoint: `/query/${encodeURIComponent(input.queryId)}?${params.toString()}`,
   };
 }
 

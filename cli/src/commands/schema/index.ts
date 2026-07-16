@@ -4,8 +4,9 @@ import { parseQueryOutputOptions, parseRequestReadTimeoutMs } from "@/lib/lakeho
 import { writePagedOutput } from "@/lib/pager.ts";
 import { writeQueryOutput } from "@/lib/lakehouse-client.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
-import { formatSchemaTree } from "@/commands/schema/lib/render.ts";
+import { buildSchemaTreeView } from "@/commands/schema/lib/views.ts";
 import { schemaArgs } from "@/commands/schema/lib/args.ts";
+import { renderTreeText } from "@/ui/renderers/terminal.ts";
 
 export const schemaCommand = defineCommand({
   meta: {
@@ -36,11 +37,15 @@ export const schemaCommand = defineCommand({
       await writeQueryOutput(result, format, displayOptions, pagerOptions, sink);
       return;
     }
-    await writePagedOutput(formatSchemaTree(result, catalog), pagerOptions, sink);
+    await writePagedOutput(
+      renderTreeText(buildSchemaTreeView(result, catalog)),
+      pagerOptions,
+      sink,
+    );
   },
 });
 
-export function buildSchemaStatement(catalog: string): string {
+function buildSchemaStatement(catalog: string): string {
   const catSql = `'${catalog.replaceAll("'", "''")}'`;
   return `SELECT schema_name, table_name, table_comment, column_name, data_type, is_nullable, table_type, comment, ordinal_position
 FROM (

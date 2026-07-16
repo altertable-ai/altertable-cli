@@ -1,4 +1,4 @@
-import { getActiveProfileName } from "@/lib/profile/model.ts";
+import { getActiveProfileName } from "@/lib/profile-store.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 

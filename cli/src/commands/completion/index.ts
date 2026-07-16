@@ -71,5 +71,3 @@ export function createCompletionCommand(
     },
   });
 }
-
-export { installCompletion } from "@/commands/completion/lib/completion.ts";

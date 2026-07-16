@@ -1,9 +1,5 @@
-import {
-  assertNoEnvConfigMode,
-  createEmptyProfile,
-  inspectProfile,
-  setActiveProfile,
-} from "@/lib/profile/model.ts";
+import { assertNoEnvConfigMode, createEmptyProfile, inspectProfile } from "@/lib/profile/model.ts";
+import { setActiveProfile } from "@/lib/profile-store.ts";
 import { formatProfileInspect } from "@/lib/profile/render.ts";
 import {
   configureArgs,

@@ -1,4 +1,3 @@
-import { urlencode } from "@/lib/encode.ts";
 import { stringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -21,7 +20,7 @@ export const appendStatusCommand = defineCommand({
       {
         plane: "lakehouse",
         method: "GET",
-        endpoint: `/tasks/${urlencode(stringArg(args, "append-id"))}`,
+        endpoint: `/tasks/${encodeURIComponent(stringArg(args, "append-id"))}`,
         retry: true,
       },
       execution,

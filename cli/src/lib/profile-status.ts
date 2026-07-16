@@ -10,8 +10,6 @@ import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 import { resolveWorkingProfile } from "@/lib/profile-store.ts";
 
-export { configureCredentialStatus } from "@/lib/profile/model.ts";
-
 export type ConfigureAuthPlane = "management" | "lakehouse";
 
 export type ConfigureVerifyError = {

@@ -1,7 +1,6 @@
 import { getCliRuntime } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttp } from "@/lib/http-request.ts";
-export { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 
 export async function managementRequest(
   method: string,

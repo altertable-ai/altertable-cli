@@ -12,9 +12,9 @@ import {
   envConfigMode,
   getActiveProfileName,
   isFromEnvProfile,
-  listProfiles,
   profileExists,
-} from "@/lib/profile/model.ts";
+} from "@/lib/profile-store.ts";
+import { listProfiles } from "@/lib/profile/model.ts";
 
 export function requireProfileName(name: unknown): string {
   const trimmed = asCliArgString(name).trim();

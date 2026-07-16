@@ -18,9 +18,6 @@ import {
 import { DEFAULT_READ_TIMEOUT_MS, STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 import { readEnv } from "@/lib/env.ts";
 
-export { computeRetryDelayMs, isRetryableMethod, parseRetryAfterMs } from "@/lib/http-retry.ts";
-export { redactResponseBodyForDebug } from "@/lib/redact.ts";
-
 export type HttpSendOptions = {
   method: string;
   url: string;

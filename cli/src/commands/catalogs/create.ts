@@ -1,6 +1,5 @@
 import { CliError } from "@/lib/errors.ts";
 import { requireManagementEnv } from "@/lib/auth.ts";
-import { buildCreateCatalogBody } from "@/lib/management-payloads.ts";
 import { buildCatalogCreateRequest } from "@/commands/catalogs/lib/requests.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -29,10 +28,7 @@ export const catalogsCreateCommand = defineCommand({
     }
     const env = requireManagementEnv(execution.profile);
     const fallbackName = String(args.name);
-    const response = await sendHttp(
-      buildCatalogCreateRequest(env, buildCreateCatalogBody({ name: fallbackName })),
-      execution,
-    );
+    const response = await sendHttp(buildCatalogCreateRequest(env, fallbackName), execution);
     await writeCommandOutput(
       {
         kind: "raw_api",

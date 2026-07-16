@@ -81,5 +81,3 @@ function throwNoProfileCommand(): never {
   error.code = "E_NO_COMMAND";
   throw error;
 }
-
-export { promptProfileSwitch } from "@/commands/profile/lib/profile.ts";
