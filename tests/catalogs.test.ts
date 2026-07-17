@@ -36,6 +36,19 @@ describe("altertable catalogs", () => {
     expect(result.stderr).toContain("No environment set");
   });
 
+  test("create rejects flag-shaped and extra input before sending a request", async () => {
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp(catalogsMock());
+
+    const result = await workspace.runCommand(
+      "altertable catalogs create --engine altertable --name Analytics",
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Expected exactly one catalog name");
+    expect(await workspace.readHttpLog()).not.toContain("METHOD=");
+  });
+
   test("list calls databases then connections and renders databases first", async () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(catalogsMock());
