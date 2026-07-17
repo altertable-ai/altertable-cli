@@ -16,6 +16,10 @@ function findNode(spec: ReturnType<typeof buildCompletionSpec>, name: string) {
   return spec.subcommands.find((node) => node.name === name);
 }
 
+function findChild(node: ReturnType<typeof buildCompletionSpec> | undefined, name: string) {
+  return node?.subcommands.find((child) => child.name === name);
+}
+
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", () => {
     const root = defineCommand({
@@ -119,6 +123,26 @@ describe("buildCompletionSpec", () => {
     ]);
   });
 
+  test("extracts finite shell positional values from completion commands", () => {
+    const spec = buildCompletionSpec(buildMainCommand());
+    const completion = findNode(spec, "completion");
+
+    expect(findChild(completion, "generate")?.positionals).toEqual([
+      expect.objectContaining({
+        name: "shell",
+        required: true,
+        values: ["bash", "fish", "zsh"],
+      }),
+    ]);
+    expect(findChild(completion, "install")?.positionals).toEqual([
+      expect.objectContaining({
+        name: "shell",
+        required: false,
+        values: ["bash", "fish", "zsh"],
+      }),
+    ]);
+  });
+
   test("sorts subcommands alphabetically", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const names = spec.subcommands.map((command) => command.name);
@@ -177,6 +201,11 @@ describe("formatBashCompletion", () => {
     expect(output).toContain('"--layout=auto,table,line"');
     expect(output).toContain('"--pager=auto,always,never"');
   });
+
+  test("includes finite positional value completions", () => {
+    const output = formatBashCompletion(buildCompletionSpec(buildMainCommand()));
+    expect(output).toContain('compgen -W "bash fish zsh"');
+  });
 });
 
 describe("collectCompletionContexts", () => {
@@ -205,6 +234,11 @@ describe("formatFishCompletion", () => {
       "-l layout -d 'Human layout: auto, table, or line' -f -r -a \"auto table line\"",
     );
   });
+
+  test("includes finite positional value completions", () => {
+    const output = formatFishCompletion(buildCompletionSpec(buildMainCommand()));
+    expect(output).toContain('-a "bash fish zsh"');
+  });
 });
 
 describe("formatZshCompletion", () => {
@@ -220,5 +254,10 @@ describe("formatZshCompletion", () => {
     const output = formatZshCompletion(spec);
     expect(output).toContain(":layout:(auto table line)");
     expect(output).toContain(":pager:(auto always never)");
+  });
+
+  test("includes finite positional value completions", () => {
+    const output = formatZshCompletion(buildCompletionSpec(buildMainCommand()));
+    expect(output).toContain("_values 'shell' bash fish zsh");
   });
 });

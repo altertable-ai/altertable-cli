@@ -5,6 +5,7 @@ import {
   formatInstallMessage,
   installCompletion,
   resolveShell,
+  SUPPORTED_SHELLS,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
 
@@ -25,6 +26,7 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
         description: "Shell to install completion for (default: detected shell)",
         required: false,
         valueHint: "bash|fish|zsh",
+        completionValues: SUPPORTED_SHELLS,
       },
       "no-rc": {
         type: "boolean",

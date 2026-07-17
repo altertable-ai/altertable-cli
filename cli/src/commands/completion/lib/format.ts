@@ -148,6 +148,16 @@ function formatBashContextBlock(
       fi
 `
       : "";
+  const positionalBlocks = context.positionals
+    .map((positional, index) => {
+      if (!positional.values || positional.values.length === 0) return undefined;
+      return `      if [[ \${COMP_CWORD} -eq ${wordIndex + index} && ${pathMatch} ]]; then
+        COMPREPLY=( $(compgen -W "${positional.values.join(" ")}" -- "\${currentWord}") )
+        return
+      fi`;
+    })
+    .filter((block): block is string => block !== undefined)
+    .join("\n");
 
   if (context.subcommands.length > 0) {
     const wordList = joinBashWordList([
@@ -155,18 +165,18 @@ function formatBashContextBlock(
       nodeFlagWordList,
       rootFlagWordList,
     ]);
-    return `${flagValueBlock}      if [[ \${COMP_CWORD} -eq ${wordIndex} && ${pathMatch} ]]; then
+    return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${COMP_CWORD} -eq ${wordIndex} && ${pathMatch} ]]; then
         COMPREPLY=( $(compgen -W "${wordList}" -- "\${currentWord}") )
         return
       fi`;
   }
 
   if (context.flags.length === 0) {
-    return undefined;
+    return positionalBlocks || undefined;
   }
 
   const wordList = joinBashWordList([nodeFlagWordList, rootFlagWordList]);
-  return `${flagValueBlock}      if [[ \${COMP_CWORD} -ge ${wordIndex} && ${pathMatch} ]]; then
+  return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${COMP_CWORD} -ge ${wordIndex} && ${pathMatch} ]]; then
         COMPREPLY=( $(compgen -W "${wordList}" -- "\${currentWord}") )
         return
       fi`;
@@ -275,6 +285,14 @@ function formatZshContextBlock(
       fi`);
   }
 
+  for (const [index, positional] of context.positionals.entries()) {
+    if (!positional.values || positional.values.length === 0) continue;
+    blocks.push(`      if (( CURRENT == ${wordIndex + index} )) && [[ ${pathMatch} ]]; then
+        _values '${positional.name}' ${positional.values.join(" ")}
+        return
+      fi`);
+  }
+
   if (context.flags.length > 0) {
     const flagArgs = formatZshFlagArgumentLines(mergeCompletionFlags(context.flags, rootFlags));
     const depthCondition =
@@ -361,6 +379,14 @@ export function formatFishCompletion(spec: CompletionNode): string {
       const condition = formatFishPathCondition(context.segments, context.subcommands);
       contextLines.push(
         `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatSubcommandNameList(context.subcommands)}"`,
+      );
+    }
+
+    for (const positional of context.positionals) {
+      if (!positional.values || positional.values.length === 0) continue;
+      const condition = formatFishPathCondition(context.segments, context.subcommands);
+      contextLines.push(
+        `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${positional.values.join(" ")}"`,
       );
     }
 

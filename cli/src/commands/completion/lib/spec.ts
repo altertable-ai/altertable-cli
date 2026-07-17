@@ -3,15 +3,15 @@ import type { Command } from "@/lib/command.ts";
 /**
  * Static completion spec derived from the command tree.
  *
- * Subcommand nesting is limited to two levels below the root command
- * (e.g. `altertable api connections`). Flag extraction applies to each visited
- * node only; deeper positional args are not completed.
+ * Subcommand nesting is limited to three levels below the root command.
+ * Flags and finite positional values are extracted from each visited node.
  */
 export type CompletionNode = {
   name: string;
   description?: string;
   subcommands: CompletionNode[];
   flags: CompletionFlag[];
+  positionals: CompletionPositional[];
 };
 
 export type CompletionFlag = {
@@ -21,6 +21,13 @@ export type CompletionFlag = {
   values?: string[];
 };
 
+export type CompletionPositional = {
+  name: string;
+  description?: string;
+  required: boolean;
+  values?: readonly string[];
+};
+
 export type CompletionContext = {
   /** Command path segments after the root binary, e.g. ["api", "connections", "create"]. */
   segments: string[];
@@ -28,6 +35,8 @@ export type CompletionContext = {
   flags: CompletionFlag[];
   /** Subcommand names available at this path (empty on leaves). */
   subcommands: string[];
+  /** Positional arguments declared on this node, in command order. */
+  positionals: CompletionPositional[];
 };
 
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
@@ -38,6 +47,8 @@ type ArgDef = {
   alias?: string | string[];
   description?: string;
   options?: string[];
+  required?: boolean;
+  completionValues?: readonly string[];
 };
 
 function extractFlags(command: Command): CompletionFlag[] {
@@ -59,6 +70,24 @@ function extractFlags(command: Command): CompletionFlag[] {
   }
 
   return flags.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function extractPositionals(command: Command): CompletionPositional[] {
+  const positionals: CompletionPositional[] = [];
+  const args = command.args ?? {};
+
+  for (const [name, rawDef] of Object.entries(args)) {
+    const def = rawDef as ArgDef | undefined;
+    if (def?.type !== "positional") continue;
+    positionals.push({
+      name,
+      description: def.description,
+      required: def.required !== false,
+      values: def.completionValues,
+    });
+  }
+
+  return positionals;
 }
 
 function resolveAliases(value: unknown): string[] {
@@ -115,6 +144,7 @@ function walkCommand(name: string, command: Command, depth: number): CompletionN
     description: resolveMetaDescription(command),
     subcommands: [],
     flags: extractFlags(command),
+    positionals: extractPositionals(command),
   };
 
   if (depth >= MAX_SUBCOMMAND_DEPTH || !command.subCommands) {
@@ -131,6 +161,7 @@ export function buildCompletionSpec(root: Command): CompletionNode {
     description: resolveMetaDescription(root),
     subcommands: [],
     flags: extractFlags(root),
+    positionals: extractPositionals(root),
   };
 
   if (!root.subCommands) {
@@ -149,6 +180,7 @@ export function collectCompletionContexts(root: CompletionNode): CompletionConte
       segments: [...segments],
       flags: node.flags,
       subcommands: node.subcommands.map((child) => child.name),
+      positionals: node.positionals,
     });
 
     for (const child of node.subcommands) {

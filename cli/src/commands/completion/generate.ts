@@ -3,6 +3,7 @@ import { stringArg } from "@/lib/args.ts";
 import {
   formatCompletionScript,
   resolveShell,
+  SUPPORTED_SHELLS,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
 
@@ -22,6 +23,7 @@ export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
         description: "Shell to generate completion for",
         required: true,
         valueHint: "bash|fish|zsh",
+        completionValues: SUPPORTED_SHELLS,
       },
     },
     run({ args, sink }) {

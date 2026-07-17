@@ -26,7 +26,7 @@ export type InstallResult = {
 type InstallTarget = { completionPath: string; rcPath?: string };
 type InstallOptions = { updateRc?: boolean };
 
-const SUPPORTED_SHELLS = ["bash", "zsh", "fish"] as const;
+export const SUPPORTED_SHELLS = ["bash", "fish", "zsh"] as const;
 const START_MARKER = "# >>> altertable completion >>>";
 const END_MARKER = "# <<< altertable completion <<<";
 const COMPLETION_DOCS_URL = "https://github.com/altertable-ai/altertable-cli#shell-completion";
