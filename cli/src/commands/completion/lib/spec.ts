@@ -19,6 +19,7 @@ export type CompletionNode = {
   subcommands: CompletionNode[];
   flags: CompletionFlag[];
   positionals: CompletionPositional[];
+  soleDirectOperands: string[];
 };
 
 export type CompletionFlag = {
@@ -47,6 +48,8 @@ export type CompletionContext = {
   subcommands: string[];
   /** Positional arguments declared on this node, in command order. */
   positionals: CompletionPositional[];
+  /** Subcommand-shaped values that select direct invocation when they are the sole operand. */
+  soleDirectOperands: string[];
 };
 
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
@@ -104,6 +107,7 @@ function walkCommand(name: string, descriptor: CommandDescriptor, depth: number)
     subcommands: [],
     flags: extractFlags(descriptor.arguments),
     positionals: extractPositionals(descriptor.arguments),
+    soleDirectOperands: [...descriptor.soleDirectOperands],
   };
 
   if (depth >= MAX_SUBCOMMAND_DEPTH) {
@@ -122,6 +126,7 @@ export function buildCompletionSpecFromDescriptor(descriptor: CommandDescriptor)
     subcommands: [],
     flags: extractFlags(descriptor.arguments),
     positionals: extractPositionals(descriptor.arguments),
+    soleDirectOperands: [...descriptor.soleDirectOperands],
   };
 
   spec.subcommands = walkSubcommands(descriptor.subcommands, 1);
@@ -141,6 +146,7 @@ export function collectCompletionContexts(root: CompletionNode): CompletionConte
       flags: node.flags,
       subcommands: node.subcommands.map((child) => child.name),
       positionals: node.positionals,
+      soleDirectOperands: node.soleDirectOperands,
     });
 
     for (const child of node.subcommands) {

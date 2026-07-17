@@ -45,6 +45,7 @@ export type CommandDescriptor = {
   key?: string;
   metadata: CommandMetadata;
   arguments: CommandArgumentDescriptor[];
+  soleDirectOperands: string[];
   subcommands: CommandDescriptor[];
 };
 
@@ -160,6 +161,7 @@ export async function resolveCommandDescriptor(
     ...(key ? { key } : {}),
     metadata: { ...metadata, invocations },
     arguments: arguments_,
+    soleDirectOperands: [...(command.soleDirectOperands ?? [])],
     subcommands,
   };
 }
@@ -191,6 +193,22 @@ export function validateCommandDescriptor(root: CommandDescriptor): void {
       if (argument.type === "positional" && !argument.requiredExplicitly) {
         errors.push(`${displayPath} <${argument.name}>: positional requiredness must be explicit`);
       }
+    }
+    const subcommandNames = new Set(
+      descriptor.subcommands.flatMap((subcommand) => [
+        ...(subcommand.metadata.name ? [subcommand.metadata.name] : []),
+        ...subcommand.metadata.aliases,
+      ]),
+    );
+    for (const operand of new Set(descriptor.soleDirectOperands)) {
+      if (!subcommandNames.has(operand)) {
+        errors.push(
+          `${displayPath}: sole direct operand "${operand}" must match a subcommand name or alias`,
+        );
+      }
+    }
+    if (new Set(descriptor.soleDirectOperands).size !== descriptor.soleDirectOperands.length) {
+      errors.push(`${displayPath}: sole direct operands must be unique`);
     }
     for (const subcommand of descriptor.subcommands) {
       visit(subcommand, commandPath, depth + 1);

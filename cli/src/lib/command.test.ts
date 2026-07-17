@@ -108,9 +108,9 @@ describe("command composition", () => {
       ["leaf", "value", "-c", "--json"],
       ["leaf", "--profile", "--force", "value"],
     ]) {
-      expect(
-        runWithCliRuntime(runtime, () => runCommandTree(root, { rawArgs })),
-      ).rejects.toThrow(/^Missing value for/);
+      expect(runWithCliRuntime(runtime, () => runCommandTree(root, { rawArgs }))).rejects.toThrow(
+        /^Missing value for/,
+      );
     }
   });
 

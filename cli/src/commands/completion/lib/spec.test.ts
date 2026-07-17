@@ -273,6 +273,12 @@ describe("buildCompletionSpec", () => {
     ]);
   });
 
+  test("extracts intentional direct and subcommand operand collisions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
+
+    expect(findNode(spec, "query")?.soleDirectOperands).toEqual(["show"]);
+  });
+
   test("extracts finite shell positional values from completion commands", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
     const completion = findNode(spec, "completion");
@@ -332,6 +338,16 @@ describe("normalized completion argv", () => {
         argv: ["query", "--profile=production", "show", "qry_123"],
         path: ["query", "show"],
         positionals: ["qry_123"],
+      },
+      {
+        argv: ["query", "show", "--layout", "table"],
+        path: ["query"],
+        positionals: ["show"],
+      },
+      {
+        argv: ["query", "show", "--help"],
+        path: ["query", "show"],
+        positionals: [],
       },
       {
         argv: ["append", '{"event":"checkout"}', "--sync"],
@@ -500,6 +516,23 @@ describe("executable shell completion contract", () => {
       ]);
       expect(candidates).toContain("--profile");
       expect(candidates).not.toContain("--layout");
+    });
+
+    test(`${shell} preserves intentional direct operands with trailing flags`, async () => {
+      const direct = await runCompletion([
+        "altertable",
+        "query",
+        "show",
+        "--layout",
+        "table",
+        "--",
+      ]);
+      expect(direct).toContain("--columns");
+      expect(direct).toContain("--layout");
+
+      const nested = await runCompletion(["altertable", "query", "show", "qry_1", "--"]);
+      expect(nested).not.toContain("--columns");
+      expect(nested).not.toContain("--layout");
     });
 
     test(`${shell} completes and exhausts finite positional values`, async () => {

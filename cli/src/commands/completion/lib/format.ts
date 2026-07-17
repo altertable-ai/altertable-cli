@@ -62,11 +62,20 @@ function formatSubcommandEdgePatterns(model: CompletionModel): string {
     .join("|");
 }
 
+function formatSoleDirectEdgePatterns(model: CompletionModel): string {
+  const patterns = [...model.soleDirectEdges]
+    .sort()
+    .map((edge) => `'${edge}'`)
+    .join("|");
+  return patterns || "'__altertable_no_sole_direct_operand__'";
+}
+
 function formatBashNormalizer(model: CompletionModel): string {
   const valueFlags = formatShellCasePatterns(model.valueFlags);
   const equalsValueFlags = formatEqualsCasePatterns(model.valueFlags);
   const booleanFlags = formatShellCasePatterns(model.booleanFlags);
   const edges = formatSubcommandEdgePatterns(model);
+  const soleDirectEdges = formatSoleDirectEdgePatterns(model);
   const valueFlagCase = valueFlags
     ? `      ${valueFlags})
         if ((index + 1 >= COMP_CWORD)); then
@@ -89,6 +98,13 @@ function formatBashNormalizer(model: CompletionModel): string {
   return 1
 }
 
+_altertable_is_sole_direct_operand() {
+  case "$1|$2" in
+    ${soleDirectEdges}) return 0 ;;
+  esac
+  return 1
+}
+
 _altertable_record_operand() {
   local word="$1"
   local parentPath
@@ -99,6 +115,11 @@ _altertable_record_operand() {
   parentPath="$(IFS=/; printf '%s' "\${ALTERTABLE_COMMAND_PATH[*]}")"
   if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq 0 ]] && _altertable_is_subcommand "\${parentPath}" "\${word}"; then
     ALTERTABLE_COMMAND_PATH+=("\${word}")
+    if _altertable_is_sole_direct_operand "\${parentPath}" "\${word}"; then
+      ALTERTABLE_AMBIGUOUS_PARENT_PATH="\${parentPath}"
+      ALTERTABLE_AMBIGUOUS_SELECTED_PATH="\${parentPath}/\${word}"
+      ALTERTABLE_AMBIGUOUS_OPERAND="\${word}"
+    fi
   else
     ALTERTABLE_POSITIONAL_WORDS+=("\${word}")
   fi
@@ -108,6 +129,10 @@ _altertable_normalize_words() {
   ALTERTABLE_COMMAND_PATH=()
   ALTERTABLE_POSITIONAL_WORDS=()
   ALTERTABLE_EXPECTS_FLAG_VALUE=0
+  ALTERTABLE_AMBIGUOUS_PARENT_PATH=""
+  ALTERTABLE_AMBIGUOUS_SELECTED_PATH=""
+  ALTERTABLE_AMBIGUOUS_OPERAND=""
+  ALTERTABLE_AMBIGUOUS_HELP=0
   local afterSeparator=0
   local index word
 
@@ -121,6 +146,11 @@ _altertable_normalize_words() {
       --)
         afterSeparator=1
         ;;
+      --help|-h)
+        if [[ -n "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]]; then
+          ALTERTABLE_AMBIGUOUS_HELP=1
+        fi
+        ;;
 ${valueFlagCase}
 ${ignoredFlagCase}
       *)
@@ -129,6 +159,14 @@ ${ignoredFlagCase}
     esac
   done
   ALTERTABLE_COMMAND_PATH_STRING="$(IFS=/; printf '%s' "\${ALTERTABLE_COMMAND_PATH[*]}")"
+  if [[ -n "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]] &&
+    [[ "\${ALTERTABLE_COMMAND_PATH_STRING}" == "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]] &&
+    [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq 0 ]] &&
+    [[ \${ALTERTABLE_AMBIGUOUS_HELP} -eq 0 ]]; then
+    ALTERTABLE_COMMAND_PATH=("\${ALTERTABLE_COMMAND_PATH[@]:0:\${#ALTERTABLE_COMMAND_PATH[@]}-1}")
+    ALTERTABLE_POSITIONAL_WORDS+=("\${ALTERTABLE_AMBIGUOUS_OPERAND}")
+    ALTERTABLE_COMMAND_PATH_STRING="\${ALTERTABLE_AMBIGUOUS_PARENT_PATH}"
+  fi
 }`;
 }
 
@@ -254,6 +292,7 @@ function formatZshNormalizer(model: CompletionModel): string {
   const equalsValueFlags = formatEqualsCasePatterns(model.valueFlags);
   const booleanFlags = formatShellCasePatterns(model.booleanFlags);
   const edges = formatSubcommandEdgePatterns(model);
+  const soleDirectEdges = formatSoleDirectEdgePatterns(model);
   const valueFlagCase = valueFlags
     ? `      ${valueFlags})
         if (( index + 1 >= CURRENT )); then
@@ -276,6 +315,13 @@ function formatZshNormalizer(model: CompletionModel): string {
   return 1
 }
 
+_altertable_is_sole_direct_operand() {
+  case "$1|$2" in
+    ${soleDirectEdges}) return 0 ;;
+  esac
+  return 1
+}
+
 _altertable_record_operand() {
   local word="$1"
   local parentPath="\${(j:/:)ALTERTABLE_COMMAND_PATH}"
@@ -283,6 +329,11 @@ _altertable_record_operand() {
     ALTERTABLE_COMMAND_PATH+=("\${word}")
   elif (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == 0 )) && _altertable_is_subcommand "\${parentPath}" "\${word}"; then
     ALTERTABLE_COMMAND_PATH+=("\${word}")
+    if _altertable_is_sole_direct_operand "\${parentPath}" "\${word}"; then
+      ALTERTABLE_AMBIGUOUS_PARENT_PATH="\${parentPath}"
+      ALTERTABLE_AMBIGUOUS_SELECTED_PATH="\${parentPath}/\${word}"
+      ALTERTABLE_AMBIGUOUS_OPERAND="\${word}"
+    fi
   else
     ALTERTABLE_POSITIONAL_WORDS+=("\${word}")
   fi
@@ -292,6 +343,10 @@ _altertable_normalize_words() {
   ALTERTABLE_COMMAND_PATH=()
   ALTERTABLE_POSITIONAL_WORDS=()
   ALTERTABLE_EXPECTS_FLAG_VALUE=0
+  ALTERTABLE_AMBIGUOUS_PARENT_PATH=""
+  ALTERTABLE_AMBIGUOUS_SELECTED_PATH=""
+  ALTERTABLE_AMBIGUOUS_OPERAND=""
+  ALTERTABLE_AMBIGUOUS_HELP=0
   integer afterSeparator=0
   integer index=2
   local word
@@ -307,6 +362,11 @@ _altertable_normalize_words() {
       --)
         afterSeparator=1
         ;;
+      --help|-h)
+        if [[ -n "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]]; then
+          ALTERTABLE_AMBIGUOUS_HELP=1
+        fi
+        ;;
 ${valueFlagCase}
 ${ignoredFlagCase}
       *)
@@ -316,6 +376,14 @@ ${ignoredFlagCase}
     (( index += 1 ))
   done
   ALTERTABLE_COMMAND_PATH_STRING="\${(j:/:)ALTERTABLE_COMMAND_PATH}"
+  if [[ -n "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]] &&
+    [[ "\${ALTERTABLE_COMMAND_PATH_STRING}" == "\${ALTERTABLE_AMBIGUOUS_SELECTED_PATH}" ]] &&
+    (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == 0 )) &&
+    (( ALTERTABLE_AMBIGUOUS_HELP == 0 )); then
+    ALTERTABLE_COMMAND_PATH[-1]=()
+    ALTERTABLE_POSITIONAL_WORDS+=("\${ALTERTABLE_AMBIGUOUS_OPERAND}")
+    ALTERTABLE_COMMAND_PATH_STRING="\${ALTERTABLE_AMBIGUOUS_PARENT_PATH}"
+  fi
 }`;
 }
 
@@ -466,6 +534,11 @@ function formatFishNormalizer(model: CompletionModel): string {
     .sort()
     .map((edge) => `'${edge}'`)
     .join(" ");
+  const soleDirectEdges =
+    [...model.soleDirectEdges]
+      .sort()
+      .map((edge) => `'${edge}'`)
+      .join(" ") || "'__altertable_no_sole_direct_operand__'";
   const valueFlagCase = valueFlags
     ? `      case ${valueFlags}
         set index (math $index + 1)`
@@ -476,6 +549,14 @@ function formatFishNormalizer(model: CompletionModel): string {
   return `function __altertable_is_subcommand
   switch "$argv[1]|$argv[2]"
     case ${edges}
+      return 0
+  end
+  return 1
+end
+
+function __altertable_is_sole_direct_operand
+  switch "$argv[1]|$argv[2]"
+    case ${soleDirectEdges}
       return 0
   end
   return 1
@@ -492,6 +573,10 @@ function __altertable_using_context
   set -l path
   set -l positional_count 0
   set -l after_separator 0
+  set -l ambiguous_parent_path
+  set -l ambiguous_selected_path
+  set -l ambiguous_operand
+  set -l ambiguous_help 0
   set -l index 1
   while test $index -le (count $tokens)
     set -l word $tokens[$index]
@@ -503,18 +588,32 @@ function __altertable_using_context
     switch $word
       case --
         set after_separator 1
+      case --help -h
+        if test -n "$ambiguous_selected_path"
+          set ambiguous_help 1
+        end
 ${valueFlagCase}
 ${ignoredFlagCase}
       case '*'
         if test -z "$path"
           set path $word
         else if test $positional_count -eq 0; and __altertable_is_subcommand "$path" "$word"
+          if __altertable_is_sole_direct_operand "$path" "$word"
+            set ambiguous_parent_path $path
+            set ambiguous_selected_path "$path/$word"
+            set ambiguous_operand $word
+          end
           set path "$path/$word"
         else
           set positional_count (math $positional_count + 1)
         end
     end
     set index (math $index + 1)
+  end
+
+  if test -n "$ambiguous_selected_path"; and test "$path" = "$ambiguous_selected_path"; and test $positional_count -eq 0; and test $ambiguous_help -eq 0
+    set path $ambiguous_parent_path
+    set positional_count 1
   end
 
   test "$path" = "$expected_path"; or return 1

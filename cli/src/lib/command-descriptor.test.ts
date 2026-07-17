@@ -70,6 +70,7 @@ function completionContract(
         completion: argument.positionalCompletion ?? "freeform",
         values: argument.values,
       })),
+    soleDirectOperands: descriptor.soleDirectOperands,
   };
 }
 
@@ -275,6 +276,14 @@ describe("command descriptor", () => {
     );
   });
 
+  test("describes intentional direct and subcommand operand collisions", async () => {
+    const root = await resolveCommandDescriptor(buildMainCommand());
+    const query = root.subcommands.find((command) => command.key === "query");
+
+    expect(query?.soleDirectOperands).toEqual(["show"]);
+    expect(query?.subcommands.map((command) => command.metadata.name)).toContain("show");
+  });
+
   test("reports descriptor invariant violations together", async () => {
     const descriptor = await resolveCommandDescriptor(
       defineCommand({
@@ -282,6 +291,7 @@ describe("command descriptor", () => {
         subCommands: {
           registered: defineCommand({
             meta: { name: "canonical" },
+            soleDirectOperands: ["missing", "missing"],
             args: {
               value: { type: "positional", description: "Runtime-optional value" },
             },
@@ -298,6 +308,12 @@ describe("command descriptor", () => {
     );
     expect(() => validateCommandDescriptor(descriptor)).toThrow(
       /positional requiredness must be explicit/,
+    );
+    expect(() => validateCommandDescriptor(descriptor)).toThrow(
+      /sole direct operand "missing" must match a subcommand name or alias/,
+    );
+    expect(() => validateCommandDescriptor(descriptor)).toThrow(
+      /sole direct operands must be unique/,
     );
   });
 });
