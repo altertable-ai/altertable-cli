@@ -1,5 +1,5 @@
 import { commandArgumentValues, type Command, type CommandArg } from "@/lib/command.ts";
-import { readCommandMetadata } from "@/lib/command-metadata.ts";
+import { resolveCommandMetadata } from "@/lib/command-metadata.ts";
 
 /**
  * Static completion spec derived from the command tree.
@@ -92,30 +92,31 @@ function extractPositionals(command: Command): CompletionPositional[] {
   return positionals;
 }
 
-function resolveSubcommandNames(command: Command): string[] {
-  const metadata = readCommandMetadata(command);
+async function resolveSubcommandNames(command: Command): Promise<string[]> {
+  const metadata = await resolveCommandMetadata(command);
   if (metadata.hidden || !metadata.name) return [];
   return [...new Set([metadata.name, ...metadata.aliases])];
 }
 
-function resolveRootName(root: Command): string {
-  return readCommandMetadata(root).name ?? "altertable";
-}
-
-function walkSubcommands(subcommands: Command["subCommands"], depth: number): CompletionNode[] {
+async function walkSubcommands(
+  subcommands: Command["subCommands"],
+  depth: number,
+): Promise<CompletionNode[]> {
   if (!subcommands) {
     return [];
   }
-  return Object.values(subcommands)
-    .flatMap((subcommand) => {
+  const nodes = await Promise.all(
+    Object.values(subcommands).map(async (subcommand) => {
       const command = subcommand as Command;
-      return resolveSubcommandNames(command).map((name) => walkCommand(name, command, depth));
-    })
-    .sort((left, right) => left.name.localeCompare(right.name));
+      const names = await resolveSubcommandNames(command);
+      return await Promise.all(names.map((name) => walkCommand(name, command, depth)));
+    }),
+  );
+  return nodes.flat().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function walkCommand(name: string, command: Command, depth: number): CompletionNode {
-  const metadata = readCommandMetadata(command);
+async function walkCommand(name: string, command: Command, depth: number): Promise<CompletionNode> {
+  const metadata = await resolveCommandMetadata(command);
   const node: CompletionNode = {
     name,
     description: metadata.description || undefined,
@@ -128,14 +129,14 @@ function walkCommand(name: string, command: Command, depth: number): CompletionN
     return node;
   }
 
-  node.subcommands = walkSubcommands(command.subCommands, depth + 1);
+  node.subcommands = await walkSubcommands(command.subCommands, depth + 1);
   return node;
 }
 
-export function buildCompletionSpec(root: Command): CompletionNode {
-  const metadata = readCommandMetadata(root);
+export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {
+  const metadata = await resolveCommandMetadata(root);
   const spec: CompletionNode = {
-    name: resolveRootName(root),
+    name: metadata.name ?? "altertable",
     description: metadata.description || undefined,
     subcommands: [],
     flags: extractFlags(root),
@@ -146,7 +147,7 @@ export function buildCompletionSpec(root: Command): CompletionNode {
     return spec;
   }
 
-  spec.subcommands = walkSubcommands(root.subCommands, 1);
+  spec.subcommands = await walkSubcommands(root.subCommands, 1);
   return spec;
 }
 

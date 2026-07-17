@@ -34,11 +34,10 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
     },
     async run({ args, rawArgs, sink }) {
       const shell = resolveShell(optionalStringArg(args, "shell"));
-      const result = await installCompletion(
-        shell,
-        formatCompletionScript(shell, getRootCommand()),
-        { updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc") },
-      );
+      const script = await formatCompletionScript(shell, getRootCommand());
+      const result = await installCompletion(shell, script, {
+        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
+      });
       if (sink.json) sink.writeJson(result);
       else sink.writeHuman(formatInstallMessage(result));
     },

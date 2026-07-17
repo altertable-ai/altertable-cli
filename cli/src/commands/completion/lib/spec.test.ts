@@ -12,11 +12,13 @@ import {
   mergeCompletionFlags,
 } from "@/commands/completion/lib/format.ts";
 
-function findNode(spec: ReturnType<typeof buildCompletionSpec>, name: string) {
+type CompletionSpec = Awaited<ReturnType<typeof buildCompletionSpec>>;
+
+function findNode(spec: CompletionSpec, name: string) {
   return spec.subcommands.find((node) => node.name === name);
 }
 
-function findChild(node: ReturnType<typeof buildCompletionSpec> | undefined, name: string) {
+function findChild(node: CompletionSpec | undefined, name: string) {
   return node?.subcommands.find((child) => child.name === name);
 }
 
@@ -24,8 +26,8 @@ function bashQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function runBashCompletion(words: string[]): string[] {
-  const script = formatBashCompletion(buildCompletionSpec(buildMainCommand()));
+async function runBashCompletion(words: string[]): Promise<string[]> {
+  const script = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
   const source = `${script}
 COMP_WORDS=(${words.map(bashQuote).join(" ")})
 COMP_CWORD=${words.length - 1}
@@ -44,7 +46,7 @@ printf '%s\\n' "\${COMPREPLY[@]}"
 }
 
 describe("buildCompletionSpec", () => {
-  test("walks a minimal fake tree", () => {
+  test("walks a minimal fake tree", async () => {
     const root = defineCommand({
       meta: { name: "altertable" },
       args: {
@@ -66,7 +68,7 @@ describe("buildCompletionSpec", () => {
       },
     });
 
-    const spec = buildCompletionSpec(root);
+    const spec = await buildCompletionSpec(root);
     expect(spec.flags.map((flag) => flag.name)).toEqual(["format", "json"]);
     expect(spec.flags.find((flag) => flag.name === "format")?.values).toEqual(["json", "table"]);
     expect(spec.subcommands).toHaveLength(1);
@@ -75,7 +77,7 @@ describe("buildCompletionSpec", () => {
     expect(spec.subcommands[0]?.flags.map((flag) => flag.name)).toEqual(["force"]);
   });
 
-  test("skips nested commands without meta.name", () => {
+  test("skips nested commands without meta.name", async () => {
     const root = defineCommand({
       subCommands: {
         visible: { meta: { name: "visible" } },
@@ -83,11 +85,11 @@ describe("buildCompletionSpec", () => {
       },
     });
 
-    const spec = buildCompletionSpec(root);
+    const spec = await buildCompletionSpec(root);
     expect(spec.subcommands.map((command) => command.name)).toEqual(["visible"]);
   });
 
-  test("skips commands marked hidden", () => {
+  test("skips commands marked hidden", async () => {
     const root = defineCommand({
       subCommands: {
         visible: { meta: { name: "visible" } },
@@ -95,12 +97,36 @@ describe("buildCompletionSpec", () => {
       },
     });
 
-    const spec = buildCompletionSpec(root);
+    const spec = await buildCompletionSpec(root);
     expect(spec.subcommands.map((command) => command.name)).toEqual(["visible"]);
   });
 
-  test("real root command includes expected top-level and nested commands", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("resolves asynchronous command metadata", async () => {
+    const root = defineCommand({
+      meta: async () => ({ name: "altertable" }),
+      subCommands: {
+        generated: defineCommand({
+          meta: async () => ({
+            name: "generated",
+            description: "Generated command",
+          }),
+        }),
+      },
+    });
+
+    const spec = await buildCompletionSpec(root);
+
+    expect(spec.name).toBe("altertable");
+    expect(spec.subcommands).toEqual([
+      expect.objectContaining({
+        name: "generated",
+        description: "Generated command",
+      }),
+    ]);
+  });
+
+  test("real root command includes expected top-level and nested commands", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const catalogs = findNode(spec, "catalogs");
     const api = findNode(spec, "api");
 
@@ -119,19 +145,19 @@ describe("buildCompletionSpec", () => {
     expect(api?.flags.some((flag) => flag.name === "input")).toBe(true);
   });
 
-  test("includes completion top-level command", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes completion top-level command", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     expect(findNode(spec, "completion")).toBeDefined();
   });
 
-  test("extracts root json flag", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("extracts root json flag", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     expect(spec.flags.some((flag) => flag.name === "json")).toBe(true);
     expect(spec.flags.some((flag) => flag.name === "debug")).toBe(true);
   });
 
-  test("extracts fixed flag values from real commands", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("extracts fixed flag values from real commands", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const query = findNode(spec, "query");
 
     expect(query?.flags.find((flag) => flag.name === "layout")?.values).toEqual([
@@ -146,8 +172,8 @@ describe("buildCompletionSpec", () => {
     ]);
   });
 
-  test("extracts finite shell positional values from completion commands", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("extracts finite shell positional values from completion commands", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const completion = findNode(spec, "completion");
 
     expect(findChild(completion, "generate")?.positionals).toEqual([
@@ -166,16 +192,16 @@ describe("buildCompletionSpec", () => {
     ]);
   });
 
-  test("sorts subcommands alphabetically", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("sorts subcommands alphabetically", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const names = spec.subcommands.map((command) => command.name);
     expect(names).toEqual([...names].sort((left, right) => left.localeCompare(right)));
   });
 });
 
 describe("completion format helpers", () => {
-  test("groupCompletionContextsByTopLevel groups by first segment", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("groupCompletionContextsByTopLevel groups by first segment", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const contexts = collectCompletionContexts(spec);
     const grouped = groupCompletionContextsByTopLevel(contexts);
 
@@ -201,36 +227,36 @@ describe("completion format helpers", () => {
 });
 
 describe("formatBashCompletion", () => {
-  test("includes nested case blocks", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes nested case blocks", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
     expect(output).toContain("api)");
     expect(output).toContain("--method");
     expect(output).toContain("catalogs");
   });
 
-  test("includes leaf command flags", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes leaf command flags", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
     expect(output).toContain("--raw-field");
     expect(output).toContain("--field");
     expect(output).toContain("--input");
   });
 
-  test("includes flag value completions", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes flag value completions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
     expect(output).toContain("_altertable_complete_flag_value");
     expect(output).toContain('"--layout=auto,table,line"');
     expect(output).toContain('"--pager=auto,always,never"');
   });
 
-  test("includes finite positional value completions", () => {
-    const output = formatBashCompletion(buildCompletionSpec(buildMainCommand()));
+  test("includes finite positional value completions", async () => {
+    const output = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
     expect(output).toContain('compgen -W "bash fish zsh"');
   });
 
-  test("routes around every global flag in every command position", () => {
+  test("routes around every global flag in every command position", async () => {
     const globalFlagForms = [
       ["--debug"],
       ["-d"],
@@ -252,23 +278,21 @@ describe("formatBashCompletion", () => {
         ["altertable", "completion", "generate", ...globalFlag, ""],
       ];
       for (const invocation of invocations) {
-        expect(runBashCompletion(invocation)).toEqual(["bash", "fish", "zsh"]);
+        expect(await runBashCompletion(invocation)).toEqual(["bash", "fish", "zsh"]);
       }
     }
   });
 
-  test("completes finite positionals after command flags", () => {
-    expect(runBashCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual([
-      "bash",
-      "fish",
-      "zsh",
-    ]);
+  test("completes finite positionals after command flags", async () => {
+    expect(await runBashCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual(
+      ["bash", "fish", "zsh"],
+    );
   });
 });
 
 describe("collectCompletionContexts", () => {
-  test("returns leaf contexts with flags and no subcommands", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("returns leaf contexts with flags and no subcommands", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const contexts = collectCompletionContexts(spec);
 
     const api = contexts.find((context) => context.segments.join("/") === "api");
@@ -279,43 +303,43 @@ describe("collectCompletionContexts", () => {
 });
 
 describe("formatFishCompletion", () => {
-  test("includes scoped leaf flag completions", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes scoped leaf flag completions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatFishCompletion(spec);
     expect(output).toContain("-l field");
   });
 
-  test("includes flag value completions", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes flag value completions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatFishCompletion(spec);
     expect(output).toContain(
       "-l layout -d 'Human layout: auto, table, or line' -f -r -a \"auto table line\"",
     );
   });
 
-  test("includes finite positional value completions", () => {
-    const output = formatFishCompletion(buildCompletionSpec(buildMainCommand()));
+  test("includes finite positional value completions", async () => {
+    const output = formatFishCompletion(await buildCompletionSpec(buildMainCommand()));
     expect(output).toContain('-a "bash fish zsh"');
   });
 });
 
 describe("formatZshCompletion", () => {
-  test("includes leaf flag completions", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes leaf flag completions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatZshCompletion(spec);
     expect(output).toContain("--field");
     expect(output).toContain("--input");
   });
 
-  test("includes flag value completions", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("includes flag value completions", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatZshCompletion(spec);
     expect(output).toContain(":layout:(auto table line)");
     expect(output).toContain(":pager:(auto always never)");
   });
 
-  test("includes finite positional value completions", () => {
-    const output = formatZshCompletion(buildCompletionSpec(buildMainCommand()));
+  test("includes finite positional value completions", async () => {
+    const output = formatZshCompletion(await buildCompletionSpec(buildMainCommand()));
     expect(output).toContain("_values 'shell' bash fish zsh");
   });
 });

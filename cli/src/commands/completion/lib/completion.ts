@@ -137,8 +137,11 @@ function upsertManagedBlock(existing: string, block: string): string {
   return prefix ? `${prefix}\n\n${block}` : block;
 }
 
-export function formatCompletionScript(shell: SupportedShell, rootCommand: Command): string {
-  const spec = buildCompletionSpec(rootCommand);
+export async function formatCompletionScript(
+  shell: SupportedShell,
+  rootCommand: Command,
+): Promise<string> {
+  const spec = await buildCompletionSpec(rootCommand);
   if (shell === "bash") return formatBashCompletion(spec);
   if (shell === "zsh") return formatZshCompletion(spec);
   return formatFishCompletion(spec);

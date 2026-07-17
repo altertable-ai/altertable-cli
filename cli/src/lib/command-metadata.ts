@@ -35,11 +35,3 @@ export async function resolveCommandMetadata(command: Command): Promise<CommandM
       : await (source ?? Promise.resolve<AltertableCommandMeta | undefined>(undefined));
   return normalizeCommandMetadata(metadata as AltertableCommandMeta | undefined);
 }
-
-export function readCommandMetadata(command: Command): CommandMetadata {
-  const source = command.meta;
-  if (typeof source === "function" || (source && typeof source === "object" && "then" in source)) {
-    throw new TypeError("Command metadata must be static for synchronous consumers.");
-  }
-  return normalizeCommandMetadata(source as AltertableCommandMeta | undefined);
-}

@@ -109,8 +109,8 @@ describe("api", () => {
     expect(operation.parameters).toEqual(["service_account_id", "environment_id"]);
   });
 
-  test("buildMainCommand top-level names include api and exclude connections", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("buildMainCommand top-level names include api and exclude connections", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const topLevelNames = spec.subcommands.map((command) => command.name);
     expect(topLevelNames).toContain("api");
     expect(topLevelNames).not.toContain("connections");

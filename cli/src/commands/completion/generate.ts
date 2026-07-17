@@ -25,9 +25,9 @@ export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
         values: SUPPORTED_SHELLS,
       },
     },
-    run({ args, sink }) {
+    async run({ args, sink }) {
       const shell = resolveShell(stringArg(args, "shell"));
-      sink.writeRaw(formatCompletionScript(shell, getRootCommand()));
+      sink.writeRaw(await formatCompletionScript(shell, getRootCommand()));
     },
   });
 }

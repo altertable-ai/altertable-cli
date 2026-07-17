@@ -259,7 +259,7 @@ describe("completion command", () => {
   });
 
   test("integration root command top-level count matches registry", async () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+    const spec = await buildCompletionSpec(buildMainCommand());
     const output = await runCompletion(buildMainCommand, "bash");
     const topLevelCount = spec.subcommands.length;
     expect(topLevelCount).toBe(14);

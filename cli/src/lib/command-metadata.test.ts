@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { defineCommand } from "@/lib/command.ts";
-import {
-  readCommandMetadata,
-  resolveCommandMetadata,
-  type CommandMetadata,
-} from "@/lib/command-metadata.ts";
+import { resolveCommandMetadata, type CommandMetadata } from "@/lib/command-metadata.ts";
 
 describe("command metadata", () => {
   test("normalizes the shared command presentation contract", async () => {
@@ -27,7 +23,6 @@ describe("command metadata", () => {
       hidden: true,
       commandGroup: "platform",
     } satisfies CommandMetadata;
-    expect(readCommandMetadata(command)).toEqual(expected);
     expect(await resolveCommandMetadata(command)).toEqual(expected);
   });
 
@@ -40,6 +35,5 @@ describe("command metadata", () => {
       name: "generated",
       description: "Generated metadata.",
     });
-    expect(() => readCommandMetadata(command)).toThrow("must be static");
   });
 });

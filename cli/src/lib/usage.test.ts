@@ -238,7 +238,7 @@ describe("renderAltertableUsage", () => {
       description: "Inspect a managed resource.",
       examples: ["altertable inspect catalog"],
     });
-    expect(buildCompletionSpec(root).subcommands).toEqual([
+    expect((await buildCompletionSpec(root)).subcommands).toEqual([
       expect.objectContaining({ name: "inspect", description: "Inspect a managed resource." }),
       expect.objectContaining({ name: "show", description: "Inspect a managed resource." }),
     ]);
