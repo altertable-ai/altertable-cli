@@ -5,6 +5,7 @@ import { assertNoRemovedSyntax } from "@/lib/legacy-cli.ts";
 const rootArgs = defineArgs({
   json: { type: "boolean" },
   profile: { type: "string" },
+  "connect-timeout": { type: "string" },
 });
 
 describe("assertNoRemovedSyntax", () => {
@@ -17,6 +18,9 @@ describe("assertNoRemovedSyntax", () => {
     [["catalogs", "list"], '"catalogs"'],
     [["completion", "fish"], "completion generate fish"],
     [["api", "GET", "/whoami"], "api <PATH> -X GET"],
+    [["api", "--profile", "prod", "GET", "/whoami"], "api <PATH> -X GET"],
+    [["query", "--connect-timeout", "10", "run", "SELECT 1"], "query <SQL>"],
+    [["catalogs", "--profile", "prod", "list"], '"catalogs"'],
   ])("rejects removed syntax %#", (args, replacement) => {
     expect(() => assertNoRemovedSyntax(args, rootArgs)).toThrow(replacement);
   });

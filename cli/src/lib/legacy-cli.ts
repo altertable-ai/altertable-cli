@@ -20,14 +20,19 @@ function migrationError(previous: string, replacement: string): never {
 }
 
 export function assertNoRemovedSyntax(rawArgs: readonly string[], rootArgs: CommandArgs): void {
+  const rootValueFlags = valueFlagsFor(rootArgs);
   const commandToken = findFirstPositionalToken(rawArgs, {
-    valueFlags: valueFlagsFor(rootArgs),
+    valueFlags: rootValueFlags,
   });
   if (!commandToken) return;
 
   const commandArgs = rawArgs.slice(commandToken.index + 1);
+  const commandValueFlags =
+    commandToken.value === "api"
+      ? new Set([...rootValueFlags, ...API_VALUE_FLAGS])
+      : rootValueFlags;
   const operand = findFirstPositionalToken(commandArgs, {
-    valueFlags: commandToken.value === "api" ? API_VALUE_FLAGS : undefined,
+    valueFlags: commandValueFlags,
   })?.value;
 
   if (commandToken.value === "profile") {
