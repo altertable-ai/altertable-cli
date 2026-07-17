@@ -10,6 +10,7 @@ export type CommandArgs = ArgsDef;
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
+/** Canonical presentation metadata consumed by help, agents, completion, and documentation. */
 export type AltertableCommandMeta = CommandMeta & {
   examples?: readonly string[];
   hidden?: boolean;

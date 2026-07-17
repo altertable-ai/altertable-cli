@@ -1,4 +1,5 @@
 import type { Command } from "@/lib/command.ts";
+import { readCommandMetadata } from "@/lib/command-metadata.ts";
 
 /**
  * Static completion spec derived from the command tree.
@@ -90,40 +91,14 @@ function extractPositionals(command: Command): CompletionPositional[] {
   return positionals;
 }
 
-function resolveAliases(value: unknown): string[] {
-  if (!value) {
-    return [];
-  }
-  const aliases = Array.isArray(value) ? value : [value];
-  return aliases.map(String);
-}
-
 function resolveSubcommandNames(command: Command): string[] {
-  const meta = command.meta;
-  if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
-    return [];
-  }
-  if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    const aliases = "alias" in meta ? resolveAliases(meta.alias) : [];
-    return [...new Set([String(meta.name), ...aliases])];
-  }
-  return [];
-}
-
-function resolveMetaDescription(command: Command): string | undefined {
-  const meta = command.meta;
-  if (meta && typeof meta === "object" && "description" in meta && meta.description) {
-    return String(meta.description);
-  }
-  return undefined;
+  const metadata = readCommandMetadata(command);
+  if (metadata.hidden || !metadata.name) return [];
+  return [...new Set([metadata.name, ...metadata.aliases])];
 }
 
 function resolveRootName(root: Command): string {
-  const meta = root.meta;
-  if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    return String(meta.name);
-  }
-  return "altertable";
+  return readCommandMetadata(root).name ?? "altertable";
 }
 
 function walkSubcommands(subcommands: Command["subCommands"], depth: number): CompletionNode[] {
@@ -139,9 +114,10 @@ function walkSubcommands(subcommands: Command["subCommands"], depth: number): Co
 }
 
 function walkCommand(name: string, command: Command, depth: number): CompletionNode {
+  const metadata = readCommandMetadata(command);
   const node: CompletionNode = {
     name,
-    description: resolveMetaDescription(command),
+    description: metadata.description || undefined,
     subcommands: [],
     flags: extractFlags(command),
     positionals: extractPositionals(command),
@@ -156,9 +132,10 @@ function walkCommand(name: string, command: Command, depth: number): CompletionN
 }
 
 export function buildCompletionSpec(root: Command): CompletionNode {
+  const metadata = readCommandMetadata(root);
   const spec: CompletionNode = {
     name: resolveRootName(root),
-    description: resolveMetaDescription(root),
+    description: metadata.description || undefined,
     subcommands: [],
     flags: extractFlags(root),
     positionals: extractPositionals(root),

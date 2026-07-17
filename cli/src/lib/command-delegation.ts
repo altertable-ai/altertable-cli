@@ -1,4 +1,5 @@
 import type { Command, CommandArgs } from "@/lib/command.ts";
+import { resolveCommandMetadata } from "@/lib/command-metadata.ts";
 
 export type PositionalScanOptions = {
   valueFlags?: ReadonlySet<string>;
@@ -76,11 +77,6 @@ async function resolveCommandValue<T>(
   return await value;
 }
 
-function aliases(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String);
-  return value === undefined ? [] : [String(value)];
-}
-
 /**
  * Resolves the real child command selected by argv using the same operand rules
  * as Citty: skip value-bearing flags, stop at `--`, prefer command keys, then aliases.
@@ -107,8 +103,8 @@ export async function resolveSelectedSubCommand(
 
   for (const [name, candidate] of Object.entries(subCommands)) {
     const resolved = await resolveCommandValue(candidate);
-    const meta = await resolveCommandValue(resolved.meta ?? {});
-    if (aliases(meta.alias).includes(operand.value)) {
+    const metadata = await resolveCommandMetadata(resolved);
+    if (metadata.aliases.includes(operand.value)) {
       return { name, command: resolved, operandIndex: operand.index };
     }
   }

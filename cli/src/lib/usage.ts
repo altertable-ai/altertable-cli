@@ -1,5 +1,6 @@
 import type { Command, CommandArg, CommandArgs } from "@/lib/command.ts";
-import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command.ts";
+import type { AltertableCommandGroup } from "@/lib/command.ts";
+import { resolveCommandMetadata, type CommandMetadata } from "@/lib/command-metadata.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
@@ -68,18 +69,13 @@ export async function resolveSubCommandForUsage(
   return [command, parent];
 }
 
-async function resolveCommandMeta(command: Command): Promise<AltertableCommandMeta> {
-  return (await resolveValue(command.meta ?? {})) as AltertableCommandMeta;
-}
-
 async function resolveCommandExamples(command: Command): Promise<readonly string[]> {
-  const meta = await resolveCommandMeta(command);
-  return meta.examples ?? [];
+  return (await resolveCommandMetadata(command)).examples;
 }
 
 type VisibleSubCommand = {
   name: string;
-  meta: AltertableCommandMeta;
+  metadata: CommandMetadata;
 };
 
 async function visibleSubCommands(command: Command): Promise<VisibleSubCommand[]> {
@@ -91,9 +87,9 @@ async function visibleSubCommands(command: Command): Promise<VisibleSubCommand[]
   const visibleEntries: VisibleSubCommand[] = [];
   for (const [name, subCommand] of Object.entries(subCommands)) {
     const resolved = await resolveValue(subCommand);
-    const meta = await resolveCommandMeta(resolved);
-    if (!meta.hidden) {
-      visibleEntries.push({ name, meta });
+    const metadata = await resolveCommandMetadata(resolved);
+    if (!metadata.hidden) {
+      visibleEntries.push({ name, metadata });
     }
   }
 
@@ -247,15 +243,15 @@ function argumentDescription(definition: CommandArg): string {
     .join(" ");
 }
 
-function usageCommandName(meta: AltertableCommandMeta, parentMeta?: AltertableCommandMeta): string {
-  const name = meta.name ?? "command";
-  if (!parentMeta) {
+function usageCommandName(metadata: CommandMetadata, parentMetadata?: CommandMetadata): string {
+  const name = metadata.name ?? "command";
+  if (!parentMetadata) {
     return name;
   }
-  if (parentMeta.name === "altertable") {
+  if (parentMetadata.name === "altertable") {
     return `altertable ${name}`;
   }
-  return `altertable ${parentMeta.name ?? "command"} ${name}`;
+  return `altertable ${parentMetadata.name ?? "command"} ${name}`;
 }
 
 function usageTokens(
@@ -283,11 +279,11 @@ function usageTokens(
 }
 
 async function renderCommandUsage(command: Command, parent?: Command): Promise<string> {
-  const meta = await resolveCommandMeta(command);
-  const parentMeta = parent ? await resolveCommandMeta(parent) : undefined;
+  const metadata = await resolveCommandMetadata(command);
+  const parentMetadata = parent ? await resolveCommandMetadata(parent) : undefined;
   const args = await resolveValue(command.args ?? {});
   const subCommands = await visibleSubCommands(command);
-  const commandName = usageCommandName(meta, parentMeta);
+  const commandName = usageCommandName(metadata, parentMetadata);
   const positionalEntries = Object.entries(args)
     .filter(([, definition]) => definition.type === "positional")
     .map(([name, definition]) => ({
@@ -300,12 +296,12 @@ async function renderCommandUsage(command: Command, parent?: Command): Promise<s
       label: flagLabel(name, definition),
       description: argumentDescription(definition),
     }));
-  const commandEntries = subCommands.map(({ name, meta: subCommandMeta }) => ({
-    label: [name, ...toArray(subCommandMeta.alias)].join(", "),
-    description: subCommandMeta.description ?? "",
+  const commandEntries = subCommands.map(({ name, metadata: subcommandMetadata }) => ({
+    label: [name, ...subcommandMetadata.aliases].join(", "),
+    description: subcommandMetadata.description,
   }));
   const lines = [
-    ...(meta.description ? wrapHelpText(meta.description, getHelpTerminalWidth()) : []),
+    ...(metadata.description ? wrapHelpText(metadata.description, getHelpTerminalWidth()) : []),
     "",
     `  ${renderDisplayText([span("Usage", "strong")])}`,
     `    ${usageTokens(commandName, args, subCommands)}`,
@@ -348,7 +344,7 @@ async function renderCommandUsage(command: Command, parent?: Command): Promise<s
   return lines.join("\n");
 }
 
-async function renderRootUsage(command: Command, meta: AltertableCommandMeta): Promise<string> {
+async function renderRootUsage(command: Command, metadata: CommandMetadata): Promise<string> {
   const args = await resolveValue(command.args ?? {});
   const groupedEntries: Record<AltertableCommandGroup, HelpEntry[]> = {
     platform: [],
@@ -356,7 +352,7 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
     query: [],
   };
   const lines = [
-    ...wrapHelpText(meta.description ?? "", getHelpTerminalWidth()),
+    ...wrapHelpText(metadata.description, getHelpTerminalWidth()),
     "",
     `  ${renderDisplayText([span("Usage", "strong")])}`,
     "    altertable <command> [flags]",
@@ -364,13 +360,13 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
     `  ${renderDisplayText([span("Commands", "strong")])}`,
   ];
 
-  for (const { name, meta: commandMeta } of await visibleSubCommands(command)) {
-    if (!commandMeta.commandGroup) {
+  for (const { name, metadata: commandMetadata } of await visibleSubCommands(command)) {
+    if (!commandMetadata.commandGroup) {
       continue;
     }
-    groupedEntries[commandMeta.commandGroup].push({
+    groupedEntries[commandMetadata.commandGroup].push({
       label: name,
-      description: commandMeta.description ?? "",
+      description: commandMetadata.description,
     });
   }
 
@@ -419,9 +415,9 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
 }
 
 export async function renderAltertableUsage(command: Command, parent?: Command): Promise<string> {
-  const meta = await resolveCommandMeta(command);
-  if (parent === undefined && meta.name === "altertable") {
-    return renderRootUsage(command, meta);
+  const metadata = await resolveCommandMetadata(command);
+  if (parent === undefined && metadata.name === "altertable") {
+    return renderRootUsage(command, metadata);
   }
 
   return renderCommandUsage(command, parent);
@@ -475,12 +471,12 @@ export async function buildStructuredHelp(
   parent?: Command,
   root?: Command,
 ): Promise<StructuredHelp> {
-  const meta = await resolveCommandMeta(command);
-  const parentMeta = parent ? await resolveCommandMeta(parent) : undefined;
+  const metadata = await resolveCommandMetadata(command);
+  const parentMetadata = parent ? await resolveCommandMetadata(parent) : undefined;
   const args = await resolveValue(command.args ?? {});
   const subCommands = await visibleSubCommands(command);
-  const commandName = usageCommandName(meta, parentMeta);
-  const isRootCommand = parent === undefined && meta.name === "altertable";
+  const commandName = usageCommandName(metadata, parentMetadata);
+  const isRootCommand = parent === undefined && metadata.name === "altertable";
   const usage = isRootCommand
     ? "altertable <command> [flags]"
     : usageTokens(commandName, args, subCommands);
@@ -491,20 +487,20 @@ export async function buildStructuredHelp(
 
   return {
     command: commandName,
-    description: meta.description ?? "",
+    description: metadata.description,
     usage,
-    aliases: toArray(meta.alias).map(String),
+    aliases: metadata.aliases,
     arguments: entries.filter((entry) => entry.type === "positional"),
     options: isRootCommand ? [] : entries.filter((entry) => entry.type !== "positional"),
-    subcommands: subCommands.map(({ name, meta: subcommandMeta }) => ({
+    subcommands: subCommands.map(({ name, metadata: subcommandMetadata }) => ({
       name,
-      aliases: toArray(subcommandMeta.alias).map(String),
-      description: subcommandMeta.description ?? "",
+      aliases: subcommandMetadata.aliases,
+      description: subcommandMetadata.description,
     })),
     global_options: Object.entries(globalArgs).map(([name, definition]) =>
       structuredArgument(name, definition),
     ),
-    examples: [...(meta.examples ?? [])],
+    examples: metadata.examples,
   };
 }
 

@@ -16,6 +16,7 @@ import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { VERSION } from "@/version.ts";
 import { span } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
+import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import {
   forceTerminalColorForTests,
   restoreTerminalState,
@@ -197,6 +198,34 @@ describe("renderAltertableUsage", () => {
       "profile",
       "connect-timeout",
       "read-timeout",
+    ]);
+  });
+
+  test("shares command metadata across human, structured, and completion help", async () => {
+    const inspect = defineCommand({
+      meta: {
+        name: "inspect",
+        alias: "show",
+        description: "Inspect a managed resource.",
+        examples: ["altertable inspect catalog"],
+      },
+    });
+    const root = defineCommand({
+      meta: { name: "altertable" },
+      subCommands: { inspect },
+    });
+
+    expect(await renderAltertableUsage(inspect)).toContain("Inspect a managed resource.");
+    expect(await renderAltertableUsage(inspect)).toContain("altertable inspect catalog");
+    expect(await buildStructuredHelp(inspect)).toMatchObject({
+      command: "inspect",
+      aliases: ["show"],
+      description: "Inspect a managed resource.",
+      examples: ["altertable inspect catalog"],
+    });
+    expect(buildCompletionSpec(root).subcommands).toEqual([
+      expect.objectContaining({ name: "inspect", description: "Inspect a managed resource." }),
+      expect.objectContaining({ name: "show", description: "Inspect a managed resource." }),
     ]);
   });
 });
