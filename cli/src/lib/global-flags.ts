@@ -20,30 +20,51 @@ export function isGlobalArgvFlag(argument: string): boolean {
   return GLOBAL_ARGV_BOOLEAN_FLAGS.has(flag) || GLOBAL_ARGV_FLAGS_WITH_VALUE.has(flag);
 }
 
-export function findFirstSubcommandIndex(argv: readonly string[]): number {
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === undefined || !arg.startsWith("-")) {
-      return index;
-    }
-    if (GLOBAL_ARGV_FLAGS_WITH_VALUE.has(arg)) {
-      index += 1;
-    }
-  }
-  return argv.length;
+function readGlobalArgvFlagValue(argv: readonly string[], flagName: string): string | undefined {
+  const separatorIndex = argv.indexOf("--");
+  return readArgvFlagValue(separatorIndex === -1 ? argv : argv.slice(0, separatorIndex), flagName);
 }
 
-function readGlobalArgvFlagValue(argv: readonly string[], flagName: string): string | undefined {
-  const subcommandIndex = findFirstSubcommandIndex(argv);
-  return readArgvFlagValue(argv.slice(0, subcommandIndex), flagName);
+export function normalizeGlobalFlagsRawArgs(argv: readonly string[]): string[] {
+  const globals: string[] = [];
+  const remaining: string[] = [];
+  let afterSeparator = false;
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === undefined) continue;
+    if (argument === "--") {
+      afterSeparator = true;
+      remaining.push(argument);
+      continue;
+    }
+    if (afterSeparator || !isGlobalArgvFlag(argument)) {
+      remaining.push(argument);
+      continue;
+    }
+
+    globals.push(argument);
+    const flag = argument.split("=", 1)[0] ?? argument;
+    if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(flag)) {
+      const value = argv[index + 1];
+      if (value !== undefined) {
+        globals.push(value);
+        index += 1;
+      }
+    }
+  }
+
+  return [...globals, ...remaining];
 }
 
 export function parseGlobalFlags(argv: readonly string[]): CliContext {
+  const separatorIndex = argv.indexOf("--");
+  const globalArgs = separatorIndex === -1 ? argv : argv.slice(0, separatorIndex);
   const context: CliContext = {
-    debug: argv.includes("--debug") || argv.includes("-d"),
-    json: argv.includes("--json"),
-    agent: argv.includes("--agent"),
-    noColor: argv.includes("--no-color"),
+    debug: globalArgs.includes("--debug") || globalArgs.includes("-d"),
+    json: globalArgs.includes("--json"),
+    agent: globalArgs.includes("--agent"),
+    noColor: globalArgs.includes("--no-color"),
   };
 
   const connectTimeout = readGlobalArgvFlagValue(argv, "--connect-timeout");

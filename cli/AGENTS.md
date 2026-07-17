@@ -94,25 +94,25 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 **Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `commands/api/lib/http.ts`.
 
-| Module                                  | Role                                                                             |
-| --------------------------------------- | -------------------------------------------------------------------------------- |
-| `commands/query/`, `append/`, `upload/` | Data-plane commands                                                              |
-| `commands/api/`                         | Management HTTP invoker (`api GET /path`), spec, routes                          |
-| `commands/api/lib/http.ts`              | HTTP invoker logic for `api`                                                     |
-| `commands/api/lib/body.ts`              | `--body`, `@file`, `-f key=value` body builders                                  |
-| `lib/profile-configure-core.ts`         | Credential store (`configureRunSet`, show, clear)                                |
-| `lib/profile-configure.ts`              | `profile --configure` dispatch (flags vs wizard, `--scope`) + interactive wizard |
-| `lib/profile-configure-interactive.ts`  | Wizard prompts + credential collection                                           |
-| `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)                       |
-| `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands              |
-| `commands/profile/`                     | Profile subcommands, `profile --configure`, `profile show`                       |
-| `lib/query-output.ts`                   | Shared query output formats and sink dispatch                                    |
-| `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                                |
-| `lib/management/`                       | Shared management identity, catalogs, and presentation                           |
-| `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                                       |
-| `ui/prompts.ts`                         | Shared interactive prompt adapter and types                                      |
-| `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                                      |
-| `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                                            |
+| Module                                  | Role                                                                |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| `commands/query/`, `append/`, `upload/` | Data-plane commands                                                 |
+| `commands/api/`                         | Management HTTP invoker (`api /path`), spec, routes                 |
+| `commands/api/lib/http.ts`              | HTTP invoker logic for `api`                                        |
+| `commands/api/lib/body.ts`              | `--input`, `-f key=value`, and `-F key=value` body builders         |
+| `lib/profile-configure-core.ts`         | Credential store (`configureRunSet`, show, clear)                   |
+| `lib/profile-configure.ts`              | Profile configuration flags and interactive wizard (`--scope`)      |
+| `lib/profile-configure-interactive.ts`  | Wizard prompts + credential collection                              |
+| `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)          |
+| `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands |
+| `commands/profile/`                     | Profile subcommands, `profile configure`, `profile show`            |
+| `lib/query-output.ts`                   | Shared query output formats and sink dispatch                       |
+| `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                   |
+| `lib/management/`                       | Shared management identity, catalogs, and presentation              |
+| `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                          |
+| `ui/prompts.ts`                         | Shared interactive prompt adapter and types                         |
+| `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                         |
+| `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                               |
 
 ## Command tree
 
@@ -170,7 +170,7 @@ New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). 
 altertable api routes                    # discover method + path
 altertable api /whoami                   # default GET
 altertable api -X GET /path -f q=value   # forced GET puts fields in the query string
-altertable api POST /new_resource -f …   # invoke
+altertable api /new_resource -f …        # invoke (POST inferred)
 ```
 
 Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder mapping if new path parameters appear.

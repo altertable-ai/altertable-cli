@@ -15,11 +15,11 @@ describe("lakehouse command routing", () => {
     });
   });
 
-  test("append defaults to the run command", async () => {
+  test("append accepts data directly", async () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp([jsonMock("POST", "/append", { ok: true, task_id: appendId })]);
 
-    const result = await workspace.runCommand("altertable append --catalog memory --schema main --table users --data '{\"id\":1}'");
+    const result = await workspace.runCommand("altertable append '{\"id\":1}' --to memory.main.users");
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("METHOD")).toBe("POST");

@@ -18,7 +18,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable api GET /whoami");
+    const result = await workspace.runCommand("altertable api /whoami");
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("AUTH")).toBe("Authorization: [REDACTED]");
@@ -31,7 +31,7 @@ describe("management API user flows", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand("altertable api GET /whoami", {
+    const result = await workspace.runCommand("altertable api /whoami", {
       env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:9" },
     });
 
@@ -51,20 +51,20 @@ describe("management API user flows", () => {
     expect(
       (
         await workspace.runCommand(
-          "altertable profile --configure --api-key atm_stored --env production --control-plane-url http://localhost:7",
+          "altertable profile configure --api-key atm_stored --env production --control-plane-url http://localhost:7",
         )
       ).exitCode,
     ).toBe(0);
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
-    expect((await workspace.runCommand("altertable api GET /whoami")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable api /whoami")).exitCode).toBe(0);
     expect(await workspace.httpLogValue("URL")).toBe("http://localhost:7/rest/v1/whoami");
 
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
     expect(
       (
-        await workspace.runCommand("altertable api GET /whoami", {
+        await workspace.runCommand("altertable api /whoami", {
           env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_MANAGEMENT_API_BASE: "http://localhost:8/" },
         })
       ).exitCode,
@@ -75,19 +75,19 @@ describe("management API user flows", () => {
   test("renders friendly management HTTP errors without leaking HTML", async () => {
     await workspace.configureStoredManagementCredential();
     await workspace.setupMockHttp([textMock("GET", "/whoami", "<html><body>Internal Server Error</body></html>", 500)]);
-    let result = await workspace.runCommand("altertable api GET /whoami");
+    let result = await workspace.runCommand("altertable api /whoami");
     expect(result.exitCode).toBe(8);
     expect(result.stderr).toContain("Server error (500)");
     expect(result.stderr).not.toContain("<html>");
 
     await workspace.setupMockHttp([jsonMock("GET", "/whoami", { error: { message: "invalid api key" } }, 401)]);
-    result = await workspace.runCommand("altertable api GET /whoami");
+    result = await workspace.runCommand("altertable api /whoami");
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("Authentication failed (401)");
     expect(result.stderr).toContain("invalid api key");
 
     await workspace.setupMockHttp([jsonMock("GET", "/whoami", { error: { code: "not_found" } }, 404)]);
-    result = await workspace.runCommand("altertable api GET /whoami");
+    result = await workspace.runCommand("altertable api /whoami");
     expect(result.exitCode).toBe(4);
     expect(result.stderr).toContain("Not found (404)");
   });
@@ -99,12 +99,12 @@ describe("management API user flows", () => {
     expect(context.stdout).toContain("Status");
     expect(context.stdout).toContain("empty");
 
-    const api = await workspace.runCommand("altertable api GET /whoami");
+    const api = await workspace.runCommand("altertable api /whoami");
     expect(api.exitCode).toBe(10);
     expect(api.stderr).toContain("No management credentials");
   });
 
-  test("api POST supports gh-style fields for service accounts and databases", async () => {
+  test("api infers POST for gh-style fields on service accounts and databases", async () => {
     await workspace.configureStoredManagementCredential();
     const env = { ALTERTABLE_API_KEY: "atm_test", ALTERTABLE_ENV: "production" } satisfies TestEnv;
 
@@ -112,7 +112,7 @@ describe("management API user flows", () => {
     await workspace.setupMockHttp([
       jsonMock("POST", "/service_accounts", { service_account: { id: "sa_1", label: "CI Bot", slug: "ci-bot" } }),
     ]);
-    let result = await workspace.runCommand('altertable api POST /service_accounts -f "label=CI Bot"', { env });
+    let result = await workspace.runCommand('altertable api /service_accounts -f "label=CI Bot"', { env });
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ label: "CI Bot" });
     expect(result.stdout).toContain("CI Bot");
@@ -123,7 +123,7 @@ describe("management API user flows", () => {
         database: { id: "db_1", name: "Analytics", slug: "analytics", catalog: "analytics" },
       }),
     ]);
-    result = await workspace.runCommand("altertable api POST /environments/production/databases -f name=Analytics", { env });
+    result = await workspace.runCommand("altertable api /environments/production/databases -f name=Analytics", { env });
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogJsonValue("PAYLOAD")).toEqual({ name: "Analytics" });
     expect(result.stdout).toContain("Analytics");
@@ -138,7 +138,7 @@ describe("management API user flows", () => {
       }),
     ]);
 
-    const result = await workspace.runCommand("altertable api POST /users/user_1/environments/production/credentials -f label=default");
+    const result = await workspace.runCommand("altertable api /users/user_1/environments/production/credentials -f label=default");
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("default");

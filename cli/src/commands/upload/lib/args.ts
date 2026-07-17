@@ -8,7 +8,7 @@ export const uploadArgs = defineArgs({
   mode: {
     type: "enum",
     description: "create, append, or overwrite",
-    required: true,
+    default: "create",
     options: [...UPLOAD_MODE_OPTIONS],
   },
 });

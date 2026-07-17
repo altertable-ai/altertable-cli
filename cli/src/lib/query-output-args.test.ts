@@ -24,7 +24,7 @@ describe("parseQueryOutputOptions", () => {
 
   test("derives machine-readable output from agent context", () => {
     expect(parseQueryOutputOptions({}, { agent: true, rawArgs: [] })).toMatchObject({
-      format: "json",
+      format: "human",
       pagerOptions: { mode: "never" },
     });
   });

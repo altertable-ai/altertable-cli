@@ -418,7 +418,7 @@ export function deleteProfile(
   const active = getActiveProfileName();
   if (name === active) {
     throw new ConfigurationError(
-      `Cannot delete the active profile "${name}". Switch with: altertable profile use <name>`,
+      `Cannot delete the active profile "${name}". Switch with: altertable profile switch <name>`,
     );
   }
 

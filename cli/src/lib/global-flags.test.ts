@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isJsonOutput, setCliContext } from "@/context.ts";
-import { parseGlobalFlags } from "@/lib/global-flags.ts";
+import { normalizeGlobalFlagsRawArgs, parseGlobalFlags } from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
@@ -23,17 +23,9 @@ describe("parseGlobalFlags", () => {
     expect(context.profile).toBe("staging");
   });
 
-  test("ignores profile --profile when parsing early global flags", () => {
-    const context = parseGlobalFlags([
-      "profile",
-      "--profile",
-      "production",
-      "--api-key",
-      "atm_prod",
-      "--env",
-      "production",
-    ]);
-    expect(context.profile).toBeUndefined();
+  test("parses --profile after commands", () => {
+    const context = parseGlobalFlags(["profile", "--profile", "production", "show"]);
+    expect(context.profile).toBe("production");
   });
 
   test("parses global --profile before a subcommand", () => {
@@ -50,6 +42,17 @@ describe("parseGlobalFlags", () => {
     const both = parseGlobalFlags(["--json", "--agent", "context"]);
     expect(both.json).toBe(true);
     expect(both.agent).toBe(true);
+  });
+
+  test("hoists global flags before commands and stops at --", () => {
+    expect(
+      normalizeGlobalFlagsRawArgs(["query", "SELECT 1", "--json", "--profile", "staging"]),
+    ).toEqual(["--json", "--profile", "staging", "query", "SELECT 1"]);
+    expect(normalizeGlobalFlagsRawArgs(["query", "--", "--json"])).toEqual([
+      "query",
+      "--",
+      "--json",
+    ]);
   });
 });
 

@@ -13,17 +13,11 @@ describe("altertable catalogs", () => {
     });
   });
 
-  test("create rejects non-altertable engines", async () => {
-    const result = await workspace.runCommand("altertable catalogs create --engine postgres --name X");
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Expected one of: altertable");
-  });
-
   test("create posts to databases with the expected payload and confirmation", async () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(catalogsMock());
 
-    const result = await workspace.runCommand('altertable catalogs create --engine altertable --name "My Cat"');
+    const result = await workspace.runCommand('altertable catalogs create "My Cat"');
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("METHOD")).toBe("POST");
@@ -35,7 +29,7 @@ describe("altertable catalogs", () => {
   });
 
   test("create requires an environment", async () => {
-    const result = await workspace.runCommand("altertable catalogs create --engine altertable --name X", {
+    const result = await workspace.runCommand("altertable catalogs create X", {
       env: { ALTERTABLE_ENV: "" },
     });
     expect(result.exitCode).toBe(10);
@@ -46,7 +40,7 @@ describe("altertable catalogs", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(catalogsMock());
 
-    const result = await workspace.runCommand("altertable catalogs list");
+    const result = await workspace.runCommand("altertable catalogs");
     const urls = await workspace.httpLogValues("URL");
 
     expect(result.exitCode).toBe(0);
@@ -57,7 +51,7 @@ describe("altertable catalogs", () => {
 
   test("--agent returns a structured catalogs envelope", async () => {
     await workspace.setupMockHttp(catalogsMock());
-    const result = await workspace.runCommand("altertable --agent catalogs list");
+    const result = await workspace.runCommand("altertable catalogs --agent");
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).catalogs).toHaveLength(2);
@@ -66,7 +60,7 @@ describe("altertable catalogs", () => {
   test("databases always render as altertable engine while connections preserve theirs", async () => {
     await workspace.setupMockHttp(catalogsMock({ databaseEngine: "postgres", includeCreate: false }));
 
-    const result = await workspace.runCommand("altertable catalogs list");
+    const result = await workspace.runCommand("altertable catalogs");
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toMatch(/^my-cat\s+.*altertable/m);
@@ -78,7 +72,7 @@ describe("altertable catalogs", () => {
       jsonMock("GET", "/environments/production/databases", { error: { code: "not_found" } }, 404),
     ]);
 
-    const result = await workspace.runCommand("altertable catalogs list");
+    const result = await workspace.runCommand("altertable catalogs");
 
     expect(result.exitCode).toBe(4);
   });

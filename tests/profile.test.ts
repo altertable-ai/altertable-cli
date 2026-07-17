@@ -21,8 +21,8 @@ describe("profile switching", () => {
     expect(result.stdout).toContain("acme");
   });
 
-  test("profile use and current update active profile", async () => {
-    expect((await workspace.runCommand("altertable profile use acme_staging")).exitCode).toBe(0);
+  test("profile switch and current update active profile", async () => {
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     const result = await workspace.runCommand("altertable profile current");
 
     expect(result.exitCode).toBe(0);
@@ -30,7 +30,7 @@ describe("profile switching", () => {
   });
 
   test("active profile and --profile flag select different identities", async () => {
-    expect((await workspace.runCommand("altertable profile use acme_staging")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     let result = await workspace.runCommand("altertable profile show");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("acme_staging");
@@ -43,7 +43,7 @@ describe("profile switching", () => {
   });
 
   test("rename carries the active profile", async () => {
-    expect((await workspace.runCommand("altertable profile use acme_staging")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable profile rename acme_staging acme_stage")).exitCode).toBe(0);
     const result = await workspace.runCommand("altertable profile current");
 
@@ -51,9 +51,9 @@ describe("profile switching", () => {
     expect(result.stdout.trim()).toBe("acme_stage");
   });
 
-  test("profile create, status, env, direnv, and delete cover metadata workflows", async () => {
-    expect((await workspace.runCommand("altertable profile create globex_dev --api-key atm_globex --env dev")).exitCode).toBe(0);
-    let result = await workspace.runCommand("altertable profile status --name globex_dev");
+  test("profile configure, status, env, and delete cover metadata workflows", async () => {
+    expect((await workspace.runCommand("altertable profile configure globex_dev --api-key atm_globex --env dev")).exitCode).toBe(0);
+    let result = await workspace.runCommand("altertable profile status globex_dev");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("globex_dev");
     expect(result.stdout).toContain("Management:");
@@ -62,11 +62,7 @@ describe("profile switching", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe('export ALTERTABLE_PROFILE="globex_dev"');
 
-    result = await workspace.runCommand("altertable profile direnv globex_dev");
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('export ALTERTABLE_PROFILE="globex_dev"');
-
-    expect((await workspace.runCommand("altertable profile use acme_staging")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
     result = await workspace.runCommand("altertable profile delete globex_dev --yes");
     expect(result.exitCode).toBe(0);
     result = await workspace.runCommand("altertable profile list");
@@ -77,11 +73,11 @@ describe("profile switching", () => {
   // no env vars set it resolves to nothing, so reading it must 404 rather than
   // render a fake empty view.
   test("show and status reject _from_env when no env configuration is set", async () => {
-    const shown = await workspace.runCommand("altertable profile show --name _from_env");
+    const shown = await workspace.runCommand("altertable profile show _from_env");
     expect(shown.exitCode).not.toBe(0);
     expect(shown.stderr).toContain("Profile not found: _from_env");
 
-    const status = await workspace.runCommand("altertable profile status --name _from_env");
+    const status = await workspace.runCommand("altertable profile status _from_env");
     expect(status.exitCode).not.toBe(0);
     expect(status.stderr).toContain("Profile not found: _from_env");
   });
@@ -100,13 +96,13 @@ describe("profile switching", () => {
     expect(login.stderr).toContain("ALTERTABLE_API_KEY");
     expect(login.stderr).toContain("set (hidden)");
 
-    const use = await workspace.runCommand("altertable profile use acme_staging", {
+    const use = await workspace.runCommand("altertable profile switch acme_staging", {
       env: { ALTERTABLE_API_KEY: "atm_env" },
     });
     expect(use.exitCode).not.toBe(0);
     expect(use.stderr).toContain("aren't available when configuring through environment variables");
 
-    const created = await workspace.runCommand("altertable profile create globex --api-key atm_x --env dev", {
+    const created = await workspace.runCommand("altertable profile configure globex --api-key atm_x --env dev", {
       env: { ALTERTABLE_ENV: "staging" },
     });
     expect(created.exitCode).not.toBe(0);
@@ -122,6 +118,6 @@ describe("profile switching", () => {
 });
 
 async function seedAcmeProfiles(workspace: TestWorkspace): Promise<void> {
-  expect((await workspace.runCommand("altertable profile create acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
-  expect((await workspace.runCommand("altertable profile create acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
+  expect((await workspace.runCommand("altertable profile configure acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
+  expect((await workspace.runCommand("altertable profile configure acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
 }

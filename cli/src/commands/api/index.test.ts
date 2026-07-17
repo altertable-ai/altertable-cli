@@ -21,7 +21,7 @@ describe("api", () => {
   });
 
   test("api spec prints YAML containing Altertable Management API", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "yaml"], {
+    const result = await runCommandWithTestRuntime(["api", "spec"], {
       debug: false,
       json: false,
       agent: false,
@@ -33,7 +33,7 @@ describe("api", () => {
   });
 
   test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "json"], {
+    const result = await runCommandWithTestRuntime(["api", "spec"], {
       debug: false,
       json: true,
       agent: false,
@@ -66,7 +66,7 @@ describe("api", () => {
 
     try {
       await runCommandTree(buildMainCommand(), {
-        rawArgs: ["api", "spec", "--format", "yaml"],
+        rawArgs: ["api", "spec"],
       });
     } finally {
       setCliRuntime(previousRuntime);
@@ -131,11 +131,6 @@ describe("api", () => {
     });
 
     expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
-    expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([
-      "api",
-      "GET",
-      "/whoami",
-    ]);
     expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
     expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
       "--json",
@@ -209,7 +204,7 @@ describe("api", () => {
       expect(logContent).toContain("METHOD=GET");
     });
 
-    test("POST subcommand issues a single HTTP request", async () => {
+    test("-X POST issues a single HTTP request", async () => {
       writeFileSync(
         mockFile,
         JSON.stringify([
@@ -221,7 +216,16 @@ describe("api", () => {
         ]),
       );
 
-      await runCommandWithTestRuntime(["api", "POST", "/service_accounts", "-f", "label=CI Bot"]);
+      await runCommandWithTestRuntime(
+        normalizeApiInvocatorRawArgs([
+          "api",
+          "/service_accounts",
+          "-X",
+          "POST",
+          "-f",
+          "label=CI Bot",
+        ]),
+      );
 
       const logContent = readFileSync(logFile, "utf8");
       const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];

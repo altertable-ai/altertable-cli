@@ -84,8 +84,8 @@ function writeOutro(
 export function configureNonTtyErrorMessage(): string {
   return (
     "Interactive configure requires a TTY. Examples:\n" +
-    "  altertable profile --configure --api-key atm_xxx --env production\n" +
-    "  printf '%s' \"$PASS\" | altertable profile --configure --user alice --password-stdin"
+    "  altertable profile configure --api-key atm_xxx --env production\n" +
+    "  printf '%s' \"$PASS\" | altertable profile configure --user alice --password-stdin"
   );
 }
 
@@ -193,7 +193,7 @@ export type ConfigureCommandArgs = {
   scope?: string;
 };
 
-/** Credential/endpoint flags shared by `profile --configure`; spread into the profile command args. */
+/** Credential and endpoint flags owned by `profile configure`. */
 export const configureArgs = defineArgs({
   user: { type: "string", description: "Lakehouse username (global)" },
   password: { type: "string", description: "Lakehouse password (global)" },
@@ -252,7 +252,7 @@ function resolveWizardScope(scope: string | undefined): ConfigureWizardScope {
 }
 
 /**
- * Apply `profile --configure`: non-interactive when credential/endpoint flags are
+ * Apply `profile configure`: non-interactive when credential/endpoint flags are
  * present, otherwise the interactive wizard (optionally scoped to one plane).
  * Verification is not part of configure; use `altertable profile status`.
  */

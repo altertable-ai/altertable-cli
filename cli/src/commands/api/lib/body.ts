@@ -7,22 +7,19 @@ const BODY_METHOD_LIST = BODY_METHOD_NAMES.join(", ");
 const FIELD_METHOD_NAMES = ["GET", "DELETE"] as const;
 const FIELD_QUERY_METHODS = new Set<string>(FIELD_METHOD_NAMES);
 
-export function readJsonBody(bodyArg?: string): string | undefined {
-  if (!bodyArg) {
+export function readJsonInput(inputArg?: string): string | undefined {
+  if (!inputArg) {
     return undefined;
   }
   let body: string;
-  if (bodyArg === "-") {
+  if (inputArg === "-") {
     body = readFileSync(0, "utf8");
-  } else if (bodyArg.startsWith("@")) {
-    const filePath = bodyArg.slice(1);
-    try {
-      body = readFileSync(filePath, "utf8");
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
   } else {
-    body = bodyArg;
+    try {
+      body = readFileSync(inputArg, "utf8");
+    } catch {
+      throw new CliError(`File not found: ${inputArg}`);
+    }
   }
 
   return validateJsonBody(body);
@@ -160,7 +157,6 @@ function parsedFieldsToRecord(fields: ParsedApiField[]): Record<string, ApiField
 
 export type ResolveApiBodyOptions = {
   method: string;
-  body?: string;
   input?: string;
   rawFields?: Record<string, string> | string[] | string;
   typedFields?: Record<string, string> | string[] | string;
@@ -176,22 +172,22 @@ export function resolveApiRequestPayload(
   options: ResolveApiBodyOptions,
 ): ResolvedApiRequestPayload {
   const method = options.method.toUpperCase();
-  const bodyArg = options.body ?? options.input;
+  const inputArg = options.input;
   const rawFields = parseRawFields(options.rawFields ?? options.fields);
   const typedFields = parseTypedFields(options.typedFields);
   const parsedFields = [...rawFields, ...typedFields];
-  const hasBody = bodyArg !== undefined && bodyArg !== "";
+  const hasBody = inputArg !== undefined && inputArg !== "";
   const hasFields = parsedFields.length > 0;
 
   if (hasBody && hasFields) {
     if (!BODY_METHODS.has(method)) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --body or --input.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`,
       );
     }
 
     return {
-      body: readJsonBody(String(bodyArg)),
+      body: readJsonInput(String(inputArg)),
       queryFields: parsedFields,
     };
   }
@@ -199,7 +195,7 @@ export function resolveApiRequestPayload(
   if (FIELD_QUERY_METHODS.has(method)) {
     if (hasBody) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --body or --input.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`,
       );
     }
 
@@ -211,7 +207,7 @@ export function resolveApiRequestPayload(
   if (!BODY_METHODS.has(method)) {
     if (hasBody || hasFields) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --body, --input, or request fields.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input or request fields.`,
       );
     }
     return { queryFields: [] };
@@ -219,7 +215,7 @@ export function resolveApiRequestPayload(
 
   if (hasBody) {
     return {
-      body: readJsonBody(String(bodyArg)),
+      body: readJsonInput(String(inputArg)),
       queryFields: [],
     };
   }

@@ -3,6 +3,7 @@ import { defineArgs } from "@/lib/command.ts";
 import {
   findFirstPositionalToken,
   isDelegatedSubCommand,
+  normalizeDirectCommandRawArgs,
   normalizePassthroughCommandRawArgs,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
@@ -60,5 +61,15 @@ describe("command delegation helpers", () => {
     });
 
     expect(normalized).toEqual(["api", "routes"]);
+  });
+
+  test("normalizeDirectCommandRawArgs keeps flags before a direct operand", () => {
+    const normalized = normalizeDirectCommandRawArgs(["query", "SELECT 1", "-X", "GET"], {
+      commandName: "query",
+      commandValueFlags: valueFlagsFor(passthroughArgs),
+      isReservedOperand: (value) => value === "show",
+    });
+
+    expect(normalized).toEqual(["query", "-X", "GET", "--", "SELECT 1"]);
   });
 });

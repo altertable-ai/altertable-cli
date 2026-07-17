@@ -20,19 +20,3 @@ export function getOpenapiSpecJson(): string {
   const document = parse(openapiYaml) as unknown;
   return JSON.stringify(document, null, 2);
 }
-
-export type OpenapiSpecFormat = "json" | "yaml";
-
-export function resolveOpenapiSpecFormat(
-  jsonContext: boolean,
-  stdoutIsTty: boolean,
-  explicitFormat?: string,
-): OpenapiSpecFormat {
-  if (explicitFormat === "json" || explicitFormat === "yaml") {
-    return explicitFormat;
-  }
-  if (jsonContext || !stdoutIsTty) {
-    return "json";
-  }
-  return "yaml";
-}

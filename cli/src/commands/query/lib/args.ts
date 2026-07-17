@@ -4,7 +4,6 @@ import {
   queryPagerArgs,
   queryResultFormatArgs,
 } from "@/lib/query-output-args.ts";
-import { requestReadTimeoutArgs } from "@/lib/timeout-args.ts";
 
 export const queryRunArgs = defineArgs({
   statement: { type: "positional", description: "SQL statement to run", required: false },
@@ -13,5 +12,4 @@ export const queryRunArgs = defineArgs({
   "query-id": { type: "string", description: "Optional stable query id" },
   "session-id": { type: "string", description: "Optional session id" },
   ...queryPagerArgs,
-  ...requestReadTimeoutArgs,
 });

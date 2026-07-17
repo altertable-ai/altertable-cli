@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { buildMainCommand } from "@/cli.ts";
 import { getBootstrapCliContext } from "@/context.ts";
 import { defineCommand } from "@/lib/command.ts";
-import { renderAltertableUsage, resolveSubCommandForUsage } from "@/lib/usage.ts";
+import {
+  buildStructuredHelp,
+  renderAltertableUsage,
+  resolveSubCommandForUsage,
+} from "@/lib/usage.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
@@ -106,9 +110,8 @@ describe("renderAltertableUsage", () => {
 
     expect(usage).toContain("Manage named profiles and stored credentials.");
     expect(usage).toContain(
-      "Usage\n    altertable profile [flags] create|list|show|status|use|switch|current|env|direnv|delete",
+      "Usage\n    altertable profile configure|list|show|status|switch|current|env|delete",
     );
-    expect(usage).toContain("Options");
     expect(usage).toContain("Commands");
     expect(usage).toContain("\n    Use altertable profile <command> --help");
     expect(usage).toContain("a command.");
@@ -161,7 +164,23 @@ describe("renderAltertableUsage", () => {
     const usage = await renderAltertableUsage(command, main);
 
     expect(usage).toContain("altertable api /whoami");
-    expect(usage).toContain("altertable api GET /environments/production/connections");
+    expect(usage).toContain("altertable api /environments/production/connections");
+  });
+
+  test("builds stable structured help for agents", async () => {
+    const main = buildMainCommand();
+    const [query, parent] = await resolveSubCommandForUsage(main, ["query"]);
+    const help = await buildStructuredHelp(query, parent, main);
+
+    expect(help.command).toBe("altertable query");
+    expect(help.arguments).toContainEqual(
+      expect.objectContaining({ name: "statement", type: "positional" }),
+    );
+    expect(help.options).toContainEqual(
+      expect.objectContaining({ name: "format", values: ["csv", "markdown"] }),
+    );
+    expect(help.global_options).toContainEqual(expect.objectContaining({ name: "json" }));
+    expect(help.subcommands.map((command) => command.name)).toEqual(["show", "cancel"]);
   });
 });
 

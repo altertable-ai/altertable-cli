@@ -70,41 +70,38 @@ export function isDelegatedSubCommand(
   return token !== undefined && isReservedOperand(token.value);
 }
 
-export type DefaultSubCommandOptions = {
+export type DirectCommandOptions = {
   commandName: string;
-  subCommand: string;
   rootArgs?: CommandArgs;
   commandValueFlags?: ReadonlySet<string>;
   isReservedOperand: (value: string) => boolean;
 };
 
 /**
- * Rewrites `<command> <operand>` to `<command> <subCommand> <operand>` so citty routes a
- * bare operand to the default subcommand instead of rejecting it as an unknown command.
- * Reserved operands (real subcommand names) are left untouched. Unlike the `--` passthrough,
- * this keeps every flag citty-parsed regardless of where it sits relative to the operand.
+ * Keeps flags parser-visible while moving a direct operand behind `--`.
+ * This lets a command own a positional operand and real subcommands without
+ * representing its direct behavior as a synthetic default subcommand.
  */
-export function normalizeDefaultSubCommandRawArgs(
+export function normalizeDirectCommandRawArgs(
   rawArgs: readonly string[],
-  options: DefaultSubCommandOptions,
+  options: DirectCommandOptions,
 ): string[] {
   const commandToken = findFirstPositionalToken(rawArgs, {
     valueFlags: valueFlagsFor(options.rootArgs ?? {}),
   });
-  if (!commandToken || commandToken.value !== options.commandName) {
-    return [...rawArgs];
-  }
+  if (!commandToken || commandToken.value !== options.commandName) return [...rawArgs];
 
   const commandArgs = rawArgs.slice(commandToken.index + 1);
+  if (commandArgs.includes("--")) return [...rawArgs];
   const operandToken = findFirstPositionalToken(commandArgs, {
     valueFlags: options.commandValueFlags,
   });
-  if (!operandToken || options.isReservedOperand(operandToken.value)) {
-    return [...rawArgs];
-  }
+  if (!operandToken || options.isReservedOperand(operandToken.value)) return [...rawArgs];
 
   const normalized = [...rawArgs];
-  normalized.splice(commandToken.index + 1, 0, options.subCommand);
+  const operandIndex = commandToken.index + 1 + operandToken.index;
+  const [operand] = normalized.splice(operandIndex, 1);
+  normalized.push("--", String(operand));
   return normalized;
 }
 

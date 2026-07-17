@@ -16,10 +16,10 @@ beforeEach(() => {
 afterEach(() => workspace.cleanup());
 
 describe("query command", () => {
-  test("routes a bare SQL statement to the run command", () => {
+  test("routes a bare SQL statement to the direct query handler", () => {
     expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1"])).toEqual([
       "query",
-      "run",
+      "--",
       "SELECT 1",
     ]);
     expect(normalizeQueryInvocatorRawArgs(["query", "show", "query-id"])).toEqual([
@@ -36,8 +36,6 @@ describe("query command", () => {
       normalizeQueryInvocatorRawArgs([
         "query",
         "SELECT 1",
-        "--format",
-        "json",
         "--query-id",
         "query-1",
         "--session-id",

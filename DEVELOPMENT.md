@@ -143,8 +143,8 @@ Keep updater tests hermetic. Use fake `fetch` implementations and temp executabl
 ## Local deployment endpoints
 
 ```bash
-altertable profile --configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
-altertable profile --configure --user u --password p --data-plane-url http://localhost:15000
+altertable profile configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
+altertable profile configure --user u --password p --data-plane-url http://localhost:15000
 export ALTERTABLE_MANAGEMENT_API_BASE="http://localhost:13000"
 export ALTERTABLE_API_BASE="http://localhost:15000"
 ```
@@ -210,7 +210,7 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 | Spec requirement            | CLI surface                         | Unit tests                       | Black-box/integration |
 | --------------------------- | ----------------------------------- | -------------------------------- | --------------------- |
 | POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration.e2e.ts`  |
-| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /query (buffered json) | `query --json`                      | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /append + GET /tasks   | `append`, `append status`           | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration.e2e.ts`  |

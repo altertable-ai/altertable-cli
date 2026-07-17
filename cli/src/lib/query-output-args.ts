@@ -7,7 +7,7 @@ import { defaultDisplayOptions, type QueryDisplayOptions } from "@/lib/query-for
 import { isQueryLayout, QUERY_LAYOUT_OPTIONS } from "@/ui/layouts/query.ts";
 
 const MIN_MAX_COLUMN_WIDTH = 8;
-const QUERY_RESULT_FORMAT_OPTIONS = ["human", "json", "csv", "markdown"] as const;
+const QUERY_RESULT_FORMAT_OPTIONS = ["csv", "markdown"] as const;
 const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;
@@ -15,8 +15,7 @@ const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as
 export const queryResultFormatArgs = defineArgs({
   format: {
     type: "enum",
-    description: "Output format: human, json, csv, or markdown",
-    default: "human",
+    description: "Serialized output format; use global --json for JSON",
     options: [...QUERY_RESULT_FORMAT_OPTIONS],
   },
 });
@@ -65,7 +64,7 @@ function validateAgentQueryFlags(options: ParseQueryOutputOptions): void {
   for (const flag of AGENT_INCOMPATIBLE_QUERY_FLAGS) {
     if (hasArgvFlag(options.rawArgs, flag)) {
       throw new CliError(
-        `${flag} cannot be used with --agent. Use --format json for machine-readable query output.`,
+        `${flag} cannot be used with --agent. Agent mode already selects structured JSON output.`,
       );
     }
   }
@@ -118,9 +117,9 @@ export function parseQueryOutputOptions(
   options: ParseQueryOutputOptions,
 ): QueryOutputOptions {
   validateAgentQueryFlags(options);
-  const format = options.agent
-    ? "json"
-    : parseQueryResultFormat(args.format === undefined ? "human" : asCliArgString(args.format));
+  const format = parseQueryResultFormat(
+    args.format === undefined ? "human" : asCliArgString(args.format),
+  );
   return {
     format,
     displayOptions: parseDisplayOptions(args),

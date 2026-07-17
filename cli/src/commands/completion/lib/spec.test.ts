@@ -84,24 +84,12 @@ describe("buildCompletionSpec", () => {
     expect(catalogs).toBeDefined();
     expect(api).toBeDefined();
     expect(findNode(spec, "connections")).toBeUndefined();
-    expect(catalogs?.subcommands.map((node) => node.name)).toEqual(["create", "list"]);
-    expect(api?.subcommands.map((node) => node.name)).toEqual([
-      "DELETE",
-      "GET",
-      "PATCH",
-      "POST",
-      "PUT",
-      "routes",
-      "spec",
-    ]);
-
-    const getCommand = api?.subcommands.find((node) => node.name === "GET");
-    expect(getCommand?.subcommands).toEqual([]);
+    expect(catalogs?.subcommands.map((node) => node.name)).toEqual(["create"]);
+    expect(api?.subcommands.map((node) => node.name)).toEqual(["routes", "spec"]);
     expect(api?.flags.some((flag) => flag.name === "method")).toBe(true);
     expect(api?.flags.some((flag) => flag.name === "raw-field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "raw-field")).toBe(true);
-    expect(getCommand?.flags.some((flag) => flag.name === "body")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "field")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "input")).toBe(true);
   });
 
   test("includes completion top-level command", () => {
@@ -144,7 +132,7 @@ describe("completion format helpers", () => {
     const contexts = collectCompletionContexts(spec);
     const grouped = groupCompletionContextsByTopLevel(contexts);
 
-    expect(grouped.get("api")?.some((context) => context.segments[1] === "GET")).toBe(true);
+    expect(grouped.get("api")?.some((context) => context.segments.length === 1)).toBe(true);
   });
 
   test("mergeCompletionFlags preserves node flags before root flags", () => {
@@ -159,8 +147,8 @@ describe("completion format helpers", () => {
   });
 
   test("formatFishPathCondition scopes subcommands and flags", () => {
-    expect(formatFishPathCondition(["api", "GET"], ["spec", "routes"])).toBe(
-      "__fish_seen_subcommand_from api; and __fish_seen_subcommand_from GET; and not __fish_seen_subcommand_from spec routes",
+    expect(formatFishPathCondition(["api"], ["spec", "routes"])).toBe(
+      "__fish_seen_subcommand_from api; and not __fish_seen_subcommand_from spec routes",
     );
   });
 });
@@ -170,7 +158,7 @@ describe("formatBashCompletion", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
     expect(output).toContain("api)");
-    expect(output).toContain("GET");
+    expect(output).toContain("--method");
     expect(output).toContain("catalogs");
   });
 
@@ -179,7 +167,7 @@ describe("formatBashCompletion", () => {
     const output = formatBashCompletion(spec);
     expect(output).toContain("--raw-field");
     expect(output).toContain("--field");
-    expect(output).toContain("--body");
+    expect(output).toContain("--input");
   });
 
   test("includes flag value completions", () => {
@@ -196,12 +184,10 @@ describe("collectCompletionContexts", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const contexts = collectCompletionContexts(spec);
 
-    const postServiceAccounts = contexts.find(
-      (context) => context.segments.join("/") === "api/POST",
-    );
-    expect(postServiceAccounts?.flags.some((flag) => flag.name === "field")).toBe(true);
-    expect(postServiceAccounts?.flags.some((flag) => flag.name === "body")).toBe(true);
-    expect(postServiceAccounts?.subcommands).toEqual([]);
+    const api = contexts.find((context) => context.segments.join("/") === "api");
+    expect(api?.flags.some((flag) => flag.name === "field")).toBe(true);
+    expect(api?.flags.some((flag) => flag.name === "input")).toBe(true);
+    expect(api?.subcommands).toEqual(["routes", "spec"]);
   });
 });
 
@@ -226,7 +212,7 @@ describe("formatZshCompletion", () => {
     const spec = buildCompletionSpec(buildMainCommand());
     const output = formatZshCompletion(spec);
     expect(output).toContain("--field");
-    expect(output).toContain("--body");
+    expect(output).toContain("--input");
   });
 
   test("includes flag value completions", () => {

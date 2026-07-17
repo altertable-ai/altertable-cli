@@ -35,21 +35,21 @@ describe("auth", () => {
   test("getLakehouseAuthHeader throws ConfigurationError when credentials are missing", () => {
     expect(() => getLakehouseAuthHeader(profileName)).toThrow(ConfigurationError);
     expect(() => getLakehouseAuthHeader(profileName)).toThrow(
-      "No credentials. Run 'altertable login', 'altertable profile --configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+      "No credentials. Run 'altertable login', 'altertable profile configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
     );
   });
 
   test("getManagementAuthHeader throws ConfigurationError when API key is missing", () => {
     expect(() => getManagementAuthHeader(profileName)).toThrow(ConfigurationError);
     expect(() => getManagementAuthHeader(profileName)).toThrow(
-      "No management credentials. Run 'altertable login', 'altertable profile --configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
+      "No management credentials. Run 'altertable login', 'altertable profile configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
     );
   });
 
   test("requireManagementEnv throws ConfigurationError when environment is missing", () => {
     expect(() => requireManagementEnv(profileName)).toThrow(ConfigurationError);
     expect(() => requireManagementEnv(profileName)).toThrow(
-      "No environment set. Run 'altertable profile --configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
+      "No environment set. Run 'altertable profile configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
     );
   });
 

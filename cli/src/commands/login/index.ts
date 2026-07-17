@@ -59,7 +59,7 @@ function isInteractiveTerminal(): boolean {
 function assertInteractiveLogin(): void {
   if (isJsonOutput(getCliContext()) || !isInteractiveTerminal()) {
     throw new ConfigurationError(
-      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\nFor headless setups use 'altertable profile --configure --api-key atm_xxx --env <name>'.",
+      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\nFor headless setups use 'altertable profile configure --api-key atm_xxx --env <name>'.",
     );
   }
 }

@@ -8,11 +8,6 @@ import {
   normalizePassthroughCommandRawArgs,
 } from "@/lib/command-delegation.ts";
 import { API_VALUE_FLAGS } from "@/commands/api/lib/command.ts";
-import { apiGetCommand } from "@/commands/api/get.ts";
-import { apiPostCommand } from "@/commands/api/post.ts";
-import { apiPatchCommand } from "@/commands/api/patch.ts";
-import { apiDeleteCommand } from "@/commands/api/delete.ts";
-import { apiPutCommand } from "@/commands/api/put.ts";
 import { apiSpecCommand } from "@/commands/api/spec.ts";
 import { apiRoutesCommand } from "@/commands/api/routes.ts";
 
@@ -24,17 +19,12 @@ export const apiCommand = defineCommand({
     examples: [
       "altertable api /whoami",
       "altertable api routes",
-      "altertable api GET /environments/production/connections",
-      'altertable api POST /service_accounts -f label="CI Bot"',
+      "altertable api /environments/production/connections",
+      'altertable api /service_accounts -X POST -F label="CI Bot"',
     ],
   },
   args: API_HTTP_BASE_ARGS,
   subCommands: {
-    DELETE: apiDeleteCommand,
-    GET: apiGetCommand,
-    PATCH: apiPatchCommand,
-    POST: apiPostCommand,
-    PUT: apiPutCommand,
     routes: apiRoutesCommand,
     spec: apiSpecCommand,
   },
@@ -61,7 +51,7 @@ export function normalizeApiInvocatorRawArgs(
 }
 
 function isApiCommandName(value: string): boolean {
-  return API_SUBCOMMAND_NAMES.has(value) || API_SUBCOMMAND_NAMES.has(value.toUpperCase());
+  return API_SUBCOMMAND_NAMES.has(value);
 }
 
 function isDelegatedApiCommand(rawArgs: readonly string[]): boolean {

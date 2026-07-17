@@ -1,12 +1,9 @@
 import { defineCommand, type Command } from "@/lib/command.ts";
-import { createBashInstallCommand } from "@/commands/completion/bash.ts";
-import { createFishInstallCommand } from "@/commands/completion/fish.ts";
-import { createZshInstallCommand } from "@/commands/completion/zsh.ts";
+import { optionalStringArg } from "@/lib/args.ts";
 import {
   formatCompletionScript,
   formatInstallMessage,
   installCompletion,
-  isSupportedShell,
   resolveShell,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
@@ -22,21 +19,20 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
         "altertable completion install zsh --no-rc",
       ],
     },
-    subCommands: {
-      bash: createBashInstallCommand(getRootCommand),
-      fish: createFishInstallCommand(getRootCommand),
-      zsh: createZshInstallCommand(getRootCommand),
-    },
     args: {
+      shell: {
+        type: "positional",
+        description: "Shell to install completion for (default: detected shell)",
+        required: false,
+        valueHint: "bash|fish|zsh",
+      },
       "no-rc": {
         type: "boolean",
         description: "Write the completion file without updating shell startup files.",
       },
     },
     async run({ args, rawArgs, sink }) {
-      const explicitShell = rawArgs.slice(rawArgs.indexOf("install") + 1).find(isSupportedShell);
-      if (explicitShell) return;
-      const shell = resolveShell(undefined);
+      const shell = resolveShell(optionalStringArg(args, "shell"));
       const result = await installCompletion(
         shell,
         formatCompletionScript(shell, getRootCommand()),

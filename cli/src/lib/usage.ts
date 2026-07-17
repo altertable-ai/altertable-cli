@@ -4,6 +4,7 @@ import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
 import { readEnv } from "@/lib/env.ts";
+import { getOutputSink } from "@/lib/runtime.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -495,8 +496,98 @@ export async function renderAltertableUsage(command: Command, parent?: Command):
   return renderCommandUsage(command, parent);
 }
 
-export async function showAltertableUsage(command: Command, parent?: Command): Promise<void> {
-  console.log(`${await renderAltertableUsage(command, parent)}\n`);
+type StructuredArgument = {
+  name: string;
+  aliases: string[];
+  type: string;
+  required: boolean;
+  description: string;
+  default?: unknown;
+  values?: string[];
+};
+
+export type StructuredHelp = {
+  command: string;
+  description: string;
+  usage: string;
+  aliases: string[];
+  arguments: StructuredArgument[];
+  options: StructuredArgument[];
+  subcommands: Array<{ name: string; aliases: string[]; description: string }>;
+  global_options: StructuredArgument[];
+  examples: string[];
+};
+
+function structuredArgument(name: string, definition: CommandArg): StructuredArgument {
+  const aliases =
+    "alias" in definition ? toArray(definition.alias).map((alias) => String(alias)) : [];
+  const required =
+    definition.default === undefined &&
+    (definition.type === "positional"
+      ? definition.required !== false
+      : definition.required === true);
+  return {
+    name,
+    aliases,
+    type: definition.type ?? "string",
+    required,
+    description: definition.description ?? "",
+    ...(definition.default !== undefined ? { default: definition.default } : {}),
+    ...(definition.type === "enum" && definition.options
+      ? { values: [...definition.options] }
+      : {}),
+  };
+}
+
+export async function buildStructuredHelp(
+  command: Command,
+  parent?: Command,
+  root?: Command,
+): Promise<StructuredHelp> {
+  const meta = await resolveCommandMeta(command);
+  const parentMeta = parent ? await resolveCommandMeta(parent) : undefined;
+  const args = await resolveValue(command.args ?? {});
+  const subCommands = await visibleSubCommands(command);
+  const commandName = usageCommandName(meta, parentMeta);
+  const usage =
+    parent === undefined && meta.name === "altertable"
+      ? "altertable <command> [flags]"
+      : usageTokens(commandName, args, subCommands);
+  const entries = Object.entries(args).map(([name, definition]) =>
+    structuredArgument(name, definition),
+  );
+  const globalArgs = root ? await resolveValue(root.args ?? {}) : {};
+
+  return {
+    command: commandName,
+    description: meta.description ?? "",
+    usage,
+    aliases: toArray(meta.alias).map(String),
+    arguments: entries.filter((entry) => entry.type === "positional"),
+    options: entries.filter((entry) => entry.type !== "positional"),
+    subcommands: subCommands.map(({ name, meta: subcommandMeta }) => ({
+      name,
+      aliases: toArray(subcommandMeta.alias).map(String),
+      description: subcommandMeta.description ?? "",
+    })),
+    global_options: Object.entries(globalArgs).map(([name, definition]) =>
+      structuredArgument(name, definition),
+    ),
+    examples: [...(meta.examples ?? [])],
+  };
+}
+
+export async function showAltertableUsage(
+  command: Command,
+  parent?: Command,
+  root?: Command,
+): Promise<void> {
+  const sink = getOutputSink();
+  if (sink.json) {
+    sink.writeJson(await buildStructuredHelp(command, parent, root));
+    return;
+  }
+  sink.writeHuman(`${await renderAltertableUsage(command, parent)}\n`);
 }
 
 export async function showCommandExamplesForArgs(root: Command, rawArgs: string[]): Promise<void> {

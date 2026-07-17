@@ -104,7 +104,7 @@ export function formatConfigureVerifyRemediation(
 ): string {
   if (plane === "management") {
     const env = configGet("api_key_env", profileName) || "<name>";
-    return `Check your API key and environment. Run: altertable profile --configure --scope management or altertable profile --configure --api-key atm_xxx --env ${env}`;
+    return `Check your API key and environment. Run: altertable profile configure --scope management or altertable profile configure --api-key atm_xxx --env ${env}`;
   }
-  return "Check your lakehouse username and password. Run: altertable profile --configure --scope lakehouse or altertable profile --configure --user <u> --password <p>";
+  return "Check your lakehouse username and password. Run: altertable profile configure --scope lakehouse or altertable profile configure --user <u> --password <p>";
 }

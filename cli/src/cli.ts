@@ -29,6 +29,7 @@ import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
+import { assertNoRemovedSyntax } from "@/lib/legacy-cli.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -79,10 +80,10 @@ export function buildMainCommand(): Command {
       name: "altertable",
       description: `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
       examples: [
-        "altertable profile --configure",
+        "altertable profile configure",
         "altertable profile show",
         "altertable api routes",
-        "altertable api GET /environments/production/databases",
+        "altertable api /environments/production/databases",
         'altertable query "SELECT 1"',
       ],
     },
@@ -123,17 +124,19 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = normalizeCommandRawArgs(process.argv.slice(2), ROOT_ARGS);
+  const originalArgs = process.argv.slice(2);
+  const rawArgs = normalizeCommandRawArgs(originalArgs, ROOT_ARGS);
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);
   setCliContext(earlyContext);
 
   try {
+    assertNoRemovedSyntax(originalArgs, ROOT_ARGS);
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
-      await showAltertableUsage(command, parent);
+      await showAltertableUsage(command, parent, main);
       await maybeShowUpdateNotice({
         context: getCliContext(),
         commandName: resolveTopLevelCommandName(rawArgs) ?? "help",

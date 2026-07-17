@@ -1,29 +1,13 @@
 import { defineCommand, type Command } from "@/lib/command.ts";
-import { defaultPrompts } from "@/ui/prompts.ts";
-import { createBashCompletionCommand } from "@/commands/completion/bash.ts";
-import { createFishCompletionCommand } from "@/commands/completion/fish.ts";
 import { createGenerateCommand } from "@/commands/completion/generate.ts";
 import { createInstallCommand } from "@/commands/completion/install.ts";
-import { createZshCompletionCommand } from "@/commands/completion/zsh.ts";
 import {
   COMPLETION_GUIDANCE,
   formatCompletionHelpMessage,
-  formatCompletionScript,
-  formatInstallMessage,
-  installCompletion,
-  isSupportedShell,
-  promptCompletionInput,
-  resolveShell,
-  type CompletionCommandOptions,
-  type CompletionRootInput,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
 
-export function createCompletionCommand(
-  getRootCommand: GetRootCommand,
-  options: CompletionCommandOptions = {},
-): Command {
-  const prompts = options.prompts ?? defaultPrompts;
+export function createCompletionCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
     meta: {
       name: "completion",
@@ -36,38 +20,15 @@ export function createCompletionCommand(
       ],
     },
     subCommands: {
-      bash: createBashCompletionCommand(getRootCommand),
-      fish: createFishCompletionCommand(getRootCommand),
       generate: createGenerateCommand(getRootCommand),
       install: createInstallCommand(getRootCommand),
-      zsh: createZshCompletionCommand(getRootCommand),
     },
-    async run({ rawArgs, runtime, sink }) {
-      if (rawArgs.some((arg) => arg === "install" || arg === "generate" || isSupportedShell(arg))) {
+    run({ rawArgs, sink }) {
+      if (rawArgs.some((arg) => arg === "install" || arg === "generate")) {
         return;
       }
-
-      let action: CompletionRootInput;
-      if (process.stdin.isTTY === true && !runtime.context.agent && !sink.json) {
-        action = await promptCompletionInput(prompts);
-      } else {
-        action = { kind: "help" };
-      }
-
-      if (action.kind === "help") {
-        if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
-        else sink.writeHuman(formatCompletionHelpMessage());
-        return;
-      }
-
-      const shell = action.shell ?? resolveShell(undefined);
-      const result = await installCompletion(
-        shell,
-        formatCompletionScript(shell, getRootCommand()),
-        { updateRc: action.updateRc },
-      );
-      if (sink.json) sink.writeJson(result);
-      else sink.writeHuman(formatInstallMessage(result));
+      if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
+      else sink.writeHuman(formatCompletionHelpMessage());
     },
   });
 }
