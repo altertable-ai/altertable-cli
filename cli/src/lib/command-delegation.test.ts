@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { defineArgs } from "@/lib/command.ts";
+import { defineArgs, defineCommand } from "@/lib/command.ts";
 import {
   findFirstPositionalToken,
-  isDelegatedSubCommand,
   normalizeDirectCommandRawArgs,
   normalizePassthroughCommandRawArgs,
+  resolveSelectedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
 
@@ -31,24 +31,34 @@ describe("command delegation helpers", () => {
     expect(token).toEqual({ index: 4, value: "/whoami" });
   });
 
-  test("isDelegatedSubCommand detects reserved command operands", () => {
-    const delegated = isDelegatedSubCommand(
-      ["routes"],
-      (value) => value === "routes" || value === "spec",
-    );
-    expect(delegated).toBe(true);
+  test("resolveSelectedSubCommand resolves command keys and aliases", async () => {
+    const command = defineCommand({
+      subCommands: {
+        routes: { meta: { name: "routes", alias: "ls" } },
+      },
+    });
+
+    expect(await resolveSelectedSubCommand(command, ["routes"])).toMatchObject({
+      name: "routes",
+      operandIndex: 0,
+    });
+    expect(await resolveSelectedSubCommand(command, ["ls"])).toMatchObject({
+      name: "routes",
+      operandIndex: 0,
+    });
   });
 
-  test("isDelegatedSubCommand ignores reserved words used as flag values", () => {
-    const delegated = isDelegatedSubCommand(
-      ["--profile", "show", "--field", "status", "SELECT 1"],
-      (value) => value === "show" || value === "status",
-      {
-        valueFlags: new Set([...valueFlagsFor(rootArgs), ...valueFlagsFor(passthroughArgs)]),
+  test("resolveSelectedSubCommand ignores command names used as flag values", async () => {
+    const command = defineCommand({
+      args: passthroughArgs,
+      subCommands: {
+        status: { meta: { name: "status" } },
       },
-    );
+    });
 
-    expect(delegated).toBe(false);
+    expect(
+      await resolveSelectedSubCommand(command, ["--field", "status", "direct-operand"]),
+    ).toBeUndefined();
   });
 
   test("normalizePassthroughCommandRawArgs inserts separator before non-command operands", () => {

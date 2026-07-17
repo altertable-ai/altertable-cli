@@ -1,8 +1,8 @@
 import { booleanArg, stringArg } from "@/lib/args.ts";
 import { defineCommand, type CommandArgs } from "@/lib/command.ts";
 import {
-  isDelegatedSubCommand,
   normalizeDirectCommandRawArgs,
+  resolveSelectedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -29,13 +29,7 @@ export const appendCommand = defineCommand({
     status: appendStatusCommand,
   },
   async run({ args, rawArgs, execution, sink }) {
-    if (
-      isDelegatedSubCommand(rawArgs, (value) => APPEND_SUBCOMMAND_NAMES.has(value), {
-        valueFlags: APPEND_VALUE_FLAGS,
-      })
-    ) {
-      return;
-    }
+    if (await resolveSelectedSubCommand(appendCommand, rawArgs)) return;
     const sync = booleanArg(args, "sync");
     const target = parseLakehouseTarget(stringArg(args, "to"));
     const request = buildLakehouseAppendRequest({

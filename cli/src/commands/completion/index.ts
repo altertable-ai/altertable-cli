@@ -6,10 +6,10 @@ import {
   formatCompletionHelpMessage,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
-import { isDelegatedSubCommand } from "@/lib/command-delegation.ts";
+import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): Command {
-  return defineCommand({
+  const command = defineCommand({
     meta: {
       name: "completion",
       commandGroup: "platform",
@@ -24,12 +24,12 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
       generate: createGenerateCommand(getRootCommand),
       install: createInstallCommand(getRootCommand),
     },
-    run({ rawArgs, sink }) {
-      if (isDelegatedSubCommand(rawArgs, (value) => value === "install" || value === "generate")) {
-        return;
-      }
+    async run({ rawArgs, sink }) {
+      if (await resolveSelectedSubCommand(command, rawArgs)) return;
       if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
       else sink.writeHuman(formatCompletionHelpMessage());
     },
   });
+
+  return command;
 }

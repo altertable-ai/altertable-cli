@@ -1,7 +1,7 @@
 import type { CommandArgs } from "@/lib/command.ts";
 import {
-  isDelegatedSubCommand,
   normalizeDirectCommandRawArgs,
+  resolveSelectedSubCommand,
   valueFlagsFor,
 } from "@/lib/command-delegation.ts";
 import { defineCommand } from "@/lib/command.ts";
@@ -31,13 +31,7 @@ export const queryCommand = defineCommand({
     cancel: queryCancelCommand,
   },
   async run({ args, rawArgs, execution, sink }) {
-    if (
-      isDelegatedSubCommand(rawArgs, (value) => QUERY_SUBCOMMAND_NAMES.has(value), {
-        valueFlags: QUERY_VALUE_FLAGS,
-      })
-    ) {
-      return;
-    }
+    if (await resolveSelectedSubCommand(queryCommand, rawArgs)) return;
     const statement = optionalStringArg(args, "statement");
     if (statement === undefined) {
       throw new CliError('Provide a SQL statement, e.g. altertable query "SELECT 1".');

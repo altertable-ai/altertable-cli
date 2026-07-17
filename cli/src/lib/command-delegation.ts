@@ -1,4 +1,4 @@
-import type { CommandArgs } from "@/lib/command.ts";
+import type { Command, CommandArgs } from "@/lib/command.ts";
 
 export type PositionalScanOptions = {
   valueFlags?: ReadonlySet<string>;
@@ -7,6 +7,12 @@ export type PositionalScanOptions = {
 export type PositionalToken = {
   index: number;
   value: string;
+};
+
+export type SelectedSubCommand = {
+  name: string;
+  command: Command;
+  operandIndex: number;
 };
 
 export type PassthroughCommandOptions = {
@@ -61,13 +67,53 @@ export function findFirstPositionalToken(
   return undefined;
 }
 
-export function isDelegatedSubCommand(
+async function resolveCommandValue<T>(
+  value: T | (() => T) | (() => Promise<T>) | Promise<T>,
+): Promise<T> {
+  if (typeof value === "function") {
+    return await (value as () => T | Promise<T>)();
+  }
+  return await value;
+}
+
+function aliases(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  return value === undefined ? [] : [String(value)];
+}
+
+/**
+ * Resolves the real child command selected by argv using the same operand rules
+ * as Citty: skip value-bearing flags, stop at `--`, prefer command keys, then aliases.
+ */
+export async function resolveSelectedSubCommand(
+  command: Command,
   rawArgs: readonly string[],
-  isReservedOperand: (value: string) => boolean,
-  options: PositionalScanOptions = {},
-): boolean {
-  const token = findFirstPositionalToken(rawArgs, options);
-  return token !== undefined && isReservedOperand(token.value);
+): Promise<SelectedSubCommand | undefined> {
+  const args = await resolveCommandValue(command.args ?? {});
+  const operand = findFirstPositionalToken(rawArgs, {
+    valueFlags: valueFlagsFor(args),
+  });
+  if (!operand || !command.subCommands) return undefined;
+
+  const subCommands = await resolveCommandValue(command.subCommands);
+  const direct = subCommands[operand.value];
+  if (direct) {
+    return {
+      name: operand.value,
+      command: await resolveCommandValue(direct),
+      operandIndex: operand.index,
+    };
+  }
+
+  for (const [name, candidate] of Object.entries(subCommands)) {
+    const resolved = await resolveCommandValue(candidate);
+    const meta = await resolveCommandValue(resolved.meta ?? {});
+    if (aliases(meta.alias).includes(operand.value)) {
+      return { name, command: resolved, operandIndex: operand.index };
+    }
+  }
+
+  return undefined;
 }
 
 export type DirectCommandOptions = {

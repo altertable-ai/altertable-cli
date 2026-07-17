@@ -5,6 +5,7 @@ import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts"
 import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
 import { readEnv } from "@/lib/env.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
+import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -44,10 +45,6 @@ function toArray<T>(value: T | T[] | undefined): T[] {
   return value === undefined ? [] : [value];
 }
 
-function camelCase(input: string): string {
-  return input.replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
-}
-
 async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>) | Promise<T>): Promise<T> {
   if (typeof input === "function") {
     return await (input as () => T | Promise<T>)();
@@ -55,84 +52,18 @@ async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>) | Promi
   return await input;
 }
 
-function isValueFlag(flag: string, argsDef: CommandArgs): boolean {
-  const name = flag.replace(/^-{1,2}/, "");
-  const normalized = camelCase(name);
-  for (const [key, definition] of Object.entries(argsDef)) {
-    if (definition.type !== "string" && definition.type !== "enum") {
-      continue;
-    }
-    if (normalized === camelCase(key)) {
-      return true;
-    }
-    const aliases = Array.isArray(definition.alias)
-      ? definition.alias
-      : definition.alias
-        ? [definition.alias]
-        : [];
-    if (aliases.includes(name)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function findSubCommandIndex(rawArgs: string[], argsDef: CommandArgs): number {
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-    if (arg === "--") {
-      return -1;
-    }
-    if (arg.startsWith("-")) {
-      if (!arg.includes("=") && isValueFlag(arg, argsDef)) {
-        index += 1;
-      }
-      continue;
-    }
-    return index;
-  }
-  return -1;
-}
-
-async function findSubCommand(
-  subCommands: Record<
-    string,
-    Command | (() => Command) | (() => Promise<Command>) | Promise<Command>
-  >,
-  name: string | undefined,
-): Promise<Command | undefined> {
-  if (!name) {
-    return undefined;
-  }
-  if (name in subCommands) {
-    return await resolveValue(subCommands[name]);
-  }
-  for (const subCommand of Object.values(subCommands)) {
-    const resolved = await resolveValue(subCommand);
-    const meta = await resolveValue(resolved.meta);
-    if (meta?.alias && toArray(meta.alias).includes(name)) {
-      return resolved;
-    }
-  }
-  return undefined;
-}
-
 export async function resolveSubCommandForUsage(
   command: Command,
   rawArgs: string[],
   parent?: Command,
 ): Promise<[Command, Command | undefined]> {
-  const subCommands = await resolveValue(command.subCommands);
-  if (subCommands && Object.keys(subCommands).length > 0) {
-    const subCommandArgIndex = findSubCommandIndex(rawArgs, await resolveValue(command.args ?? {}));
-    const subCommandName = rawArgs[subCommandArgIndex];
-    const subCommand = await findSubCommand(subCommands, subCommandName);
-    if (subCommand) {
-      return resolveSubCommandForUsage(subCommand, rawArgs.slice(subCommandArgIndex + 1), command);
-    }
+  const selected = await resolveSelectedSubCommand(command, rawArgs);
+  if (selected) {
+    return resolveSubCommandForUsage(
+      selected.command,
+      rawArgs.slice(selected.operandIndex + 1),
+      command,
+    );
   }
   return [command, parent];
 }
