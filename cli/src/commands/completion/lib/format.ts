@@ -7,20 +7,6 @@ import type {
 
 const FISH_BINARY_NAME = "altertable";
 
-export function groupCompletionContextsByTopLevel(
-  contexts: readonly CompletionContext[],
-): Map<string, CompletionContext[]> {
-  const contextsByTopLevel = new Map<string, CompletionContext[]>();
-  for (const context of contexts) {
-    const topLevel = context.segments[0];
-    if (!topLevel) continue;
-    const group = contextsByTopLevel.get(topLevel) ?? [];
-    group.push(context);
-    contextsByTopLevel.set(topLevel, group);
-  }
-  return contextsByTopLevel;
-}
-
 export function mergeCompletionFlags(
   nodeFlags: readonly CompletionFlag[],
   rootFlags: readonly CompletionFlag[],

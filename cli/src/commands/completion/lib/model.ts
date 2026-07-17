@@ -49,13 +49,22 @@ export function buildCompletionModel(root: CompletionNode): CompletionModel {
     }
   }
 
-  return {
+  const model = {
     root,
     contexts,
     subcommandEdges,
     valueFlags,
     booleanFlags,
   };
+
+  for (const context of contexts) {
+    const normalized = normalizeCompletionArgv(model, context.segments);
+    if (findCompletionContext(model, normalized.commandPath) !== context) {
+      throw new TypeError(`Invalid completion context: ${context.segments.join(" ")}`);
+    }
+  }
+
+  return model;
 }
 
 export function normalizeCompletionArgv(

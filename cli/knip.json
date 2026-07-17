@@ -2,12 +2,12 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "src/cli.ts!",
+    "scripts/**/*.ts!",
     "src/**/*.test.ts",
     "src/**/fixtures/*.ts",
-    "scripts/**/*.test.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.test.ts"
   ],
-  "project": ["src/**/*.ts!", "!src/test-utils/**!", "scripts/**/*.ts"],
+  "project": ["src/**/*.ts!", "!src/test-utils/**!", "scripts/**/*.ts!"],
   "ignore": ["src/generated/**"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["undici"],

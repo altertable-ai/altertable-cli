@@ -13,7 +13,6 @@ import {
   formatFishCompletion,
   formatFishPathCondition,
   formatZshCompletion,
-  groupCompletionContextsByTopLevel,
   mergeCompletionFlags,
 } from "@/commands/completion/lib/format.ts";
 
@@ -286,14 +285,6 @@ describe("buildCompletionSpec", () => {
 });
 
 describe("completion format helpers", () => {
-  test("groupCompletionContextsByTopLevel groups by first segment", async () => {
-    const spec = await buildCompletionSpec(buildMainCommand());
-    const contexts = collectCompletionContexts(spec);
-    const grouped = groupCompletionContextsByTopLevel(contexts);
-
-    expect(grouped.get("api")?.some((context) => context.segments.length === 1)).toBe(true);
-  });
-
   test("mergeCompletionFlags preserves node flags before root flags", () => {
     const merged = mergeCompletionFlags([{ name: "label" }], [{ name: "json" }, { name: "debug" }]);
     expect(merged.map((flag) => flag.name)).toEqual(["label", "json", "debug"]);
