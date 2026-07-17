@@ -1,30 +1,20 @@
 import { DEFAULT_CONNECT_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 import { getCliRuntime, isCliRuntimeReady, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import {
+  getBootstrapCliContextState,
+  isJsonOutput as contextUsesJsonOutput,
+  setBootstrapCliContext,
+  type CliContext,
+} from "@/lib/cli-context.ts";
 
-export type CliContext = {
-  debug: boolean;
-  json: boolean;
-  agent: boolean;
-  noColor?: boolean;
-  profile?: string;
-  connectTimeoutMs?: number;
-  readTimeoutMs?: number;
-};
-
-const PRE_RUNTIME_DEFAULT_CONTEXT: CliContext = { debug: false, json: false, agent: false };
+export type { CliContext } from "@/lib/cli-context.ts";
 
 export function isJsonOutput(context: CliContext = getCliContext()): boolean {
-  return context.json || context.agent;
+  return contextUsesJsonOutput(context);
 }
-
-export function isAgentMode(context: CliContext = getCliContext()): boolean {
-  return context.agent;
-}
-
-let preRuntimeContext: CliContext = PRE_RUNTIME_DEFAULT_CONTEXT;
 
 export function setCliContext(context: CliContext): void {
-  preRuntimeContext = context;
+  setBootstrapCliContext(context);
   if (isCliRuntimeReady()) {
     refreshCliRuntimeContext(context);
   }
@@ -38,7 +28,7 @@ export function getBootstrapCliContext(): CliContext {
   if (isCliRuntimeReady()) {
     return getCliRuntime().context;
   }
-  return preRuntimeContext;
+  return getBootstrapCliContextState();
 }
 
 export function getConnectTimeoutMs(): number {

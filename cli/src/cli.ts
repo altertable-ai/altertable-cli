@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { runCommand, type ArgsDef, type CommandDef } from "citty";
 import { VERSION } from "@/version.ts";
 import {
   getCliContext,
@@ -10,29 +9,16 @@ import {
 } from "@/context.ts";
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
 import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
-import { loginCommand, logoutCommand } from "@/commands/login.ts";
-import { profileCommand } from "@/commands/profile.ts";
-import { catalogsCommand } from "@/commands/catalogs.ts";
-import { duckdbCommand } from "@/commands/duckdb.ts";
-import { appendCommand } from "@/commands/lakehouse/append.ts";
-import { queryCommand, normalizeQueryInvocatorRawArgs } from "@/commands/lakehouse/query.ts";
-import { schemaCommand } from "@/commands/lakehouse/schema.ts";
-import { uploadCommand } from "@/commands/lakehouse/upload.ts";
-import { upsertCommand } from "@/commands/lakehouse/upsert.ts";
-import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api.ts";
-import { createCompletionCommand } from "@/commands/completion.ts";
-import { updateCommand } from "@/commands/update.ts";
+import { buildTopLevelCommands, normalizeCommandRawArgs } from "@/commands/index.ts";
 import {
   CliError,
   EXIT_SUCCESS,
   getCliExitCode,
   isCittyCliError,
-  renderCliError,
-  renderCliErrorDetails,
-  renderCliErrorJson,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
-import { defineRootCommand } from "@/lib/command-context.ts";
+import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
+import { defineArgs, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
@@ -52,7 +38,7 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
   return parseGlobalFlags(argv);
 }
 
-const ROOT_ARGS = {
+const ROOT_ARGS = defineArgs({
   debug: { type: "boolean", alias: "d", description: "Enable debug output" },
   json: { type: "boolean", description: "Machine-readable JSON output" },
   agent: {
@@ -75,7 +61,7 @@ const ROOT_ARGS = {
     type: "string",
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
   },
-} satisfies ArgsDef;
+});
 
 const ROOT_VALUE_FLAGS = valueFlagsFor(ROOT_ARGS);
 
@@ -83,26 +69,10 @@ export function resolveTopLevelCommandName(rawArgs: readonly string[]): string |
   return findFirstPositionalToken(rawArgs, { valueFlags: ROOT_VALUE_FLAGS })?.value;
 }
 
-export function buildMainCommand(): CommandDef {
-  let mainCommand: CommandDef;
+export function buildMainCommand(): Command {
+  let mainCommand: Command;
 
-  const completionCommand = createCompletionCommand(() => mainCommand);
-
-  const topLevelCommands: Record<string, CommandDef> = {
-    login: loginCommand,
-    logout: logoutCommand,
-    profile: profileCommand,
-    catalogs: catalogsCommand,
-    query: queryCommand,
-    schema: schemaCommand,
-    duckdb: duckdbCommand,
-    append: appendCommand,
-    upload: uploadCommand,
-    upsert: upsertCommand,
-    api: apiCommand,
-    update: updateCommand,
-    completion: completionCommand,
-  };
+  const topLevelCommands = buildTopLevelCommands(() => mainCommand);
 
   mainCommand = defineRootCommand({
     meta: {
@@ -153,17 +123,13 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const rawArgs = normalizeQueryInvocatorRawArgs(
-    normalizeApiInvocatorRawArgs(process.argv.slice(2), ROOT_ARGS),
-    ROOT_ARGS,
-  );
+  const rawArgs = normalizeCommandRawArgs(process.argv.slice(2), ROOT_ARGS);
   // Early parse only for --help, --version, and JSON error envelope before citty runs.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);
   setCliContext(earlyContext);
 
   try {
-    validateEnvironment();
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
@@ -180,7 +146,8 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
-    await runCommand(main, { rawArgs });
+    validateEnvironment();
+    await runCommandTree(main, { rawArgs });
     await maybeShowUpdateNotice({
       context: getCliContext(),
       commandName: resolveTopLevelCommandName(rawArgs),

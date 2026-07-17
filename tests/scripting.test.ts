@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { VERSION } from "../cli/src/version.ts";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { jsonMock } from "./mock-http.ts";
 
@@ -30,6 +31,30 @@ describe("scriptable exit codes and JSON errors", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
     expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
+  });
+
+  test("ignores unrelated Altertable workflow variables", async () => {
+    const result = await workspace.runCommand("altertable --json profile show", {
+      env: {
+        ALTERTABLE_CATALOG: "analytics",
+        ALTERTABLE_SCHEMA: "reporting",
+        ALTERTABLE_TABLE: "events",
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout).profile.name).toBe("_from_env");
+  });
+
+  test.each(["--help", "--version"])("%s bypasses environment validation", async (flag) => {
+    const result = await workspace.runCommand(`altertable ${flag}`, {
+      env: { ALTERTABLE_UPDATE_SOURCE: "gitlab" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.length).toBeGreaterThan(0);
   });
 
   test.each([
@@ -87,18 +112,18 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test.each(["update", "upgrade"])("%s checks an explicit version", async (command) => {
-    const result = await workspace.runCommand(`altertable ${command} 1.2.0 --check`);
+    const result = await workspace.runCommand(`altertable ${command} ${VERSION} --check`);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Target version v1.2.0 is already installed.");
+    expect(result.stdout).toContain(`Target version v${VERSION} is already installed.`);
   });
 
   test("update accepts inherited global flags after its arguments", async () => {
-    const json = await workspace.runCommand("altertable update 1.2.0 --check --json");
-    const plain = await workspace.runCommand("altertable update 1.2.0 --check --no-color");
+    const json = await workspace.runCommand(`altertable update ${VERSION} --check --json`);
+    const plain = await workspace.runCommand(`altertable update ${VERSION} --check --no-color`);
 
     expect(json.exitCode).toBe(0);
-    expect(JSON.parse(json.stdout).latest_version).toBe("1.2.0");
+    expect(JSON.parse(json.stdout).latest_version).toBe(VERSION);
     expect(plain.exitCode).toBe(0);
     expect(plain.stdout).not.toContain("\u001B[");
   });

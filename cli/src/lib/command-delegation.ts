@@ -1,4 +1,4 @@
-import type { ArgsDef } from "citty";
+import type { CommandArgs } from "@/lib/command.ts";
 
 export type PositionalScanOptions = {
   valueFlags?: ReadonlySet<string>;
@@ -11,12 +11,12 @@ export type PositionalToken = {
 
 export type PassthroughCommandOptions = {
   commandName: string;
-  rootArgs?: ArgsDef;
+  rootArgs?: CommandArgs;
   commandValueFlags?: ReadonlySet<string>;
   isReservedOperand: (value: string) => boolean;
 };
 
-export function valueFlagsFor(args: ArgsDef): ReadonlySet<string> {
+export function valueFlagsFor(args: CommandArgs): ReadonlySet<string> {
   const flags = new Set<string>();
   for (const [name, definition] of Object.entries(args)) {
     if (definition.type !== "string" && definition.type !== "enum") {
@@ -73,7 +73,7 @@ export function isDelegatedSubCommand(
 export type DefaultSubCommandOptions = {
   commandName: string;
   subCommand: string;
-  rootArgs?: ArgsDef;
+  rootArgs?: CommandArgs;
   commandValueFlags?: ReadonlySet<string>;
   isReservedOperand: (value: string) => boolean;
 };

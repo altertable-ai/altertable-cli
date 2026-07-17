@@ -1,6 +1,5 @@
 import { configGet, configSet } from "@/lib/profile-store.ts";
 import {
-  chmodConfigFile,
   configDir,
   configFile,
   credentialsFile,
@@ -17,11 +16,6 @@ export { configGet, configSet };
 
 export function configGetGlobal(key: string): string {
   return kvGet(configFile(), key);
-}
-
-export function configSetGlobal(key: string, value: string): void {
-  kvSet(configFile(), key, value);
-  chmodConfigFile(configFile());
 }
 
 function resolveAllowInsecureHttp(): boolean {
@@ -41,7 +35,7 @@ export function resolveApiBase(profileName: string): string {
   return normalized;
 }
 
-function resolveManagementApiRoot(profileName: string): string {
+export function resolveManagementApiRoot(profileName: string): string {
   let root = readEnv("ALTERTABLE_MANAGEMENT_API_BASE") ?? "";
   if (!root) {
     root = configGet("management_api_base", profileName);

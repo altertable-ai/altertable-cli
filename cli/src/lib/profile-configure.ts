@@ -1,10 +1,10 @@
-import type { ArgsDef } from "citty";
+import { defineArgs } from "@/lib/command.ts";
 import {
   configureRunSet,
   withConfigureProfileContext,
   type ConfigureOptions,
 } from "@/lib/profile-configure-core.ts";
-import { formatConfigureSessionSummary } from "@/features/profile/render.ts";
+import { formatConfigureSessionSummary } from "@/lib/profile/render.ts";
 import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { ConfigurationError, CliError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput } from "@/context.ts";
@@ -13,15 +13,14 @@ import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
 import {
   collectLakehouseCredentials,
   collectManagementCredentials,
-  ConfigurePromptCancelled,
-  defaultConfigurePrompts,
   planesForConfigureScope,
   promptConfigureScope,
   type ConfigureWizardOptions,
   type ConfigureWizardScope,
 } from "@/lib/profile-configure-interactive.ts";
+import { defaultPrompts, PromptCancelled } from "@/ui/prompts.ts";
 import { getTerminalWidth, getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
-import { deriveProfileName } from "@/features/profile/model.ts";
+import { deriveProfileName } from "@/lib/profile/model.ts";
 import { document, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 
@@ -95,7 +94,7 @@ async function runConfigureWizardInCurrentProfile(
   profileName: string,
 ): Promise<void> {
   const sink = options.sink ?? getOutputSink();
-  const prompts = options.prompts ?? defaultConfigurePrompts;
+  const prompts = options.prompts ?? defaultPrompts;
 
   if (isJsonOutput(getCliContext())) {
     throw new ConfigurationError(
@@ -148,7 +147,7 @@ async function runConfigureWizardInCurrentProfile(
 
     writeOutro(sink, configuredPlanes, targetProfile);
   } catch (error) {
-    if (error instanceof ConfigurePromptCancelled) {
+    if (error instanceof PromptCancelled) {
       sink.writeMetadata([renderDisplayText([span("Configuration cancelled.", "subtle")])]);
       throw error;
     }
@@ -195,7 +194,7 @@ export type ConfigureCommandArgs = {
 };
 
 /** Credential/endpoint flags shared by `profile --configure`; spread into the profile command args. */
-export const configureArgs = {
+export const configureArgs = defineArgs({
   user: { type: "string", description: "Lakehouse username (global)" },
   password: { type: "string", description: "Lakehouse password (global)" },
   "basic-token": { type: "string", description: "Pre-encoded HTTP Basic token" },
@@ -225,7 +224,7 @@ export const configureArgs = {
     options: ["management", "lakehouse"],
     description: "Limit the interactive wizard to one plane (default: both)",
   },
-} satisfies ArgsDef;
+});
 
 function buildConfigureOptions(args: ConfigureCommandArgs): ConfigureOptions {
   return {

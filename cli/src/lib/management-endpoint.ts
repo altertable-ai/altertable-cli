@@ -1,8 +1,8 @@
-import { urlencode } from "@/lib/encode.ts";
-
 function encodeManagementPath(path: string): string {
   const segments = path.split("/");
-  return segments.map((segment) => (segment.length > 0 ? urlencode(segment) : "")).join("/");
+  return segments
+    .map((segment) => (segment.length > 0 ? encodeURIComponent(segment) : ""))
+    .join("/");
 }
 
 export function encodeManagementEndpoint(endpoint: string): string {

@@ -32,24 +32,29 @@ Match existing conventions in `cli/src/`:
 
 ## Command Architecture
 
-Commands should keep platform concepts split and composed. The intended flow is:
+Commands should keep the execution path local and readable. The intended flow is:
 
 ```text
-parse args -> build operation plan -> run effects -> decode result -> present output
+parse args -> build request -> send request -> decode result -> present output
 ```
 
 Use these boundaries when adding or changing commands:
 
-- `cli/src/commands/**` owns command shape, argument parsing, operation ids, capability metadata, and presentation choice.
-- `cli/src/lib/operation-codec.ts` owns small reusable argument codecs. Prefer these helpers over ad hoc `String(...)` coercion.
-- `cli/src/lib/operation-effect.ts` owns executable operation plans and the effect handler registry.
-- `cli/src/lib/http-operation.ts` owns named HTTP operation descriptors. Prefer descriptors over command-local request objects.
-- `cli/src/lib/operation-transport.ts` owns plane-aware HTTP transport. Do not build management/lakehouse URLs in commands.
+- `cli/src/commands/<family>/index.ts` owns the command group; each leaf command has a sibling `<name>.ts` file.
+- `cli/src/commands/<family>/lib/**` owns implementation code used only by that command family.
+- `cli/src/lib/**` is reserved for code shared by multiple command families.
+- `cli/src/lib/args.ts` owns small reusable argument codecs. Prefer these helpers over ad hoc `String(...)` coercion.
+- `cli/src/lib/http-request.ts` owns plane-aware HTTP transport. Do not build management/lakehouse URLs in commands.
 - Request builders should return data structures. They should not perform transport as a side effect.
+- Keep request descriptions declarative so a future dry-run mode can inspect them without performing I/O.
 - Presentation should return `CommandOutputMode` or write through the command output sink. Avoid mixing transport, parsing, and terminal output in the same function.
-- Register every command surface with a stable operation id, capabilities, effects, planes, mutability, and output shape through `defineOperationCommand`.
+- Declare the exported command immediately after imports, then place its helpers and types below it so reviewers see the public shape first.
+- Define commands and argument schemas through `cli/src/lib/command.ts`; Citty is an implementation detail of that boundary.
+- Derive related argument schemas from one shared definition instead of repeating flags and descriptions.
+- Register top-level commands in `cli/src/commands/index.ts`.
+- Colocate unit tests beside their subject as `<name>.test.ts`; reserve root `tests/` for black-box behavior.
 
-Avoid adding compatibility wrappers that both build and execute requests. If a shared path is needed, share the request builder, effect builder, parser, or presenter instead.
+If a path needs sharing, start at the narrowest common owner and move it to top-level `lib/` only when multiple command families use it.
 
 ## Tests
 
