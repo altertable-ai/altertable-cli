@@ -21,9 +21,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Restore `upsert` as a standalone top-level command.
+- Allow global flags such as `--json`, `--agent`, `--profile`, and timeout controls before or after commands.
+- Add finite shell value metadata so help and completion consistently expose `bash`, `fish`, and `zsh`.
+
+### Changed
+
+- Simplify common command forms: use `profile switch` instead of `profile use`, `profile env` instead of `profile direnv`, `query "<SQL>"` instead of `query run`, `append <DATA> --to <TARGET>` instead of `append run`, `completion generate <SHELL>` instead of direct shell subcommands, and bare `catalogs` instead of `catalogs list`.
+- Make ingest inputs positional and replace separate catalog, schema, and table flags with `--to <CATALOG.SCHEMA.TABLE>`. Literal dots inside a target component must be percent-encoded as `%2E`.
+- Rename the upsert primary-key flag to `--key`, infer CSV, JSON, and Parquet formats from filenames, and default uploads to `--mode create`.
+- Select structured JSON exclusively with global `--json` or `--agent`; command-level `--format` now accepts only `csv` and `markdown`.
+- Keep the API invoker aligned with established GitHub-style CLI conventions: endpoint-first requests, `-X/--method`, POST inference for payloads, `--input` for file or stdin bodies, `-f/--raw-field` for string values, and `-F/--field` for typed values.
+- Treat this command-surface migration as a minor release while usage remains limited. Removed forms now return migration guidance instead of silently changing behavior.
+
 ### Fixed
 
 - Simplify `altertable update` to install by default, add `--check` mode, preserve inherited global flags, resolve compiled self-update paths safely, and verify source-checkout updates through the package manager's global binary.
+- Preserve the `upgrade` alias for `update` and the configure-local `profile --configure --profile <NAME>` compatibility form.
+- Parse command operands independently from global flag values when delegating subcommands, reporting removed syntax, and generating Bash completions.
 
 ## [1.2.0](https://github.com/altertable-ai/altertable-cli/compare/v1.1.0...v1.2.0) (2026-07-15)
 
