@@ -18,7 +18,7 @@ export const duckdbCommand = defineCommand({
     name: "duckdb",
     commandGroup: "query",
     description: "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",
-    examples: ["altertable duckdb", "altertable duckdb my_catalog"],
+    examples: ["altertable duckdb", "altertable duckdb analytics"],
   },
   args: {
     catalog: {

@@ -84,7 +84,7 @@ export function buildMainCommand(): Command {
         "altertable profile show",
         "altertable api routes",
         "altertable api /environments/production/databases",
-        'altertable query "SELECT 1"',
+        'altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"',
       ],
     },
     args: ROOT_ARGS,

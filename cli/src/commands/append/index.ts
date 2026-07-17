@@ -16,7 +16,7 @@ export const appendCommand = defineCommand({
     commandGroup: "ingest",
     description: "Append JSON rows to a table.",
     examples: [
-      "altertable append '[{\"id\":1}]' --to db.public.events",
+      'altertable append \'{"event":"checkout_completed","user_id":"usr_123","revenue":99}\' --to analytics.main.events',
       "altertable append status <append-id>",
     ],
   },

@@ -13,7 +13,7 @@ export const schemaCommand = defineCommand({
     name: "schema",
     commandGroup: "query",
     description: "List schemas, tables, and columns for a catalog.",
-    examples: ["altertable schema my-catalog", "altertable schema my-catalog --json"],
+    examples: ["altertable schema analytics", "altertable schema analytics --json"],
   },
   args: schemaArgs,
   async run({ args, rawArgs, execution, sink }) {

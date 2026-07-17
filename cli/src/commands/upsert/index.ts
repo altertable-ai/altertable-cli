@@ -12,7 +12,7 @@ export const upsertCommand = defineCommand({
     name: "upsert",
     commandGroup: "ingest",
     description: "Upload a file and match existing rows by primary key.",
-    examples: ["altertable upsert users.csv --to db.public.users --key id"],
+    examples: ["altertable upsert users.csv --to analytics.main.users --key id"],
   },
   args: upsertArgs,
   async run({ args, execution, sink }) {

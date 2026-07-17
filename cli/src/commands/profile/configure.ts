@@ -15,7 +15,7 @@ export const profileConfigureCommand = defineCommand({
     description: "Create or update a profile's credentials and settings",
     examples: [
       "altertable profile configure",
-      "altertable profile configure acme_prod --api-key atm_xxx --env production",
+      "altertable profile configure acme_production --api-key atm_xxx --env production",
       "altertable profile configure acme_staging --user alice --password-stdin",
       "altertable profile configure --scope lakehouse",
     ],

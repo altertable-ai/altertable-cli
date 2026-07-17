@@ -16,8 +16,8 @@ export const queryCommand = defineCommand({
     commandGroup: "query",
     description: "Run SQL queries against the lakehouse.",
     examples: [
-      'altertable query "SELECT * FROM users LIMIT 10"',
-      'altertable query "SELECT 1" --json',
+      'altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"',
+      'altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json',
       "altertable query show <query-id>",
     ],
   },

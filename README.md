@@ -48,7 +48,7 @@ altertable profile configure --user your_username --password your_password
 altertable profile show
 
 # 4. Query
-altertable query "SELECT * FROM users LIMIT 10"
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 ```
 
 ---
@@ -239,7 +239,7 @@ altertable login --replace-profile
 
 # Set up multiple environments with explicit profile names
 altertable profile configure acme_staging --api-key atm_xxx --env staging
-altertable profile configure acme_prod --api-key atm_yyy --env production
+altertable profile configure acme_production --api-key atm_yyy --env production
 
 # Switch the sticky active profile
 altertable profile switch acme_staging
@@ -318,24 +318,24 @@ You can also override endpoints per-command with flags:
 **Query**
 
 ```bash
-altertable query "SELECT * FROM users LIMIT 10"
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 
 # Human layout and script-friendly formats
-altertable query "SELECT * FROM events LIMIT 3"
-altertable query "SELECT * FROM events LIMIT 3" --layout auto
-altertable query "SELECT * FROM events LIMIT 3" --layout table
-altertable query "SELECT * FROM events LIMIT 3" --layout line
-altertable query "SELECT * FROM events LIMIT 3" --columns uuid,event,timestamp
-altertable query "SELECT * FROM events LIMIT 3" --max-width 24
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout auto
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout table
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout line
+altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --columns event,user_id,timestamp
+altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --max-width 24
 
 # Serialized output
-altertable query "SELECT 1" --format csv
-altertable query "SELECT 1" --json
-altertable query "SELECT 1" --format markdown
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format csv
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --json
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format markdown
 
 # Long results — pipe through a pager
-altertable query "SELECT * FROM big_table" --pager always
-altertable query "SELECT * FROM big_table" --pager never
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --pager always
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --pager never
 
 # JSON for scripting
 altertable --json query "SELECT 1"
@@ -357,17 +357,17 @@ query_pager=auto        # auto | always | never
 **Append and upload**
 
 ```bash
-altertable append '{"id": 1}' --to my_cat.public.users
-altertable append '{"id": 2}' --to my_cat.public.users --sync
+altertable append '{"event":"checkout_completed","user_id":"usr_123","revenue":99}' --to analytics.main.events
+altertable append '[{"event":"page_view","user_id":"usr_123"},{"event":"signup","user_id":"usr_456"}]' --to analytics.main.events --sync
 
-altertable upload data.csv --to my_cat.public.users --mode overwrite
-altertable upsert data.csv --to my_cat.public.users --key id
+altertable upload orders.parquet --to analytics.main.orders --mode overwrite
+altertable upsert users.csv --to analytics.main.users --key id
 ```
 
 Upload mode defaults to `create`; valid modes are `create`, `append`, and `overwrite`.
 Input format is inferred from `.csv`, `.json`, or `.parquet` and can be overridden
 with `--format`. Targets use `catalog.schema.table`; percent-encode literal dots
-inside a component, for example `my%2Ecatalog.public.users`.
+inside a component, for example `customer%2E360.main.users`.
 
 **Inspect async operations**
 
@@ -384,7 +384,7 @@ Product-level commands stay at the top level. The full management REST surface i
 ```bash
 altertable profile show
 altertable catalogs
-altertable catalogs create "My Catalog"
+altertable catalogs create Analytics
 
 # Explore the bundled OpenAPI contract
 altertable api spec
@@ -396,13 +396,11 @@ altertable api routes createDatabase
 altertable api /whoami
 altertable api /environments/production/connections
 altertable api '/environments/production/connections?limit=10'
-altertable api /service_accounts -X GET -f label="CI Bot"
 altertable api /service_accounts -f label="CI Bot"
-altertable api /service_accounts -f label="CI Bot" -F enabled=true
-altertable api /environments/production/databases -f name=Analytics
-altertable api /environments/production/databases --input payload.json
-altertable api /service_accounts/sa_abc123 -X DELETE
-altertable api /environments/production/connections/conn_1 -X PATCH --input payload.json
+altertable api /environments/production/databases -f name=Analytics -F read_only=false
+altertable api /environments/production/databases --input create-analytics-catalog.json
+altertable api "/service_accounts/$SERVICE_ACCOUNT_ID" -X DELETE
+altertable api "/environments/production/connections/$CONNECTION_ID" -X PATCH --input rename-warehouse-connection.json
 ```
 
 Use `--env <slug>` to substitute `{environment_id}` in paths copied from `api routes`. Prefer full paths like `/environments/production/...` when the environment is known.
@@ -470,10 +468,10 @@ These flags apply to every command and may be placed before or after commands:
 Per-request read timeout on `query`, `upload`, and `upsert`:
 
 ```bash
-altertable query "SELECT ..." --read-timeout 180
-altertable --read-timeout 120 query "SELECT ..."
-altertable upload large.csv --to my_cat.public.users --mode overwrite --connect-timeout 10
-altertable upsert large.csv --to my_cat.public.users --key id --connect-timeout 10
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --read-timeout 180
+altertable --read-timeout 120 query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC"
+altertable upload orders.parquet --to analytics.main.orders --mode overwrite --connect-timeout 10
+altertable upsert users.csv --to analytics.main.users --key id --connect-timeout 10
 ```
 
 Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited once connected.

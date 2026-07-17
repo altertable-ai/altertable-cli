@@ -17,7 +17,7 @@ export const profileCommand = defineCommand({
     examples: [
       "altertable profile show",
       "altertable profile configure",
-      "altertable profile configure acme_prod --api-key atm_xxx --env production",
+      "altertable profile configure acme_production --api-key atm_xxx --env production",
       "altertable profile configure --scope lakehouse",
       "altertable profile list",
       "altertable profile switch",

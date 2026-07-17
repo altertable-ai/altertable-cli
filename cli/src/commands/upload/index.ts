@@ -13,8 +13,8 @@ export const uploadCommand = defineCommand({
     commandGroup: "ingest",
     description: "Upload a file to create, append to, or overwrite a table.",
     examples: [
-      "altertable upload users.csv --to db.public.users",
-      "altertable upload users.csv --to db.public.users --mode overwrite",
+      "altertable upload users.csv --to analytics.main.users",
+      "altertable upload orders.parquet --to analytics.main.orders --mode overwrite",
     ],
   },
   args: uploadArgs,
