@@ -1,18 +1,11 @@
-import { getCliContext } from "@/context.ts";
 import { configGet } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { createExecutionContext } from "@/lib/execution-context.ts";
-import { defineHttpOperation, type HttpOperationDescriptor } from "@/lib/http-operation.ts";
-import { lakehouseVerifyOperation } from "@/lib/lakehouse-operations.ts";
-import type { WhoamiResponse } from "@/features/management/model.ts";
-import { formatWhoamiPrincipalLine } from "@/features/management/render.ts";
-import type { OperationContext } from "@/lib/operation-command.ts";
-import { runOperationPlan } from "@/lib/operation-effect.ts";
+import type { ExecutionContext } from "@/lib/execution-context.ts";
+import { buildLakehouseVerifyRequest } from "@/lib/lakehouse/query.ts";
+import type { WhoamiResponse } from "@/lib/management/model.ts";
+import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
+import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 import { formatProgressStatus, startProgress } from "@/lib/progress.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { resolveWorkingProfile } from "@/lib/profile-store.ts";
-
-export { configureCredentialStatus } from "@/features/profile/model.ts";
 
 export type ConfigureAuthPlane = "management" | "lakehouse";
 
@@ -27,16 +20,6 @@ export type ConfigureVerifyResult = {
   verified: Record<ConfigureAuthPlane, boolean>;
   errors: ConfigureVerifyError[];
 };
-
-const managementVerifyOperation = defineHttpOperation<void, string>({
-  id: "management.verify",
-  request: () => ({
-    plane: "management",
-    method: "GET",
-    endpoint: "/whoami",
-  }),
-  decode: (body) => parseWhoamiPrincipalName(body),
-});
 
 function parseWhoamiPrincipalName(body: string): string {
   try {
@@ -57,7 +40,8 @@ function getErrorMessage(error: unknown): string {
 type ConfigureVerifier = {
   progressLabel: string;
   failureLabel: string;
-  operation: HttpOperationDescriptor<void, string>;
+  request: () => HttpRequest;
+  parse?: (body: string) => string;
   successMessage: (result: string) => string;
 };
 
@@ -65,41 +49,34 @@ const CONFIGURE_VERIFY_PLANES = {
   management: {
     progressLabel: "Verifying management API key",
     failureLabel: "Management API key verification failed.",
-    operation: managementVerifyOperation,
+    request: () => ({ plane: "management", method: "GET", endpoint: "/whoami" }),
+    parse: parseWhoamiPrincipalName,
     successMessage: (principalLine) => `Management API key verified (${principalLine}).`,
   },
   lakehouse: {
     progressLabel: "Verifying lakehouse credentials",
     failureLabel: "Lakehouse credentials verification failed.",
-    operation: lakehouseVerifyOperation,
+    request: buildLakehouseVerifyRequest,
     successMessage: () => "Lakehouse credentials verified.",
   },
 } satisfies Record<ConfigureAuthPlane, ConfigureVerifier>;
 
-function createConfigureVerifyOperationContext(): OperationContext {
-  const runtime = getCliRuntime();
-  return {
-    args: {},
-    rawArgs: [],
-    runtime,
-    sink: runtime.output,
-    execution: createExecutionContext(runtime),
-  };
-}
-
-async function verifyPlane(plane: ConfigureAuthPlane, context: OperationContext): Promise<string> {
-  const verifier = CONFIGURE_VERIFY_PLANES[plane];
-  const result = await runOperationPlan(verifier.operation.plan(undefined, context), context);
+async function verifyPlane(
+  plane: ConfigureAuthPlane,
+  execution: ExecutionContext,
+): Promise<string> {
+  const verifier: ConfigureVerifier = CONFIGURE_VERIFY_PLANES[plane];
+  const response = await sendHttp(verifier.request(), execution);
+  const result = verifier.parse ? verifier.parse(response) : response;
   return verifier.successMessage(result);
 }
 
 export async function configureVerify(
   planes: ConfigureAuthPlane[],
+  execution: ExecutionContext,
 ): Promise<ConfigureVerifyResult> {
-  refreshCliRuntimeContext(getCliContext());
-
   const result: ConfigureVerifyResult = {
-    profile: resolveWorkingProfile(getCliContext().profile),
+    profile: execution.profile,
     configured: [...planes],
     verified: { management: false, lakehouse: false },
     errors: [],
@@ -109,7 +86,7 @@ export async function configureVerify(
     const verifier = CONFIGURE_VERIFY_PLANES[plane];
     const progress = startProgress(verifier.progressLabel);
     try {
-      const successMessage = await verifyPlane(plane, createConfigureVerifyOperationContext());
+      const successMessage = await verifyPlane(plane, execution);
       progress.done(formatProgressStatus("success", successMessage));
       result.verified[plane] = true;
     } catch (error) {

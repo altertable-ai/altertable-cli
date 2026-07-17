@@ -1,11 +1,10 @@
-import type { ArgsDef } from "citty";
-import { isJsonOutput } from "@/context.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
-import { type ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
-import { renderTabularOutput, type TabularResult } from "@/lib/tabular-result.ts";
-
-export type { ManagementOutputFormat } from "@/lib/lakehouse-client.ts";
+import {
+  renderTabularOutput,
+  type ManagementOutputFormat,
+  type TabularResult,
+} from "@/lib/tabular-result.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -16,8 +15,6 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     return [];
   }
 
-  const shouldRedact = !isJsonOutput();
-
   const arrayValues = Object.values(data).filter(Array.isArray) as unknown[][];
   if (arrayValues.length === 1) {
     const rows = arrayValues[0];
@@ -25,7 +22,7 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
       return [];
     }
     const plainRows = rows.filter(isPlainObject);
-    return shouldRedact ? plainRows.map(redactSensitiveRow) : plainRows;
+    return plainRows.map(redactSensitiveRow);
   }
 
   const nestedObjects = Object.entries(data).filter(([, value]) => isPlainObject(value));
@@ -34,21 +31,18 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     if (!isPlainObject(nestedObject)) {
       return [];
     }
-    const row = shouldRedact ? redactSensitiveRow(nestedObject) : nestedObject;
-    return [row];
+    return [redactSensitiveRow(nestedObject)];
   }
 
   const row: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (isPlainObject(value)) {
       for (const [nestedKey, nestedValue] of Object.entries(value)) {
-        row[nestedKey] = shouldRedact
-          ? redactSensitiveRowValue(nestedKey, nestedValue)
-          : nestedValue;
+        row[nestedKey] = redactSensitiveRowValue(nestedKey, nestedValue);
       }
       continue;
     }
-    row[key] = shouldRedact ? redactSensitiveRowValue(key, value) : value;
+    row[key] = redactSensitiveRowValue(key, value);
   }
 
   return Object.keys(row).length > 0 ? [row] : [];
@@ -62,16 +56,6 @@ function redactSensitiveRowValue(key: string, value: unknown): unknown {
   const redacted = redactSensitiveJsonValue({ [key]: value }) as Record<string, unknown>;
   return redacted[key];
 }
-
-export const MANAGEMENT_FORMAT_OPTIONS = ["json", "table", "csv", "markdown"] as const;
-
-export const MANAGEMENT_FORMAT_ARG = {
-  format: {
-    type: "enum" as const,
-    description: "Output format: json, table, csv, or markdown",
-    options: [...MANAGEMENT_FORMAT_OPTIONS],
-  },
-};
 
 function collectColumnNames(rows: Record<string, unknown>[]): string[] {
   const columnNames = new Set<string>();
@@ -99,13 +83,4 @@ export function renderManagementOutput(body: string, format: ManagementOutputFor
   }
 
   return renderTabularOutput(managementDataToTabularResult(data), format);
-}
-
-export function withManagementFormatArg<T extends ArgsDef>(
-  args: T,
-): T & typeof MANAGEMENT_FORMAT_ARG {
-  return {
-    ...MANAGEMENT_FORMAT_ARG,
-    ...args,
-  };
 }

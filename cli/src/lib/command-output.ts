@@ -1,11 +1,8 @@
-import {
-  parseManagementOutputFormat,
-  type ManagementOutputFormat,
-} from "@/lib/lakehouse-client.ts";
+import type { ManagementOutputFormat } from "@/lib/tabular-result.ts";
 import { renderManagementOutput } from "@/lib/management-output.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";
-import { getOutputSink, type OutputSink } from "@/lib/runtime.ts";
+import type { OutputSink } from "@/lib/runtime.ts";
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
@@ -28,10 +25,7 @@ export type CommandOutputMode =
   | { kind: "deleted"; message: string; id?: string }
   | { kind: "ack"; data: Record<string, unknown>; metadataMessage: string };
 
-export async function writeCommandOutput(
-  mode: CommandOutputMode,
-  sink: OutputSink = getOutputSink(),
-): Promise<void> {
+export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSink): Promise<void> {
   const json = sink.json;
 
   if (mode.kind === "deleted") {
@@ -111,71 +105,4 @@ export async function writeCommandOutput(
     sink.writeHuman(output);
     return;
   }
-}
-
-export async function writeManagementOutput(
-  body: string,
-  options?: {
-    format?: string;
-    humanFormatter?: (data: unknown) => string;
-  },
-  sink: OutputSink = getOutputSink(),
-): Promise<void> {
-  const formatArg = options?.format;
-  const parsedFormat =
-    formatArg !== undefined && String(formatArg).length > 0
-      ? parseManagementOutputFormat(String(formatArg))
-      : undefined;
-
-  await writeCommandOutput(
-    {
-      kind: "tabular",
-      body,
-      format: parsedFormat,
-      humanFormatter: options?.humanFormatter,
-    },
-    sink,
-  );
-}
-
-export async function writeJsonOrRaw(
-  body: string,
-  formatter?: (data: unknown) => string,
-  sink: OutputSink = getOutputSink(),
-): Promise<void> {
-  await writeCommandOutput(
-    {
-      kind: "tabular",
-      body,
-      humanFormatter: formatter,
-    },
-    sink,
-  );
-}
-
-export type LakehouseOutputOptions = {
-  humanFormatter?: (data: unknown) => string;
-  sink?: OutputSink;
-};
-
-export async function writeLakehouseCommandOutput(
-  body: string,
-  options?: LakehouseOutputOptions,
-): Promise<void> {
-  await writeCommandOutput(
-    {
-      kind: "raw_api",
-      body,
-      humanFormatter: options?.humanFormatter,
-    },
-    options?.sink ?? getOutputSink(),
-  );
-}
-
-export async function writeDeleteSuccess(
-  message: string,
-  id?: string,
-  sink: OutputSink = getOutputSink(),
-): Promise<void> {
-  await writeCommandOutput({ kind: "deleted", message, id }, sink);
 }

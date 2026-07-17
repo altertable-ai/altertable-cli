@@ -18,10 +18,6 @@ export function storeOAuthTokens(oauthResponse: TokenResponse, profileName: stri
   configSet(OAUTH_EXPIRY_KEY, String(Date.now() + expiresInMs), profileName);
 }
 
-export function getStoredAccessToken(profileName: string): string {
-  return secretGet(ACCESS_TOKEN_ACCOUNT, profileName);
-}
-
 export function clearOAuthTokens(profileName: string): void {
   secretDelete(ACCESS_TOKEN_ACCOUNT, profileName);
   secretDelete(REFRESH_TOKEN_ACCOUNT, profileName);

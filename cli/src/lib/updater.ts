@@ -6,8 +6,7 @@ import { spawnSync } from "node:child_process";
 import type { CliContext } from "@/context.ts";
 import { isJsonOutput } from "@/context.ts";
 import { USER_AGENT, VERSION } from "@/version.ts";
-import { configDir, configGetGlobal, configSetGlobal } from "@/lib/config.ts";
-import { urlencode } from "@/lib/encode.ts";
+import { configDir, configGetGlobal } from "@/lib/config.ts";
 import { CliError, HttpError, NetworkError } from "@/lib/errors.ts";
 import { hasObjectKey } from "@/lib/object.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
@@ -17,20 +16,6 @@ import { span } from "@/ui/document.ts";
 import { copyProcessEnv, readEnv, readEnvFrom } from "@/lib/env.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
-  UpdaterInstallationKind,
-  UpdaterCheckIntervals,
-  UpdaterInstallMethod,
-  UpdaterConfig,
-  type InstallationKind,
-  type InstallManager,
-  type ReleasePlatform,
-  type ResolvedUpdateInstallMethod,
-  type UpdateCheckInterval,
-  type UpdateInstallMethod,
-  type UpdateSource,
-} from "@/lib/updater-config.ts";
-
-export {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
   UpdaterInstallMethod,
@@ -291,10 +276,6 @@ export function getUpdateCheckInterval(): UpdateCheckInterval {
   return fromConfig ?? UpdaterConfig.defaults.checkInterval;
 }
 
-export function setUpdateCheckInterval(interval: UpdateCheckInterval): void {
-  configSetGlobal(UpdaterConfig.configKeys.checkInterval, interval);
-}
-
 export function resolveUpdateSource(source?: UpdateSource): UpdateSource {
   return source ?? readEnv("ALTERTABLE_UPDATE_SOURCE") ?? UpdaterConfig.defaults.source;
 }
@@ -384,7 +365,7 @@ export function releaseUrlForSource(source: UpdateSource, version: string): stri
 
 function appendEncodedUrlPath(url: URL, ...rawSegments: string[]): void {
   const baseSegments = url.pathname.split("/").filter((segment) => segment.length > 0);
-  url.pathname = [...baseSegments, ...rawSegments.map(urlencode)]
+  url.pathname = [...baseSegments, ...rawSegments.map(encodeURIComponent)]
     .filter((segment) => segment.length > 0)
     .join("/")
     .replace(/^/, "/");
@@ -757,20 +738,6 @@ export function detectCurrentInstallation(
     executablePath: execPath,
     reason: "unable to identify installation origin",
   };
-}
-
-export function resolveCurrentExecutablePath(): string {
-  return detectCurrentInstallation().executablePath;
-}
-
-export function isNativeCompiledInstall(
-  executablePath: string = process.execPath,
-  argv: readonly string[] = process.argv,
-): boolean {
-  return (
-    detectCurrentInstallation({ execPath: executablePath, argv }).kind ===
-    UpdaterInstallationKind.nativeBinary
-  );
 }
 
 function resolveInstallMethodForInstallation(

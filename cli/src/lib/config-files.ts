@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readEnv } from "@/lib/env.ts";
 
@@ -121,13 +121,5 @@ export function kvUnset(filePath: string, key: string): void {
     }
   } catch {
     // file does not exist
-  }
-}
-
-export function chmodConfigFile(filePath: string): void {
-  try {
-    chmodSync(filePath, 0o600);
-  } catch {
-    // best effort
   }
 }

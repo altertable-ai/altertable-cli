@@ -13,7 +13,7 @@ import {
   RELEASE_TARGETS,
   releaseCiMatrix,
   type ReleaseTarget,
-} from "@/release-manifest.ts";
+} from "@/../scripts/release-manifest.ts";
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 2;
 export const SUPPORTED_BUN_RUNTIME_RANGE = ">=1.1.0";

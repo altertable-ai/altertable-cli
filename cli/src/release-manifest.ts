@@ -52,7 +52,6 @@ export const RELEASE_TARGETS = [
 ] as const satisfies readonly ReleaseTarget[];
 
 export type ReleasePlatform = (typeof RELEASE_TARGETS)[number]["platform"];
-export type ReleaseBunTarget = (typeof RELEASE_TARGETS)[number]["bunTarget"];
 export type ReleaseAssetName = (typeof RELEASE_TARGETS)[number]["asset"];
 
 export const RELEASE_PLATFORM_CONFIG: Readonly<
@@ -63,30 +62,4 @@ export const RELEASE_PLATFORM_CONFIG: Readonly<
   ) as Record<ReleasePlatform, { asset: ReleaseAssetName }>,
 );
 
-export const RELEASE_BUNDLE_ASSET = "altertable-cli.js";
 export const RELEASE_CHECKSUMS_ASSET = "checksums.txt";
-export const RELEASE_METADATA_ASSET = "release-manifest.json";
-
-export function findReleaseTargetByBunTarget(
-  bunTarget: string,
-): (typeof RELEASE_TARGETS)[number] | undefined {
-  return RELEASE_TARGETS.find((target) => target.bunTarget === bunTarget);
-}
-
-export function findReleaseTargetByPlatform(
-  platform: string,
-): (typeof RELEASE_TARGETS)[number] | undefined {
-  return RELEASE_TARGETS.find((target) => target.platform === platform);
-}
-
-export function releaseCiMatrix(): {
-  include: Array<{ target: ReleaseBunTarget; artifact: ReleaseAssetName; runner: string }>;
-} {
-  return {
-    include: RELEASE_TARGETS.map((target) => ({
-      target: target.bunTarget,
-      artifact: target.asset,
-      runner: target.runner,
-    })),
-  };
-}

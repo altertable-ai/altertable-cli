@@ -184,7 +184,7 @@ bun test "$PWD"/tests/*.test.ts
 
 ### Shell completion
 
-Shell completion scripts are generated from the Citty `CommandDef` tree in `cli/src/cli.ts`. The spec walker lives in `cli/src/lib/completion-spec.ts`; bash/zsh/fish formatters and shared path/flag helpers live in `cli/src/lib/completion-format.ts`. Command-specific flags are taken from `CompletionNode.flags` on each visited node; positional arguments and dynamic API values are not completed. When you change command structure, run `cd cli && bun test cli/tests/completion-spec.test.ts cli/tests/completion.test.ts`.
+Shell completion scripts are generated from the Citty `CommandDef` tree in `cli/src/cli.ts`. The spec walker and formatters live in `cli/src/commands/completion/lib/`, beside their tests. Command-specific flags are taken from `CompletionNode.flags` on each visited node; positional arguments and dynamic API values are not completed. When you change command structure, run `cd cli && bun test src/commands/completion/lib/spec.test.ts src/commands/completion/index.test.ts`.
 
 Integration tests against the mock server:
 

@@ -1,6 +1,6 @@
 import { type HttpSendOptions } from "@/lib/http.ts";
 import { createUploadProgressReporter, shouldShowProgress } from "@/lib/progress.ts";
-import type { OperationHttpRequest } from "@/lib/operation-transport.ts";
+import type { HttpRequest } from "@/lib/http-request.ts";
 
 export type LakehouseAppendOptions = {
   sync?: boolean;
@@ -37,28 +37,11 @@ export type LakehouseUpsertRequestInput = {
 };
 
 export type LakehouseUploadRequestScope = {
-  request: OperationHttpRequest;
+  request: HttpRequest;
   release: () => void;
 };
 
-export function buildLakehouseQueryPayload(
-  statement: string,
-  queryId?: string,
-  sessionId?: string,
-): Record<string, string> {
-  const payload: Record<string, string> = { statement };
-  if (queryId) {
-    payload.query_id = queryId;
-  }
-  if (sessionId) {
-    payload.session_id = sessionId;
-  }
-  return payload;
-}
-
-export function buildLakehouseAppendRequest(
-  input: LakehouseAppendRequestInput,
-): OperationHttpRequest {
+export function buildLakehouseAppendRequest(input: LakehouseAppendRequestInput): HttpRequest {
   const params = new URLSearchParams({
     catalog: input.catalog,
     schema: input.schema,

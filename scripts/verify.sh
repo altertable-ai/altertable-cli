@@ -54,6 +54,7 @@ run_step "generate (openapi)" bun run generate
 run_step "openapi drift check" git diff --exit-code src/generated/openapi-types.ts src/generated/openapi-operations.ts
 run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip
+run_step "knip (production)" bun run knip:production
 
 cd "${REPO_ROOT}"
 run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts

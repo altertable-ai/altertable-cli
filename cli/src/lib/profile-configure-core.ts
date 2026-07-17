@@ -1,7 +1,7 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
-import { deriveProfileName, listProfiles } from "@/features/profile/model.ts";
+import { deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
 import {
   ensureProfileExists,
   profileConfigFile,
@@ -87,13 +87,6 @@ function configureClearManagementCredentials(profileName: string): void {
   secretDelete("oauth/refresh-token", profileName);
   configSet("api_key_env", "", profileName);
   configSet("oauth_expiry", "", profileName);
-}
-
-export function configureClearAll(profileName: string): void {
-  configureClearLakehouseCredentials(profileName);
-  configureClearManagementCredentials(profileName);
-  clearProfileEndpoint("api_base", profileName);
-  clearProfileEndpoint("management_api_base", profileName);
 }
 
 export async function configureRunSet(
