@@ -5,8 +5,11 @@ import { getCliRuntime } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 
 export type Command = CommandDef;
-export type CommandArg = import("citty").ArgDef;
-export type CommandArgs = ArgsDef;
+export type CommandArg = import("citty").ArgDef & {
+  /** Finite canonical values shared by help, validation, completion, and documentation. */
+  values?: readonly string[];
+};
+export type CommandArgs = Record<string, CommandArg>;
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
@@ -38,6 +41,12 @@ export type CommandTreeDef<T extends ArgsDef = ArgsDef> = AltertableCommandDef<T
 
 export function defineArgs<const T extends ArgsDef>(args: T): T {
   return args;
+}
+
+export function commandArgumentValues(definition: CommandArg): readonly string[] {
+  if (definition.values) return definition.values;
+  if (definition.type === "enum" && definition.options) return definition.options;
+  return [];
 }
 
 function withCommandRuntime<T extends ArgsDef>(context: CommandContext<T>): CommandRunContext<T> {

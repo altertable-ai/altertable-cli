@@ -25,8 +25,7 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
         type: "positional",
         description: "Shell to install completion for (default: detected shell)",
         required: false,
-        valueHint: "bash|fish|zsh",
-        completionValues: SUPPORTED_SHELLS,
+        values: SUPPORTED_SHELLS,
       },
       "no-rc": {
         type: "boolean",

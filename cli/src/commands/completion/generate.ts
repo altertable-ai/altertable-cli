@@ -22,8 +22,7 @@ export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
         type: "positional",
         description: "Shell to generate completion for",
         required: true,
-        valueHint: "bash|fish|zsh",
-        completionValues: SUPPORTED_SHELLS,
+        values: SUPPORTED_SHELLS,
       },
     },
     run({ args, sink }) {

@@ -194,6 +194,12 @@ describe("completion command", () => {
     expect(output).toContain("altertable completion generate fish");
   });
 
+  test("generate validates values from supported shell metadata", async () => {
+    expect(runCompletionGenerate("powershell")).rejects.toThrow(
+      "Unsupported shell: powershell. Use bash, fish, zsh.",
+    );
+  });
+
   test("bare completion shows guidance without dumping a script", async () => {
     const output = await runCompletion(() => minimalRootCommand);
     const visibleOutput = visibleTerminalText(output);

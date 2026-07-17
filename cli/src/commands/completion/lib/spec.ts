@@ -1,4 +1,4 @@
-import type { Command } from "@/lib/command.ts";
+import { commandArgumentValues, type Command, type CommandArg } from "@/lib/command.ts";
 import { readCommandMetadata } from "@/lib/command-metadata.ts";
 
 /**
@@ -50,7 +50,6 @@ type ArgDef = {
   description?: string;
   options?: string[];
   required?: boolean;
-  completionValues?: readonly string[];
 };
 
 function extractFlags(command: Command): CompletionFlag[] {
@@ -86,7 +85,7 @@ function extractPositionals(command: Command): CompletionPositional[] {
       name,
       description: def.description,
       required: def.required !== false,
-      values: def.completionValues,
+      values: commandArgumentValues(def as CommandArg),
     });
   }
 

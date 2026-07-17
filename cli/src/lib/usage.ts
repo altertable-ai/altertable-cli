@@ -1,4 +1,9 @@
-import type { Command, CommandArg, CommandArgs } from "@/lib/command.ts";
+import {
+  commandArgumentValues,
+  type Command,
+  type CommandArg,
+  type CommandArgs,
+} from "@/lib/command.ts";
 import type { AltertableCommandGroup } from "@/lib/command.ts";
 import { resolveCommandMetadata, type CommandMetadata } from "@/lib/command-metadata.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
@@ -207,9 +212,8 @@ function formatHelpGuidance(commandName: string): string[] {
 }
 
 function valueHint(name: string, definition: CommandArg): string | undefined {
-  if (definition.type === "enum" && definition.options?.length) {
-    return definition.valueHint ?? definition.options.join("|");
-  }
+  const values = commandArgumentValues(definition);
+  if (values.length > 0) return definition.valueHint ?? values.join("|");
   if (definition.type === "string") {
     return definition.valueHint ?? name;
   }
@@ -227,7 +231,8 @@ function flagLabel(name: string, definition: CommandArgs[string]): string {
 }
 
 function positionalLabel(name: string, definition: CommandArg): string {
-  return (definition.valueHint ?? name).toUpperCase();
+  const values = commandArgumentValues(definition);
+  return (definition.valueHint ?? (values.length > 0 ? values.join("|") : name)).toUpperCase();
 }
 
 function argumentDescription(definition: CommandArg): string {
@@ -453,6 +458,7 @@ function structuredArgument(name: string, definition: CommandArg): StructuredArg
     (definition.type === "positional"
       ? definition.required !== false
       : definition.required === true);
+  const values = commandArgumentValues(definition);
   return {
     name,
     aliases,
@@ -460,9 +466,7 @@ function structuredArgument(name: string, definition: CommandArg): StructuredArg
     required,
     description: definition.description ?? "",
     ...(definition.default !== undefined ? { default: definition.default } : {}),
-    ...(definition.type === "enum" && definition.options
-      ? { values: [...definition.options] }
-      : {}),
+    ...(values.length > 0 ? { values: [...values] } : {}),
   };
 }
 

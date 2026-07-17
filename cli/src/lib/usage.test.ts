@@ -184,6 +184,21 @@ describe("renderAltertableUsage", () => {
     expect(help.subcommands.map((command) => command.name)).toEqual(["show", "cancel"]);
   });
 
+  test("shares finite positional values with human and structured help", async () => {
+    const main = buildMainCommand();
+    const [generate, parent] = await resolveSubCommandForUsage(main, ["completion", "generate"]);
+
+    expect(await renderAltertableUsage(generate, parent)).toContain("<BASH|FISH|ZSH>");
+    expect(await buildStructuredHelp(generate, parent, main)).toMatchObject({
+      arguments: [
+        expect.objectContaining({
+          name: "shell",
+          values: ["bash", "fish", "zsh"],
+        }),
+      ],
+    });
+  });
+
   test("keeps root flags exclusively in global options", async () => {
     const main = buildMainCommand();
     const help = await buildStructuredHelp(main, undefined, main);
