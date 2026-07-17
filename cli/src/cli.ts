@@ -7,8 +7,8 @@ import {
   setCliContext,
   type CliContext,
 } from "@/context.ts";
-import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
-import { mergeGlobalFlagsFromArgs, parseGlobalFlags } from "@/lib/global-flags.ts";
+import { createCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
+import { mergeGlobalFlagsFromArgs, parseGlobalOutputFlags } from "@/lib/global-flags.ts";
 import { buildTopLevelCommands } from "@/commands/index.ts";
 import {
   CliError,
@@ -36,7 +36,7 @@ import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
 
 function buildEarlyCliContext(argv: readonly string[]): CliContext {
-  return parseGlobalFlags(argv);
+  return parseGlobalOutputFlags(argv);
 }
 
 const ROOT_ARGS = defineArgs({
@@ -150,7 +150,6 @@ const main = buildMainCommand();
 const initialContext = getBootstrapCliContext();
 applyTerminalColorFromContext(initialContext);
 setCliRuntime(createCliRuntime(initialContext));
-refreshCliRuntimeContext(initialContext);
 
 function handleCliError(error: unknown): never {
   const context = getCliContext();
@@ -174,12 +173,15 @@ function handleCliError(error: unknown): never {
 async function bootstrap(): Promise<void> {
   const originalArgs = process.argv.slice(2);
   const rawArgs = originalArgs;
-  // Early parse only for --help, --version, and the JSON error envelope.
-  const earlyContext = buildEarlyCliContext(rawArgs);
-  applyTerminalColorFromContext(earlyContext);
-  setCliContext(earlyContext);
 
   try {
+    // Activate only non-throwing output flags before parsing the full invocation.
+    // This preserves JSON errors while keeping profiles and timeouts inside the
+    // command parser's error boundary.
+    const earlyContext = buildEarlyCliContext(rawArgs);
+    applyTerminalColorFromContext(earlyContext);
+    setCliContext(earlyContext);
+
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);

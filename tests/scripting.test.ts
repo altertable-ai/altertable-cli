@@ -111,6 +111,42 @@ describe("scriptable exit codes and JSON errors", () => {
     expect(result.exitCode).toBe(1);
   });
 
+  test("invalid trailing timeouts use the JSON error envelope", async () => {
+    const result = await workspace.runCommand(
+      'altertable query "SELECT 1" --connect-timeout nope --json',
+    );
+    const error = JSON.parse(result.stderr);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(error).toMatchObject({ error: true, exit_code: 1 });
+    expect(result.stderr).not.toContain("/Users/");
+  });
+
+  test("invalid global profiles render without a stack trace", async () => {
+    const isolated = await createTestWorkspace({
+      ALTERTABLE_API_KEY: undefined,
+      ALTERTABLE_ENV: undefined,
+    });
+    try {
+      const configured = await isolated.runCommand(
+        "altertable profile configure default --api-key atm_default --env production",
+      );
+      expect(configured.exitCode).toBe(0);
+
+      const result = await isolated.runCommand(
+        "altertable profile show --profile definitely_missing_profile",
+      );
+
+      expect(result.exitCode).toBe(10);
+      expect(result.stderr).toContain("Profile not found: definitely_missing_profile");
+      expect(result.stderr).not.toContain("cli/src/");
+      expect(result.stderr).not.toContain(" at ");
+    } finally {
+      await isolated.cleanup();
+    }
+  });
+
   test.each(["update", "upgrade"])("%s checks an explicit version", async (command) => {
     const result = await workspace.runCommand(`altertable ${command} ${VERSION} --check`);
 

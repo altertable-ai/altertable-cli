@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isJsonOutput, setCliContext } from "@/context.ts";
-import { parseGlobalFlags } from "@/lib/global-flags.ts";
+import { parseGlobalOutputFlags } from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
@@ -11,37 +11,39 @@ import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 import { CliError } from "@/lib/errors.ts";
 import { renderCliErrorJson } from "@/ui/error.ts";
 
-describe("parseGlobalFlags", () => {
+describe("parseGlobalOutputFlags", () => {
   test("parses --agent", () => {
-    const context = parseGlobalFlags(["--agent", "query", "SELECT 1"]);
+    const context = parseGlobalOutputFlags(["--agent", "query", "SELECT 1"]);
     expect(context.agent).toBe(true);
     expect(context.json).toBe(false);
   });
 
-  test("parses --profile from argv", () => {
-    const context = parseGlobalFlags(["--profile", "staging", "--help"]);
-    expect(context.profile).toBe("staging");
-  });
-
-  test("parses --profile after commands", () => {
-    const context = parseGlobalFlags(["profile", "--profile", "production", "show"]);
-    expect(context.profile).toBe("production");
-  });
-
-  test("parses global --profile before a subcommand", () => {
-    const context = parseGlobalFlags(["--profile", "staging", "catalogs"]);
-    expect(context.profile).toBe("staging");
-  });
-
   test("parses --no-color", () => {
-    const context = parseGlobalFlags(["--no-color", "catalogs"]);
+    const context = parseGlobalOutputFlags(["--no-color", "catalogs"]);
     expect(context.noColor).toBe(true);
   });
 
   test("parses --json and --agent independently", () => {
-    const both = parseGlobalFlags(["--json", "--agent", "context"]);
+    const both = parseGlobalOutputFlags(["--json", "--agent", "context"]);
     expect(both.json).toBe(true);
     expect(both.agent).toBe(true);
+  });
+
+  test("isolates non-throwing output flags for early error rendering", () => {
+    const context = parseGlobalOutputFlags([
+      "query",
+      "SELECT 1",
+      "--connect-timeout",
+      "nope",
+      "--json",
+    ]);
+
+    expect(context).toEqual({
+      debug: false,
+      json: true,
+      agent: false,
+      noColor: false,
+    });
   });
 });
 
@@ -69,7 +71,7 @@ describe("agent output preset", () => {
 
   test("refreshCliRuntimeContext enables sink json for --agent", () => {
     setCliRuntime(createCliRuntime({ debug: false, json: false, agent: false }));
-    const context = parseGlobalFlags(["--agent", "context"]);
+    const context = parseGlobalOutputFlags(["--agent", "context"]);
     setCliContext(context);
     expect(isJsonOutput()).toBe(true);
     expect(getOutputSink().json).toBe(true);

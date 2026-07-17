@@ -1,38 +1,16 @@
 import type { CliContext } from "@/context.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
-import { parseTimeoutSeconds, readArgvFlagValue } from "@/lib/timeout-args.ts";
+import { parseTimeoutSeconds } from "@/lib/timeout-args.ts";
 
-function readGlobalArgvFlagValue(argv: readonly string[], flagName: string): string | undefined {
-  const separatorIndex = argv.indexOf("--");
-  return readArgvFlagValue(separatorIndex === -1 ? argv : argv.slice(0, separatorIndex), flagName);
-}
-
-export function parseGlobalFlags(argv: readonly string[]): CliContext {
+export function parseGlobalOutputFlags(argv: readonly string[]): CliContext {
   const separatorIndex = argv.indexOf("--");
   const globalArgs = separatorIndex === -1 ? argv : argv.slice(0, separatorIndex);
-  const context: CliContext = {
+  return {
     debug: globalArgs.includes("--debug") || globalArgs.includes("-d"),
     json: globalArgs.includes("--json"),
     agent: globalArgs.includes("--agent"),
     noColor: globalArgs.includes("--no-color"),
   };
-
-  const connectTimeout = readGlobalArgvFlagValue(argv, "--connect-timeout");
-  if (connectTimeout !== undefined) {
-    context.connectTimeoutMs = parseTimeoutSeconds(connectTimeout, "--connect-timeout");
-  }
-
-  const readTimeout = readGlobalArgvFlagValue(argv, "--read-timeout");
-  if (readTimeout !== undefined) {
-    context.readTimeoutMs = parseTimeoutSeconds(readTimeout, "--read-timeout");
-  }
-
-  const profile = readGlobalArgvFlagValue(argv, "--profile");
-  if (profile !== undefined && profile.length > 0) {
-    context.profile = profile;
-  }
-
-  return context;
 }
 
 export function mergeGlobalFlagsFromArgs(
