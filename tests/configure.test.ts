@@ -33,6 +33,24 @@ describe("altertable profile configure", () => {
     expect(await workspace.readFile(workspace.defaultProfileConfig)).toContain("api_key_env=production\n");
   });
 
+  test("retains profile --configure --profile compatibility", async () => {
+    await workspace.resetConfig();
+
+    const result = await workspace.runCommand(
+      "altertable profile --configure --profile production --api-key atm_prod --env production",
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      "profile/production/api-key=atm_prod\n",
+    );
+    const shown = await workspace.runCommand("altertable profile show production --json");
+    expect(shown.exitCode).toBe(0);
+    expect(JSON.parse(shown.stdout)).toMatchObject({
+      profile: { name: "production", environment: "production" },
+    });
+  });
+
   test("accumulates separate mechanisms and overrides the same mechanism", async () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --user u1 --password p1")).exitCode).toBe(0);

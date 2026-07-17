@@ -1,6 +1,7 @@
 import { CliError } from "@/lib/errors.ts";
 import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import type { CommandArgs } from "@/lib/command.ts";
+import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 
 const API_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const API_VALUE_FLAGS = new Set([
@@ -36,7 +37,10 @@ export function assertNoRemovedSyntax(rawArgs: readonly string[], rootArgs: Comm
   })?.value;
 
   if (commandToken.value === "profile") {
-    if (commandArgs.includes("--configure")) {
+    if (
+      commandArgs.includes("--configure") &&
+      readArgvFlagValue(rawArgs, "--profile") === undefined
+    ) {
       migrationError('"profile --configure"', '"profile configure [NAME]"');
     }
     if (operand === "create") migrationError('"profile create"', '"profile configure [NAME]"');

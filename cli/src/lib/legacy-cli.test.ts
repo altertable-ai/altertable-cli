@@ -35,4 +35,12 @@ describe("assertNoRemovedSyntax", () => {
   ])("accepts canonical syntax %#", (args) => {
     expect(() => assertNoRemovedSyntax(args, rootArgs)).not.toThrow();
   });
+
+  test.each([
+    [["profile", "--configure", "--profile", "production"]],
+    [["--profile", "production", "profile", "--configure"]],
+    [["profile", "--configure", "--profile=production"]],
+  ])("accepts retained profile configure compatibility syntax %#", (args) => {
+    expect(() => assertNoRemovedSyntax(args, rootArgs)).not.toThrow();
+  });
 });
