@@ -5,6 +5,7 @@ import { defineCommand } from "@/lib/command.ts";
 import {
   resolveCommandDescriptor,
   resolveCommandMetadata,
+  validateCommandDescriptor,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
@@ -162,6 +163,7 @@ describe("command descriptor", () => {
           type: "positional",
           description: "Shell name",
           values: ["bash", "fish", "zsh"],
+          required: true,
         },
         output: {
           type: "enum",
@@ -191,6 +193,7 @@ describe("command descriptor", () => {
         type: "positional",
         description: "Shell name",
         required: true,
+        requiredExplicitly: true,
         values: ["bash", "fish", "zsh"],
       },
       {
@@ -199,6 +202,7 @@ describe("command descriptor", () => {
         type: "enum",
         description: "Output mode",
         required: false,
+        requiredExplicitly: true,
         values: ["script", "path"],
         default: "script",
       },
@@ -216,9 +220,50 @@ describe("command descriptor", () => {
   test("keeps human help, structured help, and completion aligned with the descriptor", async () => {
     const root = await resolveCommandDescriptor(buildMainCommand());
 
+    expect(() => validateCommandDescriptor(root)).not.toThrow();
     await expectStructuredHelpMatchesDescriptor(root, root);
     expect(buildCompletionSpecFromDescriptor(root)).toEqual(
       completionContract(root, root.metadata.name ?? "altertable"),
+    );
+  });
+
+  test("marks profile env name as an optional runtime operand", async () => {
+    const root = await resolveCommandDescriptor(buildMainCommand());
+    const profile = root.subcommands.find((command) => command.key === "profile");
+    const env = profile?.subcommands.find((command) => command.key === "env");
+
+    expect(env?.arguments).toEqual([
+      expect.objectContaining({ name: "name", required: false, requiredExplicitly: true }),
+    ]);
+    expect(renderAltertableUsageFromDescriptor(env!, profile)).toContain("[NAME]");
+    expect(buildStructuredHelpFromDescriptor(env!, profile, root).arguments).toEqual([
+      expect.objectContaining({ name: "name", required: false }),
+    ]);
+  });
+
+  test("reports descriptor invariant violations together", async () => {
+    const descriptor = await resolveCommandDescriptor(
+      defineCommand({
+        meta: { name: "altertable" },
+        subCommands: {
+          registered: defineCommand({
+            meta: { name: "canonical" },
+            args: {
+              value: { type: "positional", description: "Runtime-optional value" },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(() => validateCommandDescriptor(descriptor)).toThrow(
+      /registry key "registered" must match canonical name "canonical"/,
+    );
+    expect(() => validateCommandDescriptor(descriptor)).toThrow(
+      /visible root command must declare a help group/,
+    );
+    expect(() => validateCommandDescriptor(descriptor)).toThrow(
+      /positional requiredness must be explicit/,
     );
   });
 });

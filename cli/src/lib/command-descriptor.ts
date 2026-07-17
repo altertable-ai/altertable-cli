@@ -22,6 +22,7 @@ export type CommandArgumentDescriptor = {
   type: string;
   description: string;
   required: boolean;
+  requiredExplicitly: boolean;
   values: string[];
   valueHint?: string;
   default?: unknown;
@@ -82,6 +83,7 @@ export function normalizeCommandArgument(
     type: definition.type ?? "string",
     description: definition.description ?? "",
     required,
+    requiredExplicitly: definition.required !== undefined || definition.default !== undefined,
     values,
     ...(definition.valueHint ? { valueHint: definition.valueHint } : {}),
     ...(definition.default !== undefined ? { default: definition.default } : {}),
@@ -133,4 +135,39 @@ export function visibleCommandDescriptors(
   descriptors: readonly CommandDescriptor[],
 ): CommandDescriptor[] {
   return descriptors.filter((descriptor) => !descriptor.metadata.hidden);
+}
+
+export function validateCommandDescriptor(root: CommandDescriptor): void {
+  const errors: string[] = [];
+
+  function visit(descriptor: CommandDescriptor, path: string[], depth: number): void {
+    const canonicalName = descriptor.metadata.name;
+    const name = canonicalName ?? descriptor.key ?? "<unnamed>";
+    const commandPath = [...path, name];
+    const displayPath = commandPath.join(" ");
+
+    if (descriptor.key && descriptor.key !== canonicalName) {
+      errors.push(
+        `${displayPath}: registry key "${descriptor.key}" must match canonical name "${canonicalName ?? ""}"`,
+      );
+    }
+    if (depth === 1 && !descriptor.metadata.hidden && !descriptor.metadata.commandGroup) {
+      errors.push(`${displayPath}: visible root command must declare a help group`);
+    }
+    for (const argument of descriptor.arguments) {
+      if (argument.type === "positional" && !argument.requiredExplicitly) {
+        errors.push(`${displayPath} <${argument.name}>: positional requiredness must be explicit`);
+      }
+    }
+    for (const subcommand of descriptor.subcommands) {
+      visit(subcommand, commandPath, depth + 1);
+    }
+  }
+
+  visit(root, [], 0);
+  if (errors.length > 0) {
+    throw new TypeError(
+      `Invalid command descriptor:\n${errors.map((error) => `- ${error}`).join("\n")}`,
+    );
+  }
 }
