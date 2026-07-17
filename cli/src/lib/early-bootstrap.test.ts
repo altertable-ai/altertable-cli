@@ -13,6 +13,12 @@ describe("early-bootstrap", () => {
     expect(findEarlyBootstrapExit(["query", "-h"])?.id).toBe("help");
   });
 
+  test("help flags are literal operands after the option separator", () => {
+    expect(findEarlyBootstrapExit(["query", "--", "--help"])).toBeUndefined();
+    expect(findEarlyBootstrapExit(["query", "--", "-h"])).toBeUndefined();
+    expect(findEarlyBootstrapExit(["query", "--help", "--", "SELECT 1"])?.id).toBe("help");
+  });
+
   test("version flags match only when argv is a single version flag", () => {
     expect(findEarlyBootstrapExit(["--version"])?.id).toBe("version");
     expect(findEarlyBootstrapExit(["-v"])?.id).toBe("version");
