@@ -1,4 +1,5 @@
 import type { Command } from "@/lib/command.ts";
+import type { PositionalCompletionKind } from "@/lib/command.ts";
 import {
   resolveCommandDescriptor,
   visibleCommandDescriptors,
@@ -32,6 +33,7 @@ export type CompletionPositional = {
   name: string;
   description?: string;
   required: boolean;
+  completion: PositionalCompletionKind;
   values?: readonly string[];
 };
 
@@ -71,6 +73,7 @@ function extractPositionals(
       name: argument.name,
       description: argument.description || undefined,
       required: argument.required,
+      completion: argument.positionalCompletion ?? "freeform",
       values: argument.values,
     }));
 }

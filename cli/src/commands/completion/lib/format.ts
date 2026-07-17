@@ -144,12 +144,21 @@ function formatBashContextBlock(
     : "";
   const positionalBlocks = context.positionals
     .map((positional, index) => {
-      if (!positional.values || positional.values.length === 0) return "";
-      return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
-        COMPREPLY=( $(compgen -W "${formatNameList(positional.values)}" -- "\${currentWord}") )
+      if (positional.completion === "finite" && positional.values?.length) {
+        return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
+        COMPREPLY=( $(compgen -W "${formatNameList([...positional.values, ...flagWords.split(" ")])}" -- "\${currentWord}") )
         return
       fi
 `;
+      }
+      if (positional.completion === "file") {
+        return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
+        COMPREPLY=( $(compgen -f -- "\${currentWord}") $(compgen -W "${flagWords}" -- "\${currentWord}") )
+        return
+      fi
+`;
+      }
+      return "";
     })
     .join("");
   const initialWords = formatNameList([...context.subcommands, ...flagWords.split(" ")]).trim();
@@ -314,12 +323,22 @@ function formatZshContextBlock(
     : "";
   const positionalBlocks = context.positionals
     .map((positional, index) => {
-      if (!positional.values || positional.values.length === 0) return "";
-      return `      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == ${index} )); then
-        _altertable_add_words ${formatNameList(positional.values)}
+      if (positional.completion === "finite" && positional.values?.length) {
+        return `      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == ${index} )); then
+        _altertable_add_words ${formatNameList([...positional.values, ...flagWords.split(" ")])}
         return
       fi
 `;
+      }
+      if (positional.completion === "file") {
+        return `      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == ${index} )); then
+        _altertable_add_words ${flagWords}
+        _files
+        return
+      fi
+`;
+      }
+      return "";
     })
     .join("");
   const initialWords = formatNameList([...context.subcommands, ...flagWords.split(" ")]).trim();
@@ -512,11 +531,14 @@ export function formatFishCompletion(spec: CompletionNode): string {
       );
     }
     for (const [index, positional] of context.positionals.entries()) {
-      if (!positional.values || positional.values.length === 0) continue;
       const condition = formatFishPathCondition(context.segments, index);
-      contextLines.push(
-        `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(positional.values)}"`,
-      );
+      if (positional.completion === "finite" && positional.values?.length) {
+        contextLines.push(
+          `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(positional.values)}"`,
+        );
+      } else if (positional.completion === "file") {
+        contextLines.push(`complete -c ${FISH_BINARY_NAME} -F -n "${condition}"`);
+      }
     }
     const flagCondition = formatFishPathCondition(context.segments);
     for (const flag of context.flags) {

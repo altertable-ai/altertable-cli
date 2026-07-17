@@ -65,6 +65,7 @@ function completionContract(
         name: argument.name,
         description: argument.description || undefined,
         required: argument.required,
+        completion: argument.positionalCompletion ?? "freeform",
         values: argument.values,
       })),
   };
@@ -195,6 +196,7 @@ describe("command descriptor", () => {
         required: true,
         requiredExplicitly: true,
         values: ["bash", "fish", "zsh"],
+        positionalCompletion: "finite",
       },
       {
         name: "output",

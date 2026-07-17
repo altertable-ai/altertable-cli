@@ -5,6 +5,7 @@ import {
   type Command,
   type CommandArg,
   type CommandArgs,
+  type PositionalCompletionKind,
 } from "@/lib/command.ts";
 
 export type CommandMetadata = {
@@ -24,6 +25,7 @@ export type CommandArgumentDescriptor = {
   required: boolean;
   requiredExplicitly: boolean;
   values: string[];
+  positionalCompletion?: PositionalCompletionKind;
   valueHint?: string;
   default?: unknown;
 };
@@ -85,6 +87,12 @@ export function normalizeCommandArgument(
     required,
     requiredExplicitly: definition.required !== undefined || definition.default !== undefined,
     values,
+    ...(definition.type === "positional"
+      ? {
+          positionalCompletion:
+            values.length > 0 ? ("finite" as const) : (definition.completion ?? "freeform"),
+        }
+      : {}),
     ...(definition.valueHint ? { valueHint: definition.valueHint } : {}),
     ...(definition.default !== undefined ? { default: definition.default } : {}),
   };

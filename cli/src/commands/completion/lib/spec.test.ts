@@ -80,6 +80,12 @@ compadd() {
     fi
   done
 }
+_files() {
+  local candidate
+  for candidate in \${PREFIX}*(N); do
+    compadd -- "\${candidate}"
+  done
+}
 words=(${words.map(bashQuote).join(" ")})
 CURRENT=${words.length}
 PREFIX="\${words[CURRENT]}"
@@ -265,6 +271,7 @@ describe("buildCompletionSpec", () => {
       expect.objectContaining({
         name: "shell",
         required: true,
+        completion: "finite",
         values: ["bash", "fish", "zsh"],
       }),
     ]);
@@ -272,6 +279,7 @@ describe("buildCompletionSpec", () => {
       expect.objectContaining({
         name: "shell",
         required: false,
+        completion: "finite",
         values: ["bash", "fish", "zsh"],
       }),
     ]);
@@ -383,12 +391,12 @@ describe("formatBashCompletion", () => {
 
   test("includes finite positional value completions", async () => {
     const output = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
-    expect(output).toContain('compgen -W "bash fish zsh"');
+    expect(output).toContain('compgen -W "bash fish zsh --');
   });
 
   test("completes finite positionals after command flags", async () => {
     expect(await runBashCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual(
-      ["bash", "fish", "zsh"],
+      expect.arrayContaining(["bash", "fish", "zsh"]),
     );
   });
 });
@@ -482,6 +490,16 @@ describe("executable shell completion contract", () => {
       expect(await runCompletion(["altertable", "completion", "install", "zsh", "--"])).toContain(
         "--no-rc",
       );
+    });
+
+    test(`${shell} composes flags with pending positional candidates`, async () => {
+      const candidates = await runCompletion(["altertable", "completion", "install", "--"]);
+      expect(candidates).toEqual(expect.arrayContaining(["--no-rc", "--json", "--profile"]));
+    });
+
+    test(`${shell} completes file positionals`, async () => {
+      expect(await runCompletion(["altertable", "upload", "package.j"])).toContain("package.json");
+      expect(await runCompletion(["altertable", "upsert", "package.j"])).toContain("package.json");
     });
 
     test(`${shell} handles global flags in every position and equals values`, async () => {

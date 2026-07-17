@@ -5,9 +5,12 @@ import { getCliRuntime } from "@/lib/runtime.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 
 export type Command = CommandDef;
+export type PositionalCompletionKind = "finite" | "file" | "freeform";
 export type CommandArg = import("citty").ArgDef & {
   /** Finite values normalized into the shared command descriptor. */
   values?: readonly string[];
+  /** Shell completion behavior for positional arguments without finite values. */
+  completion?: Exclude<PositionalCompletionKind, "finite">;
 };
 export type CommandArgs = Record<string, CommandArg>;
 

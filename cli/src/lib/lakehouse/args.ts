@@ -5,7 +5,12 @@ import { CliError } from "@/lib/errors.ts";
 export const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;
 
 export const lakehouseFileArgs = defineArgs({
-  file: { type: "positional", description: "Local file to upload", required: true },
+  file: {
+    type: "positional",
+    description: "Local file to upload",
+    required: true,
+    completion: "file",
+  },
   to: {
     type: "string",
     description: "Destination as catalog.schema.table",
