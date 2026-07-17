@@ -5,7 +5,7 @@ import { buildLakehouseQueryShowRequest } from "@/lib/lakehouse/query.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 
 export const queryShowCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "show",
     description: "Fetch metadata for a completed or running query.",
   },

@@ -1,6 +1,6 @@
 import { buildMainCommand } from "@/cli.ts";
 import type { CliContext } from "@/context.ts";
-import { runCommandTree } from "@/lib/command.ts";
+import { executeCommand } from "@/lib/command-parser.ts";
 import { createCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
@@ -28,7 +28,7 @@ export function createCliTestHarness(
     stdout,
     stderr,
     async run(rawArgs) {
-      await runWithCliRuntime(runtime, () => runCommandTree(buildMainCommand(), { rawArgs }));
+      await runWithCliRuntime(runtime, () => executeCommand(buildMainCommand(), rawArgs));
     },
   };
 }

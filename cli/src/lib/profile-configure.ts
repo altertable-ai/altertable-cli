@@ -1,4 +1,4 @@
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 import {
   configureRunSet,
   withConfigureProfileContext,
@@ -194,7 +194,7 @@ export type ConfigureCommandArgs = {
 };
 
 /** Credential and endpoint flags owned by `profile configure`. */
-export const configureArgs = defineArgs({
+export const configureArgs = defineArguments({
   user: { type: "string", description: "Lakehouse username (global)" },
   password: { type: "string", description: "Lakehouse password (global)" },
   "basic-token": { type: "string", description: "Pre-encoded HTTP Basic token" },

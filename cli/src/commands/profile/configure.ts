@@ -10,7 +10,7 @@ import {
 import { optionalArg } from "@/commands/profile/lib/profile.ts";
 
 export const profileConfigureCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "configure",
     description: "Create or update a profile's credentials and settings",
     examples: [

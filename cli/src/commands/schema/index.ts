@@ -9,7 +9,7 @@ import { schemaArgs } from "@/commands/schema/lib/args.ts";
 import { renderTreeText } from "@/ui/renderers/terminal.ts";
 
 export const schemaCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "schema",
     commandGroup: "query",
     description: "List schemas, tables, and columns for a catalog.",

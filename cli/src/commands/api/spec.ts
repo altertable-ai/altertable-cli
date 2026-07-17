@@ -4,7 +4,7 @@ import { writeCommandOutput } from "@/lib/command-output.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
 export const apiSpecCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "spec",
     description:
       "Print the bundled management OpenAPI specification (YAML by default; JSON with --json).",

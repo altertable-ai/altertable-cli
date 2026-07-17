@@ -9,7 +9,8 @@ import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import { runCommandTree, type Command } from "@/lib/command.ts";
+import type { Command } from "@/lib/command.ts";
+import { executeCommand } from "@/lib/command-parser.ts";
 
 describe("api", () => {
   beforeEach(() => {
@@ -65,9 +66,7 @@ describe("api", () => {
     setCliRuntime(runtime);
 
     try {
-      await runCommandTree(buildMainCommand(), {
-        rawArgs: ["api", "spec"],
-      });
+      await executeCommand(buildMainCommand(), ["api", "spec"]);
     } finally {
       setCliRuntime(previousRuntime);
     }
@@ -120,9 +119,9 @@ describe("api", () => {
   });
 
   test("api command tree exposes spec and routes subcommands", () => {
-    const subCommands = apiCommand.subCommands as Record<string, Command>;
-    expect(subCommands.spec?.run).toBeDefined();
-    expect(subCommands.routes?.run).toBeDefined();
+    const subcommands = apiCommand.subcommands as Record<string, Command>;
+    expect(subcommands.spec?.run).toBeDefined();
+    expect(subcommands.routes?.run).toBeDefined();
   });
 
   describe("api HTTP invoker", () => {

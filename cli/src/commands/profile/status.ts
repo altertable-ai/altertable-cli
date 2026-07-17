@@ -11,7 +11,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileStatusCommand = defineCommand({
-  meta: { name: "status", description: "Verify stored credentials and show the profile" },
+  metadata: { name: "status", description: "Verify stored credentials and show the profile" },
   args: {
     name: {
       type: "positional",

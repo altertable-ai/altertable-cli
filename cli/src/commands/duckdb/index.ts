@@ -14,7 +14,7 @@ import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { readEnv } from "@/lib/env.ts";
 
 export const duckdbCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "duckdb",
     commandGroup: "query",
     description: "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",

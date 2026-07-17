@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defineCommand, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
+import { executeCommand } from "@/lib/command-parser.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
@@ -15,32 +16,32 @@ const TERMINAL_CONTROL_PATTERN = new RegExp(
 );
 
 const minimalRootCommand = defineCommand({
-  meta: { name: "altertable" },
+  metadata: { name: "altertable" },
   args: {
     json: { type: "boolean", description: "Output raw JSON responses" },
     debug: { type: "boolean", alias: "d", description: "Enable debug output" },
   },
-  subCommands: {
-    query: { meta: { name: "query" } },
+  subcommands: {
+    query: { metadata: { name: "query" } },
     api: {
-      meta: { name: "api" },
-      subCommands: {
+      metadata: { name: "api" },
+      subcommands: {
         connections: {
-          meta: { name: "connections" },
-          subCommands: {
-            list: { meta: { name: "list" } },
+          metadata: { name: "connections" },
+          subcommands: {
+            list: { metadata: { name: "list" } },
           },
         },
       },
     },
     catalogs: {
-      meta: { name: "catalogs" },
-      subCommands: {
-        list: { meta: { name: "list" } },
-        create: { meta: { name: "create" } },
+      metadata: { name: "catalogs" },
+      subcommands: {
+        list: { metadata: { name: "list" } },
+        create: { metadata: { name: "create" } },
       },
     },
-    completion: { meta: { name: "completion" } },
+    completion: { metadata: { name: "completion" } },
   },
 });
 
@@ -74,11 +75,11 @@ async function runCompletionCommand(
   rawArgs: string[],
   json = false,
 ): Promise<string> {
-  const rootCommand = defineRootCommand({
-    meta: { name: "altertable" },
-    subCommands: { completion: completionCommand },
+  const rootCommand = defineCommand({
+    metadata: { name: "altertable" },
+    subcommands: { completion: completionCommand },
   });
-  return await captureCompletionOutput(() => runCommandTree(rootCommand, { rawArgs }), json);
+  return await captureCompletionOutput(() => executeCommand(rootCommand, rawArgs), json);
 }
 
 async function runCompletion(getRootCommand: () => Command, shell?: string): Promise<string> {

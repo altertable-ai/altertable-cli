@@ -9,7 +9,7 @@ import {
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
-  type CommandMetadata,
+  type ResolvedCommandMetadata,
 } from "@/lib/command-descriptor.ts";
 import {
   buildStructuredHelpFromDescriptor,
@@ -130,7 +130,7 @@ async function expectStructuredHelpMatchesDescriptor(
 describe("command descriptor", () => {
   test("normalizes the shared command presentation contract", async () => {
     const command = defineCommand({
-      meta: {
+      metadata: {
         name: "inspect",
         alias: ["show", "get"],
         description: "Inspect a resource.",
@@ -148,13 +148,13 @@ describe("command descriptor", () => {
       hidden: true,
       commandGroup: "platform",
       invocations: [],
-    } satisfies CommandMetadata;
+    } satisfies ResolvedCommandMetadata;
     expect(await resolveCommandMetadata(command)).toEqual(expected);
   });
 
   test("supports resolvable metadata for asynchronous consumers", async () => {
     const command = defineCommand({
-      meta: async () => ({ name: "generated", description: "Generated metadata." }),
+      metadata: async () => ({ name: "generated", description: "Generated metadata." }),
     });
 
     expect(await resolveCommandMetadata(command)).toMatchObject({
@@ -165,7 +165,7 @@ describe("command descriptor", () => {
 
   test("normalizes metadata, arguments, and child commands together", async () => {
     const command = defineCommand({
-      meta: async () => ({ name: "completion", description: "Manage completion." }),
+      metadata: async () => ({ name: "completion", description: "Manage completion." }),
       args: {
         shell: {
           type: "positional",
@@ -181,9 +181,9 @@ describe("command descriptor", () => {
           default: "script",
         },
       },
-      subCommands: {
+      subcommands: {
         install: defineCommand({
-          meta: async () => ({ name: "install", alias: "add" }),
+          metadata: async () => ({ name: "install", alias: "add" }),
         }),
       },
     });
@@ -287,10 +287,10 @@ describe("command descriptor", () => {
   test("reports descriptor invariant violations together", async () => {
     const descriptor = await resolveCommandDescriptor(
       defineCommand({
-        meta: { name: "altertable" },
-        subCommands: {
+        metadata: { name: "altertable" },
+        subcommands: {
           registered: defineCommand({
-            meta: { name: "canonical" },
+            metadata: { name: "canonical" },
             soleDirectOperands: ["missing", "missing"],
             args: {
               value: { type: "positional", description: "Runtime-optional value" },

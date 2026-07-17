@@ -1,11 +1,11 @@
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 import {
   queryDisplayArgs,
   queryPagerArgs,
   queryResultFormatArgs,
 } from "@/lib/query-output-args.ts";
 
-export const queryRunArgs = defineArgs({
+export const queryRunArgs = defineArguments({
   statement: {
     type: "positional",
     description: "SQL statement to run",

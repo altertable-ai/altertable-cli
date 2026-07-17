@@ -1,6 +1,6 @@
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 
-export const appendRunArgs = defineArgs({
+export const appendRunArgs = defineArguments({
   data: {
     type: "positional",
     description: "JSON object, array, or @file",
@@ -17,7 +17,7 @@ export const appendRunArgs = defineArgs({
   },
 });
 
-export const appendGroupArgs = defineArgs({
+export const appendGroupArgs = defineArguments({
   ...appendRunArgs,
   data: { ...appendRunArgs.data, required: false, directRequired: true },
   to: { ...appendRunArgs.to, required: false, directRequired: true },

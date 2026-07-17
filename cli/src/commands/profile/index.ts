@@ -10,7 +10,7 @@ import { profileStatusCommand } from "@/commands/profile/status.ts";
 import { profileSwitchCommand } from "@/commands/profile/switch.ts";
 
 export const profileCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "profile",
     commandGroup: "platform",
     description: "Manage named profiles and stored credentials.",
@@ -26,7 +26,7 @@ export const profileCommand = defineCommand({
       "altertable --profile acme_staging profile show",
     ],
   },
-  subCommands: {
+  subcommands: {
     configure: profileConfigureCommand,
     list: profileListCommand,
     show: profileShowCommand,

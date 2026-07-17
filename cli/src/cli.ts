@@ -1,12 +1,6 @@
 #!/usr/bin/env bun
 import { VERSION } from "@/version.ts";
-import {
-  getCliContext,
-  getBootstrapCliContext,
-  isJsonOutput,
-  setCliContext,
-  type CliContext,
-} from "@/context.ts";
+import { getCliContext, getBootstrapCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { createCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { mergeGlobalFlagsFromArgs, parseGlobalOutputFlags } from "@/lib/global-flags.ts";
 import { buildTopLevelCommands } from "@/commands/index.ts";
@@ -18,13 +12,8 @@ import {
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
 import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
-import {
-  defineArgs,
-  defineRootCommand,
-  runCommandTree,
-  type Command,
-  type CommandArg,
-} from "@/lib/command.ts";
+import { defineArguments, defineCommand, type Command } from "@/lib/command.ts";
+import { executeCommand, resolveCommandSelection } from "@/lib/command-parser.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
@@ -35,11 +24,7 @@ import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
 
-function buildEarlyCliContext(argv: readonly string[]): CliContext {
-  return parseGlobalOutputFlags(argv);
-}
-
-const ROOT_ARGS = defineArgs({
+const ROOT_ARGS = defineArguments({
   help: {
     type: "boolean",
     alias: "h",
@@ -90,41 +75,13 @@ const ROOT_ARGS = defineArgs({
   },
 });
 
-export function resolveTopLevelCommandName(rawArgs: readonly string[]): string | undefined {
-  let afterSeparator = false;
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const argument = rawArgs[index];
-    if (argument === undefined) continue;
-    if (argument === "--") {
-      afterSeparator = true;
-      continue;
-    }
-    if (afterSeparator) return undefined;
-    const definition = Object.entries(ROOT_ARGS).find(
-      ([name, candidate]) =>
-        argument.split("=", 1)[0] === `--${name}` ||
-        ("alias" in candidate &&
-          candidate.alias !== undefined &&
-          `-${String(candidate.alias)}` === argument.split("=", 1)[0]),
-    )?.[1] as CommandArg | undefined;
-    if (definition) {
-      if (!argument.includes("=") && definition.type === "string") {
-        index += 1;
-      }
-      continue;
-    }
-    if (!argument.startsWith("-")) return argument;
-  }
-  return undefined;
-}
-
 export function buildMainCommand(): Command {
   let mainCommand: Command;
 
   const topLevelCommands = buildTopLevelCommands(() => mainCommand);
 
-  mainCommand = defineRootCommand({
-    meta: {
+  mainCommand = defineCommand({
+    metadata: {
       name: "altertable",
       description: `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
       examples: [
@@ -136,7 +93,7 @@ export function buildMainCommand(): Command {
       ],
     },
     args: ROOT_ARGS,
-    subCommands: topLevelCommands,
+    subcommands: topLevelCommands,
     run({ args }) {
       setCliContext(mergeGlobalFlagsFromArgs(getCliContext(), args));
     },
@@ -171,14 +128,13 @@ function handleCliError(error: unknown): never {
 }
 
 async function bootstrap(): Promise<void> {
-  const originalArgs = process.argv.slice(2);
-  const rawArgs = originalArgs;
+  const rawArgs = process.argv.slice(2);
 
   try {
     // Activate only non-throwing output flags before parsing the full invocation.
     // This preserves JSON errors while keeping profiles and timeouts inside the
     // command parser's error boundary.
-    const earlyContext = buildEarlyCliContext(rawArgs);
+    const earlyContext = parseGlobalOutputFlags(rawArgs);
     applyTerminalColorFromContext(earlyContext);
     setCliContext(earlyContext);
 
@@ -188,7 +144,7 @@ async function bootstrap(): Promise<void> {
       await showAltertableUsage(command, parent, main);
       await maybeShowUpdateNotice({
         context: getCliContext(),
-        commandName: resolveTopLevelCommandName(rawArgs) ?? "help",
+        commandName: (await resolveCommandSelection(main, rawArgs)).commandPath.at(0) ?? "help",
       });
       process.exit(EXIT_SUCCESS);
     }
@@ -199,10 +155,10 @@ async function bootstrap(): Promise<void> {
     }
 
     validateEnvironment();
-    await runCommandTree(main, { rawArgs });
+    const selection = await executeCommand(main, rawArgs);
     await maybeShowUpdateNotice({
       context: getCliContext(),
-      commandName: resolveTopLevelCommandName(rawArgs),
+      commandName: selection.commandPath.at(0),
     });
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());

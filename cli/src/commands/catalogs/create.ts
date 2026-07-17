@@ -5,7 +5,7 @@ import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 
 export const catalogsCreateCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "create",
     description: "Create an Altertable catalog.",
     examples: ["altertable catalogs create Analytics"],

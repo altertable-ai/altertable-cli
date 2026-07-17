@@ -1,16 +1,17 @@
 import {
   commandArgumentValues,
+  resolveCommandValue,
   type AltertableCommandGroup,
-  type AltertableCommandMeta,
   type Command,
-  type CommandArg,
-  type CommandArgs,
+  type CommandArgument,
+  type CommandArguments,
   type CommandFlagScope,
   type CommandInvocationKind,
+  type CommandMetadata,
   type PositionalCompletionKind,
 } from "@/lib/command.ts";
 
-export type CommandMetadata = {
+export type ResolvedCommandMetadata = {
   name?: string;
   description: string;
   aliases: string[];
@@ -43,27 +44,20 @@ export type CommandArgumentDescriptor = {
  */
 export type CommandDescriptor = {
   key?: string;
-  metadata: CommandMetadata;
+  metadata: ResolvedCommandMetadata;
   arguments: CommandArgumentDescriptor[];
   soleDirectOperands: string[];
   subcommands: CommandDescriptor[];
 };
 
-function toStrings(value: string | string[] | readonly string[] | undefined): string[] {
+function toStrings(value: string | readonly string[] | undefined): string[] {
   if (Array.isArray(value)) return value.map(String);
   return value === undefined ? [] : [String(value)];
 }
 
-async function resolveValue<T>(value: T | (() => T) | (() => Promise<T>) | Promise<T>): Promise<T> {
-  if (typeof value === "function") {
-    return await (value as () => T | Promise<T>)();
-  }
-  return await value;
-}
-
 export function normalizeCommandMetadata(
-  metadata: AltertableCommandMeta | undefined,
-): CommandMetadata {
+  metadata: CommandMetadata | undefined,
+): ResolvedCommandMetadata {
   return {
     ...(metadata?.name ? { name: String(metadata.name) } : {}),
     description: metadata?.description ?? "",
@@ -77,7 +71,7 @@ export function normalizeCommandMetadata(
 
 export function normalizeCommandArgument(
   name: string,
-  definition: CommandArg,
+  definition: CommandArgument,
 ): CommandArgumentDescriptor {
   const aliases = "alias" in definition ? toStrings(definition.alias) : [];
   const values = commandArgumentValues(definition).map(String);
@@ -113,25 +107,25 @@ export function normalizeCommandArgument(
   };
 }
 
-export async function resolveCommandMetadata(command: Command): Promise<CommandMetadata> {
-  const metadata = await resolveValue(
-    command.meta ?? Promise.resolve<AltertableCommandMeta | undefined>(undefined),
+export async function resolveCommandMetadata(command: Command): Promise<ResolvedCommandMetadata> {
+  const metadata = await resolveCommandValue<CommandMetadata | undefined>(
+    command.metadata ?? undefined,
   );
-  return normalizeCommandMetadata(metadata as AltertableCommandMeta | undefined);
+  return normalizeCommandMetadata(metadata);
 }
 
 async function resolveCommandArguments(command: Command): Promise<CommandArgumentDescriptor[]> {
-  const args = (await resolveValue(command.args ?? {})) as CommandArgs;
+  const args = (await resolveCommandValue(command.args ?? {})) as CommandArguments;
   return Object.entries(args).map(([name, definition]) =>
     normalizeCommandArgument(name, definition),
   );
 }
 
 async function resolveSubcommands(command: Command): Promise<CommandDescriptor[]> {
-  const subcommands = await resolveValue(command.subCommands ?? {});
+  const subcommands = await resolveCommandValue(command.subcommands ?? {});
   return await Promise.all(
     Object.entries(subcommands).map(async ([key, child]) =>
-      resolveCommandDescriptor(await resolveValue(child), key),
+      resolveCommandDescriptor(await resolveCommandValue(child), key),
     ),
   );
 }

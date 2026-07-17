@@ -143,20 +143,20 @@ const globalFlagForms = [
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", async () => {
     const root = defineCommand({
-      meta: { name: "altertable" },
+      metadata: { name: "altertable" },
       args: {
         json: { type: "boolean", description: "Output raw JSON" },
         format: { type: "enum", options: ["json", "table"] },
       },
-      subCommands: {
+      subcommands: {
         alpha: {
-          meta: { name: "alpha", description: "Alpha command" },
+          metadata: { name: "alpha", description: "Alpha command" },
           args: {
             force: { type: "boolean", alias: "f" },
           },
-          subCommands: {
+          subcommands: {
             sub: {
-              meta: { name: "sub" },
+              metadata: { name: "sub" },
             },
           },
         },
@@ -174,9 +174,9 @@ describe("buildCompletionSpec", () => {
 
   test("skips nested commands without meta.name", async () => {
     const root = defineCommand({
-      subCommands: {
-        visible: { meta: { name: "visible" } },
-        hidden: { meta: { description: "no name" } },
+      subcommands: {
+        visible: { metadata: { name: "visible" } },
+        hidden: { metadata: { description: "no name" } },
       },
     });
 
@@ -186,9 +186,9 @@ describe("buildCompletionSpec", () => {
 
   test("skips commands marked hidden", async () => {
     const root = defineCommand({
-      subCommands: {
-        visible: { meta: { name: "visible" } },
-        hidden: { meta: { name: "hidden", hidden: true } },
+      subcommands: {
+        visible: { metadata: { name: "visible" } },
+        hidden: { metadata: { name: "hidden", hidden: true } },
       },
     });
 
@@ -198,10 +198,10 @@ describe("buildCompletionSpec", () => {
 
   test("resolves asynchronous command metadata", async () => {
     const root = defineCommand({
-      meta: async () => ({ name: "altertable" }),
-      subCommands: {
+      metadata: async () => ({ name: "altertable" }),
+      subcommands: {
         generated: defineCommand({
-          meta: async () => ({
+          metadata: async () => ({
             name: "generated",
             description: "Generated command",
           }),

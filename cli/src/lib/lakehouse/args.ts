@@ -1,10 +1,10 @@
 import { extname } from "node:path";
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 
 export const LAKEHOUSE_FILE_FORMAT_OPTIONS = ["csv", "json", "parquet"] as const;
 
-export const lakehouseFileArgs = defineArgs({
+export const lakehouseFileArgs = defineArguments({
   file: {
     type: "positional",
     description: "Local file to upload",

@@ -9,7 +9,7 @@ import {
 
 export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
-    meta: {
+    metadata: {
       name: "generate",
       description: "Generate a shell completion script.",
       examples: [

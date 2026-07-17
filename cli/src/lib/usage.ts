@@ -5,13 +5,13 @@ import {
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
-  type CommandMetadata,
+  type ResolvedCommandMetadata,
 } from "@/lib/command-descriptor.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { readEnv } from "@/lib/env.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { resolveCommandSelection } from "@/lib/command.ts";
+import { resolveCommandSelection } from "@/lib/command-parser.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -213,7 +213,10 @@ function argumentDescription(argument: CommandArgumentDescriptor): string {
     .join(" ");
 }
 
-function usageCommandName(metadata: CommandMetadata, parentMetadata?: CommandMetadata): string {
+function usageCommandName(
+  metadata: ResolvedCommandMetadata,
+  parentMetadata?: ResolvedCommandMetadata,
+): string {
   const name = metadata.name ?? "command";
   if (!parentMetadata) {
     return name;

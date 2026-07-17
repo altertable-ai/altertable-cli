@@ -9,7 +9,7 @@ import {
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): Command {
   const command = defineCommand({
-    meta: {
+    metadata: {
       name: "completion",
       commandGroup: "platform",
       invocations: ["direct", "subcommand"],
@@ -20,7 +20,7 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
         "altertable completion generate bash > ~/.local/share/bash-completion/completions/altertable",
       ],
     },
-    subCommands: {
+    subcommands: {
       generate: createGenerateCommand(getRootCommand),
       install: createInstallCommand(getRootCommand),
     },

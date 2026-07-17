@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { buildMainCommand, resolveTopLevelCommandName } from "@/cli.ts";
+import { buildMainCommand } from "@/cli.ts";
 import {
   executeUpdateCommand,
   type UpdateCommandDependencies,
@@ -13,7 +13,7 @@ import {
 import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
 import { VERSION } from "@/version.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { runCommandTree } from "@/lib/command.ts";
+import { executeCommand, resolveCommandSelection } from "@/lib/command-parser.ts";
 import { configFile, kvSet } from "@/lib/config.ts";
 import { resolveProcessExecutablePath } from "@/lib/executable-path.ts";
 import {
@@ -135,7 +135,7 @@ async function runUpdateCommand(rawArgs: string[]): Promise<CapturedCommandOutpu
   };
 
   await runWithCliRuntime(runtime, async () => {
-    await runCommandTree(buildMainCommand(), { rawArgs });
+    await executeCommand(buildMainCommand(), rawArgs);
   });
 
   return output;
@@ -576,11 +576,17 @@ describe("binary self-update", () => {
 });
 
 describe("automatic update checks", () => {
-  test("resolves top-level commands with root value flags", () => {
-    expect(resolveTopLevelCommandName(["--profile", "dev", "context"])).toBe("context");
-    expect(resolveTopLevelCommandName(["--connect-timeout", "3", "context"])).toBe("context");
-    expect(resolveTopLevelCommandName(["--read-timeout=10", "context"])).toBe("context");
-    expect(resolveTopLevelCommandName(["--", "context"])).toBeUndefined();
+  test("resolves top-level commands with root value flags", async () => {
+    const root = buildMainCommand();
+    for (const [rawArgs, expected] of [
+      [["--profile", "dev", "query"], "query"],
+      [["--connect-timeout", "3", "query"], "query"],
+      [["--read-timeout=10", "query"], "query"],
+      [["--", "query"], undefined],
+    ] as const) {
+      const selection = await resolveCommandSelection(root, rawArgs);
+      expect(selection.commandPath.at(0)).toBe(expected);
+    }
   });
 
   test("requires human stderr and skips JSON output", () => {

@@ -6,7 +6,7 @@ import { apiSpecCommand } from "@/commands/api/spec.ts";
 import { apiRoutesCommand } from "@/commands/api/routes.ts";
 
 export const apiCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "api",
     commandGroup: "platform",
     description: "Management REST API — HTTP invoker and OpenAPI spec.",
@@ -18,7 +18,7 @@ export const apiCommand = defineCommand({
     ],
   },
   args: API_HTTP_BASE_ARGS,
-  subCommands: {
+  subcommands: {
     routes: apiRoutesCommand,
     spec: apiSpecCommand,
   },

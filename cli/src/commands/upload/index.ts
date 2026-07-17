@@ -8,7 +8,7 @@ import { getFileSizeBytes } from "@/lib/lakehouse/file.ts";
 import { uploadArgs, UPLOAD_MODE_OPTIONS } from "@/commands/upload/lib/args.ts";
 
 export const uploadCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "upload",
     commandGroup: "ingest",
     description: "Upload a file to create, append to, or overwrite a table.",

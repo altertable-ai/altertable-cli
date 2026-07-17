@@ -8,7 +8,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileEnvCommand = defineCommand({
-  meta: { name: "env", description: "Print shell exports for a profile" },
+  metadata: { name: "env", description: "Print shell exports for a profile" },
   args: {
     name: {
       type: "positional",

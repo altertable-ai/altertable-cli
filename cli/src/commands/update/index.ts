@@ -18,7 +18,7 @@ import {
 } from "@/lib/updater.ts";
 
 export const updateCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "update",
     alias: ["upgrade"],
     commandGroup: "platform",

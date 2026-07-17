@@ -9,7 +9,7 @@ import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
 
 export const queryCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "query",
     commandGroup: "query",
     description: "Run SQL queries against the lakehouse.",
@@ -21,7 +21,7 @@ export const queryCommand = defineCommand({
   },
   args: queryRunArgs,
   soleDirectOperands: ["show"],
-  subCommands: {
+  subcommands: {
     show: queryShowCommand,
     cancel: queryCancelCommand,
   },

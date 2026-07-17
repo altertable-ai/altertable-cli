@@ -92,7 +92,7 @@ describe("renderAltertableUsage", () => {
 
   test("renders command usage with shared sections and examples", async () => {
     const command = defineCommand({
-      meta: {
+      metadata: {
         name: "demo",
         description: "Demo command.",
         examples: ["altertable demo --flag value"],
@@ -147,11 +147,11 @@ describe("renderAltertableUsage", () => {
 
   test("hides advanced subcommands from summary usage", async () => {
     const command = defineCommand({
-      meta: { name: "demo", description: "Demo command." },
-      subCommands: {
-        visible: { meta: { name: "visible", description: "Visible command" } },
+      metadata: { name: "demo", description: "Demo command." },
+      subcommands: {
+        visible: { metadata: { name: "visible", description: "Visible command" } },
         advanced: {
-          meta: { name: "advanced", description: "Advanced command", hidden: true },
+          metadata: { name: "advanced", description: "Advanced command", hidden: true },
         },
       },
     });
@@ -254,7 +254,7 @@ describe("renderAltertableUsage", () => {
 
   test("shares command metadata across human, structured, and completion help", async () => {
     const inspect = defineCommand({
-      meta: {
+      metadata: {
         name: "inspect",
         alias: "show",
         description: "Inspect a managed resource.",
@@ -262,8 +262,8 @@ describe("renderAltertableUsage", () => {
       },
     });
     const root = defineCommand({
-      meta: { name: "altertable" },
-      subCommands: { inspect },
+      metadata: { name: "altertable" },
+      subcommands: { inspect },
     });
 
     expect(await renderAltertableUsage(inspect)).toContain("Inspect a managed resource.");

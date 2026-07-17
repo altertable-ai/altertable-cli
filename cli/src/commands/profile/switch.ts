@@ -7,7 +7,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileSwitchCommand = defineCommand({
-  meta: { name: "switch", description: "Interactively switch the active profile" },
+  metadata: { name: "switch", description: "Interactively switch the active profile" },
   args: { name: { type: "positional", description: "Profile name", required: false } },
   async run({ args, sink }) {
     assertNoEnvConfigMode();

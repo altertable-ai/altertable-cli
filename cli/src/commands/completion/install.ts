@@ -11,7 +11,7 @@ import {
 
 export function createInstallCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
-    meta: {
+    metadata: {
       name: "install",
       description: "Install shell completion for the current shell.",
       examples: [

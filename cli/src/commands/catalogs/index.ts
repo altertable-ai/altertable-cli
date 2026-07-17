@@ -8,14 +8,14 @@ import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export const catalogsCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "catalogs",
     commandGroup: "platform",
     invocations: ["direct", "subcommand"],
     description: "Manage catalogs (databases and connections) in the current environment.",
     examples: ["altertable catalogs", "altertable catalogs create Analytics"],
   },
-  subCommands: {
+  subcommands: {
     create: catalogsCreateCommand,
   },
   async run({ execution, sink }) {

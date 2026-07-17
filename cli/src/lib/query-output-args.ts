@@ -1,5 +1,5 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { parseQueryResultFormat, type QueryResultFormat } from "@/lib/query-output.ts";
 import { resolvePagerOptions, type PagerMode, type PagerOptions } from "@/lib/pager.ts";
@@ -12,7 +12,7 @@ const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;
 
-export const queryResultFormatArgs = defineArgs({
+export const queryResultFormatArgs = defineArguments({
   format: {
     type: "enum",
     description: "Serialized output format; use global --json for JSON",
@@ -20,7 +20,7 @@ export const queryResultFormatArgs = defineArgs({
   },
 });
 
-export const queryDisplayArgs = defineArgs({
+export const queryDisplayArgs = defineArguments({
   layout: {
     type: "enum",
     description: "Human layout: auto, table, or line",
@@ -34,7 +34,7 @@ export const queryDisplayArgs = defineArgs({
   },
 });
 
-export const queryPagerArgs = defineArgs({
+export const queryPagerArgs = defineArguments({
   pager: {
     type: "enum",
     description: "Pager mode for human output: auto, always, or never",

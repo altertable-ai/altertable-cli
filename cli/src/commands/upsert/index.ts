@@ -8,7 +8,7 @@ import { createLakehouseUpsertRequest } from "@/lib/lakehouse-transport.ts";
 import { upsertArgs } from "@/commands/upsert/lib/args.ts";
 
 export const upsertCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "upsert",
     commandGroup: "ingest",
     description: "Upload a file and match existing rows by primary key.",

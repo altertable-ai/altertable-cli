@@ -22,7 +22,7 @@ import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export const loginCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "login",
     commandGroup: "platform",
     description: "Sign in with your browser (OAuth) and store the session.",

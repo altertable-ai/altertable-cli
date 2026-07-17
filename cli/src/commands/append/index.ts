@@ -10,7 +10,7 @@ import { appendGroupArgs } from "@/commands/append/lib/args.ts";
 import { parseAppendJsonContent } from "@/commands/append/lib/data.ts";
 
 export const appendCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "append",
     commandGroup: "ingest",
     description: "Append JSON rows to a table.",
@@ -20,7 +20,7 @@ export const appendCommand = defineCommand({
     ],
   },
   args: appendGroupArgs,
-  subCommands: {
+  subcommands: {
     status: appendStatusCommand,
   },
   async run({ args, execution, sink }) {

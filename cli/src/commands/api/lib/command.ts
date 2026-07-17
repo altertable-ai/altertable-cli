@@ -1,8 +1,8 @@
 import { resolveApiHttp } from "@/commands/api/lib/http.ts";
 import { optionalStringArg } from "@/lib/args.ts";
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 
-export const API_HTTP_BASE_ARGS = defineArgs({
+export const API_HTTP_BASE_ARGS = defineArguments({
   method: {
     type: "enum",
     alias: "X",

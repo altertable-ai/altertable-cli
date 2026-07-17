@@ -5,7 +5,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileShowCommand = defineCommand({
-  meta: { name: "show", description: "Show a profile's stored identity, auth, and endpoints" },
+  metadata: { name: "show", description: "Show a profile's stored identity, auth, and endpoints" },
   args: {
     name: {
       type: "positional",

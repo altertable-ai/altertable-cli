@@ -5,7 +5,7 @@ import { buildLakehouseQueryCancelRequest } from "@/lib/lakehouse/query.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 
 export const queryCancelCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "cancel",
     description: "Cancel a running query.",
   },

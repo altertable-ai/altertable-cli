@@ -6,7 +6,7 @@ import { formatApiOperationDetails, formatApiRoutes } from "@/commands/api/lib/r
 import type { OutputSink } from "@/lib/runtime.ts";
 
 export const apiRoutesCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "routes",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
     examples: ["altertable api routes", "altertable api routes createDatabase"],

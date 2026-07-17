@@ -1,16 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import {
-  CommandParseError,
-  defineCommand,
-  defineRootCommand,
-  runCommandTree,
-} from "@/lib/command.ts";
+import { defineCommand } from "@/lib/command.ts";
+import { CommandParseError, executeCommand } from "@/lib/command-parser.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
 describe("command composition", () => {
   test("defineCommand preserves the declarative command object", () => {
-    const definition = { meta: { name: "leaf" } };
+    const definition = { metadata: { name: "leaf" } };
 
     expect(defineCommand(definition)).toBe(definition);
   });
@@ -20,18 +16,18 @@ describe("command composition", () => {
     let receivedRuntime: unknown;
     let executionIsStable = false;
     const leaf = defineCommand({
-      meta: { name: "leaf" },
+      metadata: { name: "leaf" },
       run(context) {
         receivedRuntime = context.runtime;
         executionIsStable = context.execution === context.execution;
       },
     });
-    const definition = { meta: { name: "root" }, subCommands: { leaf } };
+    const definition = { metadata: { name: "root" }, subcommands: { leaf } };
 
-    const root = defineRootCommand(definition);
+    const root = defineCommand(definition);
 
     expect(root).toBe(definition);
-    await runWithCliRuntime(runtime, () => runCommandTree(root, { rawArgs: ["leaf"] }));
+    await runWithCliRuntime(runtime, () => executeCommand(root, ["leaf"]));
     expect(receivedRuntime).toBe(runtime);
     expect(executionIsStable).toBe(true);
   });
@@ -40,7 +36,7 @@ describe("command composition", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const received: Array<Record<string, unknown>> = [];
     const leaf = defineCommand({
-      meta: { name: "leaf" },
+      metadata: { name: "leaf" },
       args: {
         mode: { type: "enum", alias: "m", options: ["fast", "safe"], default: "safe" },
         tag: { type: "string", alias: "t", repeatable: true },
@@ -50,28 +46,26 @@ describe("command composition", () => {
         received.push(args);
       },
     });
-    const root = defineRootCommand({
+    const root = defineCommand({
       args: {
         json: { type: "boolean", flagScope: "global" },
         profile: { type: "string", flagScope: "global" },
       },
-      subCommands: { leaf },
+      subcommands: { leaf },
     });
 
     await runWithCliRuntime(runtime, () =>
-      runCommandTree(root, {
-        rawArgs: [
-          "--profile",
-          "staging",
-          "leaf",
-          "payload",
-          "-t",
-          "one",
-          "--json",
-          "--tag=two",
-          "-m=fast",
-        ],
-      }),
+      executeCommand(root, [
+        "--profile",
+        "staging",
+        "leaf",
+        "payload",
+        "-t",
+        "one",
+        "--json",
+        "--tag=two",
+        "-m=fast",
+      ]),
     );
 
     expect(received).toEqual([
@@ -88,19 +82,19 @@ describe("command composition", () => {
   test("does not consume recognized flags as option values", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const leaf = defineCommand({
-      meta: { name: "leaf" },
+      metadata: { name: "leaf" },
       args: {
         columns: { type: "string", alias: "c" },
         force: { type: "boolean" },
         value: { type: "positional", required: true },
       },
     });
-    const root = defineRootCommand({
+    const root = defineCommand({
       args: {
         json: { type: "boolean", flagScope: "global" },
         profile: { type: "string", flagScope: "global" },
       },
-      subCommands: { leaf },
+      subcommands: { leaf },
     });
 
     for (const rawArgs of [
@@ -108,7 +102,7 @@ describe("command composition", () => {
       ["leaf", "value", "-c", "--json"],
       ["leaf", "--profile", "--force", "value"],
     ]) {
-      expect(runWithCliRuntime(runtime, () => runCommandTree(root, { rawArgs }))).rejects.toThrow(
+      expect(runWithCliRuntime(runtime, () => executeCommand(root, rawArgs))).rejects.toThrow(
         /^Missing value for/,
       );
     }
@@ -117,9 +111,9 @@ describe("command composition", () => {
   test("accepts an option-like value when it is explicit", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     let received = "";
-    const root = defineRootCommand({
+    const root = defineCommand({
       args: { json: { type: "boolean", flagScope: "global" } },
-      subCommands: {
+      subcommands: {
         leaf: defineCommand({
           args: {
             columns: { type: "string" },
@@ -133,7 +127,7 @@ describe("command composition", () => {
     });
 
     await runWithCliRuntime(runtime, () =>
-      runCommandTree(root, { rawArgs: ["leaf", "value", "--columns=--json"] }),
+      executeCommand(root, ["leaf", "value", "--columns=--json"]),
     );
 
     expect(received).toBe("--json");
@@ -143,14 +137,14 @@ describe("command composition", () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const calls: string[] = [];
     const parent = defineCommand({
-      meta: { name: "query", alias: "q" },
+      metadata: { name: "query", alias: "q" },
       soleDirectOperands: ["show"],
       args: {
         statement: { type: "positional", required: false, directRequired: true },
       },
-      subCommands: {
+      subcommands: {
         show: defineCommand({
-          meta: { name: "show" },
+          metadata: { name: "show" },
           args: { id: { type: "positional", required: true } },
           run({ args }) {
             calls.push(`subcommand:${String(args.id)}`);
@@ -161,11 +155,11 @@ describe("command composition", () => {
         calls.push(`direct:${String(args.statement)}`);
       },
     });
-    const root = defineRootCommand({ subCommands: { query: parent } });
+    const root = defineCommand({ subcommands: { query: parent } });
 
     await runWithCliRuntime(runtime, async () => {
-      await runCommandTree(root, { rawArgs: ["q", "show"] });
-      await runCommandTree(root, { rawArgs: ["query", "show", "query-1"] });
+      await executeCommand(root, ["q", "show"]);
+      await executeCommand(root, ["query", "show", "query-1"]);
     });
 
     expect(calls).toEqual(["direct:show", "subcommand:query-1"]);
@@ -174,13 +168,13 @@ describe("command composition", () => {
   test("honors the option separator and validates the invocation contract", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     let received = "";
-    const root = defineRootCommand({
+    const root = defineCommand({
       args: {
         version: { type: "boolean", alias: "v", flagScope: "root-only" },
       },
-      subCommands: {
+      subcommands: {
         leaf: defineCommand({
-          meta: { name: "leaf" },
+          metadata: { name: "leaf" },
           args: { value: { type: "positional", required: true } },
           run({ args }) {
             received = String(args.value);
@@ -189,20 +183,17 @@ describe("command composition", () => {
       },
     });
 
-    await runWithCliRuntime(runtime, () =>
-      runCommandTree(root, { rawArgs: ["leaf", "--", "--literal"] }),
-    );
+    await runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "--", "--literal"]));
     expect(received).toBe("--literal");
 
+    expect(runWithCliRuntime(runtime, () => executeCommand(root, ["--", "leaf"]))).rejects.toThrow(
+      "Unknown command leaf.",
+    );
     expect(
-      runWithCliRuntime(runtime, () =>
-        runCommandTree(root, { rawArgs: ["leaf", "value", "--version"] }),
-      ),
+      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "value", "--version"])),
     ).rejects.toBeInstanceOf(CommandParseError);
     expect(
-      runWithCliRuntime(runtime, () =>
-        runCommandTree(root, { rawArgs: ["leaf", "value", "extra"] }),
-      ),
+      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "value", "extra"])),
     ).rejects.toThrow("Unexpected argument: extra.");
   });
 });
