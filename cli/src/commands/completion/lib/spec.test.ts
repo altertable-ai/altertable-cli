@@ -256,6 +256,14 @@ describe("formatBashCompletion", () => {
       }
     }
   });
+
+  test("completes finite positionals after command flags", () => {
+    expect(runBashCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual([
+      "bash",
+      "fish",
+      "zsh",
+    ]);
+  });
 });
 
 describe("collectCompletionContexts", () => {

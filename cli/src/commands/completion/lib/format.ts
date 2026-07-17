@@ -134,12 +134,22 @@ function bashFlagForms(flag: CompletionFlag): string[] {
   return flag.alias ? [`-${flag.alias}`, `--${flag.name}`] : [`--${flag.name}`];
 }
 
-function formatBashGlobalWordCollector(rootFlags: readonly CompletionFlag[]): string {
-  const valueFlags = rootFlags.filter((flag) => flag.takesValue).flatMap(bashFlagForms);
-  const booleanFlags = rootFlags.filter((flag) => !flag.takesValue).flatMap(bashFlagForms);
-  const valueFlagPattern = valueFlags.join("|");
-  const equalsValueFlagPattern = valueFlags.map((flag) => `${flag}=*`).join("|");
-  const booleanFlagPattern = booleanFlags.join("|");
+function allCompletionFlags(spec: CompletionNode): CompletionFlag[] {
+  return [...spec.flags, ...collectCompletionContexts(spec).flatMap((context) => context.flags)];
+}
+
+function formatBashCommandWordCollector(spec: CompletionNode): string {
+  const flags = allCompletionFlags(spec);
+  const valueFlags = new Set(flags.filter((flag) => flag.takesValue).flatMap(bashFlagForms));
+  const booleanFlags = new Set(
+    flags
+      .filter((flag) => !flag.takesValue)
+      .flatMap(bashFlagForms)
+      .filter((flag) => !valueFlags.has(flag)),
+  );
+  const valueFlagPattern = [...valueFlags].join("|");
+  const equalsValueFlagPattern = [...valueFlags].map((flag) => `${flag}=*`).join("|");
+  const booleanFlagPattern = [...booleanFlags].join("|");
 
   return `_altertable_collect_command_words() {
   ALTERTABLE_COMMAND_WORDS=()
@@ -253,7 +263,7 @@ export function formatBashCompletion(spec: CompletionNode): string {
 `
       : "";
   const nestedCases = formatBashNestedCases(collectCompletionContexts(spec), spec.flags);
-  const commandWordCollector = formatBashGlobalWordCollector(spec.flags);
+  const commandWordCollector = formatBashCommandWordCollector(spec);
 
   return `# altertable bash completion
 # Preferred install: altertable completion install bash
