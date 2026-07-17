@@ -18,6 +18,10 @@ describe("command reference", () => {
     expect(reference).toContain("`altertable catalogs create <NAME>`");
     expect(reference).toContain("`-h, --help`");
     expect(reference).toContain("`-v, --version`");
+    expect(reference).toContain("`--to <TO>` | Destination as catalog.schema.table Required.");
+    expect(reference).toContain(
+      "`-f, --raw-field <RAW-FIELD>` | String request parameter key=value (repeatable; gh api -f semantics) Repeatable.",
+    );
     expect(reference).not.toContain("altertable profile rename");
     expect(readFileSync(join(import.meta.dir, "../../../COMMANDS.md"), "utf8")).toBe(reference);
   });

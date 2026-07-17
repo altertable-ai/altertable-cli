@@ -6,7 +6,6 @@ import { writeCommandOutput } from "@/lib/command-output.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/render.ts";
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
-import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 export const catalogsCommand = defineCommand({
   meta: {
@@ -19,8 +18,7 @@ export const catalogsCommand = defineCommand({
   subCommands: {
     create: catalogsCreateCommand,
   },
-  async run({ rawArgs, execution, sink }) {
-    if (await resolveSelectedSubCommand(catalogsCommand, rawArgs)) return;
+  async run({ execution, sink }) {
     const rows = await fetchManagementCatalogRows(
       requireManagementEnv(execution.profile),
       execution,

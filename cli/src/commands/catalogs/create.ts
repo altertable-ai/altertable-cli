@@ -3,7 +3,6 @@ import { buildCatalogCreateRequest } from "@/commands/catalogs/lib/requests.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
-import { CliError } from "@/lib/errors.ts";
 
 export const catalogsCreateCommand = defineCommand({
   meta: {
@@ -18,8 +17,7 @@ export const catalogsCreateCommand = defineCommand({
       required: true,
     },
   },
-  async run({ args, rawArgs, execution, sink }) {
-    assertCatalogNameOperand(rawArgs);
+  async run({ args, execution, sink }) {
     const env = requireManagementEnv(execution.profile);
     const name = String(args.name);
     const response = await sendHttp(buildCatalogCreateRequest(env, name), execution);
@@ -40,9 +38,3 @@ export const catalogsCreateCommand = defineCommand({
     );
   },
 });
-
-function assertCatalogNameOperand(rawArgs: readonly string[]): void {
-  if (rawArgs.length !== 1 || rawArgs[0]?.startsWith("-")) {
-    throw new CliError("Expected exactly one catalog name: altertable catalogs create <NAME>");
-  }
-}

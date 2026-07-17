@@ -1,13 +1,7 @@
-import type { CommandArgs } from "@/lib/command.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { executeApiHttp, apiHttpResultOutput } from "@/commands/api/lib/http.ts";
 import { API_HTTP_BASE_ARGS, resolveApiCommandRequest } from "@/commands/api/lib/command.ts";
-import {
-  normalizePassthroughCommandRawArgs,
-  resolveSelectedSubCommand,
-} from "@/lib/command-delegation.ts";
-import { API_VALUE_FLAGS } from "@/commands/api/lib/command.ts";
 import { apiSpecCommand } from "@/commands/api/spec.ts";
 import { apiRoutesCommand } from "@/commands/api/routes.ts";
 
@@ -28,28 +22,9 @@ export const apiCommand = defineCommand({
     routes: apiRoutesCommand,
     spec: apiSpecCommand,
   },
-  async run({ args, rawArgs, execution, sink }) {
-    if (await resolveSelectedSubCommand(apiCommand, rawArgs)) return;
-    const result = await executeApiHttp(resolveApiCommandRequest(args, rawArgs), execution);
+  async run({ args, execution, sink }) {
+    const result = await executeApiHttp(resolveApiCommandRequest(args), execution);
     const output = apiHttpResultOutput(result, sink);
     if (output) await writeCommandOutput(output, sink);
   },
 });
-
-const API_SUBCOMMAND_NAMES = new Set(Object.keys(apiCommand.subCommands ?? {}));
-
-export function normalizeApiInvocatorRawArgs(
-  rawArgs: readonly string[],
-  rootArgs: CommandArgs = {},
-): string[] {
-  return normalizePassthroughCommandRawArgs(rawArgs, {
-    commandName: "api",
-    rootArgs,
-    commandValueFlags: API_VALUE_FLAGS,
-    isReservedOperand: isApiCommandName,
-  });
-}
-
-function isApiCommandName(value: string): boolean {
-  return API_SUBCOMMAND_NAMES.has(value);
-}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isJsonOutput, setCliContext } from "@/context.ts";
-import { normalizeGlobalFlagsRawArgs, parseGlobalFlags } from "@/lib/global-flags.ts";
+import { parseGlobalFlags } from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
@@ -42,17 +42,6 @@ describe("parseGlobalFlags", () => {
     const both = parseGlobalFlags(["--json", "--agent", "context"]);
     expect(both.json).toBe(true);
     expect(both.agent).toBe(true);
-  });
-
-  test("hoists global flags before commands and stops at --", () => {
-    expect(
-      normalizeGlobalFlagsRawArgs(["query", "SELECT 1", "--json", "--profile", "staging"]),
-    ).toEqual(["--json", "--profile", "staging", "query", "SELECT 1"]);
-    expect(normalizeGlobalFlagsRawArgs(["query", "--", "--json"])).toEqual([
-      "query",
-      "--",
-      "--json",
-    ]);
   });
 });
 

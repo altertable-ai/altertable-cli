@@ -45,7 +45,7 @@ describe("altertable catalogs", () => {
     );
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Expected exactly one catalog name");
+    expect(result.stderr).toContain("Unknown option --engine");
     expect(await workspace.readHttpLog()).not.toContain("METHOD=");
   });
 

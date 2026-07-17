@@ -43,12 +43,14 @@ describe("renderAltertableUsage", () => {
     const ingestSection = usage.indexOf("\n    Ingest\n");
     const querySection = usage.indexOf("\n    Query\n");
     const guidanceSection = usage.indexOf("\n    Use altertable <command> --help");
+    const rootOptionsSection = usage.indexOf("\n  Root options\n");
     const flagsSection = usage.indexOf("\n  Global flags\n");
     expect(commandsSection).toBeLessThan(platformSection);
     expect(platformSection).toBeLessThan(ingestSection);
     expect(ingestSection).toBeLessThan(querySection);
     expect(querySection).toBeLessThan(guidanceSection);
-    expect(guidanceSection).toBeLessThan(flagsSection);
+    expect(guidanceSection).toBeLessThan(rootOptionsSection);
+    expect(rootOptionsSection).toBeLessThan(flagsSection);
     expect(usage).toContain("Use altertable <command> --help for more information about a");
     expect(usage).toContain("command.");
     expect(usage).toContain("-h, --help");

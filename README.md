@@ -29,6 +29,8 @@ Query and manage your Altertable data platform from the terminal.
 - [Scripting](#scripting)
 - [Development](#development)
 
+For the complete generated command contract, see [COMMANDS.md](COMMANDS.md).
+
 ---
 
 ## Quick start

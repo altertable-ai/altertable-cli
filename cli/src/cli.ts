@@ -8,31 +8,32 @@ import {
   type CliContext,
 } from "@/context.ts";
 import { createCliRuntime, refreshCliRuntimeContext, setCliRuntime } from "@/lib/runtime.ts";
-import { parseGlobalFlags, parseGlobalFlagsFromArgs } from "@/lib/global-flags.ts";
-import { buildTopLevelCommands, normalizeCommandRawArgs } from "@/commands/index.ts";
+import { mergeGlobalFlagsFromArgs, parseGlobalFlags } from "@/lib/global-flags.ts";
+import { buildTopLevelCommands } from "@/commands/index.ts";
 import {
   CliError,
   EXIT_SUCCESS,
   getCliExitCode,
-  isCittyCliError,
+  isCommandParseError,
   shouldShowCommandExamplesOnError,
 } from "@/lib/errors.ts";
 import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
-import { defineArgs, defineRootCommand, runCommandTree, type Command } from "@/lib/command.ts";
+import {
+  defineArgs,
+  defineRootCommand,
+  runCommandTree,
+  type Command,
+  type CommandArg,
+} from "@/lib/command.ts";
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
   showCommandExamplesForArgs,
 } from "@/lib/usage.ts";
-import { findFirstPositionalToken, valueFlagsFor } from "@/lib/command-delegation.ts";
 import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
-
-function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
-  return parseGlobalFlagsFromArgs(args);
-}
 
 function buildEarlyCliContext(argv: readonly string[]): CliContext {
   return parseGlobalFlags(argv);
@@ -89,10 +90,32 @@ const ROOT_ARGS = defineArgs({
   },
 });
 
-const ROOT_VALUE_FLAGS = valueFlagsFor(ROOT_ARGS);
-
 export function resolveTopLevelCommandName(rawArgs: readonly string[]): string | undefined {
-  return findFirstPositionalToken(rawArgs, { valueFlags: ROOT_VALUE_FLAGS })?.value;
+  let afterSeparator = false;
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const argument = rawArgs[index];
+    if (argument === undefined) continue;
+    if (argument === "--") {
+      afterSeparator = true;
+      continue;
+    }
+    if (afterSeparator) return undefined;
+    const definition = Object.entries(ROOT_ARGS).find(
+      ([name, candidate]) =>
+        argument.split("=", 1)[0] === `--${name}` ||
+        ("alias" in candidate &&
+          candidate.alias !== undefined &&
+          `-${String(candidate.alias)}` === argument.split("=", 1)[0]),
+    )?.[1] as CommandArg | undefined;
+    if (definition) {
+      if (!argument.includes("=") && definition.type === "string") {
+        index += 1;
+      }
+      continue;
+    }
+    if (!argument.startsWith("-")) return argument;
+  }
+  return undefined;
 }
 
 export function buildMainCommand(): Command {
@@ -114,8 +137,8 @@ export function buildMainCommand(): Command {
     },
     args: ROOT_ARGS,
     subCommands: topLevelCommands,
-    async run({ args }) {
-      setCliContext(buildCliContextFromArgs(args));
+    run({ args }) {
+      setCliContext(mergeGlobalFlagsFromArgs(getCliContext(), args));
     },
   });
 
@@ -150,8 +173,8 @@ function handleCliError(error: unknown): never {
 
 async function bootstrap(): Promise<void> {
   const originalArgs = process.argv.slice(2);
-  const rawArgs = normalizeCommandRawArgs(originalArgs, ROOT_ARGS);
-  // Early parse only for --help, --version, and JSON error envelope before citty runs.
+  const rawArgs = originalArgs;
+  // Early parse only for --help, --version, and the JSON error envelope.
   const earlyContext = buildEarlyCliContext(rawArgs);
   applyTerminalColorFromContext(earlyContext);
   setCliContext(earlyContext);
@@ -182,7 +205,7 @@ async function bootstrap(): Promise<void> {
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
 
-    if (isCittyCliError(error)) {
+    if (isCommandParseError(error)) {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
       if (showExamplesOnHumanOutput) {
         await showAltertableUsage(command, parent);

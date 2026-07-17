@@ -37,6 +37,12 @@ function argumentDescription(argument: CommandArgumentDescriptor): string {
   if (argument.scope === "root-only") {
     details.push("Scope: root only.");
   }
+  if (argument.required) {
+    details.push("Required.");
+  }
+  if (argument.repeatable) {
+    details.push("Repeatable.");
+  }
   if (argument.values.length > 0) {
     details.push(`Values: ${argument.values.join(", ")}.`);
   }

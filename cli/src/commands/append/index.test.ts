@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { normalizeAppendInvocatorRawArgs } from "@/commands/append/index.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import {
   createLakehouseTestWorkspace,
@@ -18,15 +17,7 @@ describe("append command", () => {
   test("sends JSON rows and the synchronous execution option", async () => {
     workspace.writeMocks([{ urlPattern: "/append", method: "POST", body: '{"ok":true}' }]);
 
-    await runCommandWithTestRuntime(
-      normalizeAppendInvocatorRawArgs([
-        "append",
-        '{"id":1}',
-        "--to",
-        "memory.main.users",
-        "--sync",
-      ]),
-    );
+    await runCommandWithTestRuntime(["append", '{"id":1}', "--to", "memory.main.users", "--sync"]);
 
     expect(workspace.readHttpLog()).toContain("URL=https://example.com/append?");
     expect(workspace.readHttpLog()).toContain("sync=true");

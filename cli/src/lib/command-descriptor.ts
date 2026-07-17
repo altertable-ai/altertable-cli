@@ -28,6 +28,7 @@ export type CommandArgumentDescriptor = {
   required: boolean;
   parserRequired: boolean;
   requiredExplicitly: boolean;
+  repeatable: boolean;
   scope: CommandFlagScope;
   values: string[];
   positionalCompletion?: PositionalCompletionKind;
@@ -97,6 +98,7 @@ export function normalizeCommandArgument(
       definition.required !== undefined ||
       definition.directRequired !== undefined ||
       definition.default !== undefined,
+    repeatable: definition.repeatable === true,
     scope: definition.flagScope ?? "command",
     values,
     ...(definition.type === "positional"

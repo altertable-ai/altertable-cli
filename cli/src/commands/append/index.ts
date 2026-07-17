@@ -1,10 +1,5 @@
 import { booleanArg, stringArg } from "@/lib/args.ts";
-import { defineCommand, type CommandArgs } from "@/lib/command.ts";
-import {
-  normalizeDirectCommandRawArgs,
-  resolveSelectedSubCommand,
-  valueFlagsFor,
-} from "@/lib/command-delegation.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 import { buildLakehouseAppendRequest } from "@/lib/lakehouse-transport.ts";
@@ -28,8 +23,7 @@ export const appendCommand = defineCommand({
   subCommands: {
     status: appendStatusCommand,
   },
-  async run({ args, rawArgs, execution, sink }) {
-    if (await resolveSelectedSubCommand(appendCommand, rawArgs)) return;
+  async run({ args, execution, sink }) {
     const sync = booleanArg(args, "sync");
     const target = parseLakehouseTarget(stringArg(args, "to"));
     const request = buildLakehouseAppendRequest({
@@ -48,19 +42,3 @@ export const appendCommand = defineCommand({
     }
   },
 });
-
-const APPEND_SUBCOMMAND_NAMES = new Set(Object.keys(appendCommand.subCommands ?? {}));
-const APPEND_RESERVED_OPERANDS = new Set([...APPEND_SUBCOMMAND_NAMES, "run"]);
-const APPEND_VALUE_FLAGS = valueFlagsFor(appendGroupArgs);
-
-export function normalizeAppendInvocatorRawArgs(
-  rawArgs: readonly string[],
-  rootArgs: CommandArgs = {},
-): string[] {
-  return normalizeDirectCommandRawArgs(rawArgs, {
-    commandName: "append",
-    rootArgs,
-    commandValueFlags: APPEND_VALUE_FLAGS,
-    isReservedOperand: (value) => APPEND_RESERVED_OPERANDS.has(value),
-  });
-}

@@ -11,7 +11,7 @@ import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
 import { readEnv } from "@/lib/env.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
-import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
+import { resolveCommandSelection } from "@/lib/command.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -47,17 +47,9 @@ function formatCommandExamplesSection(examples: readonly string[]): string {
 export async function resolveSubCommandForUsage(
   command: Command,
   rawArgs: string[],
-  parent?: Command,
 ): Promise<[Command, Command | undefined]> {
-  const selected = await resolveSelectedSubCommand(command, rawArgs);
-  if (selected) {
-    return resolveSubCommandForUsage(
-      selected.command,
-      rawArgs.slice(selected.operandIndex + 1),
-      command,
-    );
-  }
-  return [command, parent];
+  const selected = await resolveCommandSelection(command, rawArgs);
+  return [selected.command, selected.parent];
 }
 
 type HelpEntry = {
@@ -211,7 +203,12 @@ function argumentDescription(argument: CommandArgumentDescriptor): string {
     argument.default === undefined
       ? undefined
       : `(Default: ${formatDefaultValue(argument.default)})`;
-  return [argument.description, argument.required ? "(Required)" : undefined, defaultValue]
+  return [
+    argument.description,
+    argument.required ? "(Required)" : undefined,
+    argument.repeatable ? "(Repeatable)" : undefined,
+    defaultValue,
+  ]
     .filter((part): part is string => part !== undefined)
     .join(" ");
 }
@@ -367,14 +364,29 @@ function renderRootUsage(descriptor: CommandDescriptor): string {
 
   lines.push("", ...formatHelpGuidance("altertable"));
 
-  const flags = descriptor.arguments.map((argument) => ({
-    label: flagLabel(argument),
-    description: argument.description,
-  }));
+  const rootOnlyFlags = descriptor.arguments
+    .filter((argument) => argument.scope === "root-only")
+    .map((argument) => ({
+      label: flagLabel(argument),
+      description: argument.description,
+    }));
+  const globalFlags = descriptor.arguments
+    .filter((argument) => argument.scope !== "root-only")
+    .map((argument) => ({
+      label: flagLabel(argument),
+      description: argument.description,
+    }));
+  if (rootOnlyFlags.length > 0) {
+    lines.push(
+      "",
+      `  ${renderDisplayText([span("Root options", "strong")])}`,
+      ...formatHelpEntries(rootOnlyFlags),
+    );
+  }
   lines.push(
     "",
     `  ${renderDisplayText([span("Global flags", "strong")])}`,
-    ...formatHelpEntries(flags),
+    ...formatHelpEntries(globalFlags),
   );
 
   const examples = metadata.examples;
@@ -419,6 +431,7 @@ type StructuredArgument = {
   default?: unknown;
   values?: string[];
   scope: CommandArgumentDescriptor["scope"];
+  repeatable?: boolean;
 };
 
 export type StructuredHelp = {
@@ -441,6 +454,7 @@ function structuredArgument(argument: CommandArgumentDescriptor): StructuredArgu
     required: argument.required,
     description: argument.description,
     scope: argument.scope,
+    ...(argument.repeatable ? { repeatable: true } : {}),
     ...(argument.default !== undefined ? { default: argument.default } : {}),
     ...(argument.values.length > 0 ? { values: argument.values } : {}),
   };

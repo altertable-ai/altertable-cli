@@ -8,7 +8,6 @@ import { profileRenameCommand } from "@/commands/profile/rename.ts";
 import { profileShowCommand } from "@/commands/profile/show.ts";
 import { profileStatusCommand } from "@/commands/profile/status.ts";
 import { profileSwitchCommand } from "@/commands/profile/switch.ts";
-import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 export const profileCommand = defineCommand({
   meta: {
@@ -38,8 +37,7 @@ export const profileCommand = defineCommand({
     rename: profileRenameCommand,
     delete: profileDeleteCommand,
   },
-  async run({ rawArgs }) {
-    if (await resolveSelectedSubCommand(profileCommand, rawArgs)) return;
+  run() {
     throwNoProfileCommand();
   },
 });

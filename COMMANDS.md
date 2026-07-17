@@ -214,7 +214,7 @@ Delete a profile
 
 | Argument | Description |
 | --- | --- |
-| `<NAME>` | Profile name |
+| `<NAME>` | Profile name Required. |
 
 **Options**
 
@@ -254,7 +254,7 @@ Create an Altertable catalog.
 
 | Argument | Description |
 | --- | --- |
-| `<NAME>` | Catalog name |
+| `<NAME>` | Catalog name Required. |
 
 **Examples**
 
@@ -268,22 +268,22 @@ Management REST API — HTTP invoker and OpenAPI spec.
 
 **Usage**
 
-`altertable api [options] [ENDPOINT]`
+`altertable api [options] <ENDPOINT>`
 `altertable api routes|spec`
 
 **Arguments**
 
 | Argument | Description |
 | --- | --- |
-| `[ENDPOINT]` | Path under /rest/v1, e.g. /whoami |
+| `<ENDPOINT>` | Path under /rest/v1, e.g. /whoami Required. |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
 | `-X, --method <GET\|POST\|PATCH\|DELETE\|PUT>` | HTTP method override (default GET, or POST when fields/input are provided) Values: GET, POST, PATCH, DELETE, PUT. |
-| `-f, --raw-field <RAW-FIELD>` | String request parameter key=value (repeatable; gh api -f semantics) |
-| `-F, --field <FIELD>` | Typed request parameter key=value (true, false, null, integers; repeatable) |
+| `-f, --raw-field <RAW-FIELD>` | String request parameter key=value (repeatable; gh api -f semantics) Repeatable. |
+| `-F, --field <FIELD>` | Typed request parameter key=value (true, false, null, integers; repeatable) Repeatable. |
 | `--input <INPUT>` | File to use as the request body; use - for stdin |
 | `--env <ENV>` | Replace {environment_id} in the path |
 | `--format <CSV\|MARKDOWN>` | Serialized output format; use global --json for JSON Values: csv, markdown. |
@@ -403,7 +403,7 @@ Generate a shell completion script.
 
 | Argument | Description |
 | --- | --- |
-| `<BASH\|FISH\|ZSH>` | Shell to generate completion for Values: bash, fish, zsh. |
+| `<BASH\|FISH\|ZSH>` | Shell to generate completion for Required. Values: bash, fish, zsh. |
 
 **Examples**
 
@@ -455,13 +455,13 @@ Append JSON rows to a table.
 
 | Argument | Description |
 | --- | --- |
-| `<DATA>` | JSON object, array, or @file |
+| `<DATA>` | JSON object, array, or @file Required. |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
-| `--to <TO>` | Destination as catalog.schema.table |
+| `--to <TO>` | Destination as catalog.schema.table Required. |
 | `--sync` | Wait for the append operation to finish before returning |
 
 **Subcommands**
@@ -487,7 +487,7 @@ Fetch status for an append operation.
 
 | Argument | Description |
 | --- | --- |
-| `<APPEND-ID>` | Append id returned by append |
+| `<APPEND-ID>` | Append id returned by append Required. |
 
 ### `altertable upload`
 
@@ -501,13 +501,13 @@ Upload a file to create, append to, or overwrite a table.
 
 | Argument | Description |
 | --- | --- |
-| `<FILE>` | Local file to upload |
+| `<FILE>` | Local file to upload Required. |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
-| `--to <TO>` | Destination as catalog.schema.table |
+| `--to <TO>` | Destination as catalog.schema.table Required. |
 | `--format <CSV\|JSON\|PARQUET>` | Input format; inferred from the filename when omitted Values: csv, json, parquet. |
 | `--mode <CREATE\|APPEND\|OVERWRITE>` | create, append, or overwrite Values: create, append, overwrite. Default: "create". |
 
@@ -530,15 +530,15 @@ Upload a file and match existing rows by primary key.
 
 | Argument | Description |
 | --- | --- |
-| `<FILE>` | Local file to upload |
+| `<FILE>` | Local file to upload Required. |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
-| `--to <TO>` | Destination as catalog.schema.table |
+| `--to <TO>` | Destination as catalog.schema.table Required. |
 | `--format <CSV\|JSON\|PARQUET>` | Input format; inferred from the filename when omitted Values: csv, json, parquet. |
-| `--key <KEY>` | Column name used to match existing rows |
+| `--key <KEY>` | Column name used to match existing rows Required. |
 
 **Examples**
 
@@ -561,7 +561,7 @@ Run SQL queries against the lakehouse.
 
 | Argument | Description |
 | --- | --- |
-| `<STATEMENT>` | SQL statement to run |
+| `<STATEMENT>` | SQL statement to run Required. |
 
 **Options**
 
@@ -600,7 +600,7 @@ Fetch metadata for a completed or running query.
 
 | Argument | Description |
 | --- | --- |
-| `<QUERY-ID>` | Query id returned by the API |
+| `<QUERY-ID>` | Query id returned by the API Required. |
 
 #### `altertable query cancel`
 
@@ -614,13 +614,13 @@ Cancel a running query.
 
 | Argument | Description |
 | --- | --- |
-| `<QUERY-ID>` | Query id to cancel |
+| `<QUERY-ID>` | Query id to cancel Required. |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
-| `--session-id <SESSION-ID>` | Session id that owns the query |
+| `--session-id <SESSION-ID>` | Session id that owns the query Required. |
 
 ### `altertable schema`
 
@@ -634,7 +634,7 @@ List schemas, tables, and columns for a catalog.
 
 | Argument | Description |
 | --- | --- |
-| `<CATALOG>` | Catalog name |
+| `<CATALOG>` | Catalog name Required. |
 
 **Options**
 

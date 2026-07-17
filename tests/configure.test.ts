@@ -82,15 +82,17 @@ describe("altertable profile configure", () => {
     expect(configure.stderr).toContain("Interactive configure requires a TTY");
   });
 
-  test("--verify checks management credentials after save", async () => {
+  test("profile status checks management credentials after save", async () => {
     await workspace.resetConfig();
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(whoamiMock());
 
-    const result = await workspace.runCommand(
-      "altertable profile configure --api-key atm_x --env prod --control-plane-url http://localhost:13000 --verify",
+    const configured = await workspace.runCommand(
+      "altertable profile configure --api-key atm_x --env prod --control-plane-url http://localhost:13000",
     );
+    const result = await workspace.runCommand("altertable profile status");
 
+    expect(configured.exitCode).toBe(0);
     expect(result.exitCode).toBe(0);
   });
 
@@ -125,7 +127,7 @@ describe("altertable profile configure", () => {
     expect((await workspace.runCommand("altertable profile configure --user u --password p")).exitCode).toBe(0);
     await workspace.chmodFile(workspace.credentialsFile, 0o644);
 
-    let result = await workspace.runCommand("altertable profile show --config");
+    let result = await workspace.runCommand("altertable profile show");
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("too open");
 
@@ -134,7 +136,7 @@ describe("altertable profile configure", () => {
     expect(result.exitCode).not.toBe(0);
 
     await workspace.chmodFile(workspace.credentialsFile, 0o600);
-    expect((await workspace.runCommand("altertable profile show --config")).exitCode).toBe(0);
+    expect((await workspace.runCommand("altertable profile show")).exitCode).toBe(0);
   });
 
   test("--clear removes all stored configuration", async () => {

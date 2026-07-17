@@ -3,7 +3,6 @@ import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
-import { GLOBAL_ARGV_FLAGS_WITH_VALUE, isGlobalArgvFlag } from "@/lib/global-flags.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 import {
   checkForUpdate,
@@ -41,8 +40,7 @@ export const updateCommand = defineCommand({
       description: "Reinstall or downgrade to the selected release.",
     },
   },
-  async run({ args, rawArgs, sink }) {
-    validateUpdateArguments(rawArgs);
+  async run({ args, sink }) {
     await executeUpdateCommand(args as UpdateCommandArgs, sink);
   },
 });
@@ -59,42 +57,6 @@ export type UpdateCommandDependencies = {
 };
 
 const DEFAULT_DEPENDENCIES: UpdateCommandDependencies = { checkForUpdate, installCliUpdate };
-const UPDATE_OPTIONS: ReadonlySet<string> = new Set(["--check", "--force"]);
-
-function validateUpdateArguments(rawArgs: readonly string[]): void {
-  let versionSeen = false;
-
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const argument = rawArgs[index];
-    if (argument === undefined) {
-      continue;
-    }
-    if (argument === "--") {
-      continue;
-    }
-    if (argument.startsWith("-")) {
-      const option = argument.split("=", 1)[0] ?? argument;
-      if (isGlobalArgvFlag(argument)) {
-        if (!argument.includes("=") && GLOBAL_ARGV_FLAGS_WITH_VALUE.has(option)) {
-          index += 1;
-        }
-        continue;
-      }
-      if (!UPDATE_OPTIONS.has(option)) {
-        throw new CliError(`Unknown option ${option}.`, {
-          details: "Run altertable update --help for usage.",
-        });
-      }
-      continue;
-    }
-    if (versionSeen) {
-      throw new CliError(`Unexpected argument for altertable update: ${argument}.`, {
-        details: "Pass at most one version; run altertable update --help for usage.",
-      });
-    }
-    versionSeen = true;
-  }
-}
 
 function buildTargetResult(targetVersion: string): UpdateCheckResult {
   const version = normalizeVersion(targetVersion);

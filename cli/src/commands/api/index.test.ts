@@ -3,13 +3,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.ts";
+import { apiCommand } from "@/commands/api/index.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import { defineArgs, runCommandTree, type Command } from "@/lib/command.ts";
+import { runCommandTree, type Command } from "@/lib/command.ts";
 
 describe("api", () => {
   beforeEach(() => {
@@ -125,43 +125,6 @@ describe("api", () => {
     expect(subCommands.routes?.run).toBeDefined();
   });
 
-  test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
-    const rootArgs = defineArgs({
-      profile: { type: "string", description: "Use a named profile" },
-    });
-
-    expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
-    expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
-    expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
-      "--json",
-      "api",
-      "--",
-      "/whoami",
-    ]);
-    expect(normalizeApiInvocatorRawArgs(["--profile", "dev", "api", "/whoami"], rootArgs)).toEqual([
-      "--profile",
-      "dev",
-      "api",
-      "--",
-      "/whoami",
-    ]);
-    expect(
-      normalizeApiInvocatorRawArgs(["api", "-f", "label=CI Bot", "/service_accounts"]),
-    ).toEqual(["api", "-f", "label=CI Bot", "--", "/service_accounts"]);
-    expect(normalizeApiInvocatorRawArgs(["api", "-X", "GET", "/service_accounts"])).toEqual([
-      "api",
-      "-X",
-      "GET",
-      "--",
-      "/service_accounts",
-    ]);
-    expect(normalizeApiInvocatorRawArgs(["api", "--", "/whoami"])).toEqual([
-      "api",
-      "--",
-      "/whoami",
-    ]);
-  });
-
   describe("api HTTP invoker", () => {
     let testHome = "";
     let mockFile = "";
@@ -197,7 +160,7 @@ describe("api", () => {
         ]),
       );
 
-      await runCommandWithTestRuntime(normalizeApiInvocatorRawArgs(["api", "/whoami"]));
+      await runCommandWithTestRuntime(["api", "/whoami"]);
 
       const logContent = readFileSync(logFile, "utf8");
       expect(logContent).toContain("/rest/v1/whoami");
@@ -216,16 +179,14 @@ describe("api", () => {
         ]),
       );
 
-      await runCommandWithTestRuntime(
-        normalizeApiInvocatorRawArgs([
-          "api",
-          "/service_accounts",
-          "-X",
-          "POST",
-          "-f",
-          "label=CI Bot",
-        ]),
-      );
+      await runCommandWithTestRuntime([
+        "api",
+        "/service_accounts",
+        "-X",
+        "POST",
+        "-f",
+        "label=CI Bot",
+      ]);
 
       const logContent = readFileSync(logFile, "utf8");
       const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];

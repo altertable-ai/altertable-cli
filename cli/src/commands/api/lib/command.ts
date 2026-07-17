@@ -1,9 +1,6 @@
-import { extractFieldArgs, extractRawFieldArgs } from "@/commands/api/lib/body.ts";
 import { resolveApiHttp } from "@/commands/api/lib/http.ts";
 import { optionalStringArg } from "@/lib/args.ts";
 import { defineArgs } from "@/lib/command.ts";
-import { valueFlagsFor } from "@/lib/command-delegation.ts";
-import { readArgvFlagValue } from "@/lib/timeout-args.ts";
 
 export const API_HTTP_BASE_ARGS = defineArgs({
   method: {
@@ -16,15 +13,18 @@ export const API_HTTP_BASE_ARGS = defineArgs({
     type: "positional",
     description: "Path under /rest/v1, e.g. /whoami",
     required: false,
+    directRequired: true,
   },
   "raw-field": {
     type: "string",
     alias: "f",
+    repeatable: true,
     description: "String request parameter key=value (repeatable; gh api -f semantics)",
   },
   field: {
     type: "string",
     alias: "F",
+    repeatable: true,
     description: "Typed request parameter key=value (true, false, null, integers; repeatable)",
   },
   input: { type: "string", description: "File to use as the request body; use - for stdin" },
@@ -36,26 +36,24 @@ export const API_HTTP_BASE_ARGS = defineArgs({
   },
 });
 
-export const API_VALUE_FLAGS = valueFlagsFor(API_HTTP_BASE_ARGS);
-
-export function resolveApiCommandRequest(
-  args: Record<string, unknown>,
-  rawArgs: string[],
-  method?: string,
-) {
-  const rawFields = extractRawFieldArgs(rawArgs);
-  const typedFields = extractFieldArgs(rawArgs);
+export function resolveApiCommandRequest(args: Record<string, unknown>, method?: string) {
+  const rawFields = repeatableStringArg(args["raw-field"]);
+  const typedFields = repeatableStringArg(args.field);
   return resolveApiHttp({
-    method:
-      optionalStringArg(args, "method") ??
-      readArgvFlagValue(rawArgs, "--method") ??
-      readArgvFlagValue(rawArgs, "-X") ??
-      method,
+    method: optionalStringArg(args, "method") ?? method,
     endpoint: optionalStringArg(args, "endpoint"),
-    input: optionalStringArg(args, "input") ?? readArgvFlagValue(rawArgs, "--input"),
-    rawFields: rawFields.length > 0 ? rawFields : undefined,
-    typedFields: typedFields.length > 0 ? typedFields : undefined,
-    env: optionalStringArg(args, "env") ?? readArgvFlagValue(rawArgs, "--env"),
-    format: optionalStringArg(args, "format") ?? readArgvFlagValue(rawArgs, "--format"),
+    input: optionalStringArg(args, "input"),
+    rawFields,
+    typedFields,
+    env: optionalStringArg(args, "env"),
+    format: optionalStringArg(args, "format"),
   });
+}
+
+function repeatableStringArg(value: unknown): string | string[] | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
+    return value;
+  }
+  return undefined;
 }

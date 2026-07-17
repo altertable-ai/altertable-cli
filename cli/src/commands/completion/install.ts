@@ -32,11 +32,11 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    async run({ args, rawArgs, sink }) {
+    async run({ args, sink }) {
       const shell = resolveShell(optionalStringArg(args, "shell"));
       const script = await formatCompletionScript(shell, getRootCommand());
       const result = await installCompletion(shell, script, {
-        updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc"),
+        updateRc: args["no-rc"] !== true,
       });
       if (sink.json) sink.writeJson(result);
       else sink.writeHuman(formatInstallMessage(result));

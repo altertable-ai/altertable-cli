@@ -52,7 +52,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 ## Conventions
 
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.
-- Import command types and `defineArgs` from `src/lib/command.ts`; only that boundary should depend on Citty's types.
+- Import command types and `defineArgs` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
 - Derive related argument schemas from shared fragments instead of repeating flag definitions.
 - Function declarations over const function expressions (except one-liners)
 - Types over interfaces
@@ -80,7 +80,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 | Path                                  | Responsibility                                             |
 | ------------------------------------- | ---------------------------------------------------------- |
-| `src/cli.ts`                          | Citty root command, global flags, error bootstrap          |
+| `src/cli.ts`                          | Root command, global flags, error bootstrap                |
 | `src/context.ts`                      | Parsed global flags (`json`, `debug`, `profile`, timeouts) |
 | `src/commands/<family>/index.ts`      | One top-level command group                                |
 | `src/commands/<family>/<name>.ts`     | One leaf command                                           |
@@ -144,11 +144,9 @@ altertable
 ```
 
 `query`, `append`, `catalogs`, `api`, and `completion` combine direct parent behavior with
-real subcommands. Parent handlers must inspect the selected positional operand with the
-helpers in `lib/command-delegation.ts`; never search every raw argument for a subcommand
-name because flag values can collide. The bootstrap normalization moves direct `query`
-and `append` operands behind `--`, and inserts `--` before an `api` endpoint, so Citty
-does not mistake those operands for subcommands.
+real subcommands. The parser resolves one invocation from command metadata, then executes
+only the selected handler. Declare intentional direct/subcommand ambiguity through command
+metadata; do not inspect or rewrite raw argv in parent handlers.
 
 ## Cookbook
 
@@ -179,7 +177,7 @@ export const myfeatureCommand = defineCommand({
 
 ### Recipe B — New management REST operation
 
-New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new Citty subcommands:
+New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new dedicated subcommands:
 
 ```bash
 altertable api routes                    # discover method + path

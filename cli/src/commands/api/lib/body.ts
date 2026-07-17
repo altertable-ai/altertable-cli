@@ -34,39 +34,6 @@ function validateJsonBody(body: string): string {
   return body;
 }
 
-function extractFlagValues(rawArgs: string[], flags: string[]): string[] {
-  const values: string[] = [];
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-
-    if (flags.includes(arg)) {
-      const value = rawArgs[index + 1];
-      if (value && !value.startsWith("-")) {
-        values.push(value);
-        index += 1;
-      }
-      continue;
-    }
-
-    const matchedFlag = flags.find((flag) => arg.startsWith(`${flag}=`));
-    if (matchedFlag) {
-      values.push(arg.slice(matchedFlag.length + 1));
-    }
-  }
-  return values;
-}
-
-export function extractRawFieldArgs(rawArgs: string[]): string[] {
-  return extractFlagValues(rawArgs, ["-f", "--raw-field"]);
-}
-
-export function extractFieldArgs(rawArgs: string[]): string[] {
-  return extractFlagValues(rawArgs, ["-F", "--field"]);
-}
-
 function normalizeFieldEntries(
   fields: Record<string, string> | string[] | string | undefined,
 ): string[] {

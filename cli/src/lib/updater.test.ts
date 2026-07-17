@@ -869,7 +869,7 @@ describe("update command", () => {
   test("rejects extra positional versions", () => {
     return expect(
       runUpdateCommand(["update", UPDATE_TEST_VERSION, "extra", "--check"]),
-    ).rejects.toThrow("Unexpected argument for altertable update: extra.");
+    ).rejects.toThrow("Unexpected argument: extra.");
   });
 
   test("only exposes the simple public arguments", () => {

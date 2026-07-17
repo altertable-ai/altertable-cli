@@ -6,7 +6,6 @@ import {
   formatCompletionHelpMessage,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
-import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): Command {
   const command = defineCommand({
@@ -25,8 +24,7 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
       generate: createGenerateCommand(getRootCommand),
       install: createInstallCommand(getRootCommand),
     },
-    async run({ rawArgs, sink }) {
-      if (await resolveSelectedSubCommand(command, rawArgs)) return;
+    async run({ sink }) {
       if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
       else sink.writeHuman(formatCompletionHelpMessage());
     },

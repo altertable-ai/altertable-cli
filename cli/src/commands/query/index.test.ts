@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { normalizeQueryInvocatorRawArgs } from "@/commands/query/index.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import {
   createLakehouseTestWorkspace,
@@ -16,38 +15,17 @@ beforeEach(() => {
 afterEach(() => workspace.cleanup());
 
 describe("query command", () => {
-  test("routes a bare SQL statement to the direct query handler", () => {
-    expect(normalizeQueryInvocatorRawArgs(["query", "SELECT 1"])).toEqual([
-      "query",
-      "--",
-      "SELECT 1",
-    ]);
-    expect(normalizeQueryInvocatorRawArgs(["query", "show", "query-id"])).toEqual([
-      "query",
-      "show",
-      "query-id",
-    ]);
-    expect(normalizeQueryInvocatorRawArgs(["query", "show"])).toEqual(["query", "--", "show"]);
-    expect(normalizeQueryInvocatorRawArgs(["query", "show", "--help"])).toEqual([
-      "query",
-      "show",
-      "--help",
-    ]);
-  });
-
   test("sends the statement and optional identifiers", async () => {
     workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
 
-    await runCommandWithTestRuntime(
-      normalizeQueryInvocatorRawArgs([
-        "query",
-        "SELECT 1",
-        "--query-id",
-        "query-1",
-        "--session-id",
-        "session-1",
-      ]),
-    );
+    await runCommandWithTestRuntime([
+      "query",
+      "SELECT 1",
+      "--query-id",
+      "query-1",
+      "--session-id",
+      "session-1",
+    ]);
 
     expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
       statement: "SELECT 1",
@@ -76,7 +54,7 @@ describe("query command", () => {
   test("executes a bare lowercase show statement as SQL", async () => {
     workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
 
-    await runCommandWithTestRuntime(normalizeQueryInvocatorRawArgs(["query", "show"]));
+    await runCommandWithTestRuntime(["query", "show"]);
 
     expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
       statement: "show",

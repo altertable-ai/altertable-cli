@@ -45,7 +45,6 @@
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
-    "citty": "0.2.2",
     "oauth4webapi": "3.8.6",
     "yaml": "2.9.0"
   },
