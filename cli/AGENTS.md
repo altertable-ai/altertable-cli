@@ -120,20 +120,33 @@ Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 
 ```
 altertable
-├── profile (--configure [--scope management|lakehouse], show, list, use, …), catalogs
-├── query (run, show, cancel)
-├── append (run, task), upload
+├── login, logout
+├── profile
+│   └── configure, show, list, status, switch, current, env, rename, delete
+├── catalogs
+│   └── create
+├── query <SQL>
+│   └── show, cancel
+├── schema, duckdb
+├── append <DATA>
+│   └── status
+├── upload, upsert
 ├── api
 │   ├── spec
 │   ├── routes
-│   └── GET | POST | PATCH | DELETE | PUT  (HTTP invoker also supports `api /whoami`, `api -X GET /path`)
+│   └── <PATH> [-X GET|POST|PATCH|DELETE|PUT]
+├── update (alias: upgrade)
 └── completion
     ├── install [bash|fish|zsh]
     ├── generate [bash|fish|zsh]
-    └── bash|fish|zsh  (raw script compatibility aliases)
 ```
 
-`query` exposes `run` as its Citty default leaf and takes the SQL statement as a bare positional. Prefer the public form `altertable query "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape. A bare statement is routed to `run` by `normalizeQueryInvocatorRawArgs` in `bootstrap`, mirroring the `api` command's rawArgs rewrite.
+`query`, `append`, `catalogs`, `api`, and `completion` combine direct parent behavior with
+real subcommands. Parent handlers must inspect the selected positional operand with the
+helpers in `lib/command-delegation.ts`; never search every raw argument for a subcommand
+name because flag values can collide. The bootstrap normalization moves direct `query`
+and `append` operands behind `--`, and inserts `--` before an `api` endpoint, so Citty
+does not mistake those operands for subcommands.
 
 ## Cookbook
 
@@ -169,7 +182,7 @@ New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). 
 ```bash
 altertable api routes                    # discover method + path
 altertable api /whoami                   # default GET
-altertable api -X GET /path -f q=value   # forced GET puts fields in the query string
+altertable api /path -X GET -f q=value   # forced GET puts fields in the query string
 altertable api /new_resource -f …        # invoke (POST inferred)
 ```
 
