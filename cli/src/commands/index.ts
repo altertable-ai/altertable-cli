@@ -1,7 +1,7 @@
 import type { Command, CommandArgs } from "@/lib/command.ts";
 import { loginCommand } from "@/commands/login/index.ts";
 import { logoutCommand } from "@/commands/logout/index.ts";
-import { normalizeProfileConfigureRawArgs, profileCommand } from "@/commands/profile/index.ts";
+import { profileCommand } from "@/commands/profile/index.ts";
 import { catalogsCommand } from "@/commands/catalogs/index.ts";
 import { duckdbCommand } from "@/commands/duckdb/index.ts";
 import { appendCommand, normalizeAppendInvocatorRawArgs } from "@/commands/append/index.ts";
@@ -37,12 +37,9 @@ export function normalizeCommandRawArgs(
   rootArgs: CommandArgs,
 ): string[] {
   const globalArgsNormalized = normalizeGlobalFlagsRawArgs(rawArgs);
-  return normalizeProfileConfigureRawArgs(
-    normalizeAppendInvocatorRawArgs(
-      normalizeQueryInvocatorRawArgs(
-        normalizeApiInvocatorRawArgs(globalArgsNormalized, rootArgs),
-        rootArgs,
-      ),
+  return normalizeAppendInvocatorRawArgs(
+    normalizeQueryInvocatorRawArgs(
+      normalizeApiInvocatorRawArgs(globalArgsNormalized, rootArgs),
       rootArgs,
     ),
     rootArgs,

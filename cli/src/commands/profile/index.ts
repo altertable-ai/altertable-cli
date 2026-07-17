@@ -1,4 +1,4 @@
-import { defineCommand, type CommandArgs } from "@/lib/command.ts";
+import { defineCommand } from "@/lib/command.ts";
 import { profileConfigureCommand } from "@/commands/profile/configure.ts";
 import { profileCurrentCommand } from "@/commands/profile/current.ts";
 import { profileDeleteCommand } from "@/commands/profile/delete.ts";
@@ -8,11 +8,7 @@ import { profileRenameCommand } from "@/commands/profile/rename.ts";
 import { profileShowCommand } from "@/commands/profile/show.ts";
 import { profileStatusCommand } from "@/commands/profile/status.ts";
 import { profileSwitchCommand } from "@/commands/profile/switch.ts";
-import {
-  findFirstPositionalToken,
-  resolveSelectedSubCommand,
-  valueFlagsFor,
-} from "@/lib/command-delegation.ts";
+import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
 
 export const profileCommand = defineCommand({
   meta: {
@@ -47,23 +43,6 @@ export const profileCommand = defineCommand({
     throwNoProfileCommand();
   },
 });
-
-export function normalizeProfileConfigureRawArgs(
-  rawArgs: readonly string[],
-  rootArgs: CommandArgs = {},
-): string[] {
-  const commandToken = findFirstPositionalToken(rawArgs, {
-    valueFlags: valueFlagsFor(rootArgs),
-  });
-  if (!commandToken || commandToken.value !== "profile") return [...rawArgs];
-
-  const configureFlagIndex = rawArgs.indexOf("--configure", commandToken.index + 1);
-  if (configureFlagIndex === -1) return [...rawArgs];
-
-  const normalized = [...rawArgs];
-  normalized[configureFlagIndex] = "configure";
-  return normalized;
-}
 
 function throwNoProfileCommand(): never {
   const error = new Error("No command specified.") as Error & { code: string };

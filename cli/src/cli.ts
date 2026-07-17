@@ -29,7 +29,6 @@ import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
 import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
 import { maybeShowUpdateNotice } from "@/lib/updater.ts";
 import { validateEnvironment } from "@/lib/env.ts";
-import { assertNoRemovedSyntax } from "@/lib/legacy-cli.ts";
 
 function buildCliContextFromArgs(args: Record<string, unknown>): CliContext {
   return parseGlobalFlagsFromArgs(args);
@@ -132,7 +131,6 @@ async function bootstrap(): Promise<void> {
   setCliContext(earlyContext);
 
   try {
-    assertNoRemovedSyntax(originalArgs, ROOT_ARGS);
     const earlyExit = findEarlyBootstrapExit(rawArgs);
     if (earlyExit?.id === "help") {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
