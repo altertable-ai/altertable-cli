@@ -20,6 +20,29 @@ function findChild(node: ReturnType<typeof buildCompletionSpec> | undefined, nam
   return node?.subcommands.find((child) => child.name === name);
 }
 
+function bashQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function runBashCompletion(words: string[]): string[] {
+  const script = formatBashCompletion(buildCompletionSpec(buildMainCommand()));
+  const source = `${script}
+COMP_WORDS=(${words.map(bashQuote).join(" ")})
+COMP_CWORD=${words.length - 1}
+COMPREPLY=()
+_altertable_completions
+printf '%s\\n' "\${COMPREPLY[@]}"
+`;
+  const result = Bun.spawnSync(["bash", "-c", source], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(new TextDecoder().decode(result.stderr));
+  }
+  return new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
+}
+
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", () => {
     const root = defineCommand({
@@ -205,6 +228,33 @@ describe("formatBashCompletion", () => {
   test("includes finite positional value completions", () => {
     const output = formatBashCompletion(buildCompletionSpec(buildMainCommand()));
     expect(output).toContain('compgen -W "bash fish zsh"');
+  });
+
+  test("routes around every global flag in every command position", () => {
+    const globalFlagForms = [
+      ["--debug"],
+      ["-d"],
+      ["--json"],
+      ["--agent"],
+      ["--no-color"],
+      ["--profile", "production"],
+      ["--profile=production"],
+      ["--connect-timeout", "5"],
+      ["--connect-timeout=5"],
+      ["--read-timeout", "60"],
+      ["--read-timeout=60"],
+    ];
+
+    for (const globalFlag of globalFlagForms) {
+      const invocations = [
+        ["altertable", ...globalFlag, "completion", "generate", ""],
+        ["altertable", "completion", ...globalFlag, "generate", ""],
+        ["altertable", "completion", "generate", ...globalFlag, ""],
+      ];
+      for (const invocation of invocations) {
+        expect(runBashCompletion(invocation)).toEqual(["bash", "fish", "zsh"]);
+      }
+    }
   });
 });
 

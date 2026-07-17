@@ -7,6 +7,10 @@ import { collectCompletionContexts } from "@/commands/completion/lib/spec.ts";
 
 const FISH_BINARY_NAME = "altertable";
 
+function completionWordIndex(segmentCount: number): number {
+  return segmentCount + 1;
+}
+
 export function groupCompletionContextsByTopLevel(
   contexts: readonly CompletionContext[],
 ): Map<string, CompletionContext[]> {
@@ -24,10 +28,6 @@ export function groupCompletionContextsByTopLevel(
   }
 
   return contextsByTopLevel;
-}
-
-function completionWordIndex(segmentCount: number): number {
-  return segmentCount + 1;
 }
 
 export function mergeCompletionFlags(
@@ -73,7 +73,7 @@ function formatBashFlagValueSpecList(flags: readonly CompletionFlag[]): string {
 
 function formatBashPathMatch(segments: readonly string[]): string {
   return segments
-    .map((segment, index) => `"$\{COMP_WORDS[${index + 1}]}" == "${segment}"`)
+    .map((segment, index) => `"\${ALTERTABLE_COMMAND_WORDS[${index}]}" == "${segment}"`)
     .join(" && ");
 }
 
@@ -130,11 +130,47 @@ function joinBashWordList(parts: readonly string[]): string {
   return parts.filter((part) => part.length > 0).join(" ");
 }
 
+function bashFlagForms(flag: CompletionFlag): string[] {
+  return flag.alias ? [`-${flag.alias}`, `--${flag.name}`] : [`--${flag.name}`];
+}
+
+function formatBashGlobalWordCollector(rootFlags: readonly CompletionFlag[]): string {
+  const valueFlags = rootFlags.filter((flag) => flag.takesValue).flatMap(bashFlagForms);
+  const booleanFlags = rootFlags.filter((flag) => !flag.takesValue).flatMap(bashFlagForms);
+  const valueFlagPattern = valueFlags.join("|");
+  const equalsValueFlagPattern = valueFlags.map((flag) => `${flag}=*`).join("|");
+  const booleanFlagPattern = booleanFlags.join("|");
+
+  return `_altertable_collect_command_words() {
+  ALTERTABLE_COMMAND_WORDS=()
+  ALTERTABLE_EXPECTS_GLOBAL_VALUE=0
+  local index word
+
+  for ((index = 1; index < COMP_CWORD; index++)); do
+    word="\${COMP_WORDS[index]}"
+    case "\${word}" in
+      ${valueFlagPattern})
+        if ((index + 1 >= COMP_CWORD)); then
+          ALTERTABLE_EXPECTS_GLOBAL_VALUE=1
+          break
+        fi
+        ((index += 1))
+        ;;
+      ${equalsValueFlagPattern}|${booleanFlagPattern})
+        ;;
+      *)
+        ALTERTABLE_COMMAND_WORDS+=("\${word}")
+        ;;
+    esac
+  done
+}`;
+}
+
 function formatBashContextBlock(
   context: CompletionContext,
   rootFlags: readonly CompletionFlag[],
 ): string | undefined {
-  const wordIndex = completionWordIndex(context.segments.length);
+  const operandCount = context.segments.length;
   const pathMatch = formatBashPathMatch(context.segments);
   const nodeFlagWordList = formatBashFlagWordList(context.flags);
   const rootFlagWordList = formatBashFlagWordList(rootFlags);
@@ -151,7 +187,7 @@ function formatBashContextBlock(
   const positionalBlocks = context.positionals
     .map((positional, index) => {
       if (!positional.values || positional.values.length === 0) return undefined;
-      return `      if [[ \${COMP_CWORD} -eq ${wordIndex + index} && ${pathMatch} ]]; then
+      return `      if [[ \${#ALTERTABLE_COMMAND_WORDS[@]} -eq ${operandCount + index} && ${pathMatch} ]]; then
         COMPREPLY=( $(compgen -W "${positional.values.join(" ")}" -- "\${currentWord}") )
         return
       fi`;
@@ -165,7 +201,7 @@ function formatBashContextBlock(
       nodeFlagWordList,
       rootFlagWordList,
     ]);
-    return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${COMP_CWORD} -eq ${wordIndex} && ${pathMatch} ]]; then
+    return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${#ALTERTABLE_COMMAND_WORDS[@]} -eq ${operandCount} && ${pathMatch} ]]; then
         COMPREPLY=( $(compgen -W "${wordList}" -- "\${currentWord}") )
         return
       fi`;
@@ -176,7 +212,7 @@ function formatBashContextBlock(
   }
 
   const wordList = joinBashWordList([nodeFlagWordList, rootFlagWordList]);
-  return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${COMP_CWORD} -ge ${wordIndex} && ${pathMatch} ]]; then
+  return `${flagValueBlock}${positionalBlocks}${positionalBlocks ? "\n" : ""}      if [[ \${#ALTERTABLE_COMMAND_WORDS[@]} -ge ${operandCount} && ${pathMatch} ]]; then
         COMPREPLY=( $(compgen -W "${wordList}" -- "\${currentWord}") )
         return
       fi`;
@@ -217,6 +253,7 @@ export function formatBashCompletion(spec: CompletionNode): string {
 `
       : "";
   const nestedCases = formatBashNestedCases(collectCompletionContexts(spec), spec.flags);
+  const commandWordCollector = formatBashGlobalWordCollector(spec.flags);
 
   return `# altertable bash completion
 # Preferred install: altertable completion install bash
@@ -253,14 +290,21 @@ _altertable_complete_flag_value() {
   return 1
 }
 
+${commandWordCollector}
+
 _altertable_completions() {
   local currentWord="\${COMP_WORDS[COMP_CWORD]}"
-${rootFlagValueBlock}  if [[ \${COMP_CWORD} -eq 1 ]]; then
+  _altertable_collect_command_words
+  if [[ \${ALTERTABLE_EXPECTS_GLOBAL_VALUE} -eq 1 ]]; then
+    return
+  fi
+
+${rootFlagValueBlock}  if [[ \${#ALTERTABLE_COMMAND_WORDS[@]} -eq 0 ]]; then
     COMPREPLY=( $(compgen -W "${topLevelCommands} ${rootFlagWordList}" -- "\${currentWord}") )
     return
   fi
 
-  case "\${COMP_WORDS[1]}" in
+  case "\${ALTERTABLE_COMMAND_WORDS[0]}" in
 ${nestedCases}
   esac
 }

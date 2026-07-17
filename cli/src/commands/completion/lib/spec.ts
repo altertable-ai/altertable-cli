@@ -20,6 +20,7 @@ export type CompletionFlag = {
   alias?: string;
   description?: string;
   values?: string[];
+  takesValue?: boolean;
 };
 
 export type CompletionPositional = {
@@ -67,6 +68,7 @@ function extractFlags(command: Command): CompletionFlag[] {
       alias: Array.isArray(def.alias) ? def.alias[0] : def.alias,
       description: def.description,
       values: def.type === "enum" ? def.options : undefined,
+      takesValue: def.type === "string" || def.type === "enum",
     });
   }
 
