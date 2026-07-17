@@ -3,6 +3,11 @@ import { defineCommand } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { buildCompletionSpec, collectCompletionContexts } from "@/commands/completion/lib/spec.ts";
 import {
+  buildCompletionModel,
+  findCompletionContext,
+  normalizeCompletionArgv,
+} from "@/commands/completion/lib/model.ts";
+import {
   formatBashCompletion,
   formatBashFlagWordList,
   formatFishCompletion,
@@ -26,6 +31,23 @@ function bashQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
+function fishCommand(words: readonly string[]): string {
+  return words
+    .map(
+      (word) => `"${word.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("$", "\\$")}"`,
+    )
+    .join(" ");
+}
+
+function parseCompletionOutput(output: Uint8Array): string[] {
+  return new TextDecoder()
+    .decode(output)
+    .trim()
+    .split("\n")
+    .map((line) => line.split("\t")[0] ?? "")
+    .filter(Boolean);
+}
+
 async function runBashCompletion(words: string[]): Promise<string[]> {
   const script = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
   const source = `${script}
@@ -42,8 +64,72 @@ printf '%s\\n' "\${COMPREPLY[@]}"
   if (result.exitCode !== 0) {
     throw new Error(new TextDecoder().decode(result.stderr));
   }
-  return new TextDecoder().decode(result.stdout).trim().split("\n").filter(Boolean);
+  return parseCompletionOutput(result.stdout);
 }
+
+async function runZshCompletion(words: string[]): Promise<string[]> {
+  const script = formatZshCompletion(await buildCompletionSpec(buildMainCommand()));
+  const source = `${script}
+compadd() {
+  local afterSeparator=0
+  local argument
+  for argument in "$@"; do
+    if (( afterSeparator )); then
+      print -r -- "\${argument}"
+    elif [[ "\${argument}" == "--" ]]; then
+      afterSeparator=1
+    fi
+  done
+}
+words=(${words.map(bashQuote).join(" ")})
+CURRENT=${words.length}
+PREFIX="\${words[CURRENT]}"
+_altertable
+`;
+  const result = Bun.spawnSync(["zsh", "-f", "-c", source], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(new TextDecoder().decode(result.stderr));
+  }
+  return parseCompletionOutput(result.stdout);
+}
+
+async function runFishCompletion(words: string[]): Promise<string[]> {
+  const script = formatFishCompletion(await buildCompletionSpec(buildMainCommand()));
+  const source = `${script}
+complete -C "$argv[1]"
+`;
+  const result = Bun.spawnSync(["fish", "-c", source, fishCommand(words)], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(new TextDecoder().decode(result.stderr));
+  }
+  return parseCompletionOutput(result.stdout);
+}
+
+const completionRunners = {
+  bash: runBashCompletion,
+  fish: runFishCompletion,
+  zsh: runZshCompletion,
+};
+
+const globalFlagForms = [
+  ["--debug"],
+  ["-d"],
+  ["--json"],
+  ["--agent"],
+  ["--no-color"],
+  ["--profile", "production"],
+  ["--profile=production"],
+  ["--connect-timeout", "5"],
+  ["--connect-timeout=5"],
+  ["--read-timeout", "60"],
+  ["--read-timeout=60"],
+];
 
 describe("buildCompletionSpec", () => {
   test("walks a minimal fake tree", async () => {
@@ -219,9 +305,62 @@ describe("completion format helpers", () => {
     );
   });
 
-  test("formatFishPathCondition scopes subcommands and flags", () => {
-    expect(formatFishPathCondition(["api"], ["spec", "routes"])).toBe(
-      "__fish_seen_subcommand_from api; and not __fish_seen_subcommand_from spec routes",
+  test("formatFishPathCondition uses normalized path and positional state", () => {
+    expect(formatFishPathCondition(["api"], 1)).toBe("__altertable_using_context 'api' '1'");
+  });
+});
+
+describe("normalized completion argv", () => {
+  test("resolves command paths independently from flags and direct operands", async () => {
+    const model = buildCompletionModel(await buildCompletionSpec(buildMainCommand()));
+    const matrix = [
+      {
+        argv: ["--profile", "production", "query", "SELECT 1"],
+        path: ["query"],
+        positionals: ["SELECT 1"],
+      },
+      {
+        argv: ["query", "--profile=production", "show", "qry_123"],
+        path: ["query", "show"],
+        positionals: ["qry_123"],
+      },
+      {
+        argv: ["append", '{"event":"checkout"}', "--sync"],
+        path: ["append"],
+        positionals: ['{"event":"checkout"}'],
+      },
+      {
+        argv: ["api", "/whoami", "-X", "GET"],
+        path: ["api"],
+        positionals: ["/whoami"],
+      },
+      {
+        argv: ["completion", "install", "--no-rc"],
+        path: ["completion", "install"],
+        positionals: [],
+      },
+      {
+        argv: ["query", "--", "show"],
+        path: ["query"],
+        positionals: ["show"],
+      },
+    ];
+
+    for (const entry of matrix) {
+      const normalized = normalizeCompletionArgv(model, entry.argv);
+      expect(normalized.commandPath).toEqual(entry.path);
+      expect(normalized.positionals).toEqual(entry.positionals);
+      expect(findCompletionContext(model, normalized.commandPath)).toBeDefined();
+    }
+  });
+
+  test("tracks a pending value for global and command flags", async () => {
+    const model = buildCompletionModel(await buildCompletionSpec(buildMainCommand()));
+
+    expect(normalizeCompletionArgv(model, ["query", "--profile"]).expectsFlagValue).toBe(true);
+    expect(normalizeCompletionArgv(model, ["query", "--layout"]).expectsFlagValue).toBe(true);
+    expect(normalizeCompletionArgv(model, ["query", "--layout=table"]).expectsFlagValue).toBe(
+      false,
     );
   });
 });
@@ -230,7 +369,7 @@ describe("formatBashCompletion", () => {
   test("includes nested case blocks", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatBashCompletion(spec);
-    expect(output).toContain("api)");
+    expect(output).toContain("'api')");
     expect(output).toContain("--method");
     expect(output).toContain("catalogs");
   });
@@ -254,33 +393,6 @@ describe("formatBashCompletion", () => {
   test("includes finite positional value completions", async () => {
     const output = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
     expect(output).toContain('compgen -W "bash fish zsh"');
-  });
-
-  test("routes around every global flag in every command position", async () => {
-    const globalFlagForms = [
-      ["--debug"],
-      ["-d"],
-      ["--json"],
-      ["--agent"],
-      ["--no-color"],
-      ["--profile", "production"],
-      ["--profile=production"],
-      ["--connect-timeout", "5"],
-      ["--connect-timeout=5"],
-      ["--read-timeout", "60"],
-      ["--read-timeout=60"],
-    ];
-
-    for (const globalFlag of globalFlagForms) {
-      const invocations = [
-        ["altertable", ...globalFlag, "completion", "generate", ""],
-        ["altertable", "completion", ...globalFlag, "generate", ""],
-        ["altertable", "completion", "generate", ...globalFlag, ""],
-      ];
-      for (const invocation of invocations) {
-        expect(await runBashCompletion(invocation)).toEqual(["bash", "fish", "zsh"]);
-      }
-    }
   });
 
   test("completes finite positionals after command flags", async () => {
@@ -334,12 +446,78 @@ describe("formatZshCompletion", () => {
   test("includes flag value completions", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatZshCompletion(spec);
-    expect(output).toContain(":layout:(auto table line)");
-    expect(output).toContain(":pager:(auto always never)");
+    expect(output).toContain('"--layout=auto,table,line"');
+    expect(output).toContain('"--pager=auto,always,never"');
   });
 
   test("includes finite positional value completions", async () => {
     const output = formatZshCompletion(await buildCompletionSpec(buildMainCommand()));
-    expect(output).toContain("_values 'shell' bash fish zsh");
+    expect(output).toContain("_altertable_add_words bash fish zsh");
   });
+});
+
+describe("executable shell completion contract", () => {
+  for (const [shell, runCompletion] of Object.entries(completionRunners)) {
+    test(`${shell} routes direct operands to trailing flags`, async () => {
+      expect(await runCompletion(["altertable", "query", "SELECT 1", "--"])).toContain("--layout");
+      expect(await runCompletion(["altertable", "append", '{"event":"checkout"}', "--"])).toContain(
+        "--to",
+      );
+      expect(await runCompletion(["altertable", "api", "/whoami", "--"])).toContain("--method");
+    });
+
+    test(`${shell} resolves nested commands without raw word indexes`, async () => {
+      const candidates = await runCompletion([
+        "altertable",
+        "--json",
+        "query",
+        "show",
+        "qry_1",
+        "--",
+      ]);
+      expect(candidates).toContain("--profile");
+      expect(candidates).not.toContain("--layout");
+    });
+
+    test(`${shell} completes and exhausts finite positional values`, async () => {
+      expect(await runCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual(
+        expect.arrayContaining(["bash", "fish", "zsh"]),
+      );
+
+      const exhausted = await runCompletion(["altertable", "completion", "install", "zsh", ""]);
+      for (const shellValue of ["bash", "fish", "zsh"]) {
+        expect(exhausted).not.toContain(shellValue);
+      }
+      expect(await runCompletion(["altertable", "completion", "install", "zsh", "--"])).toContain(
+        "--no-rc",
+      );
+    });
+
+    test(`${shell} handles global flags in every position and equals values`, async () => {
+      for (const globalFlag of globalFlagForms) {
+        const invocations = [
+          ["altertable", ...globalFlag, "completion", "generate", ""],
+          ["altertable", "completion", ...globalFlag, "generate", ""],
+          ["altertable", "completion", "generate", ...globalFlag, ""],
+        ];
+        for (const invocation of invocations) {
+          expect(await runCompletion(invocation)).toEqual(
+            expect.arrayContaining(["bash", "fish", "zsh"]),
+          );
+        }
+      }
+    });
+
+    test(`${shell} completes finite flag values`, async () => {
+      expect(await runCompletion(["altertable", "query", "--layout", ""])).toEqual(
+        expect.arrayContaining(["auto", "table", "line"]),
+      );
+    });
+
+    test(`${shell} honors the option separator`, async () => {
+      expect(await runCompletion(["altertable", "completion", "generate", "--", ""])).toEqual(
+        expect.arrayContaining(["bash", "fish", "zsh"]),
+      );
+    });
+  }
 });

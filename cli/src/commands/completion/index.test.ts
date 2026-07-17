@@ -171,14 +171,12 @@ describe("completion command", () => {
     const output = await runCompletion(() => minimalRootCommand, "fish");
     expect(output).toContain("altertable fish completion");
     expect(output).toContain("complete -c altertable");
-    expect(output).toContain("__fish_seen_subcommand_from api");
+    expect(output).toContain("__altertable_using_context 'api' '0'");
   });
 
   test("fish output scopes install flags to completion install", async () => {
     const output = await runCompletion(buildMainCommand, "fish");
-    expect(output).toContain(
-      "__fish_seen_subcommand_from completion; and __fish_seen_subcommand_from install",
-    );
+    expect(output).toContain("__altertable_using_context 'completion/install' 'any'");
     expect(output).toContain("-l no-rc");
   });
 
