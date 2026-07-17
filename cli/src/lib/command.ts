@@ -64,8 +64,8 @@ export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
 
 export type Command = CommandDefinition<any>;
 
-export function defineArguments<const T extends CommandArguments>(arguments_: T): T {
-  return arguments_;
+export function defineArguments<const T extends CommandArguments>(commandArguments: T): T {
+  return commandArguments;
 }
 
 export function defineCommand<const T extends CommandArguments = CommandArguments>(

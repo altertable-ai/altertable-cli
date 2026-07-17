@@ -172,7 +172,7 @@ describe("buildCompletionSpec", () => {
     expect(spec.subcommands[0]?.flags.map((flag) => flag.name)).toEqual(["force"]);
   });
 
-  test("skips nested commands without meta.name", async () => {
+  test("skips nested commands without metadata.name", async () => {
     const root = defineCommand({
       subcommands: {
         visible: { metadata: { name: "visible" } },

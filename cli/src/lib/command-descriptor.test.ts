@@ -4,7 +4,6 @@ import { buildCompletionSpecFromDescriptor } from "@/commands/completion/lib/spe
 import { defineCommand } from "@/lib/command.ts";
 import {
   resolveCommandDescriptor,
-  resolveCommandMetadata,
   validateCommandDescriptor,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
@@ -82,15 +81,15 @@ async function expectStructuredHelpMatchesDescriptor(
   const help = buildStructuredHelpFromDescriptor(descriptor, parent, root);
   const humanHelp = renderAltertableUsageFromDescriptor(descriptor, parent);
   const compactHumanHelp = humanHelp.replace(/\s+/g, "");
-  const arguments_ = descriptor.arguments.map(structuredArgumentContract);
+  const commandArguments = descriptor.arguments.map(structuredArgumentContract);
   const visibleSubcommands = visibleCommandDescriptors(descriptor.subcommands);
 
   expect(help).toMatchObject({
     description: descriptor.metadata.description,
     aliases: descriptor.metadata.aliases,
     examples: descriptor.metadata.examples,
-    arguments: arguments_.filter((argument) => argument.type === "positional"),
-    options: parent ? arguments_.filter((argument) => argument.type !== "positional") : [],
+    arguments: commandArguments.filter((argument) => argument.type === "positional"),
+    options: parent ? commandArguments.filter((argument) => argument.type !== "positional") : [],
     global_options: (parent
       ? root.arguments.filter((argument) => argument.scope === "global")
       : root.arguments
@@ -147,9 +146,9 @@ describe("command descriptor", () => {
       examples: ["altertable inspect resource"],
       hidden: true,
       commandGroup: "platform",
-      invocations: [],
+      invocations: ["direct"],
     } satisfies ResolvedCommandMetadata;
-    expect(await resolveCommandMetadata(command)).toEqual(expected);
+    expect((await resolveCommandDescriptor(command)).metadata).toEqual(expected);
   });
 
   test("supports resolvable metadata for asynchronous consumers", async () => {
@@ -157,7 +156,7 @@ describe("command descriptor", () => {
       metadata: async () => ({ name: "generated", description: "Generated metadata." }),
     });
 
-    expect(await resolveCommandMetadata(command)).toMatchObject({
+    expect((await resolveCommandDescriptor(command)).metadata).toMatchObject({
       name: "generated",
       description: "Generated metadata.",
     });

@@ -55,8 +55,8 @@ export type CompletionContext = {
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
 const MAX_SUBCOMMAND_DEPTH = 3;
 
-function extractFlags(arguments_: readonly CommandArgumentDescriptor[]): CompletionFlag[] {
-  return arguments_
+function extractFlags(commandArguments: readonly CommandArgumentDescriptor[]): CompletionFlag[] {
+  return commandArguments
     .filter((argument) => ["boolean", "string", "enum"].includes(argument.type))
     .map((argument) => ({
       name: argument.name,
@@ -70,9 +70,9 @@ function extractFlags(arguments_: readonly CommandArgumentDescriptor[]): Complet
 }
 
 function extractPositionals(
-  arguments_: readonly CommandArgumentDescriptor[],
+  commandArguments: readonly CommandArgumentDescriptor[],
 ): CompletionPositional[] {
-  return arguments_
+  return commandArguments
     .filter((argument) => argument.type === "positional")
     .map((argument) => ({
       name: argument.name,
@@ -83,54 +83,41 @@ function extractPositionals(
     }));
 }
 
-function resolveSubcommandNames(descriptor: CommandDescriptor): string[] {
+function publicCommandNames(descriptor: CommandDescriptor): string[] {
   const metadata = descriptor.metadata;
   if (metadata.hidden || !metadata.name) return [];
   return [...new Set([metadata.name, ...metadata.aliases])];
 }
 
-function walkSubcommands(
-  descriptors: readonly CommandDescriptor[],
+function buildCompletionNode(
+  descriptor: CommandDescriptor,
+  name: string,
   depth: number,
-): CompletionNode[] {
-  const nodes = visibleCommandDescriptors(descriptors).map((descriptor) =>
-    resolveSubcommandNames(descriptor).map((name) => walkCommand(name, descriptor, depth)),
-  );
-  return nodes.flat().sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function walkCommand(name: string, descriptor: CommandDescriptor, depth: number): CompletionNode {
+): CompletionNode {
   const metadata = descriptor.metadata;
-  const node: CompletionNode = {
+  const subcommands =
+    depth >= MAX_SUBCOMMAND_DEPTH
+      ? []
+      : visibleCommandDescriptors(descriptor.subcommands)
+          .flatMap((subcommand) =>
+            publicCommandNames(subcommand).map((subcommandName) =>
+              buildCompletionNode(subcommand, subcommandName, depth + 1),
+            ),
+          )
+          .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
     name,
     description: metadata.description || undefined,
-    subcommands: [],
+    subcommands,
     flags: extractFlags(descriptor.arguments),
     positionals: extractPositionals(descriptor.arguments),
     soleDirectOperands: [...descriptor.soleDirectOperands],
   };
-
-  if (depth >= MAX_SUBCOMMAND_DEPTH) {
-    return node;
-  }
-
-  node.subcommands = walkSubcommands(descriptor.subcommands, depth + 1);
-  return node;
 }
 
 export function buildCompletionSpecFromDescriptor(descriptor: CommandDescriptor): CompletionNode {
-  const metadata = descriptor.metadata;
-  const spec: CompletionNode = {
-    name: metadata.name ?? "altertable",
-    description: metadata.description || undefined,
-    subcommands: [],
-    flags: extractFlags(descriptor.arguments),
-    positionals: extractPositionals(descriptor.arguments),
-    soleDirectOperands: [...descriptor.soleDirectOperands],
-  };
-
-  spec.subcommands = walkSubcommands(descriptor.subcommands, 1);
-  return spec;
+  return buildCompletionNode(descriptor, descriptor.metadata.name ?? "altertable", 0);
 }
 
 export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {

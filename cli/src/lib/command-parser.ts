@@ -60,7 +60,7 @@ function stringList(value: string | readonly string[] | undefined): string[] {
 }
 
 async function resolveCommand(command: Command): Promise<ResolvedCommand> {
-  const [arguments_, subcommands] = await Promise.all([
+  const [commandArguments, subcommands] = await Promise.all([
     resolveCommandValue(command.args ?? {}),
     resolveCommandValue(command.subcommands ?? {}),
   ]);
@@ -79,12 +79,12 @@ async function resolveCommand(command: Command): Promise<ResolvedCommand> {
     subcommandsByName.set(name, subcommand);
     for (const alias of aliases) subcommandsByName.set(alias, subcommand);
   }
-  return { definition: command, arguments: arguments_, subcommandsByName };
+  return { definition: command, arguments: commandArguments, subcommandsByName };
 }
 
-function optionBindings(arguments_: CommandArguments): Map<string, OptionBinding> {
+function optionBindings(commandArguments: CommandArguments): Map<string, OptionBinding> {
   const bindings = new Map<string, OptionBinding>();
-  for (const [name, argument] of Object.entries(arguments_)) {
+  for (const [name, argument] of Object.entries(commandArguments)) {
     if (argument.type === "positional") continue;
     const binding = { name, argument };
     bindings.set(`--${name}`, binding);
@@ -296,8 +296,11 @@ function isParserRequired(argument: CommandArgument): boolean {
   );
 }
 
-function applyDefaultsAndValidate(parsed: ParsedArguments, arguments_: CommandArguments): void {
-  for (const [name, argument] of Object.entries(arguments_)) {
+function applyDefaultsAndValidate(
+  parsed: ParsedArguments,
+  commandArguments: CommandArguments,
+): void {
+  for (const [name, argument] of Object.entries(commandArguments)) {
     if (parsed[name] === undefined && argument.default !== undefined) {
       parsed[name] = argument.default as ParsedArgumentValue;
     }

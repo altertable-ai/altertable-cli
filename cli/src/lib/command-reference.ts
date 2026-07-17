@@ -54,16 +54,16 @@ function argumentDescription(argument: CommandArgumentDescriptor): string {
 
 function renderArgumentTable(
   title: string,
-  arguments_: readonly CommandArgumentDescriptor[],
+  commandArguments: readonly CommandArgumentDescriptor[],
   label: (argument: CommandArgumentDescriptor) => string,
 ): string[] {
-  if (arguments_.length === 0) return [];
+  if (commandArguments.length === 0) return [];
   return [
     `**${title}**`,
     "",
     `| ${title === "Arguments" ? "Argument" : "Option"} | Description |`,
     "| --- | --- |",
-    ...arguments_.map(
+    ...commandArguments.map(
       (argument) =>
         `| \`${escapeTableCell(label(argument))}\` | ${escapeTableCell(argumentDescription(argument))} |`,
     ),

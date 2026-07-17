@@ -6,8 +6,8 @@ import {
 } from "@/commands/completion/lib/spec.ts";
 
 export type CompletionModel = {
-  root: CompletionNode;
   contexts: CompletionContext[];
+  contextsByPath: ReadonlyMap<string, CompletionContext>;
   subcommandEdges: ReadonlySet<string>;
   soleDirectEdges: ReadonlySet<string>;
   valueFlags: ReadonlySet<string>;
@@ -24,17 +24,18 @@ function flagForms(flag: CompletionFlag): string[] {
   return flag.alias ? [`-${flag.alias}`, `--${flag.name}`] : [`--${flag.name}`];
 }
 
-function allFlags(root: CompletionNode): CompletionFlag[] {
-  return [...root.flags, ...collectCompletionContexts(root).flatMap((context) => context.flags)];
+function allFlags(root: CompletionNode, contexts: readonly CompletionContext[]): CompletionFlag[] {
+  return [...root.flags, ...contexts.flatMap((context) => context.flags)];
 }
 
-function edgeKey(parent: readonly string[], child: string): string {
+function commandEdgeKey(parent: readonly string[], child: string): string {
   return `${parent.join("/")}|${child}`;
 }
 
 export function buildCompletionModel(root: CompletionNode): CompletionModel {
   const contexts = collectCompletionContexts(root);
-  const flags = allFlags(root);
+  const contextsByPath = new Map(contexts.map((context) => [context.segments.join("/"), context]));
+  const flags = allFlags(root, contexts);
   const valueFlags = new Set(flags.filter((flag) => flag.takesValue).flatMap(flagForms));
   const booleanFlags = new Set(
     flags
@@ -47,16 +48,16 @@ export function buildCompletionModel(root: CompletionNode): CompletionModel {
 
   for (const context of contexts) {
     for (const subcommand of context.subcommands) {
-      subcommandEdges.add(edgeKey(context.segments, subcommand));
+      subcommandEdges.add(commandEdgeKey(context.segments, subcommand));
     }
     for (const operand of context.soleDirectOperands) {
-      soleDirectEdges.add(edgeKey(context.segments, operand));
+      soleDirectEdges.add(commandEdgeKey(context.segments, operand));
     }
   }
 
   const model = {
-    root,
     contexts,
+    contextsByPath,
     subcommandEdges,
     soleDirectEdges,
     valueFlags,
@@ -75,18 +76,18 @@ export function buildCompletionModel(root: CompletionNode): CompletionModel {
 
 export function normalizeCompletionArgv(
   model: CompletionModel,
-  argvBeforeCursor: readonly string[],
+  tokens: readonly string[],
 ): NormalizedCompletionArgv {
   const commandPath: string[] = [];
   const positionals: string[] = [];
   let expectsFlagValue = false;
   let afterSeparator = false;
-  let ambiguous:
-    | { parentPath: string[]; selectedPath: string[]; operand: string; helpRequested: boolean }
+  let ambiguousCommand:
+    | { parentPath: string[]; operand: string; helpRequested: boolean }
     | undefined;
 
-  for (let index = 0; index < argvBeforeCursor.length; index += 1) {
-    const word = argvBeforeCursor[index];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const word = tokens[index];
     if (word === undefined) continue;
 
     if (!afterSeparator && word === "--") {
@@ -94,7 +95,7 @@ export function normalizeCompletionArgv(
       continue;
     }
     if (!afterSeparator && model.valueFlags.has(word)) {
-      if (index + 1 >= argvBeforeCursor.length) {
+      if (index + 1 >= tokens.length) {
         expectsFlagValue = true;
         break;
       }
@@ -103,11 +104,10 @@ export function normalizeCompletionArgv(
     }
     if (
       !afterSeparator &&
-      ([...model.valueFlags].some((flag) => word.startsWith(`${flag}=`)) ||
-        model.booleanFlags.has(word))
+      (isInlineValueOption(model.valueFlags, word) || model.booleanFlags.has(word))
     ) {
-      if (ambiguous && (word === "--help" || word === "-h")) {
-        ambiguous.helpRequested = true;
+      if (ambiguousCommand && (word === "--help" || word === "-h")) {
+        ambiguousCommand.helpRequested = true;
       }
       continue;
     }
@@ -119,14 +119,13 @@ export function normalizeCompletionArgv(
     if (
       !afterSeparator &&
       positionals.length === 0 &&
-      model.subcommandEdges.has(edgeKey(commandPath, word))
+      model.subcommandEdges.has(commandEdgeKey(commandPath, word))
     ) {
       const parentPath = [...commandPath];
       commandPath.push(word);
-      if (model.soleDirectEdges.has(edgeKey(parentPath, word))) {
-        ambiguous = {
+      if (model.soleDirectEdges.has(commandEdgeKey(parentPath, word))) {
+        ambiguousCommand = {
           parentPath,
-          selectedPath: [...commandPath],
           operand: word,
           helpRequested: false,
         };
@@ -137,13 +136,14 @@ export function normalizeCompletionArgv(
   }
 
   if (
-    ambiguous &&
-    !ambiguous.helpRequested &&
+    ambiguousCommand &&
+    !ambiguousCommand.helpRequested &&
     positionals.length === 0 &&
-    commandPath.join("/") === ambiguous.selectedPath.join("/")
+    commandPath.length === ambiguousCommand.parentPath.length + 1 &&
+    commandPath.at(-1) === ambiguousCommand.operand
   ) {
-    commandPath.splice(0, commandPath.length, ...ambiguous.parentPath);
-    positionals.push(ambiguous.operand);
+    commandPath.splice(0, commandPath.length, ...ambiguousCommand.parentPath);
+    positionals.push(ambiguousCommand.operand);
   }
 
   return { commandPath, positionals, expectsFlagValue };
@@ -153,6 +153,12 @@ export function findCompletionContext(
   model: CompletionModel,
   commandPath: readonly string[],
 ): CompletionContext | undefined {
-  const path = commandPath.join("/");
-  return model.contexts.find((context) => context.segments.join("/") === path);
+  return model.contextsByPath.get(commandPath.join("/"));
+}
+
+function isInlineValueOption(valueOptions: ReadonlySet<string>, token: string): boolean {
+  for (const option of valueOptions) {
+    if (token.startsWith(`${option}=`)) return true;
+  }
+  return false;
 }

@@ -50,64 +50,60 @@ export type CommandDescriptor = {
   subcommands: CommandDescriptor[];
 };
 
-function toStrings(value: string | readonly string[] | undefined): string[] {
+function asStringArray(value: string | readonly string[] | undefined): string[] {
   if (Array.isArray(value)) return value.map(String);
   return value === undefined ? [] : [String(value)];
 }
 
-export function normalizeCommandMetadata(
-  metadata: CommandMetadata | undefined,
-): ResolvedCommandMetadata {
+function normalizeCommandMetadata(metadata: CommandMetadata | undefined): ResolvedCommandMetadata {
   return {
     ...(metadata?.name ? { name: String(metadata.name) } : {}),
     description: metadata?.description ?? "",
-    aliases: toStrings(metadata?.alias),
-    examples: toStrings(metadata?.examples),
+    aliases: asStringArray(metadata?.alias),
+    examples: asStringArray(metadata?.examples),
     hidden: metadata?.hidden === true,
     ...(metadata?.commandGroup ? { commandGroup: metadata.commandGroup } : {}),
     invocations: metadata?.invocations ? [...metadata.invocations] : [],
   };
 }
 
-export function normalizeCommandArgument(
+function normalizeCommandArgument(
   name: string,
-  definition: CommandArgument,
+  argument: CommandArgument,
 ): CommandArgumentDescriptor {
-  const aliases = "alias" in definition ? toStrings(definition.alias) : [];
-  const values = commandArgumentValues(definition).map(String);
+  const aliases = asStringArray(argument.alias);
+  const values = commandArgumentValues(argument).map(String);
   const parserRequired =
-    definition.default === undefined &&
-    (definition.type === "positional"
-      ? definition.required !== false
-      : definition.required === true);
-  const required = definition.directRequired ?? parserRequired;
+    argument.default === undefined &&
+    (argument.type === "positional" ? argument.required !== false : argument.required === true);
+  const required = argument.directRequired ?? parserRequired;
 
   return {
     name,
     aliases,
-    type: definition.type ?? "string",
-    description: definition.description ?? "",
+    type: argument.type ?? "string",
+    description: argument.description ?? "",
     required,
     parserRequired,
     requiredExplicitly:
-      definition.required !== undefined ||
-      definition.directRequired !== undefined ||
-      definition.default !== undefined,
-    repeatable: definition.repeatable === true,
-    scope: definition.flagScope ?? "command",
+      argument.required !== undefined ||
+      argument.directRequired !== undefined ||
+      argument.default !== undefined,
+    repeatable: argument.repeatable === true,
+    scope: argument.flagScope ?? "command",
     values,
-    ...(definition.type === "positional"
+    ...(argument.type === "positional"
       ? {
           positionalCompletion:
-            values.length > 0 ? ("finite" as const) : (definition.completion ?? "freeform"),
+            values.length > 0 ? ("finite" as const) : (argument.completion ?? "freeform"),
         }
       : {}),
-    ...(definition.valueHint ? { valueHint: definition.valueHint } : {}),
-    ...(definition.default !== undefined ? { default: definition.default } : {}),
+    ...(argument.valueHint ? { valueHint: argument.valueHint } : {}),
+    ...(argument.default !== undefined ? { default: argument.default } : {}),
   };
 }
 
-export async function resolveCommandMetadata(command: Command): Promise<ResolvedCommandMetadata> {
+async function resolveCommandMetadata(command: Command): Promise<ResolvedCommandMetadata> {
   const metadata = await resolveCommandValue<CommandMetadata | undefined>(
     command.metadata ?? undefined,
   );
@@ -115,9 +111,9 @@ export async function resolveCommandMetadata(command: Command): Promise<Resolved
 }
 
 async function resolveCommandArguments(command: Command): Promise<CommandArgumentDescriptor[]> {
-  const args = (await resolveCommandValue(command.args ?? {})) as CommandArguments;
-  return Object.entries(args).map(([name, definition]) =>
-    normalizeCommandArgument(name, definition),
+  const commandArguments = (await resolveCommandValue(command.args ?? {})) as CommandArguments;
+  return Object.entries(commandArguments).map(([name, argument]) =>
+    normalizeCommandArgument(name, argument),
   );
 }
 
@@ -134,7 +130,7 @@ export async function resolveCommandDescriptor(
   command: Command,
   key?: string,
 ): Promise<CommandDescriptor> {
-  const [metadata, arguments_, subcommands] = await Promise.all([
+  const [metadata, commandArguments, subcommands] = await Promise.all([
     resolveCommandMetadata(command),
     resolveCommandArguments(command),
     resolveSubcommands(command),
@@ -145,7 +141,7 @@ export async function resolveCommandDescriptor(
       ? metadata.invocations
       : [
           ...(subcommands.length === 0 ||
-          arguments_.some((argument) => argument.type === "positional")
+          commandArguments.some((argument) => argument.type === "positional")
             ? (["direct"] as const)
             : []),
           ...(subcommands.length > 0 ? (["subcommand"] as const) : []),
@@ -154,7 +150,7 @@ export async function resolveCommandDescriptor(
   return {
     ...(key ? { key } : {}),
     metadata: { ...metadata, invocations },
-    arguments: arguments_,
+    arguments: commandArguments,
     soleDirectOperands: [...(command.soleDirectOperands ?? [])],
     subcommands,
   };
@@ -194,14 +190,15 @@ export function validateCommandDescriptor(root: CommandDescriptor): void {
         ...subcommand.metadata.aliases,
       ]),
     );
-    for (const operand of new Set(descriptor.soleDirectOperands)) {
+    const soleDirectOperands = new Set(descriptor.soleDirectOperands);
+    for (const operand of soleDirectOperands) {
       if (!subcommandNames.has(operand)) {
         errors.push(
           `${displayPath}: sole direct operand "${operand}" must match a subcommand name or alias`,
         );
       }
     }
-    if (new Set(descriptor.soleDirectOperands).size !== descriptor.soleDirectOperands.length) {
+    if (soleDirectOperands.size !== descriptor.soleDirectOperands.length) {
       errors.push(`${displayPath}: sole direct operands must be unique`);
     }
     for (const subcommand of descriptor.subcommands) {
