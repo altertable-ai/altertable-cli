@@ -549,10 +549,10 @@ export async function buildStructuredHelp(
   const args = await resolveValue(command.args ?? {});
   const subCommands = await visibleSubCommands(command);
   const commandName = usageCommandName(meta, parentMeta);
-  const usage =
-    parent === undefined && meta.name === "altertable"
-      ? "altertable <command> [flags]"
-      : usageTokens(commandName, args, subCommands);
+  const isRootCommand = parent === undefined && meta.name === "altertable";
+  const usage = isRootCommand
+    ? "altertable <command> [flags]"
+    : usageTokens(commandName, args, subCommands);
   const entries = Object.entries(args).map(([name, definition]) =>
     structuredArgument(name, definition),
   );
@@ -564,7 +564,7 @@ export async function buildStructuredHelp(
     usage,
     aliases: toArray(meta.alias).map(String),
     arguments: entries.filter((entry) => entry.type === "positional"),
-    options: entries.filter((entry) => entry.type !== "positional"),
+    options: isRootCommand ? [] : entries.filter((entry) => entry.type !== "positional"),
     subcommands: subCommands.map(({ name, meta: subcommandMeta }) => ({
       name,
       aliases: toArray(subcommandMeta.alias).map(String),

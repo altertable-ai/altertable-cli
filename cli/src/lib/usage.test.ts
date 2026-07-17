@@ -182,6 +182,23 @@ describe("renderAltertableUsage", () => {
     expect(help.global_options).toContainEqual(expect.objectContaining({ name: "json" }));
     expect(help.subcommands.map((command) => command.name)).toEqual(["show", "cancel"]);
   });
+
+  test("keeps root flags exclusively in global options", async () => {
+    const main = buildMainCommand();
+    const help = await buildStructuredHelp(main, undefined, main);
+
+    expect(help.command).toBe("altertable");
+    expect(help.options).toEqual([]);
+    expect(help.global_options.map((option) => option.name)).toEqual([
+      "debug",
+      "json",
+      "agent",
+      "no-color",
+      "profile",
+      "connect-timeout",
+      "read-timeout",
+    ]);
+  });
 });
 
 describe("renderAltertableUsage active context", () => {
