@@ -1,5 +1,9 @@
 import type { CommandArgs } from "@/lib/command.ts";
-import { normalizeDirectCommandRawArgs, valueFlagsFor } from "@/lib/command-delegation.ts";
+import {
+  isDelegatedSubCommand,
+  normalizeDirectCommandRawArgs,
+  valueFlagsFor,
+} from "@/lib/command-delegation.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { queryRunArgs } from "@/commands/query/lib/args.ts";
 import { queryShowCommand } from "@/commands/query/show.ts";
@@ -27,7 +31,13 @@ export const queryCommand = defineCommand({
     cancel: queryCancelCommand,
   },
   async run({ args, rawArgs, execution, sink }) {
-    if (querySubcommandInvoked(rawArgs)) return;
+    if (
+      isDelegatedSubCommand(rawArgs, (value) => QUERY_SUBCOMMAND_NAMES.has(value), {
+        valueFlags: QUERY_VALUE_FLAGS,
+      })
+    ) {
+      return;
+    }
     const statement = optionalStringArg(args, "statement");
     if (statement === undefined) {
       throw new CliError('Provide a SQL statement, e.g. altertable query "SELECT 1".');
@@ -46,7 +56,8 @@ export const queryCommand = defineCommand({
   },
 });
 
-const QUERY_SUBCOMMAND_NAMES = new Set([...Object.keys(queryCommand.subCommands ?? {}), "run"]);
+const QUERY_SUBCOMMAND_NAMES = new Set(Object.keys(queryCommand.subCommands ?? {}));
+const QUERY_RESERVED_OPERANDS = new Set([...QUERY_SUBCOMMAND_NAMES, "run"]);
 const QUERY_VALUE_FLAGS = valueFlagsFor(queryRunArgs);
 
 export function normalizeQueryInvocatorRawArgs(
@@ -57,10 +68,6 @@ export function normalizeQueryInvocatorRawArgs(
     commandName: "query",
     rootArgs,
     commandValueFlags: QUERY_VALUE_FLAGS,
-    isReservedOperand: (value) => QUERY_SUBCOMMAND_NAMES.has(value),
+    isReservedOperand: (value) => QUERY_RESERVED_OPERANDS.has(value),
   });
-}
-
-function querySubcommandInvoked(rawArgs: readonly string[]): boolean {
-  return rawArgs.some((argument) => argument === "show" || argument === "cancel");
 }

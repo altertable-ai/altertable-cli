@@ -39,6 +39,18 @@ describe("command delegation helpers", () => {
     expect(delegated).toBe(true);
   });
 
+  test("isDelegatedSubCommand ignores reserved words used as flag values", () => {
+    const delegated = isDelegatedSubCommand(
+      ["--profile", "show", "--field", "status", "SELECT 1"],
+      (value) => value === "show" || value === "status",
+      {
+        valueFlags: new Set([...valueFlagsFor(rootArgs), ...valueFlagsFor(passthroughArgs)]),
+      },
+    );
+
+    expect(delegated).toBe(false);
+  });
+
   test("normalizePassthroughCommandRawArgs inserts separator before non-command operands", () => {
     const normalized = normalizePassthroughCommandRawArgs(
       ["--profile", "dev", "api", "-X", "GET", "/whoami"],

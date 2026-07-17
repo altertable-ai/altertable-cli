@@ -6,6 +6,7 @@ import {
   formatCompletionHelpMessage,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
+import { isDelegatedSubCommand } from "@/lib/command-delegation.ts";
 
 export function createCompletionCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
@@ -24,7 +25,7 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
       install: createInstallCommand(getRootCommand),
     },
     run({ rawArgs, sink }) {
-      if (rawArgs.some((arg) => arg === "install" || arg === "generate")) {
+      if (isDelegatedSubCommand(rawArgs, (value) => value === "install" || value === "generate")) {
         return;
       }
       if (sink.json) sink.writeJson(COMPLETION_GUIDANCE);
