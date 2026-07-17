@@ -39,33 +39,53 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
 }
 
 const ROOT_ARGS = defineArgs({
-  help: { type: "boolean", alias: "h", description: "Show this help" },
+  help: {
+    type: "boolean",
+    alias: "h",
+    description: "Show this help",
+    flagScope: "global",
+  },
   version: {
     type: "boolean",
     alias: "v",
     description: "Show the Altertable CLI version",
+    flagScope: "root-only",
   },
-  debug: { type: "boolean", alias: "d", description: "Enable debug output" },
-  json: { type: "boolean", description: "Machine-readable JSON output" },
+  debug: {
+    type: "boolean",
+    alias: "d",
+    description: "Enable debug output",
+    flagScope: "global",
+  },
+  json: {
+    type: "boolean",
+    description: "Machine-readable JSON output",
+    flagScope: "global",
+  },
   agent: {
     type: "boolean",
     description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
+    flagScope: "global",
   },
   "no-color": {
     type: "boolean",
     description: "Disable terminal colors and styling",
+    flagScope: "global",
   },
   profile: {
     type: "string",
     description: "Use a named profile for this command only",
+    flagScope: "global",
   },
   "connect-timeout": {
     type: "string",
     description: "HTTP connect timeout in seconds (default 5)",
+    flagScope: "global",
   },
   "read-timeout": {
     type: "string",
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
+    flagScope: "global",
   },
 });
 

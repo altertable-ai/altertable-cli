@@ -247,8 +247,8 @@ describe("buildCompletionSpec", () => {
     expect(spec.flags.some((flag) => flag.name === "debug")).toBe(true);
     expect(spec.flags).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: "help", alias: "h" }),
-        expect.objectContaining({ name: "version", alias: "v" }),
+        expect.objectContaining({ name: "help", alias: "h", scope: "global" }),
+        expect.objectContaining({ name: "version", alias: "v", scope: "root-only" }),
       ]),
     );
   });
@@ -501,8 +501,10 @@ describe("executable shell completion contract", () => {
     test(`${shell} composes flags with pending positional candidates`, async () => {
       const candidates = await runCompletion(["altertable", "completion", "install", "--"]);
       expect(candidates).toEqual(
-        expect.arrayContaining(["--no-rc", "--json", "--profile", "--help", "--version"]),
+        expect.arrayContaining(["--no-rc", "--json", "--profile", "--help"]),
       );
+      expect(candidates).not.toContain("--version");
+      expect(await runCompletion(["altertable", "--"])).toContain("--version");
     });
 
     test(`${shell} completes file positionals`, async () => {

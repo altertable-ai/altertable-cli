@@ -1,5 +1,5 @@
 import type { Command } from "@/lib/command.ts";
-import type { PositionalCompletionKind } from "@/lib/command.ts";
+import type { CommandFlagScope, PositionalCompletionKind } from "@/lib/command.ts";
 import {
   resolveCommandDescriptor,
   visibleCommandDescriptors,
@@ -27,6 +27,7 @@ export type CompletionFlag = {
   description?: string;
   values?: string[];
   takesValue?: boolean;
+  scope?: CommandFlagScope;
 };
 
 export type CompletionPositional = {
@@ -60,6 +61,7 @@ function extractFlags(arguments_: readonly CommandArgumentDescriptor[]): Complet
       description: argument.description || undefined,
       values: argument.values.length > 0 ? argument.values : undefined,
       takesValue: argument.type === "string" || argument.type === "enum",
+      scope: argument.scope,
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }

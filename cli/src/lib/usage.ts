@@ -418,6 +418,7 @@ type StructuredArgument = {
   description: string;
   default?: unknown;
   values?: string[];
+  scope: CommandArgumentDescriptor["scope"];
 };
 
 export type StructuredHelp = {
@@ -439,6 +440,7 @@ function structuredArgument(argument: CommandArgumentDescriptor): StructuredArgu
     type: argument.type,
     required: argument.required,
     description: argument.description,
+    scope: argument.scope,
     ...(argument.default !== undefined ? { default: argument.default } : {}),
     ...(argument.values.length > 0 ? { values: argument.values } : {}),
   };
@@ -458,7 +460,9 @@ export function buildStructuredHelpFromDescriptor(
     ? ["altertable <command> [flags]"]
     : usageVariants(commandName, descriptor);
   const entries = descriptor.arguments.map(structuredArgument);
-  const globalArguments = rootDescriptor?.arguments ?? [];
+  const globalArguments = isRootCommand
+    ? (rootDescriptor?.arguments ?? [])
+    : (rootDescriptor?.arguments.filter((argument) => argument.scope === "global") ?? []);
 
   return {
     command: commandName,

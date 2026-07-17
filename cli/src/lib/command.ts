@@ -6,6 +6,7 @@ import { createExecutionContext, type ExecutionContext } from "@/lib/execution-c
 
 export type Command = CommandDef;
 export type PositionalCompletionKind = "finite" | "file" | "freeform";
+export type CommandFlagScope = "root-only" | "global" | "command";
 export type CommandArg = import("citty").ArgDef & {
   /** Finite values normalized into the shared command descriptor. */
   values?: readonly string[];
@@ -13,6 +14,8 @@ export type CommandArg = import("citty").ArgDef & {
   completion?: Exclude<PositionalCompletionKind, "finite">;
   /** Required for direct execution even when the parser must allow sibling subcommands. */
   directRequired?: boolean;
+  /** Where an option is valid and should be advertised. */
+  flagScope?: CommandFlagScope;
 };
 export type CommandArgs = Record<string, CommandArg>;
 

@@ -34,6 +34,9 @@ function optionLabel(argument: CommandArgumentDescriptor): string {
 
 function argumentDescription(argument: CommandArgumentDescriptor): string {
   const details = [argument.description];
+  if (argument.scope === "root-only") {
+    details.push("Scope: root only.");
+  }
   if (argument.values.length > 0) {
     details.push(`Values: ${argument.values.join(", ")}.`);
   }

@@ -5,6 +5,7 @@ import {
   type Command,
   type CommandArg,
   type CommandArgs,
+  type CommandFlagScope,
   type CommandInvocationKind,
   type PositionalCompletionKind,
 } from "@/lib/command.ts";
@@ -27,6 +28,7 @@ export type CommandArgumentDescriptor = {
   required: boolean;
   parserRequired: boolean;
   requiredExplicitly: boolean;
+  scope: CommandFlagScope;
   values: string[];
   positionalCompletion?: PositionalCompletionKind;
   valueHint?: string;
@@ -95,6 +97,7 @@ export function normalizeCommandArgument(
       definition.required !== undefined ||
       definition.directRequired !== undefined ||
       definition.default !== undefined,
+    scope: definition.flagScope ?? "command",
     values,
     ...(definition.type === "positional"
       ? {

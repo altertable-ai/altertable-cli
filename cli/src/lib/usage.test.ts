@@ -185,6 +185,10 @@ describe("renderAltertableUsage", () => {
       expect.objectContaining({ name: "format", values: ["csv", "markdown"] }),
     );
     expect(help.global_options).toContainEqual(expect.objectContaining({ name: "json" }));
+    expect(help.global_options).toContainEqual(
+      expect.objectContaining({ name: "help", scope: "global" }),
+    );
+    expect(help.global_options.some((option) => option.name === "version")).toBe(false);
     expect(help.subcommands.map((command) => command.name)).toEqual(["show", "cancel"]);
   });
 
@@ -241,6 +245,9 @@ describe("renderAltertableUsage", () => {
       "connect-timeout",
       "read-timeout",
     ]);
+    expect(help.global_options).toContainEqual(
+      expect.objectContaining({ name: "version", scope: "root-only" }),
+    );
   });
 
   test("shares command metadata across human, structured, and completion help", async () => {

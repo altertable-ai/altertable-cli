@@ -12,7 +12,10 @@ export function mergeCompletionFlags(
   rootFlags: readonly CompletionFlag[],
 ): CompletionFlag[] {
   const flags = new Map<string, CompletionFlag>();
-  for (const flag of [...nodeFlags, ...rootFlags]) {
+  for (const flag of [
+    ...nodeFlags,
+    ...rootFlags.filter((rootFlag) => rootFlag.scope !== "root-only"),
+  ]) {
     flags.set(flag.name, flag);
   }
   return [...flags.values()];
@@ -520,7 +523,14 @@ export function formatFishCompletion(spec: CompletionNode): string {
   const model = buildCompletionModel(spec);
   const topLevelCommands = formatNameList(spec.subcommands.map((command) => command.name));
   const normalizer = formatFishNormalizer(model);
-  const rootFlagLines = spec.flags.map((flag) => formatFishFlagCompleteLine(flag)).join("\n");
+  const rootFlagLines = spec.flags
+    .map((flag) =>
+      formatFishFlagCompleteLine(
+        flag,
+        flag.scope === "root-only" ? formatFishPathCondition([], 0) : undefined,
+      ),
+    )
+    .join("\n");
   const contextLines: string[] = [];
 
   for (const context of model.contexts) {

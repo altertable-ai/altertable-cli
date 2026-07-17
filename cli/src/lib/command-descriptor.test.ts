@@ -23,6 +23,7 @@ function structuredArgumentContract(argument: CommandArgumentDescriptor) {
     type: argument.type,
     required: argument.required,
     description: argument.description,
+    scope: argument.scope,
     ...(argument.default !== undefined ? { default: argument.default } : {}),
     ...(argument.values.length > 0 ? { values: argument.values } : {}),
   };
@@ -57,6 +58,7 @@ function completionContract(
         description: argument.description || undefined,
         values: argument.values.length > 0 ? argument.values : undefined,
         takesValue: argument.type === "string" || argument.type === "enum",
+        scope: argument.scope,
       }))
       .sort((left, right) => left.name.localeCompare(right.name)),
     positionals: descriptor.arguments
@@ -88,7 +90,10 @@ async function expectStructuredHelpMatchesDescriptor(
     examples: descriptor.metadata.examples,
     arguments: arguments_.filter((argument) => argument.type === "positional"),
     options: parent ? arguments_.filter((argument) => argument.type !== "positional") : [],
-    global_options: root.arguments.map(structuredArgumentContract),
+    global_options: (parent
+      ? root.arguments.filter((argument) => argument.scope === "global")
+      : root.arguments
+    ).map(structuredArgumentContract),
     subcommands: visibleSubcommands.map((child) => ({
       name: child.key ?? child.metadata.name ?? "command",
       aliases: child.metadata.aliases,
@@ -197,6 +202,7 @@ describe("command descriptor", () => {
         required: true,
         parserRequired: true,
         requiredExplicitly: true,
+        scope: "command",
         values: ["bash", "fish", "zsh"],
         positionalCompletion: "finite",
       },
@@ -208,6 +214,7 @@ describe("command descriptor", () => {
         required: false,
         parserRequired: false,
         requiredExplicitly: true,
+        scope: "command",
         values: ["script", "path"],
         default: "script",
       },
