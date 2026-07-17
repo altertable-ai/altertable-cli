@@ -1,8 +1,13 @@
-import { commandArgumentValues, type Command, type CommandArg } from "@/lib/command.ts";
-import { resolveCommandMetadata } from "@/lib/command-metadata.ts";
+import type { Command } from "@/lib/command.ts";
+import {
+  resolveCommandDescriptor,
+  visibleCommandDescriptors,
+  type CommandArgumentDescriptor,
+  type CommandDescriptor,
+} from "@/lib/command-descriptor.ts";
 
 /**
- * Static completion spec derived from the command tree.
+ * Static completion spec projected from the normalized command descriptor.
  *
  * Subcommand nesting is limited to three levels below the root command.
  * Flags and finite positional values are extracted from each visited node.
@@ -44,111 +49,82 @@ export type CompletionContext = {
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
 const MAX_SUBCOMMAND_DEPTH = 3;
 
-type ArgDef = {
-  type?: string;
-  alias?: string | string[];
-  description?: string;
-  options?: string[];
-  required?: boolean;
-};
-
-function extractFlags(command: Command): CompletionFlag[] {
-  const flags: CompletionFlag[] = [];
-  const args = command.args ?? {};
-
-  for (const [name, rawDef] of Object.entries(args)) {
-    const def = rawDef as ArgDef | undefined;
-    if (!def?.type || (def.type !== "boolean" && def.type !== "string" && def.type !== "enum")) {
-      continue;
-    }
-
-    flags.push({
-      name,
-      alias: Array.isArray(def.alias) ? def.alias[0] : def.alias,
-      description: def.description,
-      values: def.type === "enum" ? def.options : undefined,
-      takesValue: def.type === "string" || def.type === "enum",
-    });
-  }
-
-  return flags.sort((left, right) => left.name.localeCompare(right.name));
+function extractFlags(arguments_: readonly CommandArgumentDescriptor[]): CompletionFlag[] {
+  return arguments_
+    .filter((argument) => ["boolean", "string", "enum"].includes(argument.type))
+    .map((argument) => ({
+      name: argument.name,
+      alias: argument.aliases[0],
+      description: argument.description || undefined,
+      values: argument.values.length > 0 ? argument.values : undefined,
+      takesValue: argument.type === "string" || argument.type === "enum",
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function extractPositionals(command: Command): CompletionPositional[] {
-  const positionals: CompletionPositional[] = [];
-  const args = command.args ?? {};
-
-  for (const [name, rawDef] of Object.entries(args)) {
-    const def = rawDef as ArgDef | undefined;
-    if (def?.type !== "positional") continue;
-    positionals.push({
-      name,
-      description: def.description,
-      required: def.required !== false,
-      values: commandArgumentValues(def as CommandArg),
-    });
-  }
-
-  return positionals;
+function extractPositionals(
+  arguments_: readonly CommandArgumentDescriptor[],
+): CompletionPositional[] {
+  return arguments_
+    .filter((argument) => argument.type === "positional")
+    .map((argument) => ({
+      name: argument.name,
+      description: argument.description || undefined,
+      required: argument.required,
+      values: argument.values,
+    }));
 }
 
-async function resolveSubcommandNames(command: Command): Promise<string[]> {
-  const metadata = await resolveCommandMetadata(command);
+function resolveSubcommandNames(descriptor: CommandDescriptor): string[] {
+  const metadata = descriptor.metadata;
   if (metadata.hidden || !metadata.name) return [];
   return [...new Set([metadata.name, ...metadata.aliases])];
 }
 
-async function walkSubcommands(
-  subcommands: Command["subCommands"],
+function walkSubcommands(
+  descriptors: readonly CommandDescriptor[],
   depth: number,
-): Promise<CompletionNode[]> {
-  if (!subcommands) {
-    return [];
-  }
-  const nodes = await Promise.all(
-    Object.values(subcommands).map(async (subcommand) => {
-      const command = subcommand as Command;
-      const names = await resolveSubcommandNames(command);
-      return await Promise.all(names.map((name) => walkCommand(name, command, depth)));
-    }),
+): CompletionNode[] {
+  const nodes = visibleCommandDescriptors(descriptors).map((descriptor) =>
+    resolveSubcommandNames(descriptor).map((name) => walkCommand(name, descriptor, depth)),
   );
   return nodes.flat().sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function walkCommand(name: string, command: Command, depth: number): Promise<CompletionNode> {
-  const metadata = await resolveCommandMetadata(command);
+function walkCommand(name: string, descriptor: CommandDescriptor, depth: number): CompletionNode {
+  const metadata = descriptor.metadata;
   const node: CompletionNode = {
     name,
     description: metadata.description || undefined,
     subcommands: [],
-    flags: extractFlags(command),
-    positionals: extractPositionals(command),
+    flags: extractFlags(descriptor.arguments),
+    positionals: extractPositionals(descriptor.arguments),
   };
 
-  if (depth >= MAX_SUBCOMMAND_DEPTH || !command.subCommands) {
+  if (depth >= MAX_SUBCOMMAND_DEPTH) {
     return node;
   }
 
-  node.subcommands = await walkSubcommands(command.subCommands, depth + 1);
+  node.subcommands = walkSubcommands(descriptor.subcommands, depth + 1);
   return node;
 }
 
-export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {
-  const metadata = await resolveCommandMetadata(root);
+export function buildCompletionSpecFromDescriptor(descriptor: CommandDescriptor): CompletionNode {
+  const metadata = descriptor.metadata;
   const spec: CompletionNode = {
     name: metadata.name ?? "altertable",
     description: metadata.description || undefined,
     subcommands: [],
-    flags: extractFlags(root),
-    positionals: extractPositionals(root),
+    flags: extractFlags(descriptor.arguments),
+    positionals: extractPositionals(descriptor.arguments),
   };
 
-  if (!root.subCommands) {
-    return spec;
-  }
-
-  spec.subcommands = await walkSubcommands(root.subCommands, 1);
+  spec.subcommands = walkSubcommands(descriptor.subcommands, 1);
   return spec;
+}
+
+export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {
+  return buildCompletionSpecFromDescriptor(await resolveCommandDescriptor(root));
 }
 
 export function collectCompletionContexts(root: CompletionNode): CompletionContext[] {

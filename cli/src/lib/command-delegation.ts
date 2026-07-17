@@ -1,5 +1,5 @@
 import type { Command, CommandArgs } from "@/lib/command.ts";
-import { resolveCommandMetadata } from "@/lib/command-metadata.ts";
+import { resolveCommandMetadata } from "@/lib/command-descriptor.ts";
 
 export type PositionalScanOptions = {
   valueFlags?: ReadonlySet<string>;

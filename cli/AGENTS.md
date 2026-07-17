@@ -42,7 +42,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 - **Dual-plane auth**: lakehouse data plane (HTTP Basic) vs management REST (Bearer API key). See root README credential tables.
 - **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineCommand` injects `runtime`, `sink`, and a lazy `execution` context into every command handler. Commands pass `sink` to output helpers rather than writing to the console.
-- **Command metadata contract** (`src/lib/command-metadata.ts`): command names, aliases, descriptions, examples, visibility, and groups are normalized once for human help, structured agent help, shell completion, and future generated documentation. Add presentation data to `meta`; do not duplicate it in consumers.
+- **Command descriptor contract** (`src/lib/command-descriptor.ts`): resolvable command metadata, arguments, finite values, and child commands are normalized once for human help, structured agent help, shell completion, and generated documentation. Declare presentation data on `meta` and `args`; do not build parallel command representations in consumers.
 - **Direct execution**: a leaf command parses its arguments, builds a plain request value, sends it, and presents the result. Request values stay declarative as the seam for a future dry-run mode; there is no operation/effect framework.
 - **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Commands pass their injected `sink` explicitly.
 - **When to use `sink` directly**: bespoke output (custom tables, metadata messages) — `sink.writeJson`, `sink.writeHuman`, `sink.writeMetadata`.
@@ -113,8 +113,8 @@ bun test "$PWD"/tests/integration.e2e.ts
 | `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                          |
 | `ui/prompts.ts`                         | Shared interactive prompt adapter and types                         |
 | `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                         |
-| `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                               |
-| `lib/command-metadata.ts`               | Shared help, completion, and documentation metadata contract        |
+| `commands/completion/lib/spec.ts`       | Projects the command descriptor into shell completion data          |
+| `lib/command-descriptor.ts`             | Shared help, completion, and documentation command contract         |
 
 ## Command tree
 

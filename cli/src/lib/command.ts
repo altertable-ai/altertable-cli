@@ -6,14 +6,14 @@ import { createExecutionContext, type ExecutionContext } from "@/lib/execution-c
 
 export type Command = CommandDef;
 export type CommandArg = import("citty").ArgDef & {
-  /** Finite canonical values shared by help, validation, completion, and documentation. */
+  /** Finite values normalized into the shared command descriptor. */
   values?: readonly string[];
 };
 export type CommandArgs = Record<string, CommandArg>;
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
-/** Canonical presentation metadata consumed by help, agents, completion, and documentation. */
+/** Presentation metadata normalized into the shared command descriptor. */
 export type AltertableCommandMeta = CommandMeta & {
   examples?: readonly string[];
   hidden?: boolean;
