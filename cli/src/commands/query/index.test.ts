@@ -27,6 +27,12 @@ describe("query command", () => {
       "show",
       "query-id",
     ]);
+    expect(normalizeQueryInvocatorRawArgs(["query", "show"])).toEqual(["query", "--", "show"]);
+    expect(normalizeQueryInvocatorRawArgs(["query", "show", "--help"])).toEqual([
+      "query",
+      "show",
+      "--help",
+    ]);
   });
 
   test("sends the statement and optional identifiers", async () => {
@@ -65,6 +71,16 @@ describe("query command", () => {
     expect(log).toContain(
       `METHOD=DELETE\nURL=https://example.com/query/${queryId}?session_id=session-1`,
     );
+  });
+
+  test("executes a bare lowercase show statement as SQL", async () => {
+    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
+
+    await runCommandWithTestRuntime(normalizeQueryInvocatorRawArgs(["query", "show"]));
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "show",
+    });
   });
 
   test("URL-encodes query identifiers", async () => {

@@ -1,5 +1,6 @@
 import type { CommandArgs } from "@/lib/command.ts";
 import {
+  findFirstPositionalToken,
   normalizeDirectCommandRawArgs,
   resolveSelectedSubCommand,
   valueFlagsFor,
@@ -13,6 +14,7 @@ import { optionalStringArg } from "@/lib/args.ts";
 import { writeQueryOutput } from "@/lib/query-output.ts";
 import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
+import { HELP_FLAGS } from "@/lib/early-bootstrap.ts";
 
 export const queryCommand = defineCommand({
   meta: {
@@ -58,10 +60,33 @@ export function normalizeQueryInvocatorRawArgs(
   rawArgs: readonly string[],
   rootArgs: CommandArgs = {},
 ): string[] {
+  const bareShowIsSql = isBareShowStatement(rawArgs, rootArgs);
   return normalizeDirectCommandRawArgs(rawArgs, {
     commandName: "query",
     rootArgs,
     commandValueFlags: QUERY_VALUE_FLAGS,
-    isReservedOperand: (value) => QUERY_RESERVED_OPERANDS.has(value),
+    isReservedOperand: (value) => QUERY_RESERVED_OPERANDS.has(value) && !bareShowIsSql,
   });
+}
+
+function isBareShowStatement(rawArgs: readonly string[], rootArgs: CommandArgs): boolean {
+  const commandToken = findFirstPositionalToken(rawArgs, {
+    valueFlags: valueFlagsFor(rootArgs),
+  });
+  if (!commandToken || commandToken.value !== "query") return false;
+
+  const queryArgs = rawArgs.slice(commandToken.index + 1);
+  if (
+    queryArgs.includes("--") ||
+    queryArgs.some((argument) => HELP_FLAGS.some((flag) => flag === argument))
+  ) {
+    return false;
+  }
+  const statement = findFirstPositionalToken(queryArgs, { valueFlags: QUERY_VALUE_FLAGS });
+  if (!statement || statement.value !== "show") return false;
+
+  const subcommandOperand = findFirstPositionalToken(queryArgs.slice(statement.index + 1), {
+    valueFlags: QUERY_VALUE_FLAGS,
+  });
+  return subcommandOperand === undefined;
 }
