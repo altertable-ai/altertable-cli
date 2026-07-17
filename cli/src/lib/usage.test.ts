@@ -51,8 +51,8 @@ describe("renderAltertableUsage", () => {
     expect(guidanceSection).toBeLessThan(flagsSection);
     expect(usage).toContain("Use altertable <command> --help for more information about a");
     expect(usage).toContain("command.");
-    expect(usage).toContain("--help, -h");
-    expect(usage).toContain("--version, -v");
+    expect(usage).toContain("-h, --help");
+    expect(usage).toContain("-v, --version");
   });
 
   test("wraps descriptions with hanging indentation at the terminal width", async () => {
@@ -228,6 +228,8 @@ describe("renderAltertableUsage", () => {
     expect(help.command).toBe("altertable");
     expect(help.options).toEqual([]);
     expect(help.global_options.map((option) => option.name)).toEqual([
+      "help",
+      "version",
       "debug",
       "json",
       "agent",

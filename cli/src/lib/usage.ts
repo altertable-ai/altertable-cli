@@ -9,7 +9,6 @@ import {
 } from "@/lib/command-descriptor.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
-import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
 import { readEnv } from "@/lib/env.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import { resolveSelectedSubCommand } from "@/lib/command-delegation.ts";
@@ -372,10 +371,6 @@ function renderRootUsage(descriptor: CommandDescriptor): string {
     label: flagLabel(argument),
     description: argument.description,
   }));
-  flags.push(
-    { label: HELP_FLAGS.join(", "), description: "Show this help" },
-    { label: VERSION_FLAGS.join(", "), description: "Show the Altertable CLI version" },
-  );
   lines.push(
     "",
     `  ${renderDisplayText([span("Global flags", "strong")])}`,

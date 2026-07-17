@@ -8,6 +8,8 @@ Altertable CLI v1.3.0 • Query and manage your data platform from the terminal.
 
 | Option | Description |
 | --- | --- |
+| `-h, --help` | Show this help |
+| `-v, --version` | Show the Altertable CLI version |
 | `-d, --debug` | Enable debug output |
 | `--json` | Machine-readable JSON output |
 | `--agent` | Agent-friendly preset: structured JSON output, no pager or terminal styling |

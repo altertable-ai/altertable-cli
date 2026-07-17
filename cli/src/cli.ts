@@ -39,6 +39,12 @@ function buildEarlyCliContext(argv: readonly string[]): CliContext {
 }
 
 const ROOT_ARGS = defineArgs({
+  help: { type: "boolean", alias: "h", description: "Show this help" },
+  version: {
+    type: "boolean",
+    alias: "v",
+    description: "Show the Altertable CLI version",
+  },
   debug: { type: "boolean", alias: "d", description: "Enable debug output" },
   json: { type: "boolean", description: "Machine-readable JSON output" },
   agent: {

@@ -245,6 +245,12 @@ describe("buildCompletionSpec", () => {
     const spec = await buildCompletionSpec(buildMainCommand());
     expect(spec.flags.some((flag) => flag.name === "json")).toBe(true);
     expect(spec.flags.some((flag) => flag.name === "debug")).toBe(true);
+    expect(spec.flags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "help", alias: "h" }),
+        expect.objectContaining({ name: "version", alias: "v" }),
+      ]),
+    );
   });
 
   test("extracts fixed flag values from real commands", async () => {
@@ -494,7 +500,9 @@ describe("executable shell completion contract", () => {
 
     test(`${shell} composes flags with pending positional candidates`, async () => {
       const candidates = await runCompletion(["altertable", "completion", "install", "--"]);
-      expect(candidates).toEqual(expect.arrayContaining(["--no-rc", "--json", "--profile"]));
+      expect(candidates).toEqual(
+        expect.arrayContaining(["--no-rc", "--json", "--profile", "--help", "--version"]),
+      );
     });
 
     test(`${shell} completes file positionals`, async () => {
