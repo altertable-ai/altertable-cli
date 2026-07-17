@@ -156,7 +156,13 @@ function formatBashContextBlock(
       }
       if (positional.completion === "file") {
         return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
-        COMPREPLY=( $(compgen -f -- "\${currentWord}") $(compgen -W "${flagWords}" -- "\${currentWord}") )
+        COMPREPLY=()
+        while IFS= read -r completion; do
+          COMPREPLY+=("\${completion}")
+        done < <(compgen -f -- "\${currentWord}")
+        while IFS= read -r completion; do
+          COMPREPLY+=("\${completion}")
+        done < <(compgen -W "${flagWords}" -- "\${currentWord}")
         return
       fi
 `;
@@ -224,7 +230,7 @@ _altertable_complete_flag_value() {
 ${normalizer}
 
 _altertable_completions() {
-  local currentWord="\${COMP_WORDS[COMP_CWORD]}"
+  local currentWord="\${COMP_WORDS[COMP_CWORD]}" completion
   _altertable_normalize_words
 
   if [[ -z "\${ALTERTABLE_COMMAND_PATH_STRING}" ]]; then

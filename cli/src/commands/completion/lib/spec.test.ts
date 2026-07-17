@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineCommand } from "@/lib/command.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { buildCompletionSpec, collectCompletionContexts } from "@/commands/completion/lib/spec.ts";
@@ -47,7 +50,7 @@ function parseCompletionOutput(output: Uint8Array): string[] {
     .filter(Boolean);
 }
 
-async function runBashCompletion(words: string[]): Promise<string[]> {
+async function runBashCompletion(words: string[], cwd?: string): Promise<string[]> {
   const script = formatBashCompletion(await buildCompletionSpec(buildMainCommand()));
   const source = `${script}
 COMP_WORDS=(${words.map(bashQuote).join(" ")})
@@ -59,6 +62,7 @@ printf '%s\\n' "\${COMPREPLY[@]}"
   const result = Bun.spawnSync(["bash", "-c", source], {
     stdout: "pipe",
     stderr: "pipe",
+    ...(cwd ? { cwd } : {}),
   });
   if (result.exitCode !== 0) {
     throw new Error(new TextDecoder().decode(result.stderr));
@@ -404,6 +408,20 @@ describe("formatBashCompletion", () => {
     expect(await runBashCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual(
       expect.arrayContaining(["bash", "fish", "zsh"]),
     );
+  });
+
+  test("preserves whitespace in file and directory candidates", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "altertable-bash-completion-"));
+    writeFileSync(join(cwd, "order data.csv"), "");
+    mkdirSync(join(cwd, "order exports"));
+
+    try {
+      expect(await runBashCompletion(["altertable", "upload", "order"], cwd)).toEqual(
+        expect.arrayContaining(["order data.csv", "order exports"]),
+      );
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });
 
