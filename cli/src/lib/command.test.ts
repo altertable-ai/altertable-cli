@@ -85,6 +85,60 @@ describe("command composition", () => {
     ]);
   });
 
+  test("does not consume recognized flags as option values", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const leaf = defineCommand({
+      meta: { name: "leaf" },
+      args: {
+        columns: { type: "string", alias: "c" },
+        force: { type: "boolean" },
+        value: { type: "positional", required: true },
+      },
+    });
+    const root = defineRootCommand({
+      args: {
+        json: { type: "boolean", flagScope: "global" },
+        profile: { type: "string", flagScope: "global" },
+      },
+      subCommands: { leaf },
+    });
+
+    for (const rawArgs of [
+      ["leaf", "value", "--columns", "--json"],
+      ["leaf", "value", "-c", "--json"],
+      ["leaf", "--profile", "--force", "value"],
+    ]) {
+      expect(
+        runWithCliRuntime(runtime, () => runCommandTree(root, { rawArgs })),
+      ).rejects.toThrow(/^Missing value for/);
+    }
+  });
+
+  test("accepts an option-like value when it is explicit", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    let received = "";
+    const root = defineRootCommand({
+      args: { json: { type: "boolean", flagScope: "global" } },
+      subCommands: {
+        leaf: defineCommand({
+          args: {
+            columns: { type: "string" },
+            value: { type: "positional", required: true },
+          },
+          run({ args }) {
+            received = String(args.columns);
+          },
+        }),
+      },
+    });
+
+    await runWithCliRuntime(runtime, () =>
+      runCommandTree(root, { rawArgs: ["leaf", "value", "--columns=--json"] }),
+    );
+
+    expect(received).toBe("--json");
+  });
+
   test("resolves aliases, subcommands, and intentional direct operands", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const calls: string[] = [];

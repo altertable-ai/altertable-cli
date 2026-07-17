@@ -209,6 +209,23 @@ function requiresValue(definition: CommandArg): boolean {
   return definition.type === "string" || definition.type === "enum";
 }
 
+function separatedFlagValue(
+  rawArgs: readonly string[],
+  index: number,
+  commandBindings: ReadonlyMap<string, FlagBinding>,
+  rootBindings: ReadonlyMap<string, FlagBinding>,
+): string | undefined {
+  const candidate = rawArgs[index + 1];
+  if (candidate === undefined || candidate === "--") return undefined;
+  if (
+    candidate.startsWith("-") &&
+    bindingForArgument(candidate, commandBindings, rootBindings) !== undefined
+  ) {
+    return undefined;
+  }
+  return candidate;
+}
+
 function positionalTokensAfter(
   rawArgs: readonly string[],
   startIndex: number,
@@ -227,7 +244,9 @@ function positionalTokensAfter(
     if (!afterSeparator && argument.startsWith("-")) {
       const binding = bindingForArgument(argument, commandBindings, rootBindings);
       if (binding && requiresValue(binding.definition) && inlineFlagValue(argument) === undefined) {
-        index += 1;
+        if (separatedFlagValue(rawArgs, index, commandBindings, rootBindings) !== undefined) {
+          index += 1;
+        }
       }
       continue;
     }
@@ -273,7 +292,7 @@ async function selectCommand(
         continue;
       }
       if (requiresValue(binding.definition) && inlineFlagValue(argument) === undefined) {
-        if (rawArgs[index + 1] === undefined || rawArgs[index + 1] === "--") {
+        if (separatedFlagValue(rawArgs, index, commandBindings, rootBindings) === undefined) {
           if (strict) throw new CommandParseError(`Missing value for ${flagName(argument)}.`);
           continue;
         }
@@ -423,8 +442,9 @@ async function parseCommandArgs(
       }
       if (requiresValue(definition)) {
         const inlineValue = inlineFlagValue(argument);
-        const value = inlineValue ?? rawArgs[index + 1];
-        if (value === undefined || (inlineValue === undefined && value === "--")) {
+        const value =
+          inlineValue ?? separatedFlagValue(rawArgs, index, commandBindings, rootBindings);
+        if (value === undefined) {
           throw new CommandParseError(`Missing value for ${flagName(argument)}.`);
         }
         validateValue(name, definition, value);
