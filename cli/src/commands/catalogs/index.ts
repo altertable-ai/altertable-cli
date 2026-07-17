@@ -12,6 +12,7 @@ export const catalogsCommand = defineCommand({
   meta: {
     name: "catalogs",
     commandGroup: "platform",
+    invocations: ["direct", "subcommand"],
     description: "Manage catalogs (databases and connections) in the current environment.",
     examples: ["altertable catalogs", "altertable catalogs create Analytics"],
   },

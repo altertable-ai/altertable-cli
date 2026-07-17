@@ -62,7 +62,7 @@ Manage named profiles and stored credentials.
 
 **Usage**
 
-`altertable profile`
+`altertable profile configure|list|show|status|switch|current|env|delete`
 
 **Subcommands**
 
@@ -227,6 +227,7 @@ Manage catalogs (databases and connections) in the current environment.
 **Usage**
 
 `altertable catalogs`
+`altertable catalogs create`
 
 **Subcommands**
 
@@ -266,6 +267,7 @@ Management REST API — HTTP invoker and OpenAPI spec.
 **Usage**
 
 `altertable api [options] [ENDPOINT]`
+`altertable api routes|spec`
 
 **Arguments**
 
@@ -372,6 +374,7 @@ Generate or install shell completion scripts.
 **Usage**
 
 `altertable completion`
+`altertable completion generate|install`
 
 **Subcommands**
 
@@ -444,6 +447,7 @@ Append JSON rows to a table.
 **Usage**
 
 `altertable append [options] [DATA]`
+`altertable append status`
 
 **Arguments**
 
@@ -549,6 +553,7 @@ Run SQL queries against the lakehouse.
 **Usage**
 
 `altertable query [options] [STATEMENT]`
+`altertable query show|cancel`
 
 **Arguments**
 

@@ -174,6 +174,10 @@ describe("renderAltertableUsage", () => {
     const help = await buildStructuredHelp(query, parent, main);
 
     expect(help.command).toBe("altertable query");
+    expect(help.usage).toEqual([
+      "altertable query [flags] [STATEMENT]",
+      "altertable query show|cancel",
+    ]);
     expect(help.arguments).toContainEqual(
       expect.objectContaining({ name: "statement", type: "positional" }),
     );
@@ -182,6 +186,24 @@ describe("renderAltertableUsage", () => {
     );
     expect(help.global_options).toContainEqual(expect.objectContaining({ name: "json" }));
     expect(help.subcommands.map((command) => command.name)).toEqual(["show", "cancel"]);
+  });
+
+  test("renders direct operands and subcommands as alternative invocation forms", async () => {
+    const main = buildMainCommand();
+    const [query, queryParent] = await resolveSubCommandForUsage(main, ["query"]);
+    const [append, appendParent] = await resolveSubCommandForUsage(main, ["append"]);
+
+    const queryUsage = await renderAltertableUsage(query, queryParent);
+    expect(queryUsage).toContain(
+      "Usage\n    altertable query [flags] [STATEMENT]\n    altertable query show|cancel",
+    );
+    expect(queryUsage).not.toContain("[STATEMENT] show|cancel");
+
+    const appendHelp = await buildStructuredHelp(append, appendParent, main);
+    expect(appendHelp.usage).toEqual([
+      "altertable append [flags] [DATA]",
+      "altertable append status",
+    ]);
   });
 
   test("shares finite positional values with human and structured help", async () => {

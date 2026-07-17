@@ -71,14 +71,26 @@ function renderCommand(
   const commandPath = [...parentPath, name];
   const positionals = descriptor.arguments.filter((argument) => argument.type === "positional");
   const options = descriptor.arguments.filter((argument) => argument.type !== "positional");
-  const usage = [
-    ...commandPath,
-    options.length > 0 ? "[options]" : undefined,
-    ...positionals.map(positionalToken),
-  ]
-    .filter((token): token is string => token !== undefined)
-    .join(" ");
   const subcommands = visibleCommandDescriptors(descriptor.subcommands);
+  const usages: string[] = [];
+  if (descriptor.metadata.invocations.includes("direct")) {
+    usages.push(
+      [
+        ...commandPath,
+        options.length > 0 ? "[options]" : undefined,
+        ...positionals.map(positionalToken),
+      ]
+        .filter((token): token is string => token !== undefined)
+        .join(" "),
+    );
+  }
+  if (descriptor.metadata.invocations.includes("subcommand") && subcommands.length > 0) {
+    usages.push(
+      `${commandPath.join(" ")} ${subcommands
+        .map((subcommand) => subcommand.metadata.name ?? subcommand.key)
+        .join("|")}`,
+    );
+  }
   const lines = [
     `${"#".repeat(headingLevel)} \`${commandPath.join(" ")}\``,
     "",
@@ -86,7 +98,7 @@ function renderCommand(
     "",
     "**Usage**",
     "",
-    `\`${usage}\``,
+    ...usages.map((usage) => `\`${usage}\``),
     "",
   ];
 

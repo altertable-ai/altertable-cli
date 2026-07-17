@@ -141,6 +141,7 @@ describe("command descriptor", () => {
       examples: ["altertable inspect resource"],
       hidden: true,
       commandGroup: "platform",
+      invocations: [],
     } satisfies CommandMetadata;
     expect(await resolveCommandMetadata(command)).toEqual(expected);
   });

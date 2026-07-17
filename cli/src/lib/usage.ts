@@ -228,27 +228,30 @@ function usageCommandName(metadata: CommandMetadata, parentMetadata?: CommandMet
   return `altertable ${parentMetadata.name ?? "command"} ${name}`;
 }
 
-function usageTokens(
-  commandName: string,
-  arguments_: readonly CommandArgumentDescriptor[],
-  subcommands: readonly CommandDescriptor[],
-): string {
-  const positionalArgs = arguments_
+function usageVariants(commandName: string, descriptor: CommandDescriptor): string[] {
+  const positionalArgs = descriptor.arguments
     .filter((argument) => argument.type === "positional")
     .map((argument) => {
       const label = positionalLabel(argument);
       return argument.required ? `<${label}>` : `[${label}]`;
     });
-  const hasOptions = arguments_.some((argument) => argument.type !== "positional");
-  const commandNames = subcommands.map(({ key, metadata }) => key ?? metadata.name).join("|");
-  return [
-    commandName,
-    hasOptions ? "[flags]" : undefined,
-    ...positionalArgs,
-    commandNames || undefined,
-  ]
-    .filter((token): token is string => token !== undefined)
-    .join(" ");
+  const hasOptions = descriptor.arguments.some((argument) => argument.type !== "positional");
+  const commandNames = visibleCommandDescriptors(descriptor.subcommands)
+    .map(({ key, metadata }) => key ?? metadata.name)
+    .join("|");
+  const variants: string[] = [];
+
+  if (descriptor.metadata.invocations.includes("direct")) {
+    variants.push(
+      [commandName, hasOptions ? "[flags]" : undefined, ...positionalArgs]
+        .filter((token): token is string => token !== undefined)
+        .join(" "),
+    );
+  }
+  if (descriptor.metadata.invocations.includes("subcommand") && commandNames) {
+    variants.push(`${commandName} ${commandNames}`);
+  }
+  return variants;
 }
 
 function renderCommandUsage(
@@ -281,7 +284,7 @@ function renderCommandUsage(
     ...(metadata.description ? wrapHelpText(metadata.description, getHelpTerminalWidth()) : []),
     "",
     `  ${renderDisplayText([span("Usage", "strong")])}`,
-    `    ${usageTokens(commandName, descriptor.arguments, subcommands)}`,
+    ...usageVariants(commandName, descriptor).map((usage) => `    ${usage}`),
   ];
 
   if (positionalEntries.length > 0) {
@@ -425,7 +428,7 @@ type StructuredArgument = {
 export type StructuredHelp = {
   command: string;
   description: string;
-  usage: string;
+  usage: string[];
   aliases: string[];
   arguments: StructuredArgument[];
   options: StructuredArgument[];
@@ -457,8 +460,8 @@ export function buildStructuredHelpFromDescriptor(
   const commandName = usageCommandName(metadata, parentMetadata);
   const isRootCommand = parentDescriptor === undefined && metadata.name === "altertable";
   const usage = isRootCommand
-    ? "altertable <command> [flags]"
-    : usageTokens(commandName, descriptor.arguments, subcommands);
+    ? ["altertable <command> [flags]"]
+    : usageVariants(commandName, descriptor);
   const entries = descriptor.arguments.map(structuredArgument);
   const globalArguments = rootDescriptor?.arguments ?? [];
 

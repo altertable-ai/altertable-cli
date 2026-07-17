@@ -15,12 +15,14 @@ export type CommandArg = import("citty").ArgDef & {
 export type CommandArgs = Record<string, CommandArg>;
 
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
+export type CommandInvocationKind = "direct" | "subcommand";
 
 /** Presentation metadata normalized into the shared command descriptor. */
 export type AltertableCommandMeta = CommandMeta & {
   examples?: readonly string[];
   hidden?: boolean;
   commandGroup?: AltertableCommandGroup;
+  invocations?: readonly CommandInvocationKind[];
 };
 
 export type CommandRunContext<T extends ArgsDef = ArgsDef> = CommandContext<T> & {

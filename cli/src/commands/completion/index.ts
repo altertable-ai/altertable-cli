@@ -13,6 +13,7 @@ export function createCompletionCommand(getRootCommand: GetRootCommand): Command
     meta: {
       name: "completion",
       commandGroup: "platform",
+      invocations: ["direct", "subcommand"],
       description: "Generate or install shell completion scripts.",
       examples: [
         "altertable completion install",

@@ -5,6 +5,7 @@ import {
   type Command,
   type CommandArg,
   type CommandArgs,
+  type CommandInvocationKind,
   type PositionalCompletionKind,
 } from "@/lib/command.ts";
 
@@ -15,6 +16,7 @@ export type CommandMetadata = {
   examples: string[];
   hidden: boolean;
   commandGroup?: AltertableCommandGroup;
+  invocations: CommandInvocationKind[];
 };
 
 export type CommandArgumentDescriptor = {
@@ -64,6 +66,7 @@ export function normalizeCommandMetadata(
     examples: toStrings(metadata?.examples),
     hidden: metadata?.hidden === true,
     ...(metadata?.commandGroup ? { commandGroup: metadata.commandGroup } : {}),
+    invocations: metadata?.invocations ? [...metadata.invocations] : [],
   };
 }
 
@@ -131,9 +134,20 @@ export async function resolveCommandDescriptor(
     resolveSubcommands(command),
   ]);
 
+  const invocations =
+    metadata.invocations.length > 0
+      ? metadata.invocations
+      : [
+          ...(subcommands.length === 0 ||
+          arguments_.some((argument) => argument.type === "positional")
+            ? (["direct"] as const)
+            : []),
+          ...(subcommands.length > 0 ? (["subcommand"] as const) : []),
+        ];
+
   return {
     ...(key ? { key } : {}),
-    metadata,
+    metadata: { ...metadata, invocations },
     arguments: arguments_,
     subcommands,
   };
