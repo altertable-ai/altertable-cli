@@ -12,7 +12,7 @@ describe("command reference", () => {
 
     const reference = renderCommandReference(descriptor);
 
-    expect(reference).toContain("`altertable query [options] [STATEMENT]`");
+    expect(reference).toContain("`altertable query [options] <STATEMENT>`");
     expect(reference).toContain("`altertable profile env [NAME]`");
     expect(reference).toContain("`altertable completion generate <BASH|FISH|ZSH>`");
     expect(reference).toContain("`altertable catalogs create <NAME>`");

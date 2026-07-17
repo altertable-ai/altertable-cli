@@ -448,14 +448,14 @@ Append JSON rows to a table.
 
 **Usage**
 
-`altertable append [options] [DATA]`
+`altertable append [options] <DATA>`
 `altertable append status`
 
 **Arguments**
 
 | Argument | Description |
 | --- | --- |
-| `[DATA]` | JSON object, array, or @file |
+| `<DATA>` | JSON object, array, or @file |
 
 **Options**
 
@@ -554,14 +554,14 @@ Run SQL queries against the lakehouse.
 
 **Usage**
 
-`altertable query [options] [STATEMENT]`
+`altertable query [options] <STATEMENT>`
 `altertable query show|cancel`
 
 **Arguments**
 
 | Argument | Description |
 | --- | --- |
-| `[STATEMENT]` | SQL statement to run |
+| `<STATEMENT>` | SQL statement to run |
 
 **Options**
 

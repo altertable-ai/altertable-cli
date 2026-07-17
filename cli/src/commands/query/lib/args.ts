@@ -6,7 +6,12 @@ import {
 } from "@/lib/query-output-args.ts";
 
 export const queryRunArgs = defineArgs({
-  statement: { type: "positional", description: "SQL statement to run", required: false },
+  statement: {
+    type: "positional",
+    description: "SQL statement to run",
+    required: false,
+    directRequired: true,
+  },
   ...queryResultFormatArgs,
   ...queryDisplayArgs,
   "query-id": { type: "string", description: "Optional stable query id" },

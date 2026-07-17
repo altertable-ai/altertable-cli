@@ -25,6 +25,7 @@ export type CommandArgumentDescriptor = {
   type: string;
   description: string;
   required: boolean;
+  parserRequired: boolean;
   requiredExplicitly: boolean;
   values: string[];
   positionalCompletion?: PositionalCompletionKind;
@@ -76,11 +77,12 @@ export function normalizeCommandArgument(
 ): CommandArgumentDescriptor {
   const aliases = "alias" in definition ? toStrings(definition.alias) : [];
   const values = commandArgumentValues(definition).map(String);
-  const required =
+  const parserRequired =
     definition.default === undefined &&
     (definition.type === "positional"
       ? definition.required !== false
       : definition.required === true);
+  const required = definition.directRequired ?? parserRequired;
 
   return {
     name,
@@ -88,7 +90,11 @@ export function normalizeCommandArgument(
     type: definition.type ?? "string",
     description: definition.description ?? "",
     required,
-    requiredExplicitly: definition.required !== undefined || definition.default !== undefined,
+    parserRequired,
+    requiredExplicitly:
+      definition.required !== undefined ||
+      definition.directRequired !== undefined ||
+      definition.default !== undefined,
     values,
     ...(definition.type === "positional"
       ? {

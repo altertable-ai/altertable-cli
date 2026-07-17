@@ -11,6 +11,8 @@ export type CommandArg = import("citty").ArgDef & {
   values?: readonly string[];
   /** Shell completion behavior for positional arguments without finite values. */
   completion?: Exclude<PositionalCompletionKind, "finite">;
+  /** Required for direct execution even when the parser must allow sibling subcommands. */
+  directRequired?: boolean;
 };
 export type CommandArgs = Record<string, CommandArg>;
 

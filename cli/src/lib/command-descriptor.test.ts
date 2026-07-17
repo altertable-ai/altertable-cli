@@ -195,6 +195,7 @@ describe("command descriptor", () => {
         type: "positional",
         description: "Shell name",
         required: true,
+        parserRequired: true,
         requiredExplicitly: true,
         values: ["bash", "fish", "zsh"],
         positionalCompletion: "finite",
@@ -205,6 +206,7 @@ describe("command descriptor", () => {
         type: "enum",
         description: "Output mode",
         required: false,
+        parserRequired: false,
         requiredExplicitly: true,
         values: ["script", "path"],
         default: "script",
@@ -242,6 +244,26 @@ describe("command descriptor", () => {
     expect(buildStructuredHelpFromDescriptor(env!, profile, root).arguments).toEqual([
       expect.objectContaining({ name: "name", required: false }),
     ]);
+  });
+
+  test("separates parser optionality from direct invocation requirements", async () => {
+    const root = await resolveCommandDescriptor(buildMainCommand());
+    const query = root.subcommands.find((command) => command.key === "query");
+    const append = root.subcommands.find((command) => command.key === "append");
+
+    expect(query?.arguments).toContainEqual(
+      expect.objectContaining({
+        name: "statement",
+        parserRequired: false,
+        required: true,
+      }),
+    );
+    expect(append?.arguments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "data", parserRequired: false, required: true }),
+        expect.objectContaining({ name: "to", parserRequired: false, required: true }),
+      ]),
+    );
   });
 
   test("reports descriptor invariant violations together", async () => {

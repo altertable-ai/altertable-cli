@@ -19,6 +19,6 @@ export const appendRunArgs = defineArgs({
 
 export const appendGroupArgs = defineArgs({
   ...appendRunArgs,
-  data: { ...appendRunArgs.data, required: false },
-  to: { ...appendRunArgs.to, required: false },
+  data: { ...appendRunArgs.data, required: false, directRequired: true },
+  to: { ...appendRunArgs.to, required: false, directRequired: true },
 });

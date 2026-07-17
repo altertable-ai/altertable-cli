@@ -175,7 +175,7 @@ describe("renderAltertableUsage", () => {
 
     expect(help.command).toBe("altertable query");
     expect(help.usage).toEqual([
-      "altertable query [flags] [STATEMENT]",
+      "altertable query [flags] <STATEMENT>",
       "altertable query show|cancel",
     ]);
     expect(help.arguments).toContainEqual(
@@ -195,15 +195,18 @@ describe("renderAltertableUsage", () => {
 
     const queryUsage = await renderAltertableUsage(query, queryParent);
     expect(queryUsage).toContain(
-      "Usage\n    altertable query [flags] [STATEMENT]\n    altertable query show|cancel",
+      "Usage\n    altertable query [flags] <STATEMENT>\n    altertable query show|cancel",
     );
     expect(queryUsage).not.toContain("[STATEMENT] show|cancel");
 
     const appendHelp = await buildStructuredHelp(append, appendParent, main);
     expect(appendHelp.usage).toEqual([
-      "altertable append [flags] [DATA]",
+      "altertable append [flags] <DATA>",
       "altertable append status",
     ]);
+    expect(appendHelp.options).toContainEqual(
+      expect.objectContaining({ name: "to", required: true }),
+    );
   });
 
   test("shares finite positional values with human and structured help", async () => {
