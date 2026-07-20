@@ -1,4 +1,5 @@
 import { parseApiJson } from "@/lib/parse-api-json.ts";
+import { isRecord } from "@/lib/object.ts";
 import { redactSensitiveJsonValue } from "@/lib/redact.ts";
 import {
   renderTabularOutput,
@@ -6,12 +7,8 @@ import {
   type TabularResult,
 } from "@/lib/tabular-result.ts";
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 export function extractManagementRows(data: unknown): Record<string, unknown>[] {
-  if (!isPlainObject(data)) {
+  if (!isRecord(data)) {
     return [];
   }
 
@@ -21,14 +18,14 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     if (rows === undefined) {
       return [];
     }
-    const plainRows = rows.filter(isPlainObject);
+    const plainRows = rows.filter(isRecord);
     return plainRows.map(redactSensitiveRow);
   }
 
-  const nestedObjects = Object.entries(data).filter(([, value]) => isPlainObject(value));
+  const nestedObjects = Object.entries(data).filter(([, value]) => isRecord(value));
   if (nestedObjects.length === 1 && Object.keys(data).length === 1) {
     const nestedObject = nestedObjects[0]?.[1];
-    if (!isPlainObject(nestedObject)) {
+    if (!isRecord(nestedObject)) {
       return [];
     }
     return [redactSensitiveRow(nestedObject)];
@@ -36,7 +33,7 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
 
   const row: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
-    if (isPlainObject(value)) {
+    if (isRecord(value)) {
       for (const [nestedKey, nestedValue] of Object.entries(value)) {
         row[nestedKey] = redactSensitiveRowValue(nestedKey, nestedValue);
       }

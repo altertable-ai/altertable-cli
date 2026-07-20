@@ -1,12 +1,9 @@
 import type { components } from "@/generated/openapi-types.ts";
 import { ParseError } from "@/lib/errors.ts";
+import { isRecord } from "@/lib/object.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 
 export type WhoamiResponse = components["schemas"]["WhoamiResponse"];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function hasRequiredString(record: Record<string, unknown>, key: string): boolean {
   return typeof record[key] === "string" && record[key].length > 0;
