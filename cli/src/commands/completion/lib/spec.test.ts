@@ -468,6 +468,17 @@ describe("formatFishCompletion", () => {
     );
   });
 
+  test("escapes backslashes in flag descriptions", async () => {
+    const spec = await buildCompletionSpec(
+      defineCommand({
+        metadata: { name: "altertable" },
+        args: { path: { type: "string", description: "Path: C:\\\\data" } },
+      }),
+    );
+
+    expect(formatFishCompletion(spec)).toContain("-l path -d 'Path: C:\\\\\\\\data'");
+  });
+
   test("includes finite positional value completions", async () => {
     const output = formatFishCompletion(await buildCompletionSpec(buildMainCommand()));
     expect(output).toContain('-a "bash fish zsh"');

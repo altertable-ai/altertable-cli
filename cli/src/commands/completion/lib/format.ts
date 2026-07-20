@@ -507,7 +507,7 @@ fi
 }
 
 function escapeFishDescription(description: string): string {
-  return description.replace(/'/g, "\\'");
+  return description.replaceAll("\\", "\\\\").replaceAll("'", "\\'");
 }
 
 export function formatFishPathCondition(
