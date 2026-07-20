@@ -497,7 +497,9 @@ describe("formatZshCompletion", () => {
 
 describe("executable shell completion contract", () => {
   for (const [shell, runCompletion] of Object.entries(completionRunners)) {
-    test(`${shell} routes direct operands to trailing flags`, async () => {
+    const shellTest = test.skipIf(Bun.which(shell) === null);
+
+    shellTest(`${shell} routes direct operands to trailing flags`, async () => {
       expect(await runCompletion(["altertable", "query", "SELECT 1", "--"])).toContain("--layout");
       expect(await runCompletion(["altertable", "append", '{"event":"checkout"}', "--"])).toContain(
         "--to",
@@ -505,7 +507,7 @@ describe("executable shell completion contract", () => {
       expect(await runCompletion(["altertable", "api", "/whoami", "--"])).toContain("--method");
     });
 
-    test(`${shell} resolves nested commands without raw word indexes`, async () => {
+    shellTest(`${shell} resolves nested commands without raw word indexes`, async () => {
       const candidates = await runCompletion([
         "altertable",
         "--json",
@@ -518,7 +520,7 @@ describe("executable shell completion contract", () => {
       expect(candidates).not.toContain("--layout");
     });
 
-    test(`${shell} preserves intentional direct operands with trailing flags`, async () => {
+    shellTest(`${shell} preserves intentional direct operands with trailing flags`, async () => {
       const direct = await runCompletion([
         "altertable",
         "query",
@@ -535,7 +537,7 @@ describe("executable shell completion contract", () => {
       expect(nested).not.toContain("--layout");
     });
 
-    test(`${shell} completes and exhausts finite positional values`, async () => {
+    shellTest(`${shell} completes and exhausts finite positional values`, async () => {
       expect(await runCompletion(["altertable", "completion", "install", "--no-rc", ""])).toEqual(
         expect.arrayContaining(["bash", "fish", "zsh"]),
       );
@@ -549,7 +551,7 @@ describe("executable shell completion contract", () => {
       );
     });
 
-    test(`${shell} composes flags with pending positional candidates`, async () => {
+    shellTest(`${shell} composes flags with pending positional candidates`, async () => {
       const candidates = await runCompletion(["altertable", "completion", "install", "--"]);
       expect(candidates).toEqual(
         expect.arrayContaining(["--no-rc", "--json", "--profile", "--help"]),
@@ -558,12 +560,12 @@ describe("executable shell completion contract", () => {
       expect(await runCompletion(["altertable", "--"])).toContain("--version");
     });
 
-    test(`${shell} completes file positionals`, async () => {
+    shellTest(`${shell} completes file positionals`, async () => {
       expect(await runCompletion(["altertable", "upload", "package.j"])).toContain("package.json");
       expect(await runCompletion(["altertable", "upsert", "package.j"])).toContain("package.json");
     });
 
-    test(`${shell} handles global flags in every position and equals values`, async () => {
+    shellTest(`${shell} handles global flags in every position and equals values`, async () => {
       for (const globalFlag of globalFlagForms) {
         const invocations = [
           ["altertable", ...globalFlag, "completion", "generate", ""],
@@ -578,13 +580,13 @@ describe("executable shell completion contract", () => {
       }
     });
 
-    test(`${shell} completes finite flag values`, async () => {
+    shellTest(`${shell} completes finite flag values`, async () => {
       expect(await runCompletion(["altertable", "query", "--layout", ""])).toEqual(
         expect.arrayContaining(["auto", "table", "line"]),
       );
     });
 
-    test(`${shell} honors the option separator`, async () => {
+    shellTest(`${shell} honors the option separator`, async () => {
       expect(await runCompletion(["altertable", "completion", "generate", "--", ""])).toEqual(
         expect.arrayContaining(["bash", "fish", "zsh"]),
       );
