@@ -43,6 +43,9 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      - name: Install completion shells
+        run: sudo apt-get update && sudo apt-get install --yes fish zsh
+
       - name: Verify repository and integration paths
         run: ./scripts/verify.sh --integration
 
