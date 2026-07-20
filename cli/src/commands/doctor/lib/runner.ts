@@ -16,81 +16,91 @@ function summarize(checks: readonly DoctorCheckResult[]): DoctorSummary {
   };
 }
 
-function blockedBy(
-  check: DoctorCheck,
-  results: ReadonlyMap<string, DoctorCheckResult>,
-): DoctorCheckResult | undefined {
-  for (const dependencyId of check.requires ?? []) {
-    const dependency = results.get(dependencyId);
-    if (!dependency) {
-      throw new Error(`Doctor check ${check.id} requires unknown or later check ${dependencyId}.`);
+function validateChecks(checks: readonly DoctorCheck[]): void {
+  const precedingIds = new Set<string>();
+  for (const check of checks) {
+    if (precedingIds.has(check.id)) {
+      throw new Error(`Duplicate doctor check id: ${check.id}`);
     }
-    if (dependency.status !== "pass" && dependency.status !== "warn") {
-      return dependency;
+    for (const dependencyId of check.requires ?? []) {
+      if (!precedingIds.has(dependencyId)) {
+        throw new Error(
+          `Doctor check ${check.id} requires unknown or later check ${dependencyId}.`,
+        );
+      }
     }
+    precedingIds.add(check.id);
   }
-  return undefined;
+}
+
+async function runCheck(
+  check: DoctorCheck,
+  context: DoctorCheckContext,
+  dependencies: readonly DoctorCheckResult[],
+): Promise<DoctorCheckResult> {
+  const blocker = dependencies.find(
+    (dependency) => dependency.status !== "pass" && dependency.status !== "warn",
+  );
+  if (blocker) {
+    return {
+      id: check.id,
+      label: check.label,
+      status: "skipped",
+      message: `Blocked by ${blocker.label.toLowerCase()}.`,
+    };
+  }
+
+  const skipReason = check.skip?.(context);
+  if (skipReason) {
+    return {
+      id: check.id,
+      label: check.label,
+      status: "skipped",
+      message: skipReason,
+    };
+  }
+
+  const startedAt = performance.now();
+  try {
+    const outcome = await check.run(context);
+    return {
+      ...outcome,
+      id: check.id,
+      label: check.label,
+      duration_ms: Math.round(performance.now() - startedAt),
+    };
+  } catch (error) {
+    const serialized = serializeCliError(error);
+    return {
+      id: check.id,
+      label: check.label,
+      status: "fail",
+      message: serialized.message,
+      code: serialized.code,
+      http_status: serialized.status,
+      details: serialized.details,
+      remediation: check.remediation?.(error, context),
+      duration_ms: Math.round(performance.now() - startedAt),
+    };
+  }
 }
 
 export async function runDoctorChecks(
   checks: readonly DoctorCheck[],
   context: DoctorCheckContext,
 ): Promise<DoctorReport> {
-  const results = new Map<string, DoctorCheckResult>();
+  validateChecks(checks);
 
+  const pendingResults = new Map<string, Promise<DoctorCheckResult>>();
   for (const check of checks) {
-    if (results.has(check.id)) {
-      throw new Error(`Duplicate doctor check id: ${check.id}`);
-    }
-
-    const dependency = blockedBy(check, results);
-    if (dependency) {
-      results.set(check.id, {
-        id: check.id,
-        label: check.label,
-        status: "skipped",
-        message: `Blocked by ${dependency.label.toLowerCase()}.`,
-      });
-      continue;
-    }
-
-    const skipReason = check.skip?.(context);
-    if (skipReason) {
-      results.set(check.id, {
-        id: check.id,
-        label: check.label,
-        status: "skipped",
-        message: skipReason,
-      });
-      continue;
-    }
-
-    const startedAt = performance.now();
-    try {
-      const outcome = await check.run(context);
-      results.set(check.id, {
-        ...outcome,
-        id: check.id,
-        label: check.label,
-        duration_ms: Math.round(performance.now() - startedAt),
-      });
-    } catch (error) {
-      const serialized = serializeCliError(error);
-      results.set(check.id, {
-        id: check.id,
-        label: check.label,
-        status: "fail",
-        message: serialized.message,
-        code: serialized.code,
-        http_status: serialized.status,
-        details: serialized.details,
-        remediation: check.remediation?.(error, context),
-        duration_ms: Math.round(performance.now() - startedAt),
-      });
-    }
+    const dependencies = (check.requires ?? []).map((id) => pendingResults.get(id)!);
+    pendingResults.set(
+      check.id,
+      Promise.all(dependencies).then((results) => runCheck(check, context, results)),
+    );
   }
 
-  const checkResults = [...results.values()];
+  const checkResults = await Promise.all(pendingResults.values());
   const summary = summarize(checkResults);
   return {
     healthy: summary.failed === 0,

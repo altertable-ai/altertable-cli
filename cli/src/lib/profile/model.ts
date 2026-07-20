@@ -49,7 +49,7 @@ const PROFILE_SECRET_STORE: ProfileSecretStore = { moveProfileSecrets, secretDel
 
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
-type ProfileAuth = {
+export type ProfileAuth = {
   management: ProfileManagementAuth;
   lakehouse: ProfileLakehouseAuth;
 };
@@ -80,7 +80,7 @@ export type ProfileUpdate = {
   controlPlane?: string;
 };
 
-export type ProfileInspect = {
+export type ProfileConfiguration = {
   name: string;
   active: boolean;
   config_file: string;
@@ -99,8 +99,6 @@ export type ProfileInspect = {
     data_plane?: string;
     control_plane?: string;
   };
-  auth: ProfileAuth;
-  status: "configured" | "partial" | "empty";
   timestamps: {
     created_at?: string;
     updated_at?: string;
@@ -108,6 +106,11 @@ export type ProfileInspect = {
     oauth_expires_at?: string;
     lakehouse_expires_at?: string;
   };
+};
+
+export type ProfileInspect = ProfileConfiguration & {
+  auth: ProfileAuth;
+  status: "configured" | "partial" | "empty";
 };
 
 type ProfileSnapshot = {
@@ -180,7 +183,13 @@ function writeProfileUpdate(name: string, update: ProfileUpdate): void {
   }
 }
 
-function profileAuth(name: string): ProfileAuth {
+export function inspectProfileAuth(name: string): ProfileAuth {
+  if (isFromEnvProfile(name)) {
+    return {
+      management: hasEnvManagementCredentials() ? "api_key" : "none",
+      lakehouse: envLakehouseAuthKind(),
+    };
+  }
   return {
     management: secretExists("oauth/access-token", name)
       ? "oauth"
@@ -196,14 +205,14 @@ function profileAuth(name: string): ProfileAuth {
 }
 
 export function profileHasAnyAuthConfigured(name: string): boolean {
-  const auth = profileAuth(name);
+  const auth = inspectProfileAuth(name);
   return auth.management !== "none" || auth.lakehouse !== "none";
 }
 
 function readProfileSnapshot(name: string): ProfileSnapshot {
   return {
     config: readProfileConfigRecord(name),
-    auth: profileAuth(name),
+    auth: inspectProfileAuth(name),
   };
 }
 
@@ -281,11 +290,7 @@ function envLakehouseAuthKind(): ProfileLakehouseAuth {
   return "none";
 }
 
-// The `_from_env` identity has no stored directory, so build its inspection view
-// from the environment variables in effect rather than reading disk.
-function inspectFromEnvProfile(): ProfileInspect {
-  const management: ProfileManagementAuth = hasEnvManagementCredentials() ? "api_key" : "none";
-  const lakehouse = envLakehouseAuthKind();
+function inspectFromEnvConfiguration(): ProfileConfiguration {
   return {
     name: FROM_ENV_PSEUDOPROFILE_NAME,
     active: true,
@@ -297,18 +302,15 @@ function inspectFromEnvProfile(): ProfileInspect {
       data_plane: readEnv("ALTERTABLE_API_BASE"),
       control_plane: readEnv("ALTERTABLE_MANAGEMENT_API_BASE"),
     },
-    auth: { management, lakehouse },
-    status: management !== "none" || lakehouse !== "none" ? "configured" : "empty",
     timestamps: {},
   };
 }
 
-function profileInspectFromSnapshot(
+function profileConfigurationFromConfig(
   name: string,
   active: boolean,
-  snapshot: ProfileSnapshot,
-): ProfileInspect {
-  const { config, auth } = snapshot;
+  config: Record<ProfileConfigKey, string | undefined>,
+): ProfileConfiguration {
   return {
     name,
     active,
@@ -328,8 +330,6 @@ function profileInspectFromSnapshot(
       data_plane: config.api_base,
       control_plane: config.management_api_base,
     },
-    auth,
-    status: profileStatus(snapshot),
     timestamps: {
       created_at: config.created_at,
       updated_at: config.updated_at,
@@ -340,9 +340,27 @@ function profileInspectFromSnapshot(
   };
 }
 
+function profileInspectFromSnapshot(
+  name: string,
+  active: boolean,
+  snapshot: ProfileSnapshot,
+): ProfileInspect {
+  return {
+    ...profileConfigurationFromConfig(name, active, snapshot.config),
+    auth: snapshot.auth,
+    status: profileStatus(snapshot),
+  };
+}
+
 export function inspectProfile(name: string): ProfileInspect {
   if (isFromEnvProfile(name)) {
-    return inspectFromEnvProfile();
+    const configuration = inspectFromEnvConfiguration();
+    const auth = inspectProfileAuth(name);
+    return {
+      ...configuration,
+      auth,
+      status: auth.management !== "none" || auth.lakehouse !== "none" ? "configured" : "empty",
+    };
   }
   assertSafeProfileName(name);
   ensureProfilesLayout();
@@ -357,9 +375,9 @@ export function inspectProfile(name: string): ProfileInspect {
   );
 }
 
-export function inspectProfileReadOnly(name: string): ProfileInspect {
+export function inspectProfileConfigurationReadOnly(name: string): ProfileConfiguration {
   if (isFromEnvProfile(name)) {
-    return inspectFromEnvProfile();
+    return inspectFromEnvConfiguration();
   }
   assertSafeProfileName(name);
   if (name !== DEFAULT_PROFILE_NAME && !profileExists(name)) {
@@ -367,7 +385,11 @@ export function inspectProfileReadOnly(name: string): ProfileInspect {
   }
 
   const activeProfile = kvGet(configFile(), "active_profile") || DEFAULT_PROFILE_NAME;
-  return profileInspectFromSnapshot(name, activeProfile === name, readProfileSnapshot(name));
+  return profileConfigurationFromConfig(
+    name,
+    activeProfile === name,
+    readProfileConfigRecord(name),
+  );
 }
 
 export function createEmptyProfile(name: string): ProfileInspect {

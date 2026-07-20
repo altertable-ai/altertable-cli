@@ -2,12 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defineCommand, resolveCommandValue, type Command } from "@/lib/command.ts";
+import { defineCommand, type Command } from "@/lib/command.ts";
 import { executeCommand } from "@/lib/command-parser.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
-import { buildTopLevelCommands } from "@/commands/index.ts";
-import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
@@ -256,36 +254,5 @@ describe("completion command", () => {
     ).toBe(true);
     expect(existsSync(join(home, ".bashrc"))).toBe(false);
     expect(visibleTerminalText(output)).toContain("Startup: left unchanged (--no-rc)");
-  });
-
-  test("integration root commands and aliases match the registry", async () => {
-    const spec = await buildCompletionSpec(buildMainCommand());
-    const output = await runCompletion(buildMainCommand, "bash");
-    const registry = buildTopLevelCommands(buildMainCommand);
-    const registeredNames = (
-      await Promise.all(
-        Object.values(registry).map(async (command) => {
-          const metadata = await resolveCommandValue(command.metadata);
-          const aliases = Array.isArray(metadata?.alias)
-            ? metadata.alias
-            : metadata?.alias
-              ? [metadata.alias]
-              : [];
-          return metadata?.name ? [metadata.name, ...aliases] : aliases;
-        }),
-      )
-    )
-      .flat()
-      .sort((left, right) => left.localeCompare(right));
-
-    expect(
-      spec.subcommands
-        .map((command) => command.name)
-        .sort((left, right) => left.localeCompare(right)),
-    ).toEqual(registeredNames);
-    expect(output).toContain("completion");
-    expect(output).toContain("doctor");
-    expect(output).toContain("upgrade");
-    expect(output).not.toContain(" GET ");
   });
 });

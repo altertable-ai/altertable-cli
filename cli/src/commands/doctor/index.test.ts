@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
+import { configFile, credentialsFile, kvSet } from "@/lib/config.ts";
 
 let testHome = "";
 let mockFile = "";
@@ -89,6 +90,61 @@ describe("doctor command", () => {
           message: expect.stringContaining("Jane <jane@example.com>"),
         }),
         expect.objectContaining({ id: "lakehouse.api", status: "pass" }),
+      ]),
+    );
+  });
+
+  test("attributes credential backend failures to the secret store", async () => {
+    writeFileSync(credentialsFile(), "profile/default/api-key=atm_test\n", { mode: 0o644 });
+    chmodSync(credentialsFile(), 0o644);
+
+    const harness = await runCommandWithTestRuntime(["doctor", "--offline"]);
+    const report = JSON.parse(harness.stdout[0] ?? "");
+
+    expect(report).toMatchObject({
+      healthy: false,
+      summary: { passed: 2, failed: 1, skipped: 4 },
+    });
+    expect(report.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "profile.configuration", status: "pass" }),
+        expect.objectContaining({
+          id: "credentials.store",
+          status: "fail",
+          message: expect.stringContaining("permissions 644 are too open"),
+        }),
+        expect.objectContaining({
+          id: "management.credentials",
+          status: "skipped",
+          message: "Blocked by secret store.",
+        }),
+      ]),
+    );
+  });
+
+  test("reports a stale active profile instead of selecting the default", async () => {
+    kvSet(configFile(), "active_profile", "missing");
+
+    const harness = await runCommandWithTestRuntime(["doctor", "--offline"]);
+    const report = JSON.parse(harness.stdout[0] ?? "");
+
+    expect(report).toMatchObject({
+      healthy: false,
+      profile: "missing",
+      summary: { passed: 1, failed: 1, skipped: 5 },
+    });
+    expect(report.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "profile.configuration",
+          status: "fail",
+          message: "Profile not found: missing",
+        }),
+        expect.objectContaining({
+          id: "credentials.store",
+          status: "skipped",
+          message: "Blocked by profile.",
+        }),
       ]),
     );
   });

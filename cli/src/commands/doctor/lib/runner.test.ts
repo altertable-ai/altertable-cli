@@ -90,6 +90,64 @@ describe("runDoctorChecks", () => {
     expect(report.checks[0]).toMatchObject({ status: "skipped", message: "Offline mode." });
   });
 
+  test("runs independent checks concurrently and preserves report order", async () => {
+    const started: string[] = [];
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const firstFinished = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    const secondFinished = new Promise<void>((resolve) => {
+      finishSecond = resolve;
+    });
+
+    const reportPromise = runDoctorChecks(
+      [
+        {
+          id: "first",
+          label: "First",
+          async run() {
+            started.push("first");
+            await firstFinished;
+            return { status: "pass", message: "First done." };
+          },
+        },
+        {
+          id: "second",
+          label: "Second",
+          async run() {
+            started.push("second");
+            await secondFinished;
+            return { status: "pass", message: "Second done." };
+          },
+        },
+        {
+          id: "dependent",
+          label: "Dependent",
+          requires: ["first", "second"],
+          run() {
+            started.push("dependent");
+            return { status: "pass", message: "Dependent done." };
+          },
+        },
+      ],
+      context(),
+    );
+
+    await Promise.resolve();
+    expect(started).toEqual(["first", "second"]);
+
+    finishSecond();
+    await Promise.resolve();
+    expect(started).toEqual(["first", "second"]);
+
+    finishFirst();
+    const report = await reportPromise;
+
+    expect(started).toEqual(["first", "second", "dependent"]);
+    expect(report.checks.map((check) => check.id)).toEqual(["first", "second", "dependent"]);
+  });
+
   test("preserves HTTP status and CLI error details", async () => {
     const report = await runDoctorChecks(
       [

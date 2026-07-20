@@ -174,7 +174,8 @@ export function resolveWorkingProfileReadOnly(override?: string): string {
   }
 
   const active = kvGet(configFile(), "active_profile");
-  if (active.length > 0 && profileExists(active)) {
+  if (active.length > 0) {
+    assertSafeProfileName(active);
     return active;
   }
   return DEFAULT_PROFILE_NAME;

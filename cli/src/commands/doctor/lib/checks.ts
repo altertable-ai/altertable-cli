@@ -1,5 +1,9 @@
 import { VERSION } from "@/version.ts";
-import { inspectProfileReadOnly, type ProfileInspect } from "@/lib/profile/model.ts";
+import {
+  inspectProfileAuth,
+  inspectProfileConfigurationReadOnly,
+  type ProfileAuth,
+} from "@/lib/profile/model.ts";
 import { envConfigMode } from "@/lib/profile-store.ts";
 import { readEnv } from "@/lib/env.ts";
 import { configGetGlobal, resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
@@ -53,30 +57,24 @@ function validateLakehouseProbe(body: string): void {
   }
 }
 
-function managementCredentialCheck(profile: ProfileInspect): DoctorCheckOutcome {
-  if (profile.auth.management === "none") {
+function checkManagementCredentials(auth: ProfileAuth): DoctorCheckOutcome {
+  if (auth.management === "none") {
     return fail("No management credentials configured.", "configuration_error", [
       "Run: altertable login",
       "Or run: altertable profile configure --scope management",
     ]);
   }
-  return pass(`Configured (${profile.auth.management}).`, {
-    auth: profile.auth.management,
-    expires_at: profile.timestamps.oauth_expires_at,
-  });
+  return pass(`Configured (${auth.management}).`, { auth: auth.management });
 }
 
-function lakehouseCredentialCheck(profile: ProfileInspect): DoctorCheckOutcome {
-  if (profile.auth.lakehouse === "none") {
+function checkLakehouseCredentials(auth: ProfileAuth): DoctorCheckOutcome {
+  if (auth.lakehouse === "none") {
     return fail("No lakehouse credentials configured.", "configuration_error", [
       "Run: altertable login",
       "Or run: altertable profile configure --scope lakehouse",
     ]);
   }
-  return pass(`Configured (${profile.auth.lakehouse}).`, {
-    auth: profile.auth.lakehouse,
-    expires_at: profile.timestamps.lakehouse_expires_at,
-  });
+  return pass(`Configured (${auth.lakehouse}).`, { auth: auth.lakehouse });
 }
 
 function networkSkip(context: DoctorCheckContext): string | undefined {
@@ -84,11 +82,14 @@ function networkSkip(context: DoctorCheckContext): string | undefined {
 }
 
 export function createDoctorChecks(): DoctorCheck[] {
-  let inspectedProfile: ProfileInspect | undefined;
-  const profile = (context: DoctorCheckContext): ProfileInspect => {
-    inspectedProfile ??= inspectProfileReadOnly(context.execution.profile);
-    return inspectedProfile;
-  };
+  let profileAuth: ProfileAuth | undefined;
+
+  function requireProfileAuth(): ProfileAuth {
+    if (!profileAuth) {
+      throw new Error("Secret store check did not inspect profile authentication.");
+    }
+    return profileAuth;
+  }
 
   return [
     {
@@ -106,18 +107,17 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "profile.configuration",
       label: "Profile",
       run: (context) => {
-        const current = profile(context);
-        const dataPlane = resolveApiBase(current.name);
-        const controlPlane = resolveManagementApiBase(current.name);
-        return pass(`${current.name} (${profileSource(context)})`, {
+        const current = inspectProfileConfigurationReadOnly(context.execution.profile);
+        const source = profileSource(context);
+        return pass(`${current.name} (${source})`, {
           name: current.name,
-          source: profileSource(context),
-          status: current.status,
+          source,
           environment: current.environment,
           config_file: current.config_file,
+          timestamps: current.timestamps,
           endpoints: {
-            data_plane: dataPlane,
-            control_plane: controlPlane,
+            data_plane: resolveApiBase(current.name),
+            control_plane: resolveManagementApiBase(current.name),
           },
         });
       },
@@ -128,13 +128,10 @@ export function createDoctorChecks(): DoctorCheck[] {
       label: "Secret store",
       requires: ["profile.configuration"],
       run: (context) => {
+        profileAuth = inspectProfileAuth(context.execution.profile);
         if (envConfigMode()) {
-          return {
-            status: "skipped",
-            message: "Credentials supplied by environment variables.",
-          };
+          return pass("Credentials supplied by environment variables.");
         }
-        profile(context);
         const store = secretStoreDisplay();
         return pass(`${store} accessible.`, { store });
       },
@@ -143,8 +140,8 @@ export function createDoctorChecks(): DoctorCheck[] {
     {
       id: "management.credentials",
       label: "Management auth",
-      requires: ["profile.configuration"],
-      run: (context) => managementCredentialCheck(profile(context)),
+      requires: ["credentials.store"],
+      run: () => checkManagementCredentials(requireProfileAuth()),
     },
     {
       id: "management.api",
@@ -173,8 +170,8 @@ export function createDoctorChecks(): DoctorCheck[] {
     {
       id: "lakehouse.credentials",
       label: "Lakehouse auth",
-      requires: ["profile.configuration"],
-      run: (context) => lakehouseCredentialCheck(profile(context)),
+      requires: ["credentials.store"],
+      run: () => checkLakehouseCredentials(requireProfileAuth()),
     },
     {
       id: "lakehouse.api",
