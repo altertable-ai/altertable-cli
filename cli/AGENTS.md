@@ -42,6 +42,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 - **Dual-plane auth**: lakehouse data plane (HTTP Basic) vs management REST (Bearer API key). See root README credential tables.
 - **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineCommand` injects `runtime`, `sink`, and a lazy `execution` context into every command handler. Commands pass `sink` to output helpers rather than writing to the console.
+- **Command descriptor contract** (`src/lib/command-descriptor.ts`): resolvable command metadata, arguments, finite values, and child commands are normalized once for human help, structured agent help, shell completion, and generated documentation. Declare presentation data on `meta` and `args`; do not build parallel command representations in consumers.
 - **Direct execution**: a leaf command parses its arguments, builds a plain request value, sends it, and presents the result. Request values stay declarative as the seam for a future dry-run mode; there is no operation/effect framework.
 - **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Commands pass their injected `sink` explicitly.
 - **When to use `sink` directly**: bespoke output (custom tables, metadata messages) — `sink.writeJson`, `sink.writeHuman`, `sink.writeMetadata`.
@@ -51,7 +52,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 ## Conventions
 
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.
-- Import command types and `defineArgs` from `src/lib/command.ts`; only that boundary should depend on Citty's types.
+- Import command types and `defineArgs` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
 - Derive related argument schemas from shared fragments instead of repeating flag definitions.
 - Function declarations over const function expressions (except one-liners)
 - Types over interfaces
@@ -79,7 +80,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 | Path                                  | Responsibility                                             |
 | ------------------------------------- | ---------------------------------------------------------- |
-| `src/cli.ts`                          | Citty root command, global flags, error bootstrap          |
+| `src/cli.ts`                          | Root command, global flags, error bootstrap                |
 | `src/context.ts`                      | Parsed global flags (`json`, `debug`, `profile`, timeouts) |
 | `src/commands/<family>/index.ts`      | One top-level command group                                |
 | `src/commands/<family>/<name>.ts`     | One leaf command                                           |
@@ -94,25 +95,26 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 **Largest/hot files** — read before large refactors: `lib/http.ts`, `lib/profile-configure-core.ts`, `lib/query-format.ts`, `commands/api/lib/http.ts`.
 
-| Module                                  | Role                                                                             |
-| --------------------------------------- | -------------------------------------------------------------------------------- |
-| `commands/query/`, `append/`, `upload/` | Data-plane commands                                                              |
-| `commands/api/`                         | Management HTTP invoker (`api GET /path`), spec, routes                          |
-| `commands/api/lib/http.ts`              | HTTP invoker logic for `api`                                                     |
-| `commands/api/lib/body.ts`              | `--body`, `@file`, `-f key=value` body builders                                  |
-| `lib/profile-configure-core.ts`         | Credential store (`configureRunSet`, show, clear)                                |
-| `lib/profile-configure.ts`              | `profile --configure` dispatch (flags vs wizard, `--scope`) + interactive wizard |
-| `lib/profile-configure-interactive.ts`  | Wizard prompts + credential collection                                           |
-| `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)                       |
-| `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands              |
-| `commands/profile/`                     | Profile subcommands, `profile --configure`, `profile show`                       |
-| `lib/query-output.ts`                   | Shared query output formats and sink dispatch                                    |
-| `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                                |
-| `lib/management/`                       | Shared management identity, catalogs, and presentation                           |
-| `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                                       |
-| `ui/prompts.ts`                         | Shared interactive prompt adapter and types                                      |
-| `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                                      |
-| `commands/completion/lib/spec.ts`       | Walks Citty tree for shell completion                                            |
+| Module                                  | Role                                                                |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| `commands/query/`, `append/`, `upload/` | Data-plane commands                                                 |
+| `commands/api/`                         | Management HTTP invoker (`api /path`), spec, routes                 |
+| `commands/api/lib/http.ts`              | HTTP invoker logic for `api`                                        |
+| `commands/api/lib/body.ts`              | `--input`, `-f key=value`, and `-F key=value` body builders         |
+| `lib/profile-configure-core.ts`         | Credential store (`configureRunSet`, show, clear)                   |
+| `lib/profile-configure.ts`              | Profile configuration flags and interactive wizard (`--scope`)      |
+| `lib/profile-configure-interactive.ts`  | Wizard prompts + credential collection                              |
+| `lib/profile-status.ts`                 | Post-configure credential verification (`configureVerify`)          |
+| `lib/profile/model.ts`                  | Profile store/inspect + credential presence shared by auth commands |
+| `commands/profile/`                     | Profile subcommands, `profile configure`, `profile show`            |
+| `lib/query-output.ts`                   | Shared query output formats and sink dispatch                       |
+| `lib/http.ts`                           | Shared HTTP transport, logging, mock file support                   |
+| `lib/management/`                       | Shared management identity, catalogs, and presentation              |
+| `commands/catalogs/lib/requests.ts`     | Declarative catalog create request builder                          |
+| `ui/prompts.ts`                         | Shared interactive prompt adapter and types                         |
+| `lib/errors.ts`                         | Exit codes, `CliError`, JSON error envelope                         |
+| `commands/completion/lib/spec.ts`       | Projects the command descriptor into shell completion data          |
+| `lib/command-descriptor.ts`             | Shared help, completion, and documentation command contract         |
 
 ## Command tree
 
@@ -120,20 +122,31 @@ Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 
 ```
 altertable
-├── profile (--configure [--scope management|lakehouse], show, list, use, …), catalogs
-├── query (run, show, cancel)
-├── append (run, task), upload
+├── login, logout
+├── profile
+│   └── configure, show, list, status, switch, current, env, rename, delete
+├── catalogs
+│   └── create
+├── query <SQL>
+│   └── show, cancel
+├── schema, duckdb
+├── append <DATA>
+│   └── status
+├── upload, upsert
 ├── api
 │   ├── spec
 │   ├── routes
-│   └── GET | POST | PATCH | DELETE | PUT  (HTTP invoker also supports `api /whoami`, `api -X GET /path`)
+│   └── <PATH> [-X GET|POST|PATCH|DELETE|PUT]
+├── update (alias: upgrade)
 └── completion
     ├── install [bash|fish|zsh]
     ├── generate [bash|fish|zsh]
-    └── bash|fish|zsh  (raw script compatibility aliases)
 ```
 
-`query` exposes `run` as its Citty default leaf and takes the SQL statement as a bare positional. Prefer the public form `altertable query "…"` in docs, tests, and new call sites unless a test is explicitly covering the command tree shape. A bare statement is routed to `run` by `normalizeQueryInvocatorRawArgs` in `bootstrap`, mirroring the `api` command's rawArgs rewrite.
+`query`, `append`, `catalogs`, `api`, and `completion` combine direct parent behavior with
+real subcommands. The parser resolves one invocation from command metadata, then executes
+only the selected handler. Declare intentional direct/subcommand ambiguity through command
+metadata; do not inspect or rewrite raw argv in parent handlers.
 
 ## Cookbook
 
@@ -164,13 +177,13 @@ export const myfeatureCommand = defineCommand({
 
 ### Recipe B — New management REST operation
 
-New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new Citty subcommands:
+New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new dedicated subcommands:
 
 ```bash
 altertable api routes                    # discover method + path
 altertable api /whoami                   # default GET
-altertable api -X GET /path -f q=value   # forced GET puts fields in the query string
-altertable api POST /new_resource -f …   # invoke
+altertable api /path -X GET -f q=value   # forced GET puts fields in the query string
+altertable api /new_resource -f …        # invoke (POST inferred)
 ```
 
 Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder mapping if new path parameters appear.

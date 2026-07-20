@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  getOpenapiSpecYaml,
-  resolveOpenapiSpecFormat,
-  stripOpenapiSourceHeader,
-} from "@/lib/openapi-spec.ts";
+import { getOpenapiSpecYaml, stripOpenapiSourceHeader } from "@/lib/openapi-spec.ts";
 
 describe("openapi-spec", () => {
   test("stripOpenapiSourceHeader removes bundled source comments", () => {
@@ -29,16 +25,5 @@ info:
     const yaml = getOpenapiSpecYaml();
     expect(yaml.startsWith("openapi: 3.1.0")).toBe(true);
     expect(yaml).not.toContain("AUTO-GENERATED");
-  });
-
-  test("resolveOpenapiSpecFormat prefers explicit format", () => {
-    expect(resolveOpenapiSpecFormat(false, true, "yaml")).toBe("yaml");
-    expect(resolveOpenapiSpecFormat(true, true, "yaml")).toBe("yaml");
-  });
-
-  test("resolveOpenapiSpecFormat defaults to json when piped or --json", () => {
-    expect(resolveOpenapiSpecFormat(true, true)).toBe("json");
-    expect(resolveOpenapiSpecFormat(false, false)).toBe("json");
-    expect(resolveOpenapiSpecFormat(false, true)).toBe("yaml");
   });
 });

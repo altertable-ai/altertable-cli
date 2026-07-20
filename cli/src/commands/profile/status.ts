@@ -11,8 +11,14 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileStatusCommand = defineCommand({
-  meta: { name: "status", description: "Verify stored credentials and show the profile" },
-  args: { name: { type: "string", description: "Profile name (default: active profile)" } },
+  metadata: { name: "status", description: "Verify stored credentials and show the profile" },
+  args: {
+    name: {
+      type: "positional",
+      description: "Profile name (default: selected or active profile)",
+      required: false,
+    },
+  },
   async run({ args, execution, sink }) {
     const profileName = existingProfileName(profileShowTargetName(args));
     const profile = inspectProfile(profileName);

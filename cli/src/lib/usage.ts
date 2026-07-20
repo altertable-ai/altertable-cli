@@ -1,9 +1,17 @@
-import type { Command, CommandArg, CommandArgs } from "@/lib/command.ts";
-import type { AltertableCommandGroup, AltertableCommandMeta } from "@/lib/command.ts";
+import type { Command } from "@/lib/command.ts";
+import type { AltertableCommandGroup } from "@/lib/command.ts";
+import {
+  resolveCommandDescriptor,
+  visibleCommandDescriptors,
+  type CommandArgumentDescriptor,
+  type CommandDescriptor,
+  type ResolvedCommandMetadata,
+} from "@/lib/command-descriptor.ts";
 import { span, type DisplaySpan } from "@/ui/document.ts";
 import { getVisibleTextWidth, renderDisplayText } from "@/ui/terminal/styles.ts";
-import { HELP_FLAGS, VERSION_FLAGS } from "@/lib/early-bootstrap.ts";
 import { readEnv } from "@/lib/env.ts";
+import { getOutputSink } from "@/lib/runtime.ts";
+import { resolveCommandSelection } from "@/lib/command-parser.ts";
 
 const HELP_INDENT = "    ";
 const HELP_COLUMN_GAP = "  ";
@@ -36,136 +44,12 @@ function formatCommandExamplesSection(examples: readonly string[]): string {
   return `\n\n${heading}\n\n${examples.map((example) => `  ${renderHighlightedCommands(example)}`).join("\n")}`;
 }
 
-function toArray<T>(value: T | T[] | undefined): T[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  return value === undefined ? [] : [value];
-}
-
-function camelCase(input: string): string {
-  return input.replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
-}
-
-async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>) | Promise<T>): Promise<T> {
-  if (typeof input === "function") {
-    return await (input as () => T | Promise<T>)();
-  }
-  return await input;
-}
-
-function isValueFlag(flag: string, argsDef: CommandArgs): boolean {
-  const name = flag.replace(/^-{1,2}/, "");
-  const normalized = camelCase(name);
-  for (const [key, definition] of Object.entries(argsDef)) {
-    if (definition.type !== "string" && definition.type !== "enum") {
-      continue;
-    }
-    if (normalized === camelCase(key)) {
-      return true;
-    }
-    const aliases = Array.isArray(definition.alias)
-      ? definition.alias
-      : definition.alias
-        ? [definition.alias]
-        : [];
-    if (aliases.includes(name)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function findSubCommandIndex(rawArgs: string[], argsDef: CommandArgs): number {
-  for (let index = 0; index < rawArgs.length; index += 1) {
-    const arg = rawArgs[index];
-    if (arg === undefined) {
-      continue;
-    }
-    if (arg === "--") {
-      return -1;
-    }
-    if (arg.startsWith("-")) {
-      if (!arg.includes("=") && isValueFlag(arg, argsDef)) {
-        index += 1;
-      }
-      continue;
-    }
-    return index;
-  }
-  return -1;
-}
-
-async function findSubCommand(
-  subCommands: Record<
-    string,
-    Command | (() => Command) | (() => Promise<Command>) | Promise<Command>
-  >,
-  name: string | undefined,
-): Promise<Command | undefined> {
-  if (!name) {
-    return undefined;
-  }
-  if (name in subCommands) {
-    return await resolveValue(subCommands[name]);
-  }
-  for (const subCommand of Object.values(subCommands)) {
-    const resolved = await resolveValue(subCommand);
-    const meta = await resolveValue(resolved.meta);
-    if (meta?.alias && toArray(meta.alias).includes(name)) {
-      return resolved;
-    }
-  }
-  return undefined;
-}
-
 export async function resolveSubCommandForUsage(
   command: Command,
   rawArgs: string[],
-  parent?: Command,
 ): Promise<[Command, Command | undefined]> {
-  const subCommands = await resolveValue(command.subCommands);
-  if (subCommands && Object.keys(subCommands).length > 0) {
-    const subCommandArgIndex = findSubCommandIndex(rawArgs, await resolveValue(command.args ?? {}));
-    const subCommandName = rawArgs[subCommandArgIndex];
-    const subCommand = await findSubCommand(subCommands, subCommandName);
-    if (subCommand) {
-      return resolveSubCommandForUsage(subCommand, rawArgs.slice(subCommandArgIndex + 1), command);
-    }
-  }
-  return [command, parent];
-}
-
-async function resolveCommandMeta(command: Command): Promise<AltertableCommandMeta> {
-  return (await resolveValue(command.meta ?? {})) as AltertableCommandMeta;
-}
-
-async function resolveCommandExamples(command: Command): Promise<readonly string[]> {
-  const meta = await resolveCommandMeta(command);
-  return meta.examples ?? [];
-}
-
-type VisibleSubCommand = {
-  name: string;
-  meta: AltertableCommandMeta;
-};
-
-async function visibleSubCommands(command: Command): Promise<VisibleSubCommand[]> {
-  const subCommands = await resolveValue(command.subCommands);
-  if (!subCommands || Object.keys(subCommands).length === 0) {
-    return [];
-  }
-
-  const visibleEntries: VisibleSubCommand[] = [];
-  for (const [name, subCommand] of Object.entries(subCommands)) {
-    const resolved = await resolveValue(subCommand);
-    const meta = await resolveCommandMeta(resolved);
-    if (!meta.hidden) {
-      visibleEntries.push({ name, meta });
-    }
-  }
-
-  return visibleEntries;
+  const selected = await resolveCommandSelection(command, rawArgs);
+  return [selected.command, selected.parent];
 }
 
 type HelpEntry = {
@@ -278,105 +162,128 @@ function formatHelpGuidance(commandName: string): string[] {
   });
 }
 
-function valueHint(name: string, definition: CommandArg): string | undefined {
-  if (definition.type === "enum" && definition.options?.length) {
-    return definition.valueHint ?? definition.options.join("|");
-  }
-  if (definition.type === "string") {
-    return definition.valueHint ?? name;
+function valueHint(argument: CommandArgumentDescriptor): string | undefined {
+  if (argument.values.length > 0) return argument.valueHint ?? argument.values.join("|");
+  if (argument.type === "string") {
+    return argument.valueHint ?? argument.name;
   }
   return undefined;
 }
 
-function flagLabel(name: string, definition: CommandArgs[string]): string {
-  const aliases = ("alias" in definition ? toArray(definition.alias) : []).map(
-    (alias) => `-${alias}`,
-  );
-  const longFlag = `--${name}`;
-  const hint = valueHint(name, definition);
+function flagLabel(argument: CommandArgumentDescriptor): string {
+  const aliases = argument.aliases.map((alias) => `-${alias}`);
+  const longFlag = `--${argument.name}`;
+  const hint = valueHint(argument);
   const value = hint ? ` <${hint}>` : "";
   return [...aliases, `${longFlag}${value}`].join(", ");
 }
 
-function positionalLabel(name: string, definition: CommandArg): string {
-  return (definition.valueHint ?? name).toUpperCase();
+function positionalLabel(argument: CommandArgumentDescriptor): string {
+  return (
+    argument.valueHint ?? (argument.values.length > 0 ? argument.values.join("|") : argument.name)
+  ).toUpperCase();
 }
 
-function argumentDescription(definition: CommandArg): string {
-  const required =
-    definition.default === undefined &&
-    (definition.type === "positional"
-      ? definition.required !== false
-      : definition.required === true);
+function formatDefaultValue(value: unknown): string {
+  if (value === null) return "null";
+  switch (typeof value) {
+    case "string":
+      return value;
+    case "number":
+    case "boolean":
+    case "bigint":
+      return String(value);
+    default:
+      return JSON.stringify(value) ?? "";
+  }
+}
+
+function argumentDescription(argument: CommandArgumentDescriptor): string {
   const defaultValue =
-    definition.default === undefined ? undefined : `(Default: ${definition.default})`;
-  return [definition.description, required ? "(Required)" : undefined, defaultValue]
+    argument.default === undefined
+      ? undefined
+      : `(Default: ${formatDefaultValue(argument.default)})`;
+  return [
+    argument.description,
+    argument.required ? "(Required)" : undefined,
+    argument.repeatable ? "(Repeatable)" : undefined,
+    defaultValue,
+  ]
     .filter((part): part is string => part !== undefined)
     .join(" ");
 }
 
-function usageCommandName(meta: AltertableCommandMeta, parentMeta?: AltertableCommandMeta): string {
-  const name = meta.name ?? "command";
-  if (!parentMeta) {
+function usageCommandName(
+  metadata: ResolvedCommandMetadata,
+  parentMetadata?: ResolvedCommandMetadata,
+): string {
+  const name = metadata.name ?? "command";
+  if (!parentMetadata) {
     return name;
   }
-  if (parentMeta.name === "altertable") {
+  if (parentMetadata.name === "altertable") {
     return `altertable ${name}`;
   }
-  return `altertable ${parentMeta.name ?? "command"} ${name}`;
+  return `altertable ${parentMetadata.name ?? "command"} ${name}`;
 }
 
-function usageTokens(
-  commandName: string,
-  args: CommandArgs,
-  subCommands: readonly VisibleSubCommand[],
-): string {
-  const positionalArgs = Object.entries(args)
-    .filter(([, definition]) => definition.type === "positional")
-    .map(([name, definition]) => {
-      const label = positionalLabel(name, definition);
-      const required = definition.required !== false && definition.default === undefined;
-      return required ? `<${label}>` : `[${label}]`;
+function usageVariants(commandName: string, descriptor: CommandDescriptor): string[] {
+  const positionalArgs = descriptor.arguments
+    .filter((argument) => argument.type === "positional")
+    .map((argument) => {
+      const label = positionalLabel(argument);
+      return argument.required ? `<${label}>` : `[${label}]`;
     });
-  const hasOptions = Object.values(args).some((definition) => definition.type !== "positional");
-  const commandNames = subCommands.map(({ name }) => name).join("|");
-  return [
-    commandName,
-    hasOptions ? "[flags]" : undefined,
-    ...positionalArgs,
-    commandNames || undefined,
-  ]
-    .filter((token): token is string => token !== undefined)
-    .join(" ");
+  const hasOptions = descriptor.arguments.some((argument) => argument.type !== "positional");
+  const commandNames = visibleCommandDescriptors(descriptor.subcommands)
+    .map(({ key, metadata }) => key ?? metadata.name)
+    .join("|");
+  const variants: string[] = [];
+
+  if (descriptor.metadata.invocations.includes("direct")) {
+    variants.push(
+      [commandName, hasOptions ? "[flags]" : undefined, ...positionalArgs]
+        .filter((token): token is string => token !== undefined)
+        .join(" "),
+    );
+  }
+  if (descriptor.metadata.invocations.includes("subcommand") && commandNames) {
+    variants.push(`${commandName} ${commandNames}`);
+  }
+  return variants;
 }
 
-async function renderCommandUsage(command: Command, parent?: Command): Promise<string> {
-  const meta = await resolveCommandMeta(command);
-  const parentMeta = parent ? await resolveCommandMeta(parent) : undefined;
-  const args = await resolveValue(command.args ?? {});
-  const subCommands = await visibleSubCommands(command);
-  const commandName = usageCommandName(meta, parentMeta);
-  const positionalEntries = Object.entries(args)
-    .filter(([, definition]) => definition.type === "positional")
-    .map(([name, definition]) => ({
-      label: positionalLabel(name, definition),
-      description: argumentDescription(definition),
+function renderCommandUsage(
+  descriptor: CommandDescriptor,
+  parentDescriptor?: CommandDescriptor,
+): string {
+  const metadata = descriptor.metadata;
+  const parentMetadata = parentDescriptor?.metadata;
+  const subcommands = visibleCommandDescriptors(descriptor.subcommands);
+  const commandName = usageCommandName(metadata, parentMetadata);
+  const positionalEntries = descriptor.arguments
+    .filter((argument) => argument.type === "positional")
+    .map((argument) => ({
+      label: positionalLabel(argument),
+      description: argumentDescription(argument),
     }));
-  const optionEntries = Object.entries(args)
-    .filter(([, definition]) => definition.type !== "positional")
-    .map(([name, definition]) => ({
-      label: flagLabel(name, definition),
-      description: argumentDescription(definition),
+  const optionEntries = descriptor.arguments
+    .filter((argument) => argument.type !== "positional")
+    .map((argument) => ({
+      label: flagLabel(argument),
+      description: argumentDescription(argument),
     }));
-  const commandEntries = subCommands.map(({ name, meta: subCommandMeta }) => ({
-    label: [name, ...toArray(subCommandMeta.alias)].join(", "),
-    description: subCommandMeta.description ?? "",
+  const commandEntries = subcommands.map(({ key, metadata: subcommandMetadata }) => ({
+    label: [key ?? subcommandMetadata.name, ...subcommandMetadata.aliases]
+      .filter((name): name is string => name !== undefined)
+      .join(", "),
+    description: subcommandMetadata.description,
   }));
   const lines = [
-    ...(meta.description ? wrapHelpText(meta.description, getHelpTerminalWidth()) : []),
+    ...(metadata.description ? wrapHelpText(metadata.description, getHelpTerminalWidth()) : []),
     "",
     `  ${renderDisplayText([span("Usage", "strong")])}`,
-    `    ${usageTokens(commandName, args, subCommands)}`,
+    ...usageVariants(commandName, descriptor).map((usage) => `    ${usage}`),
   ];
 
   if (positionalEntries.length > 0) {
@@ -402,7 +309,7 @@ async function renderCommandUsage(command: Command, parent?: Command): Promise<s
     lines.push("", ...formatHelpGuidance(commandName));
   }
 
-  const examples = await resolveCommandExamples(command);
+  const examples = metadata.examples;
   if (examples.length > 0) {
     lines.push(
       "",
@@ -416,15 +323,15 @@ async function renderCommandUsage(command: Command, parent?: Command): Promise<s
   return lines.join("\n");
 }
 
-async function renderRootUsage(command: Command, meta: AltertableCommandMeta): Promise<string> {
-  const args = await resolveValue(command.args ?? {});
+function renderRootUsage(descriptor: CommandDescriptor): string {
+  const metadata = descriptor.metadata;
   const groupedEntries: Record<AltertableCommandGroup, HelpEntry[]> = {
     platform: [],
     ingest: [],
     query: [],
   };
   const lines = [
-    ...wrapHelpText(meta.description ?? "", getHelpTerminalWidth()),
+    ...wrapHelpText(metadata.description, getHelpTerminalWidth()),
     "",
     `  ${renderDisplayText([span("Usage", "strong")])}`,
     "    altertable <command> [flags]",
@@ -432,13 +339,15 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
     `  ${renderDisplayText([span("Commands", "strong")])}`,
   ];
 
-  for (const { name, meta: commandMeta } of await visibleSubCommands(command)) {
-    if (!commandMeta.commandGroup) {
+  for (const { key, metadata: commandMetadata } of visibleCommandDescriptors(
+    descriptor.subcommands,
+  )) {
+    if (!commandMetadata.commandGroup) {
       continue;
     }
-    groupedEntries[commandMeta.commandGroup].push({
-      label: name,
-      description: commandMeta.description ?? "",
+    groupedEntries[commandMetadata.commandGroup].push({
+      label: key ?? commandMetadata.name ?? "command",
+      description: commandMetadata.description,
     });
   }
 
@@ -458,21 +367,32 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
 
   lines.push("", ...formatHelpGuidance("altertable"));
 
-  const flags = Object.entries(args).map(([name, definition]) => ({
-    label: flagLabel(name, definition),
-    description: definition.description ?? "",
-  }));
-  flags.push(
-    { label: HELP_FLAGS.join(", "), description: "Show this help" },
-    { label: VERSION_FLAGS.join(", "), description: "Show the Altertable CLI version" },
-  );
+  const rootOnlyFlags = descriptor.arguments
+    .filter((argument) => argument.scope === "root-only")
+    .map((argument) => ({
+      label: flagLabel(argument),
+      description: argument.description,
+    }));
+  const globalFlags = descriptor.arguments
+    .filter((argument) => argument.scope !== "root-only")
+    .map((argument) => ({
+      label: flagLabel(argument),
+      description: argument.description,
+    }));
+  if (rootOnlyFlags.length > 0) {
+    lines.push(
+      "",
+      `  ${renderDisplayText([span("Root options", "strong")])}`,
+      ...formatHelpEntries(rootOnlyFlags),
+    );
+  }
   lines.push(
     "",
     `  ${renderDisplayText([span("Global flags", "strong")])}`,
-    ...formatHelpEntries(flags),
+    ...formatHelpEntries(globalFlags),
   );
 
-  const examples = await resolveCommandExamples(command);
+  const examples = metadata.examples;
   if (examples.length > 0) {
     lines.push(
       "",
@@ -486,22 +406,130 @@ async function renderRootUsage(command: Command, meta: AltertableCommandMeta): P
   return lines.join("\n");
 }
 
-export async function renderAltertableUsage(command: Command, parent?: Command): Promise<string> {
-  const meta = await resolveCommandMeta(command);
-  if (parent === undefined && meta.name === "altertable") {
-    return renderRootUsage(command, meta);
+export function renderAltertableUsageFromDescriptor(
+  descriptor: CommandDescriptor,
+  parentDescriptor?: CommandDescriptor,
+): string {
+  if (parentDescriptor === undefined && descriptor.metadata.name === "altertable") {
+    return renderRootUsage(descriptor);
   }
 
-  return renderCommandUsage(command, parent);
+  return renderCommandUsage(descriptor, parentDescriptor);
 }
 
-export async function showAltertableUsage(command: Command, parent?: Command): Promise<void> {
-  console.log(`${await renderAltertableUsage(command, parent)}\n`);
+export async function renderAltertableUsage(command: Command, parent?: Command): Promise<string> {
+  const [descriptor, parentDescriptor] = await Promise.all([
+    resolveCommandDescriptor(command),
+    parent ? resolveCommandDescriptor(parent) : undefined,
+  ]);
+  return renderAltertableUsageFromDescriptor(descriptor, parentDescriptor);
+}
+
+type StructuredArgument = {
+  name: string;
+  aliases: string[];
+  type: string;
+  required: boolean;
+  description: string;
+  default?: unknown;
+  values?: string[];
+  scope: CommandArgumentDescriptor["scope"];
+  repeatable?: boolean;
+};
+
+export type StructuredHelp = {
+  command: string;
+  description: string;
+  usage: string[];
+  aliases: string[];
+  arguments: StructuredArgument[];
+  options: StructuredArgument[];
+  subcommands: Array<{ name: string; aliases: string[]; description: string }>;
+  global_options: StructuredArgument[];
+  examples: string[];
+};
+
+function structuredArgument(argument: CommandArgumentDescriptor): StructuredArgument {
+  return {
+    name: argument.name,
+    aliases: argument.aliases,
+    type: argument.type,
+    required: argument.required,
+    description: argument.description,
+    scope: argument.scope,
+    ...(argument.repeatable ? { repeatable: true } : {}),
+    ...(argument.default !== undefined ? { default: argument.default } : {}),
+    ...(argument.values.length > 0 ? { values: argument.values } : {}),
+  };
+}
+
+export function buildStructuredHelpFromDescriptor(
+  descriptor: CommandDescriptor,
+  parentDescriptor?: CommandDescriptor,
+  rootDescriptor?: CommandDescriptor,
+): StructuredHelp {
+  const metadata = descriptor.metadata;
+  const parentMetadata = parentDescriptor?.metadata;
+  const subcommands = visibleCommandDescriptors(descriptor.subcommands);
+  const commandName = usageCommandName(metadata, parentMetadata);
+  const isRootCommand = parentDescriptor === undefined && metadata.name === "altertable";
+  const usage = isRootCommand
+    ? ["altertable <command> [flags]"]
+    : usageVariants(commandName, descriptor);
+  const entries = descriptor.arguments.map(structuredArgument);
+  const globalArguments = isRootCommand
+    ? (rootDescriptor?.arguments ?? [])
+    : (rootDescriptor?.arguments.filter((argument) => argument.scope === "global") ?? []);
+
+  return {
+    command: commandName,
+    description: metadata.description,
+    usage,
+    aliases: metadata.aliases,
+    arguments: entries.filter((entry) => entry.type === "positional"),
+    options: isRootCommand ? [] : entries.filter((entry) => entry.type !== "positional"),
+    subcommands: subcommands.map(({ key, metadata: subcommandMetadata }) => ({
+      name: key ?? subcommandMetadata.name ?? "command",
+      aliases: subcommandMetadata.aliases,
+      description: subcommandMetadata.description,
+    })),
+    global_options: globalArguments.map(structuredArgument),
+    examples: metadata.examples,
+  };
+}
+
+export async function buildStructuredHelp(
+  command: Command,
+  parent?: Command,
+  root?: Command,
+): Promise<StructuredHelp> {
+  const descriptorPromise = resolveCommandDescriptor(command);
+  const [descriptor, parentDescriptor, rootDescriptor] = await Promise.all([
+    descriptorPromise,
+    parent ? resolveCommandDescriptor(parent) : undefined,
+    root ? (root === command ? descriptorPromise : resolveCommandDescriptor(root)) : undefined,
+  ]);
+  return buildStructuredHelpFromDescriptor(descriptor, parentDescriptor, rootDescriptor);
+}
+
+export async function showAltertableUsage(
+  command: Command,
+  parent?: Command,
+  root?: Command,
+): Promise<void> {
+  const sink = getOutputSink();
+  if (sink.json) {
+    sink.writeJson(await buildStructuredHelp(command, parent, root));
+    return;
+  }
+  sink.writeHuman(`${await renderAltertableUsage(command, parent)}\n`);
 }
 
 export async function showCommandExamplesForArgs(root: Command, rawArgs: string[]): Promise<void> {
   const [command] = await resolveSubCommandForUsage(root, rawArgs);
-  const section = formatCommandExamplesSection(await resolveCommandExamples(command));
+  const section = formatCommandExamplesSection(
+    (await resolveCommandDescriptor(command)).metadata.examples,
+  );
   if (section.length === 0) {
     return;
   }

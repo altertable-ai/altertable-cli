@@ -1,93 +1,88 @@
-import type { ArgsDef, CommandContext, CommandDef, CommandMeta, Resolvable } from "citty";
-export { runCommand as runCommandTree } from "citty";
+import type { ExecutionContext } from "@/lib/execution-context.ts";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
-import { getCliRuntime } from "@/lib/runtime.ts";
-import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 
-export type Command = CommandDef;
-export type CommandArg = import("citty").ArgDef;
-export type CommandArgs = ArgsDef;
+export type Resolvable<T> = T | Promise<T> | (() => T | Promise<T>);
+export type PositionalCompletionKind = "finite" | "file" | "freeform";
+export type CommandFlagScope = "root-only" | "global" | "command";
+export type CommandInvocationKind = "direct" | "subcommand";
+export type CommandArgumentType = "boolean" | "string" | "enum" | "positional";
 
+export type CommandArgument = {
+  type?: CommandArgumentType;
+  alias?: string | readonly string[];
+  description?: string;
+  required?: boolean;
+  default?: unknown;
+  options?: readonly string[];
+  values?: readonly string[];
+  completion?: Exclude<PositionalCompletionKind, "finite">;
+  directRequired?: boolean;
+  flagScope?: CommandFlagScope;
+  valueHint?: string;
+  repeatable?: boolean;
+};
+
+export type CommandArguments = Record<string, CommandArgument>;
 export type AltertableCommandGroup = "platform" | "ingest" | "query";
 
-export type AltertableCommandMeta = CommandMeta & {
+export type CommandMetadata = {
+  name?: string;
+  description?: string;
+  alias?: string | readonly string[];
   examples?: readonly string[];
   hidden?: boolean;
   commandGroup?: AltertableCommandGroup;
+  invocations?: readonly CommandInvocationKind[];
 };
 
-export type CommandRunContext<T extends ArgsDef = ArgsDef> = CommandContext<T> & {
+type ParsedArgumentValue = string | boolean | string[] | undefined;
+export type ParsedCommandArguments<T extends CommandArguments = CommandArguments> = {
+  [K in keyof T]: T[K] extends { type: "boolean" } ? boolean | undefined : ParsedArgumentValue;
+} & Record<string, ParsedArgumentValue>;
+
+export type CommandRunContext<T extends CommandArguments = CommandArguments> = {
+  args: ParsedCommandArguments<T>;
+  rawArgs: string[];
+  command: Command;
   runtime: CliRuntime;
   sink: OutputSink;
   readonly execution: ExecutionContext;
 };
 
-export type AltertableCommandDef<T extends ArgsDef = ArgsDef> = Omit<
-  CommandDef<T>,
-  "run" | "setup" | "cleanup" | "subCommands" | "meta"
-> & {
-  meta?: Resolvable<AltertableCommandMeta>;
-  run?: (context: CommandRunContext<T>) => any;
-  setup?: (context: CommandRunContext<T>) => any;
-  cleanup?: (context: CommandRunContext<T>) => any;
-  subCommands?: Record<string, CommandDef<any>>;
+export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
+  metadata?: Resolvable<CommandMetadata | undefined>;
+  args?: Resolvable<T>;
+  subcommands?: Resolvable<Record<string, Resolvable<Command>>>;
+  /**
+   * Values that select direct execution only when they are the command's sole
+   * positional operand. This resolves intentional command/subcommand ambiguity,
+   * such as `query show` (SQL) versus `query show <query-id>`.
+   */
+  soleDirectOperands?: readonly string[];
+  run?: (context: CommandRunContext<T>) => void | Promise<void>;
 };
 
-export type CommandTreeDef<T extends ArgsDef = ArgsDef> = AltertableCommandDef<T> | CommandDef<T>;
+export type Command = CommandDefinition<any>;
 
-export function defineArgs<const T extends ArgsDef>(args: T): T {
-  return args;
+export function defineArguments<const T extends CommandArguments>(commandArguments: T): T {
+  return commandArguments;
 }
 
-function withCommandRuntime<T extends ArgsDef>(context: CommandContext<T>): CommandRunContext<T> {
-  const runtime = getCliRuntime();
-  let execution: ExecutionContext | undefined;
-  return {
-    ...context,
-    runtime,
-    sink: runtime.output,
-    get execution() {
-      execution ??= createExecutionContext(runtime);
-      return execution;
-    },
-  };
+export function defineCommand<const T extends CommandArguments = CommandArguments>(
+  definition: CommandDefinition<T>,
+): CommandDefinition<T> {
+  return definition;
 }
 
-function bindCommandTree<T extends ArgsDef>(def: CommandTreeDef<T>): CommandDef {
-  const { run, setup, cleanup, subCommands, ...rest } = def as AltertableCommandDef<T>;
-
-  const bound: CommandDef = { ...rest };
-
-  if (subCommands) {
-    bound.subCommands = Object.fromEntries(
-      Object.entries(subCommands).map(([name, subCommand]) => [name, bindCommandTree(subCommand)]),
-    );
-  }
-
-  if (setup) {
-    bound.setup = (context) => setup(withCommandRuntime(context as CommandContext<T>));
-  }
-  if (cleanup) {
-    bound.cleanup = (context) => cleanup(withCommandRuntime(context as CommandContext<T>));
-  }
-  if (run) {
-    bound.run = (context) => run(withCommandRuntime(context as CommandContext<T>));
-  }
-
-  return bound;
+export function commandArgumentValues(argument: CommandArgument): readonly string[] {
+  if (argument.values) return argument.values;
+  if (argument.type === "enum" && argument.options) return argument.options;
+  return [];
 }
 
-export function defineCommand<const T extends ArgsDef = ArgsDef>(
-  def: AltertableCommandDef<T>,
-): CommandDef {
-  return def as CommandDef;
-}
-
-/** Erases citty's inferred args generic so the root command fits heterogeneous trees. */
-export type RootCommandDef<T extends ArgsDef = ArgsDef> = Omit<CommandDef<T>, "meta"> & {
-  meta?: Resolvable<AltertableCommandMeta>;
-};
-
-export function defineRootCommand<const T extends ArgsDef>(def: RootCommandDef<T>): CommandDef {
-  return bindCommandTree(def);
+export async function resolveCommandValue<T>(value: Resolvable<T>): Promise<T> {
+  if (typeof value === "function") {
+    return await (value as () => T | Promise<T>)();
+  }
+  return await value;
 }

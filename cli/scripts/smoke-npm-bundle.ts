@@ -38,9 +38,9 @@ export async function smokeNpmBundle(arguments_ = Bun.argv.slice(2)): Promise<vo
     throw new Error("npm bundle help output is incomplete.");
   }
 
-  const specification = JSON.parse(
-    await runBundle(bundlePath, ["api", "spec", "--format=json"]),
-  ) as { openapi?: string };
+  const specification = JSON.parse(await runBundle(bundlePath, ["api", "spec", "--json"])) as {
+    openapi?: string;
+  };
   if (specification.openapi !== "3.1.0") {
     throw new Error("npm bundle returned an unexpected OpenAPI document.");
   }

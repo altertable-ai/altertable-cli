@@ -17,13 +17,13 @@ describe("lakehouse integration flows", () => {
   test("upload, upsert, query formats, append, and debug behave against the mock lakehouse", async () => {
     const uploadFile = await workspace.writeFile("upload.csv", "id,name\n1,Alice\n2,Bob\n");
     let result = await workspace.runCommand(
-      `altertable upload --catalog memory --schema main --table cli_test --mode overwrite --format csv --file "${uploadFile}"`,
+      `altertable upload "${uploadFile}" --to memory.main.cli_test --mode overwrite`,
     );
     expect(result.exitCode).toBe(0);
 
     const upsertFile = await workspace.writeFile("upsert.csv", "id,name\n2,Bobby\n");
     result = await workspace.runCommand(
-      `altertable upsert --catalog memory --schema main --table cli_test --primary-key id --format csv --file "${upsertFile}"`,
+      `altertable upsert "${upsertFile}" --to memory.main.cli_test --key id`,
     );
     expect(result.exitCode).toBe(0);
 
@@ -85,7 +85,7 @@ describe("lakehouse integration flows", () => {
 
     await workspace.setupHttpLog();
     result = await workspace.runCommand(
-      'altertable append --catalog memory --schema main --table cli_test --data \'{"id": 3, "name": "Charlie"}\'',
+      'altertable append \'{"id": 3, "name": "Charlie"}\' --to memory.main.cli_test',
     );
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).ok).toBe(true);
@@ -97,7 +97,7 @@ describe("lakehouse integration flows", () => {
 
     await workspace.setupHttpLog();
     result = await workspace.runCommand(
-      'altertable append --catalog memory --schema main --table cli_test --data \'[{"id": 4, "name": "Delta"}, {"id": 5, "name": "Echo"}]\'',
+      'altertable append \'[{"id": 4, "name": "Delta"}, {"id": 5, "name": "Echo"}]\' --to memory.main.cli_test',
     );
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).ok).toBe(true);
@@ -112,18 +112,18 @@ describe("lakehouse integration flows", () => {
 
     await workspace.setupHttpLog();
     result = await workspace.runCommand(
-      'altertable append --catalog memory --schema main --table cli_test --data \'{"id": 6, "name": "Foxtrot"}\' --sync',
+      'altertable append \'{"id": 6, "name": "Foxtrot"}\' --to memory.main.cli_test --sync',
     );
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).ok).toBe(true);
     expect((await workspace.httpLogValue("URL")) ?? "").toContain("sync=true");
 
-    result = await workspace.runCommand('altertable --debug query "SELECT 1" --format json');
+    result = await workspace.runCommand('altertable query "SELECT 1" --debug --json');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[DEBUG]");
     expect(result.stderr).toContain("Request: POST");
 
-    result = await workspace.runCommand('altertable --debug query "SELECT 1" --format json');
+    result = await workspace.runCommand('altertable query "SELECT 1" --json --debug');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[DEBUG]");
     expect(result.stderr).toContain("Request: POST");

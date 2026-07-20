@@ -67,7 +67,7 @@ export function getLakehouseAuthHeader(profileName: string): string {
   }
 
   throw new ConfigurationError(
-    "No credentials. Run 'altertable login', 'altertable profile --configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+    "No credentials. Run 'altertable login', 'altertable profile configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
   );
 }
 
@@ -106,7 +106,7 @@ export function getManagementAuthHeader(profileName: string): string {
   const key = secretGet("api-key", profileName);
   if (!key) {
     throw new ConfigurationError(
-      "No management credentials. Run 'altertable login', 'altertable profile --configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
+      "No management credentials. Run 'altertable login', 'altertable profile configure --api-key atm_xxx --env <name>', or set ALTERTABLE_API_KEY.",
     );
   }
   return `Authorization: Bearer ${key}`;
@@ -120,7 +120,7 @@ export function requireManagementEnv(profileName: string): string {
   const env = managementEnv(profileName);
   if (!env) {
     throw new ConfigurationError(
-      "No environment set. Run 'altertable profile --configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
+      "No environment set. Run 'altertable profile configure --api-key atm_xxx --env <name>' or set ALTERTABLE_ENV.",
     );
   }
   return env;

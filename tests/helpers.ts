@@ -115,7 +115,7 @@ export async function createTestWorkspace(env: TestEnv = {}): Promise<TestWorksp
       await rm(mockHttpFile, { force: true });
     },
     async configureStoredManagementCredential() {
-      const result = await workspace.runCommand("altertable profile --configure --api-key atm_stored --env production");
+      const result = await workspace.runCommand("altertable profile configure --api-key atm_stored --env production");
       if (result.exitCode !== 0) {
         throw new Error(`Failed to configure stored management credential:\n${result.stderr}`);
       }
@@ -222,7 +222,7 @@ function buildEnv(overrides: TestEnv = {}): Record<string, string> {
     }
   }
   env.PATH = `${join(repoRoot, "bin")}:${env.PATH ?? ""}`;
-  // Keep CLI output deterministic regardless of the developer's terminal: citty
+  // Keep CLI output deterministic regardless of the developer's terminal: the CLI
   // colorizes arg-validation errors unless NO_COLOR/CI is set (CI has it, local shells don't).
   env.NO_COLOR = "1";
   for (const [key, value] of Object.entries(overrides)) {

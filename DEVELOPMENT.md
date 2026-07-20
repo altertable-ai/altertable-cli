@@ -143,8 +143,8 @@ Keep updater tests hermetic. Use fake `fetch` implementations and temp executabl
 ## Local deployment endpoints
 
 ```bash
-altertable profile --configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
-altertable profile --configure --user u --password p --data-plane-url http://localhost:15000
+altertable profile configure --api-key atm_xxxx --env production --control-plane-url http://localhost:13000
+altertable profile configure --user u --password p --data-plane-url http://localhost:15000
 export ALTERTABLE_MANAGEMENT_API_BASE="http://localhost:13000"
 export ALTERTABLE_API_BASE="http://localhost:15000"
 ```
@@ -184,7 +184,7 @@ bun test "$PWD"/tests/*.test.ts
 
 ### Shell completion
 
-Shell completion scripts are generated from the Citty `CommandDef` tree in `cli/src/cli.ts`. The spec walker and formatters live in `cli/src/commands/completion/lib/`, beside their tests. Command-specific flags are taken from `CompletionNode.flags` on each visited node; positional arguments and dynamic API values are not completed. When you change command structure, run `cd cli && bun test src/commands/completion/lib/spec.test.ts src/commands/completion/index.test.ts`.
+Shell completion scripts are projected from the normalized `CommandDescriptor` rooted at `cli/src/cli.ts`. The spec walker, shell-neutral argv model, and formatters live in `cli/src/commands/completion/lib/`, beside their tests. Flags, finite positional values, and file operands come from shared argument metadata; freeform positionals and dynamic API values remain shell-owned. When you change command structure, run `cd cli && bun test src/commands/completion/lib/spec.test.ts src/commands/completion/index.test.ts`.
 
 Integration tests against the mock server:
 
@@ -207,11 +207,11 @@ cd cli && bun run test:coverage
 
 When bumping the `specs/` submodule, extend the mapped tests before merge.
 
-| Spec requirement            | CLI surface                         | Unit tests                       | Black-box/integration |
-| --------------------------- | ----------------------------------- | -------------------------------- | --------------------- |
-| POST /query (streamed)      | `query` (`run` default leaf)        | `lakehouse.test.ts` stream tests | `integration.e2e.ts`  |
-| POST /query (buffered json) | `query --format json`               | `lakehouse.test.ts`              | `integration.e2e.ts`  |
-| GET/DELETE /query/{id}      | `query show`, `query cancel`        | `lakehouse.test.ts`              | `integration.e2e.ts`  |
-| POST /append + GET /tasks   | `append`, `append status`           | `lakehouse.test.ts`              | `integration.e2e.ts`  |
-| POST /upload                | `upload`                            | `lakehouse.test.ts`              | `integration.e2e.ts`  |
-| POST /upsert                | `upsert`                            | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| Spec requirement            | CLI surface                  | Unit tests                       | Black-box/integration |
+| --------------------------- | ---------------------------- | -------------------------------- | --------------------- |
+| POST /query (streamed)      | `query "<SQL>"`              | `lakehouse.test.ts` stream tests | `integration.e2e.ts`  |
+| POST /query (buffered json) | `query --json`               | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| GET/DELETE /query/{id}      | `query show`, `query cancel` | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /append + GET /tasks   | `append`, `append status`    | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /upload                | `upload`                     | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+| POST /upsert                | `upsert`                     | `lakehouse.test.ts`              | `integration.e2e.ts`  |

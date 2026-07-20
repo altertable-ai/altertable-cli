@@ -17,18 +17,7 @@ describe("append command", () => {
   test("sends JSON rows and the synchronous execution option", async () => {
     workspace.writeMocks([{ urlPattern: "/append", method: "POST", body: '{"ok":true}' }]);
 
-    await runCommandWithTestRuntime([
-      "append",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--data",
-      '{"id":1}',
-      "--sync",
-    ]);
+    await runCommandWithTestRuntime(["append", '{"id":1}', "--to", "memory.main.users", "--sync"]);
 
     expect(workspace.readHttpLog()).toContain("URL=https://example.com/append?");
     expect(workspace.readHttpLog()).toContain("sync=true");

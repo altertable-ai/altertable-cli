@@ -5,7 +5,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Delete a profile" },
+  metadata: { name: "delete", description: "Delete a profile" },
   args: {
     name: { type: "positional", description: "Profile name", required: true },
     yes: { type: "boolean", description: "Confirm deletion" },

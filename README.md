@@ -29,6 +29,8 @@ Query and manage your Altertable data platform from the terminal.
 - [Scripting](#scripting)
 - [Development](#development)
 
+For the complete generated command contract, see [COMMANDS.md](COMMANDS.md).
+
 ---
 
 ## Quick start
@@ -38,17 +40,17 @@ Query and manage your Altertable data platform from the terminal.
 curl -fsSL https://install.altertable.ai | sh
 
 # 2. Configure credentials
-altertable profile --configure
+altertable profile configure
 
 # Or non-interactive (CI/scripts):
-altertable profile --configure --api-key atm_xxxx --env production
-altertable profile --configure --user your_username --password your_password
+altertable profile configure --api-key atm_xxxx --env production
+altertable profile configure --user your_username --password your_password
 
 # 3. Verify (optional — the wizard verifies by default)
 altertable profile show
 
 # 4. Query
-altertable query "SELECT * FROM users LIMIT 10"
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 ```
 
 ---
@@ -145,31 +147,31 @@ Most users need both. Run the interactive wizard or configure each plane with fl
 
 ```bash
 # Interactive wizard (TTY) — configures management and lakehouse
-altertable profile --configure
+altertable profile configure
 
 # Plane-specific wizards
-altertable profile --configure --scope management
-altertable profile --configure --scope lakehouse
+altertable profile configure --scope management
+altertable profile configure --scope lakehouse
 
 # Non-interactive (scripts/CI)
-altertable profile --configure --api-key atm_xxxx --env production
-altertable profile --configure --user your_username --password your_password
-altertable profile --configure --data-plane-url https://api.example.com
+altertable profile configure --api-key atm_xxxx --env production
+altertable profile configure --user your_username --password your_password
+altertable profile configure --data-plane-url https://api.example.com
 altertable profile show
 
 # Verify stored credentials
 altertable profile status
 ```
 
-Passing `--user` and `--api-key` in a single invocation is not allowed. Run two separate `profile --configure` calls — one per plane.
+Passing `--user` and `--api-key` in a single invocation is not allowed. Run two separate `profile configure` calls — one per plane.
 
 ### Management API key
 
 ```bash
-altertable profile --configure --api-key atm_xxxx --env production
+altertable profile configure --api-key atm_xxxx --env production
 
 # Pipe the key from a secret store
-printf '%s' "$KEY" | altertable profile --configure --api-key-stdin --env production
+printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env production
 ```
 
 Or via environment variables:
@@ -191,14 +193,14 @@ altertable logout         # clears stored credentials and settings for all profi
 ### Lakehouse credentials
 
 ```bash
-altertable profile --configure --user your_username --password your_password
+altertable profile configure --user your_username --password your_password
 ```
 
 Prefer reading secrets from stdin to avoid exposing them in process listings:
 
 ```bash
-printf '%s' 'your_password' | altertable profile --configure --user your_username --password-stdin
-printf '%s' "$KEY" | altertable profile --configure --api-key-stdin --env production
+printf '%s' 'your_password' | altertable profile configure --user your_username --password-stdin
+printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env production
 ```
 
 Plane URLs default to HTTPS. `--data-plane-url` can be saved by itself without changing credentials; `--control-plane-url` must be saved with a management credential so failed login/configure attempts do not leave a stale control-plane override. Localhost HTTP (`http://localhost`, `http://127.0.0.1`) works without extra flags; other HTTP URLs require `--allow-insecure-http`.
@@ -218,8 +220,8 @@ export ALTERTABLE_LAKEHOUSE_PASSWORD="your_password"
 
 Rules for updating credentials:
 
-- Separate `profile --configure` invocations — lakehouse and management credentials coexist in the active profile.
-- Within one `profile --configure` invocation — only one plane may be written.
+- Separate `profile configure` invocations — lakehouse and management credentials coexist in the active profile.
+- Within one `profile configure` invocation — only one plane may be written.
 - Within the same plane — a new value replaces the previous one.
 - Environment variables override stored credentials when set.
 - `altertable logout` removes **both** planes and resets endpoint overrides for all profiles.
@@ -238,11 +240,11 @@ altertable login
 altertable login --replace-profile
 
 # Set up multiple environments with explicit profile names
-altertable profile create acme_staging --api-key atm_xxx --env staging
-altertable profile create acme_prod --api-key atm_yyy --env production
+altertable profile configure acme_staging --api-key atm_xxx --env staging
+altertable profile configure acme_production --api-key atm_yyy --env production
 
 # Switch the sticky active profile
-altertable profile use acme_staging
+altertable profile switch acme_staging
 
 # Or choose interactively
 altertable profile switch
@@ -250,28 +252,24 @@ altertable profile switch
 # Use a profile for one command
 altertable --profile acme_production profile show
 
-# Use a profile for the current shell, including direnv
+# Use a profile for the current shell or direnv
 eval "$(altertable profile env acme_staging)"
-
-# Or generate a .envrc snippet
-altertable profile direnv acme_staging > .envrc
 
 # Inspect profiles
 altertable profile list
 altertable profile current
 altertable profile status
-altertable profile show --name acme_staging
+altertable profile show acme_staging
 ```
 
 Advanced profile commands manage endpoint overrides and inspect existing profiles:
 
 ```bash
 # Verify credentials and show the profile (identity + credential details)
-altertable profile status --name acme_staging
+altertable profile status acme_staging
 
 # Print a shell snippet for direnv or manual use
 altertable profile env acme_staging
-altertable profile direnv acme_staging
 
 # Rename a profile
 altertable profile rename acme_staging acme_stage
@@ -322,24 +320,24 @@ You can also override endpoints per-command with flags:
 **Query**
 
 ```bash
-altertable query "SELECT * FROM users LIMIT 10"
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 
 # Human layout and script-friendly formats
-altertable query "SELECT * FROM events LIMIT 3"
-altertable query "SELECT * FROM events LIMIT 3" --layout auto
-altertable query "SELECT * FROM events LIMIT 3" --layout table
-altertable query "SELECT * FROM events LIMIT 3" --layout line
-altertable query "SELECT * FROM events LIMIT 3" --columns uuid,event,timestamp
-altertable query "SELECT * FROM events LIMIT 3" --max-width 24
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout auto
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout table
+altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout line
+altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --columns event,user_id,timestamp
+altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --max-width 24
 
 # Serialized output
-altertable query "SELECT 1" --format csv
-altertable query "SELECT 1" --format json
-altertable query "SELECT 1" --format markdown
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format csv
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --json
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format markdown
 
 # Long results — pipe through a pager
-altertable query "SELECT * FROM big_table" --pager always
-altertable query "SELECT * FROM big_table" --pager never
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --pager always
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --pager never
 
 # JSON for scripting
 altertable --json query "SELECT 1"
@@ -348,7 +346,7 @@ altertable --json query "SELECT 1"
 altertable --agent query "SELECT 1"
 ```
 
-Use `--format human|json|csv|markdown` for serialized output (default `human`). Human output respects `--layout auto|table|line` (default `auto`), `--columns`, `--max-width`, and `--pager auto|always|never`. `auto` picks a table when it fits and line layout when the table would be too wide. `--format json|csv|markdown` skips pager and layout controls. For machine-readable query output, prefer `--format json` or the global `--agent` preset.
+Human output is the default and respects `--layout auto|table|line`, `--columns`, `--max-width`, and `--pager auto|always|never`. Use `--format csv|markdown` for serialized text, or the global `--json`/`--agent` flags for structured JSON. Serialized output skips pager and layout controls.
 
 Set display defaults in `~/.config/altertable/config`:
 
@@ -361,12 +359,17 @@ query_pager=auto        # auto | always | never
 **Append and upload**
 
 ```bash
-altertable append --catalog my_cat --schema public --table users --data '{"id": 1}'
-altertable append --catalog my_cat --schema public --table users --data '{"id": 2}' --sync
+altertable append '{"event":"checkout_completed","user_id":"usr_123","revenue":99}' --to analytics.main.events
+altertable append '[{"event":"page_view","user_id":"usr_123"},{"event":"signup","user_id":"usr_456"}]' --to analytics.main.events --sync
 
-altertable upload --catalog my_cat --schema public --table users --mode overwrite --format csv --file data.csv
-altertable upsert --catalog my_cat --schema public --table users --primary-key id --format csv --file data.csv
+altertable upload orders.parquet --to analytics.main.orders --mode overwrite
+altertable upsert users.csv --to analytics.main.users --key id
 ```
+
+Upload mode defaults to `create`; valid modes are `create`, `append`, and `overwrite`.
+Input format is inferred from `.csv`, `.json`, or `.parquet` and can be overridden
+with `--format`. Targets use `catalog.schema.table`; percent-encode literal dots
+inside a component, for example `customer%2E360.main.users`.
 
 **Inspect async operations**
 
@@ -382,8 +385,8 @@ Product-level commands stay at the top level. The full management REST surface i
 
 ```bash
 altertable profile show
-altertable catalogs list
-altertable catalogs create --engine altertable --name "My Catalog"
+altertable catalogs
+altertable catalogs create Analytics
 
 # Explore the bundled OpenAPI contract
 altertable api spec
@@ -393,26 +396,23 @@ altertable api routes createDatabase
 
 # HTTP calls — path is relative to /rest/v1 (base URL from config)
 altertable api /whoami
-altertable api GET /whoami
-altertable api GET /environments/production/connections
-altertable api GET '/environments/production/connections?limit=10'
-altertable api -X GET /service_accounts -f label="CI Bot"
-altertable api POST /service_accounts -f label="CI Bot"
-altertable api /service_accounts -f label="CI Bot" -F enabled=true
-altertable api POST /environments/production/databases -f name=Analytics
-altertable api POST /environments/production/databases --body '{"name":"Analytics"}'
-altertable api POST /environments/production/databases --body @payload.json
-altertable api DELETE /service_accounts/sa_abc123
-altertable api PATCH /environments/production/connections/conn_1 --body '{"name":"Renamed"}'
+altertable api /environments/production/connections
+altertable api '/environments/production/connections?limit=10'
+altertable api /service_accounts -f label="CI Bot"
+altertable api /environments/production/databases -f name=Analytics -F read_only=false
+altertable api /environments/production/databases --input create-analytics-catalog.json
+altertable api "/service_accounts/$SERVICE_ACCOUNT_ID" -X DELETE
+altertable api "/environments/production/connections/$CONNECTION_ID" -X PATCH --input rename-warehouse-connection.json
 ```
 
 Use `--env <slug>` to substitute `{environment_id}` in paths copied from `api routes`. Prefer full paths like `/environments/production/...` when the environment is known.
-The method defaults to `GET`, switches to `POST` when request parameters or a body are provided, and can be overridden with `-X/--method`. Use `-f/--raw-field` for string parameters and `-F/--field` for typed values (`true`, `false`, `null`, integers, or `@file`). Forced `GET` and `DELETE` requests put fields in the query string; `POST`, `PATCH`, and `PUT` use fields as the JSON body unless `--body`/`--input` is supplied, in which case fields become query parameters.
+The method defaults to `GET`, switches to `POST` when request parameters or input are provided, and can be overridden with `-X/--method`. Use `-f/--raw-field` for strings and `-F/--field` for typed values (`true`, `false`, `null`, integers, or `@file`). Forced `GET` and `DELETE` requests put fields in the query string; `POST`, `PATCH`, and `PUT` use fields as the JSON body unless `--input` is supplied, in which case fields become query parameters.
 
-For advanced or provider-specific payloads, pass raw JSON with `--body` or `@file`:
+For advanced or provider-specific payloads, read JSON from a file or stdin with `--input`:
 
 ```bash
-altertable api POST /environments/production/connections --body @postgres-connection.json
+altertable api /environments/production/connections --input postgres-connection.json
+printf '%s' '{"name":"Analytics"}' | altertable api /environments/production/databases --input -
 ```
 
 ### Shell completion
@@ -447,16 +447,16 @@ altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertab
 altertable completion generate fish > ~/.config/fish/completions/altertable.fish
 ```
 
-The compatibility aliases `altertable completion bash`, `altertable completion zsh`, and
-`altertable completion fish` also print raw scripts. Running `altertable completion`
-in an interactive terminal opens a small menu; in non-interactive terminals it prints
-usage guidance. Tab completion covers top-level commands, subcommands up to two levels deep, command-specific flags on leaf commands, and global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts after upgrading the CLI.
+Running bare `altertable completion` prints concise install and generation guidance.
+Tab completion covers top-level commands, nested subcommands, command flags, and
+global flags (`--json`, `--agent`, `--debug`). Regenerate or reinstall scripts
+after upgrading the CLI.
 
 ---
 
 ## Global flags
 
-These flags apply to every command and must be placed before the subcommand:
+These flags apply to every command and may be placed before or after commands:
 
 | Flag                    | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
@@ -470,10 +470,10 @@ These flags apply to every command and must be placed before the subcommand:
 Per-request read timeout on `query`, `upload`, and `upsert`:
 
 ```bash
-altertable query "SELECT ..." --read-timeout 180
-altertable --read-timeout 120 query "SELECT ..."
-altertable --connect-timeout 10 upload --catalog my_cat --schema public --table users --mode overwrite --format csv --file large.csv
-altertable --connect-timeout 10 upsert --catalog my_cat --schema public --table users --primary-key id --format csv --file large.csv
+altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --read-timeout 180
+altertable --read-timeout 120 query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC"
+altertable upload orders.parquet --to analytics.main.orders --mode overwrite --connect-timeout 10
+altertable upsert users.csv --to analytics.main.users --key id --connect-timeout 10
 ```
 
 Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited once connected.
@@ -489,8 +489,8 @@ Use `--json` or `--agent` for machine-readable output. On failure the error is a
 With `--json`, success stdout follows one of three contracts:
 
 1. **Raw API** — verbatim API response body (most `api *` commands).
-2. **Normalized query** — `{ metadata, columns, rows }` from `query --format json`, `query --json`, or `altertable --agent query` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs list --json`, `{ profiles: [...] }` from `profile list --json`, or `{ cli_config, profile, details }` from `profile show --json`.
+2. **Normalized query** — `{ metadata, columns, rows }` from `query --json` or `query --agent` (stable scripting contract).
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs --json`, `{ profiles: [...] }` from `profile list --json`, or `{ cli_config, profile, details }` from `profile show --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 

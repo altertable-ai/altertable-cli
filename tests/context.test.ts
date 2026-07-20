@@ -15,7 +15,7 @@ describe("altertable profile show", () => {
   beforeEach(async () => {
     await workspace.resetConfig();
     expect(
-      (await workspace.runCommand("altertable profile --configure --api-key atm_test --env production")).exitCode,
+      (await workspace.runCommand("altertable profile configure --api-key atm_test --env production")).exitCode,
     ).toBe(0);
   });
 

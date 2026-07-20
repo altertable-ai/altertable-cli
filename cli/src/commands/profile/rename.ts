@@ -4,7 +4,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileRenameCommand = defineCommand({
-  meta: { name: "rename", description: "Rename a profile", hidden: true },
+  metadata: { name: "rename", description: "Rename a profile", hidden: true },
   args: {
     from: { type: "positional", description: "Current profile name", required: true },
     to: { type: "positional", description: "New profile name", required: true },

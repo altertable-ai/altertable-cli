@@ -49,7 +49,7 @@ Use these boundaries when adding or changing commands:
 - Keep request descriptions declarative so a future dry-run mode can inspect them without performing I/O.
 - Presentation should return `CommandOutputMode` or write through the command output sink. Avoid mixing transport, parsing, and terminal output in the same function.
 - Declare the exported command immediately after imports, then place its helpers and types below it so reviewers see the public shape first.
-- Define commands and argument schemas through `cli/src/lib/command.ts`; Citty is an implementation detail of that boundary.
+- Define commands and argument schemas through `cli/src/lib/command.ts`; its descriptor-backed parser is the runtime contract.
 - Derive related argument schemas from one shared definition instead of repeating flags and descriptions.
 - Register top-level commands in `cli/src/commands/index.ts`.
 - Colocate unit tests beside their subject as `<name>.test.ts`; reserve root `tests/` for black-box behavior.

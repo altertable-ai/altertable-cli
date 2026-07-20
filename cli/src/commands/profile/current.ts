@@ -3,7 +3,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 
 export const profileCurrentCommand = defineCommand({
-  meta: { name: "current", description: "Show the active profile name" },
+  metadata: { name: "current", description: "Show the active profile name" },
   async run({ sink }) {
     const profileName = getActiveProfileName();
     await writeCommandOutput(

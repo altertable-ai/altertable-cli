@@ -1,7 +1,6 @@
 import { stringArg } from "@/lib/args.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
-import { parseRequestReadTimeoutMs } from "@/lib/timeout-args.ts";
 import { writePagedOutput } from "@/lib/pager.ts";
 import { writeQueryOutput } from "@/lib/query-output.ts";
 import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
@@ -10,11 +9,11 @@ import { schemaArgs } from "@/commands/schema/lib/args.ts";
 import { renderTreeText } from "@/ui/renderers/terminal.ts";
 
 export const schemaCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "schema",
     commandGroup: "query",
     description: "List schemas, tables, and columns for a catalog.",
-    examples: ["altertable schema my-catalog", "altertable schema my-catalog --format json"],
+    examples: ["altertable schema analytics", "altertable schema analytics --json"],
   },
   args: schemaArgs,
   async run({ args, rawArgs, execution, sink }) {
@@ -23,10 +22,8 @@ export const schemaCommand = defineCommand({
       agent: execution.cli.agent,
       rawArgs,
     });
-    const readTimeoutMs = parseRequestReadTimeoutMs(args);
     const queryInput = {
       statement: buildSchemaStatement(catalog),
-      httpOptions: readTimeoutMs !== undefined ? { readTimeoutMs } : undefined,
     };
     const result = await executeLakehouseQuery(
       queryInput,

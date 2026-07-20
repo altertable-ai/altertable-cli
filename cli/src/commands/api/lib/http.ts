@@ -10,7 +10,6 @@ import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
 export type ApiHttpArgs = {
   method?: string;
   endpoint?: string;
-  body?: string;
   input?: string;
   rawFields?: Record<string, string> | string[] | string;
   typedFields?: Record<string, string> | string[] | string;
@@ -88,7 +87,6 @@ function resolveApiMethod(args: ApiHttpArgs): string {
   }
 
   if (
-    args.body ||
     args.input ||
     hasFields(args.rawFields) ||
     hasFields(args.typedFields) ||
@@ -122,7 +120,6 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
   const endpoint = normalizeApiEndpoint(args.endpoint, args.env ? String(args.env) : undefined);
   const payload = resolveApiRequestPayload({
     method,
-    body: args.body ? String(args.body) : undefined,
     input: args.input ? String(args.input) : undefined,
     rawFields: args.rawFields ?? args.fields,
     typedFields: args.typedFields,

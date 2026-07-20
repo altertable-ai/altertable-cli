@@ -2,7 +2,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { configureRunClear } from "@/lib/profile-configure-core.ts";
 
 export const logoutCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "logout",
     commandGroup: "platform",
     description: "Remove stored credentials and settings for all profiles.",

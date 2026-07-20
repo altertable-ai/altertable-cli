@@ -20,18 +20,11 @@ describe("upsert command", () => {
 
     await runCommandWithTestRuntime([
       "upsert",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--primary-key",
-      "id",
-      "--format",
-      "csv",
-      "--file",
       uploadFile,
+      "--to",
+      "memory.main.users",
+      "--key",
+      "id",
     ]);
 
     const log = workspace.readHttpLog();

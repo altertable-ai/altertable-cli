@@ -16,7 +16,7 @@ const QUERY_RESULT_FORMATS = new Set<QueryResultFormat>(["human", "json", "csv",
 
 export function parseQueryResultFormat(format: string): QueryResultFormat {
   if (!QUERY_RESULT_FORMATS.has(format as QueryResultFormat)) {
-    throw new CliError(`Unsupported format: ${format}. Use human, json, csv, or markdown.`);
+    throw new CliError(`Unsupported format: ${format}. Use csv or markdown.`);
   }
   return format as QueryResultFormat;
 }

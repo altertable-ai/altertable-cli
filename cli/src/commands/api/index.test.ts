@@ -3,13 +3,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildMainCommand } from "@/cli.ts";
-import { apiCommand, normalizeApiInvocatorRawArgs } from "@/commands/api/index.ts";
+import { apiCommand } from "@/commands/api/index.ts";
 import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
 import { setCliContext } from "@/context.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import { defineArgs, runCommandTree, type Command } from "@/lib/command.ts";
+import type { Command } from "@/lib/command.ts";
+import { executeCommand } from "@/lib/command-parser.ts";
 
 describe("api", () => {
   beforeEach(() => {
@@ -21,7 +22,7 @@ describe("api", () => {
   });
 
   test("api spec prints YAML containing Altertable Management API", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "yaml"], {
+    const result = await runCommandWithTestRuntime(["api", "spec"], {
       debug: false,
       json: false,
       agent: false,
@@ -33,7 +34,7 @@ describe("api", () => {
   });
 
   test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec", "--format", "json"], {
+    const result = await runCommandWithTestRuntime(["api", "spec"], {
       debug: false,
       json: true,
       agent: false,
@@ -65,9 +66,7 @@ describe("api", () => {
     setCliRuntime(runtime);
 
     try {
-      await runCommandTree(buildMainCommand(), {
-        rawArgs: ["api", "spec", "--format", "yaml"],
-      });
+      await executeCommand(buildMainCommand(), ["api", "spec"]);
     } finally {
       setCliRuntime(previousRuntime);
     }
@@ -109,8 +108,8 @@ describe("api", () => {
     expect(operation.parameters).toEqual(["service_account_id", "environment_id"]);
   });
 
-  test("buildMainCommand top-level names include api and exclude connections", () => {
-    const spec = buildCompletionSpec(buildMainCommand());
+  test("buildMainCommand top-level names include api and exclude connections", async () => {
+    const spec = await buildCompletionSpec(buildMainCommand());
     const topLevelNames = spec.subcommands.map((command) => command.name);
     expect(topLevelNames).toContain("api");
     expect(topLevelNames).not.toContain("connections");
@@ -120,51 +119,9 @@ describe("api", () => {
   });
 
   test("api command tree exposes spec and routes subcommands", () => {
-    const subCommands = apiCommand.subCommands as Record<string, Command>;
-    expect(subCommands.spec?.run).toBeDefined();
-    expect(subCommands.routes?.run).toBeDefined();
-  });
-
-  test("normalizeApiInvocatorRawArgs inserts -- before endpoint paths", () => {
-    const rootArgs = defineArgs({
-      profile: { type: "string", description: "Use a named profile" },
-    });
-
-    expect(normalizeApiInvocatorRawArgs(["api", "/whoami"])).toEqual(["api", "--", "/whoami"]);
-    expect(normalizeApiInvocatorRawArgs(["api", "GET", "/whoami"])).toEqual([
-      "api",
-      "GET",
-      "/whoami",
-    ]);
-    expect(normalizeApiInvocatorRawArgs(["api", "routes"])).toEqual(["api", "routes"]);
-    expect(normalizeApiInvocatorRawArgs(["--json", "api", "/whoami"])).toEqual([
-      "--json",
-      "api",
-      "--",
-      "/whoami",
-    ]);
-    expect(normalizeApiInvocatorRawArgs(["--profile", "dev", "api", "/whoami"], rootArgs)).toEqual([
-      "--profile",
-      "dev",
-      "api",
-      "--",
-      "/whoami",
-    ]);
-    expect(
-      normalizeApiInvocatorRawArgs(["api", "-f", "label=CI Bot", "/service_accounts"]),
-    ).toEqual(["api", "-f", "label=CI Bot", "--", "/service_accounts"]);
-    expect(normalizeApiInvocatorRawArgs(["api", "-X", "GET", "/service_accounts"])).toEqual([
-      "api",
-      "-X",
-      "GET",
-      "--",
-      "/service_accounts",
-    ]);
-    expect(normalizeApiInvocatorRawArgs(["api", "--", "/whoami"])).toEqual([
-      "api",
-      "--",
-      "/whoami",
-    ]);
+    const subcommands = apiCommand.subcommands as Record<string, Command>;
+    expect(subcommands.spec?.run).toBeDefined();
+    expect(subcommands.routes?.run).toBeDefined();
   });
 
   describe("api HTTP invoker", () => {
@@ -202,14 +159,14 @@ describe("api", () => {
         ]),
       );
 
-      await runCommandWithTestRuntime(normalizeApiInvocatorRawArgs(["api", "/whoami"]));
+      await runCommandWithTestRuntime(["api", "/whoami"]);
 
       const logContent = readFileSync(logFile, "utf8");
       expect(logContent).toContain("/rest/v1/whoami");
       expect(logContent).toContain("METHOD=GET");
     });
 
-    test("POST subcommand issues a single HTTP request", async () => {
+    test("-X POST issues a single HTTP request", async () => {
       writeFileSync(
         mockFile,
         JSON.stringify([
@@ -221,7 +178,14 @@ describe("api", () => {
         ]),
       );
 
-      await runCommandWithTestRuntime(["api", "POST", "/service_accounts", "-f", "label=CI Bot"]);
+      await runCommandWithTestRuntime([
+        "api",
+        "/service_accounts",
+        "-X",
+        "POST",
+        "-f",
+        "label=CI Bot",
+      ]);
 
       const logContent = readFileSync(logFile, "utf8");
       const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];

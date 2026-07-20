@@ -1,4 +1,4 @@
-/** Coerce a citty parsed arg to string without unsafe object stringification. */
+/** Coerce a parsed CLI argument to string without unsafe object stringification. */
 export function asCliArgString(value: unknown): string {
   if (typeof value === "string") {
     return value;

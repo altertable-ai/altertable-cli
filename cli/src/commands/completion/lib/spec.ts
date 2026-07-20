@@ -1,17 +1,25 @@
 import type { Command } from "@/lib/command.ts";
+import type { CommandFlagScope, PositionalCompletionKind } from "@/lib/command.ts";
+import {
+  resolveCommandDescriptor,
+  visibleCommandDescriptors,
+  type CommandArgumentDescriptor,
+  type CommandDescriptor,
+} from "@/lib/command-descriptor.ts";
 
 /**
- * Static completion spec derived from the command tree.
+ * Static completion spec projected from the normalized command descriptor.
  *
- * Subcommand nesting is limited to two levels below the root command
- * (e.g. `altertable api connections`). Flag extraction applies to each visited
- * node only; deeper positional args are not completed.
+ * Subcommand nesting is limited to three levels below the root command.
+ * Flags and finite positional values are extracted from each visited node.
  */
 export type CompletionNode = {
   name: string;
   description?: string;
   subcommands: CompletionNode[];
   flags: CompletionFlag[];
+  positionals: CompletionPositional[];
+  soleDirectOperands: string[];
 };
 
 export type CompletionFlag = {
@@ -19,6 +27,16 @@ export type CompletionFlag = {
   alias?: string;
   description?: string;
   values?: string[];
+  takesValue?: boolean;
+  scope?: CommandFlagScope;
+};
+
+export type CompletionPositional = {
+  name: string;
+  description?: string;
+  required: boolean;
+  completion: PositionalCompletionKind;
+  values?: readonly string[];
 };
 
 export type CompletionContext = {
@@ -28,117 +46,82 @@ export type CompletionContext = {
   flags: CompletionFlag[];
   /** Subcommand names available at this path (empty on leaves). */
   subcommands: string[];
+  /** Positional arguments declared on this node, in command order. */
+  positionals: CompletionPositional[];
+  /** Subcommand-shaped values that select direct invocation when they are the sole operand. */
+  soleDirectOperands: string[];
 };
 
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
 const MAX_SUBCOMMAND_DEPTH = 3;
 
-type ArgDef = {
-  type?: string;
-  alias?: string | string[];
-  description?: string;
-  options?: string[];
-};
-
-function extractFlags(command: Command): CompletionFlag[] {
-  const flags: CompletionFlag[] = [];
-  const args = command.args ?? {};
-
-  for (const [name, rawDef] of Object.entries(args)) {
-    const def = rawDef as ArgDef | undefined;
-    if (!def?.type || (def.type !== "boolean" && def.type !== "string" && def.type !== "enum")) {
-      continue;
-    }
-
-    flags.push({
-      name,
-      alias: Array.isArray(def.alias) ? def.alias[0] : def.alias,
-      description: def.description,
-      values: def.type === "enum" ? def.options : undefined,
-    });
-  }
-
-  return flags.sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function resolveAliases(value: unknown): string[] {
-  if (!value) {
-    return [];
-  }
-  const aliases = Array.isArray(value) ? value : [value];
-  return aliases.map(String);
-}
-
-function resolveSubcommandNames(command: Command): string[] {
-  const meta = command.meta;
-  if (meta && typeof meta === "object" && "hidden" in meta && meta.hidden) {
-    return [];
-  }
-  if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    const aliases = "alias" in meta ? resolveAliases(meta.alias) : [];
-    return [...new Set([String(meta.name), ...aliases])];
-  }
-  return [];
-}
-
-function resolveMetaDescription(command: Command): string | undefined {
-  const meta = command.meta;
-  if (meta && typeof meta === "object" && "description" in meta && meta.description) {
-    return String(meta.description);
-  }
-  return undefined;
-}
-
-function resolveRootName(root: Command): string {
-  const meta = root.meta;
-  if (meta && typeof meta === "object" && "name" in meta && meta.name) {
-    return String(meta.name);
-  }
-  return "altertable";
-}
-
-function walkSubcommands(subcommands: Command["subCommands"], depth: number): CompletionNode[] {
-  if (!subcommands) {
-    return [];
-  }
-  return Object.values(subcommands)
-    .flatMap((subcommand) => {
-      const command = subcommand as Command;
-      return resolveSubcommandNames(command).map((name) => walkCommand(name, command, depth));
-    })
+function extractFlags(commandArguments: readonly CommandArgumentDescriptor[]): CompletionFlag[] {
+  return commandArguments
+    .filter((argument) => ["boolean", "string", "enum"].includes(argument.type))
+    .map((argument) => ({
+      name: argument.name,
+      alias: argument.aliases[0],
+      description: argument.description || undefined,
+      values: argument.values.length > 0 ? argument.values : undefined,
+      takesValue: argument.type === "string" || argument.type === "enum",
+      scope: argument.scope,
+    }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function walkCommand(name: string, command: Command, depth: number): CompletionNode {
-  const node: CompletionNode = {
-    name,
-    description: resolveMetaDescription(command),
-    subcommands: [],
-    flags: extractFlags(command),
-  };
-
-  if (depth >= MAX_SUBCOMMAND_DEPTH || !command.subCommands) {
-    return node;
-  }
-
-  node.subcommands = walkSubcommands(command.subCommands, depth + 1);
-  return node;
+function extractPositionals(
+  commandArguments: readonly CommandArgumentDescriptor[],
+): CompletionPositional[] {
+  return commandArguments
+    .filter((argument) => argument.type === "positional")
+    .map((argument) => ({
+      name: argument.name,
+      description: argument.description || undefined,
+      required: argument.required,
+      completion: argument.positionalCompletion ?? "freeform",
+      values: argument.values,
+    }));
 }
 
-export function buildCompletionSpec(root: Command): CompletionNode {
-  const spec: CompletionNode = {
-    name: resolveRootName(root),
-    description: resolveMetaDescription(root),
-    subcommands: [],
-    flags: extractFlags(root),
+function publicCommandNames(descriptor: CommandDescriptor): string[] {
+  const metadata = descriptor.metadata;
+  if (metadata.hidden || !metadata.name) return [];
+  return [...new Set([metadata.name, ...metadata.aliases])];
+}
+
+function buildCompletionNode(
+  descriptor: CommandDescriptor,
+  name: string,
+  depth: number,
+): CompletionNode {
+  const metadata = descriptor.metadata;
+  const subcommands =
+    depth >= MAX_SUBCOMMAND_DEPTH
+      ? []
+      : visibleCommandDescriptors(descriptor.subcommands)
+          .flatMap((subcommand) =>
+            publicCommandNames(subcommand).map((subcommandName) =>
+              buildCompletionNode(subcommand, subcommandName, depth + 1),
+            ),
+          )
+          .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    name,
+    description: metadata.description || undefined,
+    subcommands,
+    flags: extractFlags(descriptor.arguments),
+    positionals: extractPositionals(descriptor.arguments),
+    soleDirectOperands: [...descriptor.soleDirectOperands],
   };
+}
 
-  if (!root.subCommands) {
-    return spec;
-  }
+export function buildCompletionSpecFromDescriptor(descriptor: CommandDescriptor): CompletionNode {
+  return buildCompletionNode(descriptor, descriptor.metadata.name ?? "altertable", 0);
+}
 
-  spec.subcommands = walkSubcommands(root.subCommands, 1);
-  return spec;
+export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {
+  return buildCompletionSpecFromDescriptor(await resolveCommandDescriptor(root));
 }
 
 export function collectCompletionContexts(root: CompletionNode): CompletionContext[] {
@@ -149,6 +132,8 @@ export function collectCompletionContexts(root: CompletionNode): CompletionConte
       segments: [...segments],
       flags: node.flags,
       subcommands: node.subcommands.map((child) => child.name),
+      positionals: node.positionals,
+      soleDirectOperands: node.soleDirectOperands,
     });
 
     for (const child of node.subcommands) {

@@ -10,7 +10,9 @@ export type EarlyBootstrapExit = {
 };
 
 function argvIncludesFlag(rawArgs: readonly string[], flags: readonly string[]): boolean {
-  return rawArgs.some((arg) => flags.includes(arg));
+  const separatorIndex = rawArgs.indexOf("--");
+  const optionArgs = separatorIndex === -1 ? rawArgs : rawArgs.slice(0, separatorIndex);
+  return optionArgs.some((arg) => flags.includes(arg));
 }
 
 export const EARLY_BOOTSTRAP_EXITS: readonly EarlyBootstrapExit[] = [

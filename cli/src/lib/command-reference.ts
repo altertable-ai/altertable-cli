@@ -1,0 +1,169 @@
+import type { CommandArgumentDescriptor, CommandDescriptor } from "@/lib/command-descriptor.ts";
+import { visibleCommandDescriptors } from "@/lib/command-descriptor.ts";
+import type { AltertableCommandGroup } from "@/lib/command.ts";
+
+const GROUP_TITLES: Record<AltertableCommandGroup, string> = {
+  platform: "Platform",
+  ingest: "Ingest",
+  query: "Query",
+};
+
+function escapeTableCell(value: string): string {
+  return value.replaceAll("|", "\\|").replace(/\s+/g, " ").trim();
+}
+
+function argumentValueLabel(argument: CommandArgumentDescriptor): string {
+  if (argument.valueHint) return argument.valueHint.toUpperCase();
+  if (argument.values.length > 0) return argument.values.join("|").toUpperCase();
+  return argument.name.toUpperCase();
+}
+
+function positionalToken(argument: CommandArgumentDescriptor): string {
+  const value = argumentValueLabel(argument);
+  return argument.required ? `<${value}>` : `[${value}]`;
+}
+
+function optionLabel(argument: CommandArgumentDescriptor): string {
+  const aliases = argument.aliases.map((alias) => `-${alias}`);
+  const value =
+    argument.type === "string" || argument.type === "enum"
+      ? ` <${argumentValueLabel(argument)}>`
+      : "";
+  return [...aliases, `--${argument.name}${value}`].join(", ");
+}
+
+function argumentDescription(argument: CommandArgumentDescriptor): string {
+  const details = [argument.description];
+  if (argument.scope === "root-only") {
+    details.push("Scope: root only.");
+  }
+  if (argument.required) {
+    details.push("Required.");
+  }
+  if (argument.repeatable) {
+    details.push("Repeatable.");
+  }
+  if (argument.values.length > 0) {
+    details.push(`Values: ${argument.values.join(", ")}.`);
+  }
+  if (argument.default !== undefined) {
+    details.push(`Default: ${JSON.stringify(argument.default)}.`);
+  }
+  return details.filter(Boolean).join(" ");
+}
+
+function renderArgumentTable(
+  title: string,
+  commandArguments: readonly CommandArgumentDescriptor[],
+  label: (argument: CommandArgumentDescriptor) => string,
+): string[] {
+  if (commandArguments.length === 0) return [];
+  return [
+    `**${title}**`,
+    "",
+    `| ${title === "Arguments" ? "Argument" : "Option"} | Description |`,
+    "| --- | --- |",
+    ...commandArguments.map(
+      (argument) =>
+        `| \`${escapeTableCell(label(argument))}\` | ${escapeTableCell(argumentDescription(argument))} |`,
+    ),
+    "",
+  ];
+}
+
+function renderCommand(
+  descriptor: CommandDescriptor,
+  parentPath: readonly string[],
+  headingLevel: number,
+): string[] {
+  const name = descriptor.metadata.name ?? descriptor.key ?? "command";
+  const commandPath = [...parentPath, name];
+  const positionals = descriptor.arguments.filter((argument) => argument.type === "positional");
+  const options = descriptor.arguments.filter((argument) => argument.type !== "positional");
+  const subcommands = visibleCommandDescriptors(descriptor.subcommands);
+  const usages: string[] = [];
+  if (descriptor.metadata.invocations.includes("direct")) {
+    usages.push(
+      [
+        ...commandPath,
+        options.length > 0 ? "[options]" : undefined,
+        ...positionals.map(positionalToken),
+      ]
+        .filter((token): token is string => token !== undefined)
+        .join(" "),
+    );
+  }
+  if (descriptor.metadata.invocations.includes("subcommand") && subcommands.length > 0) {
+    usages.push(
+      `${commandPath.join(" ")} ${subcommands
+        .map((subcommand) => subcommand.metadata.name ?? subcommand.key)
+        .join("|")}`,
+    );
+  }
+  const lines = [
+    `${"#".repeat(headingLevel)} \`${commandPath.join(" ")}\``,
+    "",
+    descriptor.metadata.description,
+    "",
+    "**Usage**",
+    "",
+    ...usages.map((usage) => `\`${usage}\``),
+    "",
+  ];
+
+  if (descriptor.metadata.aliases.length > 0) {
+    lines.push(
+      `**Aliases:** ${descriptor.metadata.aliases.map((alias) => `\`${alias}\``).join(", ")}`,
+      "",
+    );
+  }
+  lines.push(
+    ...renderArgumentTable("Arguments", positionals, positionalToken),
+    ...renderArgumentTable("Options", options, optionLabel),
+  );
+
+  if (subcommands.length > 0) {
+    lines.push(
+      "**Subcommands**",
+      "",
+      ...subcommands.map(
+        (subcommand) =>
+          `- \`${subcommand.metadata.name ?? subcommand.key}\` — ${subcommand.metadata.description}`,
+      ),
+      "",
+    );
+  }
+  if (descriptor.metadata.examples.length > 0) {
+    lines.push("**Examples**", "", "```bash", ...descriptor.metadata.examples, "```", "");
+  }
+  for (const subcommand of subcommands) {
+    lines.push(...renderCommand(subcommand, commandPath, Math.min(headingLevel + 1, 6)));
+  }
+  return lines;
+}
+
+export function renderCommandReference(root: CommandDescriptor): string {
+  const rootName = root.metadata.name ?? "altertable";
+  const rootOptions = root.arguments.filter((argument) => argument.type !== "positional");
+  const topLevelCommands = visibleCommandDescriptors(root.subcommands);
+  const lines = [
+    "<!-- AUTO-GENERATED by cli/scripts/generate-command-reference.ts — do not edit -->",
+    "",
+    "# Altertable CLI command reference",
+    "",
+    root.metadata.description,
+    "",
+    ...renderArgumentTable("Global options", rootOptions, optionLabel),
+  ];
+
+  for (const group of ["platform", "ingest", "query"] as const) {
+    const commands = topLevelCommands.filter((command) => command.metadata.commandGroup === group);
+    if (commands.length === 0) continue;
+    lines.push(`## ${GROUP_TITLES[group]}`, "");
+    for (const command of commands) {
+      lines.push(...renderCommand(command, [rootName], 3));
+    }
+  }
+
+  return `${lines.join("\n").trim()}\n`;
+}

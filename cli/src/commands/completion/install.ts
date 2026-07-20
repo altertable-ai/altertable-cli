@@ -1,19 +1,17 @@
 import { defineCommand, type Command } from "@/lib/command.ts";
-import { createBashInstallCommand } from "@/commands/completion/bash.ts";
-import { createFishInstallCommand } from "@/commands/completion/fish.ts";
-import { createZshInstallCommand } from "@/commands/completion/zsh.ts";
+import { optionalStringArg } from "@/lib/args.ts";
 import {
   formatCompletionScript,
   formatInstallMessage,
   installCompletion,
-  isSupportedShell,
   resolveShell,
+  SUPPORTED_SHELLS,
   type GetRootCommand,
 } from "@/commands/completion/lib/completion.ts";
 
 export function createInstallCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
-    meta: {
+    metadata: {
       name: "install",
       description: "Install shell completion for the current shell.",
       examples: [
@@ -22,26 +20,24 @@ export function createInstallCommand(getRootCommand: GetRootCommand): Command {
         "altertable completion install zsh --no-rc",
       ],
     },
-    subCommands: {
-      bash: createBashInstallCommand(getRootCommand),
-      fish: createFishInstallCommand(getRootCommand),
-      zsh: createZshInstallCommand(getRootCommand),
-    },
     args: {
+      shell: {
+        type: "positional",
+        description: "Shell to install completion for (default: detected shell)",
+        required: false,
+        values: SUPPORTED_SHELLS,
+      },
       "no-rc": {
         type: "boolean",
         description: "Write the completion file without updating shell startup files.",
       },
     },
-    async run({ args, rawArgs, sink }) {
-      const explicitShell = rawArgs.slice(rawArgs.indexOf("install") + 1).find(isSupportedShell);
-      if (explicitShell) return;
-      const shell = resolveShell(undefined);
-      const result = await installCompletion(
-        shell,
-        formatCompletionScript(shell, getRootCommand()),
-        { updateRc: args["no-rc"] !== true && !rawArgs.includes("--no-rc") },
-      );
+    async run({ args, sink }) {
+      const shell = resolveShell(optionalStringArg(args, "shell"));
+      const script = await formatCompletionScript(shell, getRootCommand());
+      const result = await installCompletion(shell, script, {
+        updateRc: args["no-rc"] !== true,
+      });
       if (sink.json) sink.writeJson(result);
       else sink.writeHuman(formatInstallMessage(result));
     },

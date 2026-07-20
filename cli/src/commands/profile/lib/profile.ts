@@ -40,7 +40,9 @@ export function requireStoredProfileForExport(name: string): string {
 }
 
 export function profileNameArgOrActive(args: Record<string, unknown>): string {
-  return args.name ? requireProfileName(args.name) : getActiveProfileName();
+  return args.name
+    ? requireProfileName(args.name)
+    : (getCliContext().profile ?? getActiveProfileName());
 }
 
 export function profileShowTargetName(args: Record<string, unknown>): string {

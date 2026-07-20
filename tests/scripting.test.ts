@@ -58,13 +58,13 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test.each([
-    ["auth", statusMocks.auth, "altertable --json api GET /whoami", 2, "auth_failed"],
-    ["not found", statusMocks.missing, "altertable --json api GET /environments/production/connections/missing", 4, undefined],
-    ["forbidden", statusMocks.forbidden, "altertable --json api GET /whoami", 3, "forbidden"],
-    ["conflict", statusMocks.conflict, "altertable --json api POST /service_accounts -f label=dup", 5, "conflict"],
-    ["rate limit", statusMocks.rate, "altertable --json api GET /whoami", 7, "rate_limited"],
-    ["validation", statusMocks.validation, "altertable --json api POST /service_accounts -f label=bad", 6, "validation_error"],
-    ["server error", statusMocks.server, "altertable --json api GET /whoami", 8, "server_error"],
+    ["auth", statusMocks.auth, "altertable api /whoami --json", 2, "auth_failed"],
+    ["not found", statusMocks.missing, "altertable api /environments/production/connections/missing --json", 4, undefined],
+    ["forbidden", statusMocks.forbidden, "altertable api /whoami --json", 3, "forbidden"],
+    ["conflict", statusMocks.conflict, "altertable api /service_accounts -f label=dup --json", 5, "conflict"],
+    ["rate limit", statusMocks.rate, "altertable api /whoami --json", 7, "rate_limited"],
+    ["validation", statusMocks.validation, "altertable api /service_accounts -f label=bad --json", 6, "validation_error"],
+    ["server error", statusMocks.server, "altertable api /whoami --json", 8, "server_error"],
   ])("%s failure emits JSON error envelope", async (_name, mock, command, exitCode, code) => {
     await workspace.setupMockHttp(mock);
     const result = await workspace.runCommand(command);
@@ -81,7 +81,7 @@ describe("scriptable exit codes and JSON errors", () => {
   test("missing management credentials exits 10 with configuration_error", async () => {
     const isolated = await createTestWorkspace({ ALTERTABLE_API_KEY: undefined, ALTERTABLE_ENV: undefined });
     try {
-      const result = await isolated.runCommand("altertable --json api GET /whoami");
+      const result = await isolated.runCommand("altertable api /whoami --json");
       expect(result.exitCode).toBe(10);
       expect(JSON.parse(result.stderr)).toMatchObject({ error: true, exit_code: 10, code: "configuration_error" });
     } finally {
@@ -90,7 +90,7 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test("network errors exit 9 with network_error", async () => {
-    const result = await workspace.runCommand("altertable --json api GET /whoami", {
+    const result = await workspace.runCommand("altertable api /whoami --json", {
       env: { ALTERTABLE_MANAGEMENT_API_BASE: "http://127.0.0.1:1", ALTERTABLE_MOCK_HTTP_FILE: undefined },
     });
 
@@ -99,7 +99,7 @@ describe("scriptable exit codes and JSON errors", () => {
   });
 
   test("profile show missing uses configuration error semantics", async () => {
-    const result = await workspace.runCommand("altertable --json profile show --name missing-profile");
+    const result = await workspace.runCommand("altertable profile show missing-profile --json");
 
     expect(result.exitCode).toBe(10);
     expect(JSON.parse(result.stderr)).toMatchObject({ error: true, exit_code: 10, code: "configuration_error" });
@@ -109,6 +109,42 @@ describe("scriptable exit codes and JSON errors", () => {
     const result = await workspace.runCommand("altertable --json query");
 
     expect(result.exitCode).toBe(1);
+  });
+
+  test("invalid trailing timeouts use the JSON error envelope", async () => {
+    const result = await workspace.runCommand(
+      'altertable query "SELECT 1" --connect-timeout nope --json',
+    );
+    const error = JSON.parse(result.stderr);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(error).toMatchObject({ error: true, exit_code: 1 });
+    expect(result.stderr).not.toContain("/Users/");
+  });
+
+  test("invalid global profiles render without a stack trace", async () => {
+    const isolated = await createTestWorkspace({
+      ALTERTABLE_API_KEY: undefined,
+      ALTERTABLE_ENV: undefined,
+    });
+    try {
+      const configured = await isolated.runCommand(
+        "altertable profile configure default --api-key atm_default --env production",
+      );
+      expect(configured.exitCode).toBe(0);
+
+      const result = await isolated.runCommand(
+        "altertable profile show --profile definitely_missing_profile",
+      );
+
+      expect(result.exitCode).toBe(10);
+      expect(result.stderr).toContain("Profile not found: definitely_missing_profile");
+      expect(result.stderr).not.toContain("cli/src/");
+      expect(result.stderr).not.toContain(" at ");
+    } finally {
+      await isolated.cleanup();
+    }
   });
 
   test.each(["update", "upgrade"])("%s checks an explicit version", async (command) => {

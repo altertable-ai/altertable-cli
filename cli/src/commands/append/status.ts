@@ -4,7 +4,7 @@ import { writeCommandOutput } from "@/lib/command-output.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 
 export const appendStatusCommand = defineCommand({
-  meta: {
+  metadata: {
     name: "status",
     description: "Fetch status for an append operation.",
   },

@@ -185,7 +185,7 @@ describe("JSON error envelope", () => {
     expect(json.error).toBe(true);
   });
 
-  test("citty usage errors serialize as usage_error", () => {
+  test("command parser errors serialize as usage_error", () => {
     const usageError = new Error("Missing required argument: statement");
     usageError.name = "CLIError";
     Object.assign(usageError, { code: "ERR_MISSING_ARGS" });

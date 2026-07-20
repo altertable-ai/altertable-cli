@@ -1,9 +1,9 @@
-import { defineArgs } from "@/lib/command.ts";
+import { defineArguments } from "@/lib/command.ts";
 import { lakehouseFileArgs } from "@/lib/lakehouse/args.ts";
 
-export const upsertArgs = defineArgs({
+export const upsertArgs = defineArguments({
   ...lakehouseFileArgs,
-  "primary-key": {
+  key: {
     type: "string",
     description: "Column name used to match existing rows",
     required: true,

@@ -274,7 +274,7 @@ export function getCliExitCode(error: unknown): number {
   return EXIT_GENERIC;
 }
 
-export function isCittyCliError(error: unknown): error is Error & { code: string } {
+export function isCommandParseError(error: unknown): error is Error & { code: string } {
   return error instanceof Error && error.name === "CLIError" && "code" in error;
 }
 

@@ -20,18 +20,11 @@ describe("upload command", () => {
 
     await runCommandWithTestRuntime([
       "upload",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--format",
-      "csv",
+      uploadFile,
+      "--to",
+      "memory.main.users",
       "--mode",
       "overwrite",
-      "--file",
-      uploadFile,
     ]);
 
     const log = workspace.readHttpLog();
@@ -43,22 +36,11 @@ describe("upload command", () => {
 
   test("rejects missing files and directories", async () => {
     const directory = workspace.createDirectory("directory");
-    const baseArgs = [
-      "upload",
-      "--catalog",
-      "memory",
-      "--schema",
-      "main",
-      "--table",
-      "users",
-      "--mode",
-      "overwrite",
-      "--file",
-    ];
+    const baseArgs = ["upload"];
 
     for (const file of [`${workspace.home}/missing.csv`, directory]) {
       try {
-        await runCommandWithTestRuntime([...baseArgs, file]);
+        await runCommandWithTestRuntime([...baseArgs, file, "--to", "memory.main.users"]);
         throw new Error("Expected upload to reject an invalid file");
       } catch (error) {
         expect(error).toBeInstanceOf(Error);

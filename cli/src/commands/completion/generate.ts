@@ -1,12 +1,15 @@
 import { defineCommand, type Command } from "@/lib/command.ts";
-import { createBashCompletionCommand } from "@/commands/completion/bash.ts";
-import { createFishCompletionCommand } from "@/commands/completion/fish.ts";
-import { createZshCompletionCommand } from "@/commands/completion/zsh.ts";
-import type { GetRootCommand } from "@/commands/completion/lib/completion.ts";
+import { stringArg } from "@/lib/args.ts";
+import {
+  formatCompletionScript,
+  resolveShell,
+  SUPPORTED_SHELLS,
+  type GetRootCommand,
+} from "@/commands/completion/lib/completion.ts";
 
 export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({
-    meta: {
+    metadata: {
       name: "generate",
       description: "Generate a shell completion script.",
       examples: [
@@ -14,10 +17,17 @@ export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
         "altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertable",
       ],
     },
-    subCommands: {
-      bash: createBashCompletionCommand(getRootCommand),
-      fish: createFishCompletionCommand(getRootCommand),
-      zsh: createZshCompletionCommand(getRootCommand),
+    args: {
+      shell: {
+        type: "positional",
+        description: "Shell to generate completion for",
+        required: true,
+        values: SUPPORTED_SHELLS,
+      },
+    },
+    async run({ args, sink }) {
+      const shell = resolveShell(stringArg(args, "shell"));
+      sink.writeRaw(await formatCompletionScript(shell, getRootCommand()));
     },
   });
 }

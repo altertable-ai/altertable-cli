@@ -4,7 +4,6 @@ import { basename, dirname, join } from "node:path";
 import type { Command } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
-import type { Prompts } from "@/ui/prompts.ts";
 import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
@@ -16,10 +15,6 @@ import {
 
 export type GetRootCommand = () => Command;
 export type SupportedShell = "bash" | "zsh" | "fish";
-export type CompletionRootInput =
-  | { kind: "help" }
-  | { kind: "install"; shell?: SupportedShell; updateRc: boolean };
-export type CompletionCommandOptions = { prompts?: Prompts };
 export type InstallResult = {
   shell: SupportedShell;
   completionPath: string;
@@ -30,9 +25,8 @@ export type InstallResult = {
 
 type InstallTarget = { completionPath: string; rcPath?: string };
 type InstallOptions = { updateRc?: boolean };
-type CompletionPromptChoice = "install" | "install-bash" | "install-zsh" | "install-fish" | "help";
 
-const SUPPORTED_SHELLS = ["bash", "zsh", "fish"] as const;
+export const SUPPORTED_SHELLS = ["bash", "fish", "zsh"] as const;
 const START_MARKER = "# >>> altertable completion >>>";
 const END_MARKER = "# <<< altertable completion <<<";
 const COMPLETION_DOCS_URL = "https://github.com/altertable-ai/altertable-cli#shell-completion";
@@ -143,8 +137,11 @@ function upsertManagedBlock(existing: string, block: string): string {
   return prefix ? `${prefix}\n\n${block}` : block;
 }
 
-export function formatCompletionScript(shell: SupportedShell, rootCommand: Command): string {
-  const spec = buildCompletionSpec(rootCommand);
+export async function formatCompletionScript(
+  shell: SupportedShell,
+  rootCommand: Command,
+): Promise<string> {
+  const spec = await buildCompletionSpec(rootCommand);
   if (shell === "bash") return formatBashCompletion(spec);
   if (shell === "zsh") return formatZshCompletion(spec);
   return formatFishCompletion(spec);
@@ -229,25 +226,4 @@ export function formatCompletionHelpMessage(): string {
     ),
     { labelWidth: "Install shell:".length },
   );
-}
-
-export async function promptCompletionInput(prompts: Prompts): Promise<CompletionRootInput> {
-  const selected = (await prompts.readSelect(
-    "Shell completion",
-    [
-      { value: "install", label: "Install for current shell" },
-      { value: "install-bash", label: "Install for bash" },
-      { value: "install-zsh", label: "Install for zsh" },
-      { value: "install-fish", label: "Install for fish" },
-      { value: "help", label: "Show manual install commands" },
-    ],
-    "install",
-    { leadingNewline: false },
-  )) as CompletionPromptChoice;
-
-  if (selected === "install") return { kind: "install", updateRc: true };
-  if (selected === "install-bash") return { kind: "install", shell: "bash", updateRc: true };
-  if (selected === "install-zsh") return { kind: "install", shell: "zsh", updateRc: true };
-  if (selected === "install-fish") return { kind: "install", shell: "fish", updateRc: true };
-  return { kind: "help" };
 }

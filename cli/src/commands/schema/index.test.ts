@@ -59,7 +59,7 @@ describe("schema command", () => {
   test("sends one escaped catalog-scoped query", async () => {
     writeSchemaResponse([]);
 
-    await runCommandWithTestRuntime(["schema", "o'brien", "--format", "json"]);
+    await runCommandWithTestRuntime(["schema", "o'brien"]);
 
     const payloadLine = readFileSync(logFile, "utf8")
       .split("\n")
