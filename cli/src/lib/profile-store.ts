@@ -159,6 +159,27 @@ export function resolveWorkingProfile(override?: string): string {
   return getActiveProfileName();
 }
 
+export function resolveWorkingProfileReadOnly(override?: string): string {
+  if (envConfigMode()) {
+    return FROM_ENV_PSEUDOPROFILE_NAME;
+  }
+
+  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
+  if (explicit.length > 0) {
+    assertSafeProfileName(explicit);
+    if (explicit !== DEFAULT_PROFILE_NAME && !profileExists(explicit)) {
+      throw new ConfigurationError(`Profile not found: ${explicit}`);
+    }
+    return explicit;
+  }
+
+  const active = kvGet(configFile(), "active_profile");
+  if (active.length > 0 && profileExists(active)) {
+    return active;
+  }
+  return DEFAULT_PROFILE_NAME;
+}
+
 export function listProfileNames(): string[] {
   ensureProfilesLayout();
   if (!existsSync(profilesDir())) {

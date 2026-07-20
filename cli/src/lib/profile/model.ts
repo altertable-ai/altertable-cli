@@ -1,8 +1,10 @@
 import { renameSync, rmSync } from "node:fs";
 import {
   configDir,
+  configFile,
   configGet,
   configSet,
+  kvGet,
   resolveApiBase,
   resolveManagementApiBase,
 } from "@/lib/config.ts";
@@ -301,22 +303,15 @@ function inspectFromEnvProfile(): ProfileInspect {
   };
 }
 
-export function inspectProfile(name: string): ProfileInspect {
-  if (isFromEnvProfile(name)) {
-    return inspectFromEnvProfile();
-  }
-  assertSafeProfileName(name);
-  ensureProfilesLayout();
-  if (!profileExists(name)) {
-    throw new ConfigurationError(`Profile not found: ${name}`);
-  }
-
-  const snapshot = readProfileSnapshot(name);
+function profileInspectFromSnapshot(
+  name: string,
+  active: boolean,
+  snapshot: ProfileSnapshot,
+): ProfileInspect {
   const { config, auth } = snapshot;
-
   return {
     name,
-    active: getActiveProfileName() === name,
+    active,
     config_file: profileConfigFile(name),
     organization: {
       slug: config.organization_slug,
@@ -343,6 +338,36 @@ export function inspectProfile(name: string): ProfileInspect {
       lakehouse_expires_at: parseTimestampMs(config.lakehouse_credential_expiry),
     },
   };
+}
+
+export function inspectProfile(name: string): ProfileInspect {
+  if (isFromEnvProfile(name)) {
+    return inspectFromEnvProfile();
+  }
+  assertSafeProfileName(name);
+  ensureProfilesLayout();
+  if (!profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+
+  return profileInspectFromSnapshot(
+    name,
+    getActiveProfileName() === name,
+    readProfileSnapshot(name),
+  );
+}
+
+export function inspectProfileReadOnly(name: string): ProfileInspect {
+  if (isFromEnvProfile(name)) {
+    return inspectFromEnvProfile();
+  }
+  assertSafeProfileName(name);
+  if (name !== DEFAULT_PROFILE_NAME && !profileExists(name)) {
+    throw new ConfigurationError(`Profile not found: ${name}`);
+  }
+
+  const activeProfile = kvGet(configFile(), "active_profile") || DEFAULT_PROFILE_NAME;
+  return profileInspectFromSnapshot(name, activeProfile === name, readProfileSnapshot(name));
 }
 
 export function createEmptyProfile(name: string): ProfileInspect {

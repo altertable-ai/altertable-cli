@@ -24,6 +24,11 @@ export type HttpRequest = {
   readTimeoutMs?: number;
   retry?: boolean;
   maxAttempts?: number;
+  /**
+   * Disable token refresh, lakehouse credential provisioning, and 401 recovery.
+   * Intended for read-only diagnostics that must not mutate authentication state.
+   */
+  authRecovery?: boolean;
 };
 
 const PLANE_URL_BUILDERS = {
@@ -41,7 +46,7 @@ async function resolveRequestAuthHeader(
   context: ExecutionContext,
 ): Promise<string> {
   if (request.plane === "management") {
-    if (hasOAuthSession(context.profile)) {
+    if (request.authRecovery !== false && hasOAuthSession(context.profile)) {
       await ensureFreshAccessToken(context.profile);
     }
     return getManagementAuthHeader(context.profile);
@@ -50,7 +55,7 @@ async function resolveRequestAuthHeader(
   if (existing) {
     return existing;
   }
-  if (hasManagementCredentials(context.profile)) {
+  if (request.authRecovery !== false && hasManagementCredentials(context.profile)) {
     return provisionLakehouseCredential(context);
   }
   return getLakehouseAuthHeader(context.profile);
@@ -84,6 +89,7 @@ function isRecoverableLakehouseAuthFailure(
     error instanceof HttpError &&
     error.status === 401 &&
     request.plane === "lakehouse" &&
+    request.authRecovery !== false &&
     // A stream body was consumed by the failed attempt and cannot be resent.
     !(request.body instanceof ReadableStream) &&
     canRecoverLakehouseAuth(profileName)

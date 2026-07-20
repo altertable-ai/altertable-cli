@@ -338,6 +338,28 @@ altertable api spec
 altertable api spec --json
 ```
 
+### `altertable doctor`
+
+Diagnose local configuration and Altertable connectivity.
+
+**Usage**
+
+`altertable doctor [options]`
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--offline` | Inspect local configuration without contacting Altertable APIs. |
+
+**Examples**
+
+```bash
+altertable doctor
+altertable doctor --offline
+altertable --json doctor
+```
+
 ### `altertable update`
 
 Update Altertable CLI to the latest release.
