@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { generatedArtifactMode, syncGeneratedArtifact } from "@/../scripts/generated-artifact.ts";
 
 const HTTP_METHODS = ["get", "post", "patch", "delete", "put"] as const;
 
@@ -70,5 +71,8 @@ ${lines.join("\n")}
 ];
 `;
 
-writeFileSync(outputPath, output);
-console.log(`Wrote ${outputPath} (${operations.length} operations)`);
+const mode = generatedArtifactMode(process.argv.slice(2));
+syncGeneratedArtifact({ outputPath, content: output, mode });
+console.log(
+  `${mode === "check" ? "Checked" : "Wrote"} ${outputPath} (${operations.length} operations)`,
+);

@@ -18,7 +18,9 @@ bun run lint:fix               # oxlint --fix
 bun run format                 # oxfmt
 bun run format:check           # CI formatting check
 bun run knip                   # required dead-code/unused-export check
-bun run generate               # regenerate OpenAPI types
+bun run generate               # regenerate OpenAPI types, operation index, and COMMANDS.md
+bun run generate:commands      # regenerate only COMMANDS.md after command changes
+bun run generate:check         # non-mutating generated-artifact drift check
 bun run spec:refresh           # fetch hosted OpenAPI spec (see specs/rest/SPEC.md) + generate
 bun run build                  # bundle to cli/dist/cli.js
 bun run pack:check             # build + dry-run pack (verify publish contents)
@@ -167,7 +169,7 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 altertable login
 From repo root, one script mirrors CI (minus native binary compile):
 
 ```bash
-./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, openapi drift
+./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, generated-artifact drift
 ./scripts/verify.sh                # + build, pack:check, top-level black-box tests
 ./scripts/verify.sh --integration  # + tests/integration.e2e.ts (requires mock at :15000)
 ```
