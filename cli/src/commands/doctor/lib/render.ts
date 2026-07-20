@@ -22,6 +22,18 @@ function formatCheck(check: DoctorCheckResult, labelWidth: number): string[] {
       span(check.message, check.status === "skipped" ? "muted" : undefined),
     ]),
   ];
+  if (check.http_status !== undefined) {
+    lines.push(
+      renderDisplayText([
+        span(`${" ".repeat(labelWidth + 4)}HTTP status: ${check.http_status}`, "muted"),
+      ]),
+    );
+  }
+  if (typeof check.details === "string") {
+    lines.push(
+      renderDisplayText([span(`${" ".repeat(labelWidth + 4)}Details: ${check.details}`, "muted")]),
+    );
+  }
   for (const remediation of check.remediation ?? []) {
     lines.push(renderDisplayText([span(`${" ".repeat(labelWidth + 4)}${remediation}`, "muted")]));
   }

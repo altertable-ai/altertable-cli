@@ -10,6 +10,23 @@ import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 let testHome = "";
 let mockFile = "";
 
+const VALID_WHOAMI = {
+  principal: {
+    id: "user-1",
+    type: "User",
+    name: "Jane",
+    email: "jane@example.com",
+  },
+  organization: {
+    id: "org-1",
+    name: "Acme",
+    slug: "acme",
+  },
+  authentication_scope: "user",
+};
+
+const VALID_LAKEHOUSE_PROBE = ['{"statement":"SELECT 1"}', '["result"]', "[1]"].join("\n");
+
 beforeEach(() => {
   testHome = mkdtempSync(join(tmpdir(), "altertable-doctor-test-"));
   mockFile = join(testHome, "mocks.json");
@@ -51,9 +68,9 @@ describe("doctor command", () => {
         {
           urlPattern: "/whoami",
           method: "GET",
-          body: '{"principal":{"type":"User","name":"Jane","email":"jane@example.com"},"organization":{"name":"Acme","slug":"acme"}}',
+          body: JSON.stringify(VALID_WHOAMI),
         },
-        { urlPattern: "/query", method: "POST", body: "{}" },
+        { urlPattern: "/query", method: "POST", body: VALID_LAKEHOUSE_PROBE },
       ]),
     );
 
@@ -72,6 +89,45 @@ describe("doctor command", () => {
           message: expect.stringContaining("Jane <jane@example.com>"),
         }),
         expect.objectContaining({ id: "lakehouse.api", status: "pass" }),
+      ]),
+    );
+  });
+
+  test("rejects malformed successful API responses", async () => {
+    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+    await runWithCliRuntime(runtime, async () => {
+      await configureRunSet({ apiKey: "atm_test", env: "production" });
+      await configureRunSet({ user: "alice", password: "secret" });
+    });
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "/whoami", method: "GET", body: "{}" },
+        { urlPattern: "/query", method: "POST", body: "{}" },
+      ]),
+    );
+
+    const harness = await runCommandWithTestRuntime(["doctor"]);
+    const report = JSON.parse(harness.stdout[0] ?? "");
+
+    expect(report).toMatchObject({
+      healthy: false,
+      summary: { passed: 5, failed: 2, skipped: 0 },
+    });
+    expect(report.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "management.api",
+          status: "fail",
+          code: "parse_error",
+          details: "Expected principal and organization objects.",
+        }),
+        expect.objectContaining({
+          id: "lakehouse.api",
+          status: "fail",
+          code: "parse_error",
+          details: "Expected SELECT 1 to return the numeric value 1.",
+        }),
       ]),
     );
   });

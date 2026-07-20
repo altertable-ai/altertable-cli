@@ -6,8 +6,10 @@ import { configGetGlobal, resolveApiBase, resolveManagementApiBase } from "@/lib
 import { secretStoreDisplay } from "@/lib/secrets.ts";
 import { sendHttp } from "@/lib/http-request.ts";
 import { buildLakehouseVerifyRequest } from "@/lib/lakehouse/query.ts";
-import type { WhoamiResponse } from "@/lib/management/model.ts";
+import { parseWhoamiResponse } from "@/lib/management/model.ts";
 import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
+import { parseLakehouseQueryResponse, type LakehouseRow } from "@/lib/lakehouse-ndjson.ts";
+import { ParseError } from "@/lib/errors.ts";
 import type {
   DoctorCheck,
   DoctorCheckContext,
@@ -35,10 +37,19 @@ function profileSource(context: DoctorCheckContext): string {
 }
 
 function managementIdentity(body: string): string {
-  try {
-    return formatWhoamiPrincipalLine(JSON.parse(body) as WhoamiResponse);
-  } catch {
-    return "authenticated";
+  return formatWhoamiPrincipalLine(parseWhoamiResponse(body));
+}
+
+function rowContainsProbeValue(row: LakehouseRow): boolean {
+  return Array.isArray(row) ? row.includes(1) : Object.values(row).includes(1);
+}
+
+function validateLakehouseProbe(body: string): void {
+  const result = parseLakehouseQueryResponse(body);
+  if (!result.rows.some(rowContainsProbeValue)) {
+    throw new ParseError("Lakehouse probe returned an unexpected result.", {
+      details: "Expected SELECT 1 to return the numeric value 1.",
+    });
   }
 }
 
@@ -172,10 +183,11 @@ export function createDoctorChecks(): DoctorCheck[] {
       skip: networkSkip,
       async run(context) {
         const endpoint = resolveApiBase(context.execution.profile);
-        await sendHttp(
+        const body = await sendHttp(
           { ...buildLakehouseVerifyRequest(), authRecovery: false },
           context.execution,
         );
+        validateLakehouseProbe(body);
         return pass(`${endpoint} · SELECT 1 succeeded.`, { endpoint });
       },
       remediation: () => [

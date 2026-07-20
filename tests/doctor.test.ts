@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-import { jsonMock } from "./mock-http.ts";
+import { jsonMock, textMock } from "./mock-http.ts";
 
 describe("altertable doctor", () => {
   let workspace: TestWorkspace;
@@ -69,10 +69,20 @@ describe("altertable doctor", () => {
     ).toBe(0);
     await workspace.setupMockHttp([
       jsonMock("GET", "/whoami", {
-        principal: { type: "User", name: "Jane", email: "jane@example.com" },
-        organization: { name: "Acme", slug: "acme" },
+        principal: {
+          id: "user-1",
+          type: "User",
+          name: "Jane",
+          email: "jane@example.com",
+        },
+        organization: { id: "org-1", name: "Acme", slug: "acme" },
+        authentication_scope: "user",
       }),
-      jsonMock("POST", "/query", {}),
+      textMock(
+        "POST",
+        "/query",
+        ['{"statement":"SELECT 1"}', '["result"]', "[1]"].join("\n"),
+      ),
     ]);
     await workspace.setupHttpLog();
 

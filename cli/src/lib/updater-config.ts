@@ -96,7 +96,7 @@ export const UpdaterConfig = {
     manual: 10_000,
   },
   intervalsMs: UpdaterIntervalsMs,
-  automaticCheckSkipCommands: ["completion", "update", "upgrade"],
+  automaticCheckSkipCommands: ["completion", "doctor", "update", "upgrade"],
   installCommands: UpdaterInstallCommands,
   installMethods: UpdaterInstallMethodConfig,
   releasePlatforms: RELEASE_PLATFORM_CONFIG,

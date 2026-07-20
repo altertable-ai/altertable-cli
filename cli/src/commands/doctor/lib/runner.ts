@@ -1,4 +1,4 @@
-import { errorCodeFromError } from "@/lib/errors.ts";
+import { serializeCliError } from "@/lib/errors.ts";
 import type {
   DoctorCheck,
   DoctorCheckContext,
@@ -6,13 +6,6 @@ import type {
   DoctorReport,
   DoctorSummary,
 } from "@/commands/doctor/lib/model.ts";
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Check failed.";
-}
 
 function summarize(checks: readonly DoctorCheckResult[]): DoctorSummary {
   return {
@@ -82,12 +75,15 @@ export async function runDoctorChecks(
         duration_ms: Math.round(performance.now() - startedAt),
       });
     } catch (error) {
+      const serialized = serializeCliError(error);
       results.set(check.id, {
         id: check.id,
         label: check.label,
         status: "fail",
-        message: errorMessage(error),
-        code: errorCodeFromError(error),
+        message: serialized.message,
+        code: serialized.code,
+        http_status: serialized.status,
+        details: serialized.details,
         remediation: check.remediation?.(error, context),
         duration_ms: Math.round(performance.now() - startedAt),
       });

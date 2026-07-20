@@ -8,7 +8,8 @@ export type DoctorCheckResult = {
   status: DoctorCheckStatus;
   message: string;
   code?: string;
-  details?: Record<string, unknown>;
+  http_status?: number;
+  details?: string | Record<string, unknown>;
   remediation?: string[];
   duration_ms?: number;
 };

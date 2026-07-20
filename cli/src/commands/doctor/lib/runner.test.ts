@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { ConfigurationError, HttpError } from "@/lib/errors.ts";
 import type { DoctorCheck, DoctorCheckContext } from "@/commands/doctor/lib/model.ts";
 import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
 
@@ -88,6 +88,49 @@ describe("runDoctorChecks", () => {
     expect(report.healthy).toBe(true);
     expect(report.summary.skipped).toBe(1);
     expect(report.checks[0]).toMatchObject({ status: "skipped", message: "Offline mode." });
+  });
+
+  test("preserves HTTP status and CLI error details", async () => {
+    const report = await runDoctorChecks(
+      [
+        {
+          id: "http",
+          label: "HTTP",
+          run() {
+            throw new HttpError({
+              status: 401,
+              body: '{"message":"Token expired"}',
+              method: "GET",
+              url: "https://example.com/whoami",
+              parsedDetail: "Token expired",
+              authPlane: "management",
+            });
+          },
+        },
+        {
+          id: "config",
+          label: "Config",
+          run() {
+            throw new ConfigurationError("Invalid configuration.", {
+              details: "The profile file is unreadable.",
+            });
+          },
+        },
+      ],
+      context(),
+    );
+
+    expect(report.checks[0]).toMatchObject({
+      status: "fail",
+      code: "auth_failed",
+      http_status: 401,
+      details: "Token expired",
+    });
+    expect(report.checks[1]).toMatchObject({
+      status: "fail",
+      code: "configuration_error",
+      details: "The profile file is unreadable.",
+    });
   });
 
   test("rejects duplicate and forward dependency ids", async () => {
