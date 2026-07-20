@@ -1,5 +1,5 @@
 import type { CliContext } from "@/context.ts";
-import { resolveWorkingProfile } from "@/lib/profile-store.ts";
+import { resolveProfileReference, resolveWorkingProfile } from "@/lib/profile-store.ts";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 
 export type ExecutionContext = {
@@ -24,5 +24,13 @@ export function createExecutionContext(runtime: CliRuntime): ExecutionContext {
     cli: runtime.context,
     output: runtime.output,
     profile: runtime.session?.profile ?? resolveWorkingProfile(runtime.context.profile),
+  };
+}
+
+export function createDiagnosticExecutionContext(runtime: CliRuntime): ExecutionContext {
+  return {
+    cli: runtime.context,
+    output: runtime.output,
+    profile: resolveProfileReference(runtime.context.profile),
   };
 }

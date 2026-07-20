@@ -1,3 +1,7 @@
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function objectKeys<TValue extends Record<string, unknown>>(
   value: TValue,
 ): Array<Extract<keyof TValue, string>> {

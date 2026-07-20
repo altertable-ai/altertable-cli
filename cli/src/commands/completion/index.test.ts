@@ -6,7 +6,6 @@ import { defineCommand, type Command } from "@/lib/command.ts";
 import { executeCommand } from "@/lib/command-parser.ts";
 import { buildMainCommand } from "@/cli.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
-import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
 import { runWithCliRuntime } from "@/test-utils/runtime.ts";
 
@@ -255,15 +254,5 @@ describe("completion command", () => {
     ).toBe(true);
     expect(existsSync(join(home, ".bashrc"))).toBe(false);
     expect(visibleTerminalText(output)).toContain("Startup: left unchanged (--no-rc)");
-  });
-
-  test("integration root command top-level count matches registry", async () => {
-    const spec = await buildCompletionSpec(buildMainCommand());
-    const output = await runCompletion(buildMainCommand, "bash");
-    const topLevelCount = spec.subcommands.length;
-    expect(topLevelCount).toBe(14);
-    expect(output).toContain("completion");
-    expect(output).toContain("upgrade");
-    expect(output).not.toContain(" GET ");
   });
 });

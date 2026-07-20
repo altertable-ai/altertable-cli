@@ -643,6 +643,7 @@ describe("automatic update checks", () => {
   });
 
   test("skips commands configured for automatic update checks", () => {
+    expect(UpdaterConfig.automaticCheckSkipCommands).toContain("doctor");
     for (const commandName of UpdaterConfig.automaticCheckSkipCommands) {
       expect(
         shouldRunAutomaticUpdateCheck({

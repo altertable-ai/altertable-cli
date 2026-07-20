@@ -18,6 +18,10 @@ type SecretProcessResult = {
   error?: Error;
 };
 
+function keychainLookupFailed(result: SecretProcessResult): boolean {
+  return result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS;
+}
+
 type SecretProcess = {
   platform: NodeJS.Platform;
   spawnSync(command: string, args: string[], options: SpawnSyncOptions): SecretProcessResult;
@@ -152,6 +156,9 @@ export function createSecretStore(
         ["find-generic-password", "-s", "altertable", "-a", secretKey, "-w"],
         { encoding: "utf8" },
       );
+      if (keychainLookupFailed(result)) {
+        throw new CliError(`Failed to read secret from macOS keychain (${secretKey}).`);
+      }
       const keychainValue = result.status === 0 ? String(result.stdout).trim() : "";
       if (keychainValue !== "") return keychainValue;
       requireSafeCredentialsFile();
@@ -174,6 +181,9 @@ export function createSecretStore(
         { stdio: "ignore" },
       );
       if (result.status === 0) return true;
+      if (keychainLookupFailed(result)) {
+        throw new CliError(`Failed to inspect secret in macOS keychain (${secretKey}).`);
+      }
       requireSafeCredentialsFile();
       return kvGet(credentialsFile(), secretKey) !== "";
     }

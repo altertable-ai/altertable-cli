@@ -65,9 +65,9 @@ function writeMocks(credentialBody: string = CREDENTIAL_BODY): void {
   );
 }
 
-async function sendLakehouseRequest(): Promise<string> {
+async function sendLakehouseRequest(authRecovery?: boolean): Promise<string> {
   return sendHttp(
-    { plane: "lakehouse", method: "GET", endpoint: "/tables" },
+    { plane: "lakehouse", method: "GET", endpoint: "/tables", authRecovery },
     createExecutionContext(getCliRuntime()),
   );
 }
@@ -248,6 +248,20 @@ describe("lakehouse credential recovery after 401", () => {
     );
 
     await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
+    expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+  });
+
+  test("does not re-provision a managed credential when auth recovery is disabled", async () => {
+    storeProvisionedCredential();
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
+      ]),
+    );
+
+    await expectRejection(sendLakehouseRequest(false), "Authentication failed (401)");
+    expect(secretGet("lakehouse/basic-token", profileName)).toBe(OLD_TOKEN);
     expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
   });
 });
