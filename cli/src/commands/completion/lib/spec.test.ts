@@ -454,6 +454,22 @@ describe("collectCompletionContexts", () => {
 });
 
 describe("formatFishCompletion", () => {
+  test("escapes backslashes and apostrophes in descriptions", async () => {
+    const spec = await buildCompletionSpec(
+      defineCommand({
+        metadata: { name: "altertable" },
+        args: {
+          output: {
+            type: "string",
+            description: "Write to C:\\Users\\O'Brien",
+          },
+        },
+      }),
+    );
+
+    expect(formatFishCompletion(spec)).toContain(" -d 'Write to C:\\\\Users\\\\O\\'Brien'");
+  });
+
   test("includes scoped leaf flag completions", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
     const output = formatFishCompletion(spec);
