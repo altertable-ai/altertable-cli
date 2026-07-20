@@ -2,23 +2,23 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 export type GeneratedArtifactMode = "write" | "check";
 
-type SyncGeneratedArtifactOptions = {
+type GeneratedArtifactOptions = {
   outputPath: string;
   content: string;
   mode: GeneratedArtifactMode;
   generateCommand?: string;
 };
 
-export function generatedArtifactMode(argv: readonly string[]): GeneratedArtifactMode {
+export function parseGeneratedArtifactMode(argv: readonly string[]): GeneratedArtifactMode {
   return argv.includes("--check") ? "check" : "write";
 }
 
-export function syncGeneratedArtifact({
+export function updateOrCheckGeneratedArtifact({
   outputPath,
   content,
   mode,
   generateCommand = "bun run generate",
-}: SyncGeneratedArtifactOptions): void {
+}: GeneratedArtifactOptions): void {
   if (mode === "write") {
     writeFileSync(outputPath, content);
     return;

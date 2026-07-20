@@ -183,7 +183,7 @@ function writeProfileUpdate(name: string, update: ProfileUpdate): void {
   }
 }
 
-export function inspectProfileAuth(name: string): ProfileAuth {
+export function detectConfiguredProfileAuth(name: string): ProfileAuth {
   if (isFromEnvProfile(name)) {
     return {
       management: hasEnvManagementCredentials() ? "api_key" : "none",
@@ -205,14 +205,14 @@ export function inspectProfileAuth(name: string): ProfileAuth {
 }
 
 export function profileHasAnyAuthConfigured(name: string): boolean {
-  const auth = inspectProfileAuth(name);
+  const auth = detectConfiguredProfileAuth(name);
   return auth.management !== "none" || auth.lakehouse !== "none";
 }
 
 function readProfileSnapshot(name: string): ProfileSnapshot {
   return {
     config: readProfileConfigRecord(name),
-    auth: inspectProfileAuth(name),
+    auth: detectConfiguredProfileAuth(name),
   };
 }
 
@@ -290,7 +290,7 @@ function envLakehouseAuthKind(): ProfileLakehouseAuth {
   return "none";
 }
 
-function inspectFromEnvConfiguration(): ProfileConfiguration {
+function readEnvironmentProfileConfiguration(): ProfileConfiguration {
   return {
     name: FROM_ENV_PSEUDOPROFILE_NAME,
     active: true,
@@ -306,7 +306,7 @@ function inspectFromEnvConfiguration(): ProfileConfiguration {
   };
 }
 
-function profileConfigurationFromConfig(
+function buildProfileConfiguration(
   name: string,
   active: boolean,
   config: Record<ProfileConfigKey, string | undefined>,
@@ -340,13 +340,13 @@ function profileConfigurationFromConfig(
   };
 }
 
-function profileInspectFromSnapshot(
+function buildProfileInspection(
   name: string,
   active: boolean,
   snapshot: ProfileSnapshot,
 ): ProfileInspect {
   return {
-    ...profileConfigurationFromConfig(name, active, snapshot.config),
+    ...buildProfileConfiguration(name, active, snapshot.config),
     auth: snapshot.auth,
     status: profileStatus(snapshot),
   };
@@ -354,8 +354,8 @@ function profileInspectFromSnapshot(
 
 export function inspectProfile(name: string): ProfileInspect {
   if (isFromEnvProfile(name)) {
-    const configuration = inspectFromEnvConfiguration();
-    const auth = inspectProfileAuth(name);
+    const configuration = readEnvironmentProfileConfiguration();
+    const auth = detectConfiguredProfileAuth(name);
     return {
       ...configuration,
       auth,
@@ -368,16 +368,12 @@ export function inspectProfile(name: string): ProfileInspect {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
 
-  return profileInspectFromSnapshot(
-    name,
-    getActiveProfileName() === name,
-    readProfileSnapshot(name),
-  );
+  return buildProfileInspection(name, getActiveProfileName() === name, readProfileSnapshot(name));
 }
 
-export function inspectProfileConfigurationReadOnly(name: string): ProfileConfiguration {
+export function readProfileConfiguration(name: string): ProfileConfiguration {
   if (isFromEnvProfile(name)) {
-    return inspectFromEnvConfiguration();
+    return readEnvironmentProfileConfiguration();
   }
   assertSafeProfileName(name);
   if (name !== DEFAULT_PROFILE_NAME && !profileExists(name)) {
@@ -385,11 +381,7 @@ export function inspectProfileConfigurationReadOnly(name: string): ProfileConfig
   }
 
   const activeProfile = kvGet(configFile(), "active_profile") || DEFAULT_PROFILE_NAME;
-  return profileConfigurationFromConfig(
-    name,
-    activeProfile === name,
-    readProfileConfigRecord(name),
-  );
+  return buildProfileConfiguration(name, activeProfile === name, readProfileConfigRecord(name));
 }
 
 export function createEmptyProfile(name: string): ProfileInspect {

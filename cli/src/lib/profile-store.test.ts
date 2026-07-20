@@ -11,7 +11,7 @@ import {
   profileConfigFile,
   profileExists,
   resolveWorkingProfile,
-  resolveWorkingProfileReadOnly,
+  resolveProfileReference,
   setActiveProfile,
 } from "@/lib/profile-store.ts";
 import { kvSet } from "@/lib/config.ts";
@@ -65,6 +65,6 @@ describe("profile store", () => {
   test("preserves a stale active profile reference for read-only diagnostics", () => {
     kvSet(join(testHome, "config"), "active_profile", "missing");
 
-    expect(resolveWorkingProfileReadOnly()).toBe("missing");
+    expect(resolveProfileReference()).toBe("missing");
   });
 });

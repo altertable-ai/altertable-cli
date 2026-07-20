@@ -159,7 +159,7 @@ export function resolveWorkingProfile(override?: string): string {
   return getActiveProfileName();
 }
 
-export function resolveWorkingProfileReadOnly(override?: string): string {
+export function resolveProfileReference(override?: string): string {
   if (envConfigMode()) {
     return FROM_ENV_PSEUDOPROFILE_NAME;
   }

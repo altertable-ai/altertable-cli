@@ -3,7 +3,7 @@ import { writeCommandOutput } from "@/lib/command-output.ts";
 import { createDoctorChecks } from "@/commands/doctor/lib/checks.ts";
 import { formatDoctorReport } from "@/commands/doctor/lib/render.ts";
 import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
-import { createReadOnlyExecutionContext } from "@/lib/execution-context.ts";
+import { createDiagnosticExecutionContext } from "@/lib/execution-context.ts";
 
 export const doctorCommand = defineCommand({
   metadata: {
@@ -20,7 +20,7 @@ export const doctorCommand = defineCommand({
   },
   async run({ args, runtime, sink }) {
     const report = await runDoctorChecks(createDoctorChecks(), {
-      execution: createReadOnlyExecutionContext(runtime),
+      execution: createDiagnosticExecutionContext(runtime),
       offline: args.offline === true,
     });
     await writeCommandOutput(

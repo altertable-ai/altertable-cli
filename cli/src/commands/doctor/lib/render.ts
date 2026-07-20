@@ -13,7 +13,7 @@ const STATUS_DISPLAY: Record<DoctorCheckStatus, { icon: string; style: DisplayTe
   skipped: { icon: "-", style: "muted" },
 };
 
-function formatCheck(check: DoctorCheckResult, labelWidth: number): string[] {
+function formatCheckResult(check: DoctorCheckResult, labelWidth: number): string[] {
   const display = STATUS_DISPLAY[check.status];
   const lines = [
     renderDisplayText([
@@ -60,7 +60,7 @@ export function formatDoctorReport(report: DoctorReport): string {
   return [
     renderDisplayText([span("Altertable CLI doctor", "heading")]),
     "",
-    ...report.checks.flatMap((check) => formatCheck(check, labelWidth)),
+    ...report.checks.flatMap((check) => formatCheckResult(check, labelWidth)),
     "",
     formatSummary(report),
   ].join("\n");

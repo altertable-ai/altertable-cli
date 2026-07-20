@@ -3,7 +3,7 @@ import { ConfigurationError, HttpError } from "@/lib/errors.ts";
 import type { DoctorCheck, DoctorCheckContext } from "@/commands/doctor/lib/model.ts";
 import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
 
-function context(offline = false): DoctorCheckContext {
+function createDoctorContext(offline = false): DoctorCheckContext {
   return {
     offline,
     execution: {
@@ -55,7 +55,7 @@ describe("runDoctorChecks", () => {
       },
     ];
 
-    const report = await runDoctorChecks(checks, context());
+    const report = await runDoctorChecks(checks, createDoctorContext());
 
     expect(report.healthy).toBe(false);
     expect(report.summary).toEqual({ passed: 1, warnings: 0, failed: 1, skipped: 1 });
@@ -82,7 +82,7 @@ describe("runDoctorChecks", () => {
           run: () => ({ status: "pass", message: "Connected." }),
         },
       ],
-      context(true),
+      createDoctorContext(true),
     );
 
     expect(report.healthy).toBe(true);
@@ -131,7 +131,7 @@ describe("runDoctorChecks", () => {
           },
         },
       ],
-      context(),
+      createDoctorContext(),
     );
 
     await Promise.resolve();
@@ -175,7 +175,7 @@ describe("runDoctorChecks", () => {
           },
         },
       ],
-      context(),
+      createDoctorContext(),
     );
 
     expect(report.checks[0]).toMatchObject({
@@ -198,7 +198,7 @@ describe("runDoctorChecks", () => {
       run: () => ({ status: "pass", message: "Ready." }),
     };
     await expectRejection(
-      runDoctorChecks([duplicate, duplicate], context()),
+      runDoctorChecks([duplicate, duplicate], createDoctorContext()),
       "Duplicate doctor check id",
     );
     await expectRejection(
@@ -212,7 +212,7 @@ describe("runDoctorChecks", () => {
           },
           { ...duplicate, id: "later" },
         ],
-        context(),
+        createDoctorContext(),
       ),
       "requires unknown or later check",
     );

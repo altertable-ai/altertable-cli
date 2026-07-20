@@ -1,7 +1,7 @@
 import { VERSION } from "@/version.ts";
 import {
-  inspectProfileAuth,
-  inspectProfileConfigurationReadOnly,
+  detectConfiguredProfileAuth,
+  readProfileConfiguration,
   type ProfileAuth,
 } from "@/lib/profile/model.ts";
 import { envConfigMode } from "@/lib/profile-store.ts";
@@ -20,11 +20,11 @@ import type {
   DoctorCheckOutcome,
 } from "@/commands/doctor/lib/model.ts";
 
-function pass(message: string, details?: Record<string, unknown>): DoctorCheckOutcome {
+function passOutcome(message: string, details?: Record<string, unknown>): DoctorCheckOutcome {
   return { status: "pass", message, details };
 }
 
-function fail(
+function failOutcome(
   message: string,
   code: string,
   remediation: string[],
@@ -40,7 +40,7 @@ function profileSource(context: DoctorCheckContext): string {
   return configGetGlobal("active_profile") ? "active profile" : "default profile";
 }
 
-function managementIdentity(body: string): string {
+function formatManagementIdentity(body: string): string {
   return formatWhoamiPrincipalLine(parseWhoamiResponse(body));
 }
 
@@ -48,7 +48,7 @@ function rowContainsProbeValue(row: LakehouseRow): boolean {
   return Array.isArray(row) ? row.includes(1) : Object.values(row).includes(1);
 }
 
-function validateLakehouseProbe(body: string): void {
+function validateLakehouseProbeResponse(body: string): void {
   const result = parseLakehouseQueryResponse(body);
   if (!result.rows.some(rowContainsProbeValue)) {
     throw new ParseError("Lakehouse probe returned an unexpected result.", {
@@ -57,27 +57,27 @@ function validateLakehouseProbe(body: string): void {
   }
 }
 
-function checkManagementCredentials(auth: ProfileAuth): DoctorCheckOutcome {
+function checkManagementCredentialPresence(auth: ProfileAuth): DoctorCheckOutcome {
   if (auth.management === "none") {
-    return fail("No management credentials configured.", "configuration_error", [
+    return failOutcome("No management credentials configured.", "configuration_error", [
       "Run: altertable login",
       "Or run: altertable profile configure --scope management",
     ]);
   }
-  return pass(`Configured (${auth.management}).`, { auth: auth.management });
+  return passOutcome(`Configured (${auth.management}).`, { auth: auth.management });
 }
 
-function checkLakehouseCredentials(auth: ProfileAuth): DoctorCheckOutcome {
+function checkLakehouseCredentialPresence(auth: ProfileAuth): DoctorCheckOutcome {
   if (auth.lakehouse === "none") {
-    return fail("No lakehouse credentials configured.", "configuration_error", [
+    return failOutcome("No lakehouse credentials configured.", "configuration_error", [
       "Run: altertable login",
       "Or run: altertable profile configure --scope lakehouse",
     ]);
   }
-  return pass(`Configured (${auth.lakehouse}).`, { auth: auth.lakehouse });
+  return passOutcome(`Configured (${auth.lakehouse}).`, { auth: auth.lakehouse });
 }
 
-function networkSkip(context: DoctorCheckContext): string | undefined {
+function offlineSkipReason(context: DoctorCheckContext): string | undefined {
   return context.offline ? "Offline mode." : undefined;
 }
 
@@ -96,7 +96,7 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "cli.runtime",
       label: "CLI",
       run: () =>
-        pass(`v${VERSION} · ${process.platform} ${process.arch}`, {
+        passOutcome(`v${VERSION} · ${process.platform} ${process.arch}`, {
           version: VERSION,
           platform: process.platform,
           arch: process.arch,
@@ -107,9 +107,9 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "profile.configuration",
       label: "Profile",
       run: (context) => {
-        const current = inspectProfileConfigurationReadOnly(context.execution.profile);
+        const current = readProfileConfiguration(context.execution.profile);
         const source = profileSource(context);
-        return pass(`${current.name} (${source})`, {
+        return passOutcome(`${current.name} (${source})`, {
           name: current.name,
           source,
           environment: current.environment,
@@ -128,12 +128,12 @@ export function createDoctorChecks(): DoctorCheck[] {
       label: "Secret store",
       requires: ["profile.configuration"],
       run: (context) => {
-        profileAuth = inspectProfileAuth(context.execution.profile);
+        profileAuth = detectConfiguredProfileAuth(context.execution.profile);
         if (envConfigMode()) {
-          return pass("Credentials supplied by environment variables.");
+          return passOutcome("Credentials supplied by environment variables.");
         }
         const store = secretStoreDisplay();
-        return pass(`${store} accessible.`, { store });
+        return passOutcome(`${store} accessible.`, { store });
       },
       remediation: () => ["Run: altertable profile show"],
     },
@@ -141,13 +141,13 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "management.credentials",
       label: "Management auth",
       requires: ["credentials.store"],
-      run: () => checkManagementCredentials(requireProfileAuth()),
+      run: () => checkManagementCredentialPresence(requireProfileAuth()),
     },
     {
       id: "management.api",
       label: "Management API",
       requires: ["management.credentials"],
-      skip: networkSkip,
+      skip: offlineSkipReason,
       async run(context) {
         const endpoint = resolveManagementApiBase(context.execution.profile);
         const body = await sendHttp(
@@ -159,8 +159,8 @@ export function createDoctorChecks(): DoctorCheck[] {
           },
           context.execution,
         );
-        const identity = managementIdentity(body);
-        return pass(`${endpoint} · ${identity}`, { endpoint, identity });
+        const identity = formatManagementIdentity(body);
+        return passOutcome(`${endpoint} · ${identity}`, { endpoint, identity });
       },
       remediation: () => [
         "Check the control-plane URL and management credentials.",
@@ -171,21 +171,21 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "lakehouse.credentials",
       label: "Lakehouse auth",
       requires: ["credentials.store"],
-      run: () => checkLakehouseCredentials(requireProfileAuth()),
+      run: () => checkLakehouseCredentialPresence(requireProfileAuth()),
     },
     {
       id: "lakehouse.api",
       label: "Lakehouse API",
       requires: ["lakehouse.credentials"],
-      skip: networkSkip,
+      skip: offlineSkipReason,
       async run(context) {
         const endpoint = resolveApiBase(context.execution.profile);
         const body = await sendHttp(
           { ...buildLakehouseVerifyRequest(), authRecovery: false },
           context.execution,
         );
-        validateLakehouseProbe(body);
-        return pass(`${endpoint} · SELECT 1 succeeded.`, { endpoint });
+        validateLakehouseProbeResponse(body);
+        return passOutcome(`${endpoint} · SELECT 1 succeeded.`, { endpoint });
       },
       remediation: () => [
         "Check the data-plane URL and lakehouse credentials.",
