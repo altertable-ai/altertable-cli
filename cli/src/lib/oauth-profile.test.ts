@@ -215,6 +215,41 @@ describe("management request auth resolution", () => {
     expect(Number.parseInt(configGet("oauth_expiry", profileName), 10)).toBeGreaterThan(Date.now());
   });
 
+  test("does not refresh an expired OAuth token when auth recovery is disabled", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          authPattern: "stale",
+          body: '{"principal":{},"organization":{}}',
+        },
+      ]),
+    );
+    secretSet("oauth/access-token", "stale", profileName);
+    secretSet("oauth/refresh-token", "ref", profileName);
+    const expiredAt = String(Date.now() - 1000);
+    configSet("oauth_expiry", expiredAt, profileName);
+
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    await runWithCliRuntime(runtime, async () => {
+      refreshCliRuntimeContext(getCliContext());
+      await sendHttp(
+        {
+          plane: "management",
+          method: "GET",
+          endpoint: "/whoami",
+          authRecovery: false,
+        },
+        createExecutionContext(runtime),
+      );
+    });
+
+    expect(storedAccessToken()).toBe("stale");
+    expect(configGet("oauth_expiry", profileName)).toBe(expiredAt);
+  });
+
   test("resolves the header live from the store, not a bootstrap cache", async () => {
     storeOAuthTokens({ access_token: "tok_a", refresh_token: "r", expires_in: 3600 }, profileName);
 

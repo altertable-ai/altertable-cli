@@ -29,6 +29,8 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "generate": "bun run scripts/generate-openapi-types.ts && bun run scripts/generate-openapi-index.ts && bun run scripts/generate-command-reference.ts",
+    "generate:check": "bun run scripts/generate-openapi-types.ts --check && bun run scripts/generate-openapi-index.ts --check && bun run scripts/generate-command-reference.ts --check",
+    "generate:commands": "bun run scripts/generate-command-reference.ts",
     "spec:refresh": "curl -fsSL https://app.altertable.ai/rest/v1/openapi.yaml -o openapi/openapi.yaml && bun run generate && oxfmt openapi/openapi.yaml",
     "build": "bun run scripts/npm-bundle.ts",
     "release:build": "bun run scripts/release.ts build",

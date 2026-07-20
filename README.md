@@ -24,6 +24,7 @@ Query and manage your Altertable data platform from the terminal.
 - [Commands](#commands)
   - [Lakehouse](#lakehouse)
   - [Management](#management)
+  - [Diagnostics](#diagnostics)
   - [Shell completion](#shell-completion)
 - [Global flags](#global-flags)
 - [Scripting](#scripting)
@@ -414,6 +415,23 @@ For advanced or provider-specific payloads, read JSON from a file or stdin with 
 altertable api /environments/production/connections --input postgres-connection.json
 printf '%s' '{"name":"Analytics"}' | altertable api /environments/production/databases --input -
 ```
+
+### Diagnostics
+
+Run read-only checks against the selected profile, credential store, and both API
+planes:
+
+```bash
+altertable doctor
+altertable doctor --offline
+altertable --json doctor
+```
+
+`--offline` validates only local configuration and credential presence. Network
+checks use the global `--connect-timeout` and `--read-timeout` values. Doctor
+findings do not refresh OAuth tokens, provision lakehouse credentials, or modify
+profile files. A completed diagnostic exits successfully even when its report is
+unhealthy; scripts should inspect the JSON `healthy` field.
 
 ### Shell completion
 

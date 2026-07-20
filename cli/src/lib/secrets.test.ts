@@ -39,6 +39,18 @@ describe("secretSet", () => {
     expect(keychain.calls.some((args) => args.includes("add-generic-password"))).toBe(false);
     expect(keychain.store.secretGet("lakehouse/password", "default")).toBe("secret");
   });
+
+  test("distinguishes a Keychain failure from a missing secret", () => {
+    const keychain = createFakeKeychain();
+    keychain.failingReads.add("profile/default/api-key");
+
+    expect(() => keychain.store.secretExists("api-key", "default")).toThrow(
+      "Failed to inspect secret in macOS keychain",
+    );
+    expect(() => keychain.store.secretGet("api-key", "default")).toThrow(
+      "Failed to read secret from macOS keychain",
+    );
+  });
 });
 
 describe("secretDelete", () => {
