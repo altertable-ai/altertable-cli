@@ -18,7 +18,8 @@ export function parseAppendJsonContent(dataArg: string): string {
   }
 
   try {
-    return JSON.stringify(JSON.parse(jsonContent));
+    JSON.parse(jsonContent);
+    return jsonContent;
   } catch {
     throw new CliError("Data must be valid JSON.");
   }

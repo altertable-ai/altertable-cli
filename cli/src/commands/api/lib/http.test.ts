@@ -71,6 +71,23 @@ describe("api-body", () => {
     expect(JSON.parse(payload.body ?? "")).toEqual({ label: "CI Bot", name: "Analytics" });
   });
 
+  test("preserves typed integers outside JavaScript's safe range", () => {
+    const payload = resolveApiRequestPayload({
+      method: "POST",
+      typedFields: ["id=9007199254740993", "negative=-9007199254740993"],
+    });
+
+    expect(payload.body).toBe('{"id":9007199254740993,"negative":-9007199254740993}');
+
+    expect(
+      resolveApiHttp({
+        endpoint: "/records",
+        method: "GET",
+        typedFields: ["id=9007199254740993"],
+      }).endpoint,
+    ).toBe("/records?id=9007199254740993");
+  });
+
   test("keeps an explicit JSON request body from --input", () => {
     const filePath = join(testHome, "payload.json");
     writeFileSync(filePath, '{"label":"raw"}', "utf8");

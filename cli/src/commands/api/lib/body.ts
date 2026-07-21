@@ -62,7 +62,12 @@ function parseFieldEntry(entry: string): [string, string] {
   return [key, value];
 }
 
-export type ApiFieldValue = string | number | boolean | null;
+type ExactJsonInteger = {
+  kind: "exact_json_integer";
+  source: string;
+};
+
+export type ApiFieldValue = string | number | boolean | null | ExactJsonInteger;
 
 export type ParsedApiField = {
   key: string;
@@ -80,7 +85,8 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
     return null;
   }
   if (/^-?\d+$/.test(value)) {
-    return Number(value);
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", source: value };
   }
   if (value === "@-") {
     return readFileSync(0, "utf8");
@@ -114,12 +120,27 @@ function parseTypedFields(
   });
 }
 
-function parsedFieldsToRecord(fields: ParsedApiField[]): Record<string, ApiFieldValue> {
-  const body: Record<string, ApiFieldValue> = {};
-  for (const field of fields) {
-    body[field.key] = field.value;
+function isExactJsonInteger(value: ApiFieldValue): value is ExactJsonInteger {
+  return typeof value === "object" && value !== null && value.kind === "exact_json_integer";
+}
+
+export function apiFieldValueText(value: ApiFieldValue): string {
+  if (isExactJsonInteger(value)) {
+    return value.source;
   }
-  return body;
+  return value === null ? "null" : String(value);
+}
+
+function serializeFieldValue(value: ApiFieldValue): string {
+  return isExactJsonInteger(value) ? value.source : JSON.stringify(value);
+}
+
+function serializeParsedFields(fields: ParsedApiField[]): string {
+  const body = new Map<string, ApiFieldValue>();
+  for (const field of fields) {
+    body.set(field.key, field.value);
+  }
+  return `{${[...body].map(([key, value]) => `${JSON.stringify(key)}:${serializeFieldValue(value)}`).join(",")}}`;
 }
 
 export type ResolveApiBodyOptions = {
@@ -189,7 +210,7 @@ export function resolveApiRequestPayload(
 
   if (hasFields) {
     return {
-      body: JSON.stringify(parsedFieldsToRecord(parsedFields)),
+      body: serializeParsedFields(parsedFields),
       queryFields: [],
     };
   }
