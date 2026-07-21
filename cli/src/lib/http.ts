@@ -124,6 +124,14 @@ function connectionError(options: HttpSendOptions, cause: unknown): NetworkError
   );
 }
 
+function transportError(
+  options: HttpSendOptions,
+  signal: AbortSignal,
+  cause: unknown,
+): NetworkError {
+  return signal.aborted ? timeoutError(options, cause) : connectionError(options, cause);
+}
+
 function streamWithTimeoutCleanup(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
@@ -147,9 +155,7 @@ function streamWithTimeoutCleanup(
         }
       } catch (error) {
         clearTimeoutAfterRead();
-        controller.error(
-          signal.aborted ? timeoutError(options, error) : connectionError(options, error),
-        );
+        controller.error(transportError(options, signal, error));
       }
     },
     cancel(reason) {
@@ -408,20 +414,14 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
       dispatcher: getSharedDispatcher(),
     } as RequestInit);
   } catch (error) {
-    if (signal.aborted) {
-      throw timeoutError(options, error);
-    }
-    throw connectionError(options, error);
+    throw transportError(options, signal, error);
   }
 
   let responseBody: string;
   try {
     responseBody = await response.text();
   } catch (error) {
-    if (signal.aborted) {
-      throw timeoutError(options, error);
-    }
-    throw connectionError(options, error);
+    throw transportError(options, signal, error);
   }
 
   logHttpDebug([
@@ -448,9 +448,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   const connectTimeoutMs = resolveConnectTimeoutMs(options);
   const readTimeoutMs = resolveReadTimeoutMs(options, STREAM_READ_TIMEOUT_MS);
   const abortController = new AbortController();
-  let timeout: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
-    abortController.abort();
-  }, connectTimeoutMs);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   const clearActiveTimeout = () => {
     if (timeout === undefined) {
       return;
@@ -458,6 +456,11 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     clearTimeout(timeout);
     timeout = undefined;
   };
+  const startTimeout = (durationMs: number) => {
+    clearActiveTimeout();
+    timeout = setTimeout(() => abortController.abort(), durationMs);
+  };
+  startTimeout(connectTimeoutMs);
 
   logHttpRequest(options);
   logDebug(`Request: ${options.method} ${options.url}`);
@@ -474,10 +477,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
-    if (abortController.signal.aborted) {
-      throw timeoutError(options, error);
-    }
-    throw connectionError(options, error);
+    throw transportError(options, abortController.signal, error);
   }
 
   if (response.status >= 200 && response.status < 300) {
@@ -487,9 +487,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     if (readTimeoutMs <= 0) {
       return response.body;
     }
-    timeout = setTimeout(() => {
-      abortController.abort();
-    }, readTimeoutMs);
+    startTimeout(readTimeoutMs);
     return streamWithTimeoutCleanup(
       response.body,
       clearActiveTimeout,
@@ -499,19 +497,14 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   }
 
   if (readTimeoutMs > 0) {
-    timeout = setTimeout(() => {
-      abortController.abort();
-    }, readTimeoutMs);
+    startTimeout(readTimeoutMs);
   }
 
   let responseBody: string;
   try {
     responseBody = await response.text();
   } catch (error) {
-    if (abortController.signal.aborted) {
-      throw timeoutError(options, error);
-    }
-    throw connectionError(options, error);
+    throw transportError(options, abortController.signal, error);
   } finally {
     clearActiveTimeout();
   }
