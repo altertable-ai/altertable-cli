@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setCliContext } from "@/context.ts";
 import { configureRunSet } from "@/lib/profile-configure-core.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 import {
   createEmptyProfile,
   deleteProfile,
@@ -179,6 +180,43 @@ describe("profile model", () => {
     expect(existsSync(profileConfigFile("configless"))).toBe(false);
   });
 
+  test("reports incomplete recovery after profile deletion fails", () => {
+    createEmptyProfile("staging");
+    const keychain = createFakeKeychain();
+    keychain.store.secretSet("api-key", "atm_staging", "staging");
+    const secrets = {
+      ...keychain.store,
+      secretSet() {
+        throw new Error("simulated secret restore failure");
+      },
+    };
+
+    let thrown: unknown;
+    try {
+      deleteProfile("staging", secrets, {
+        renameDirectory(source, target) {
+          renameSync(profileDir(source), profileDir(target));
+        },
+        removeDirectory() {
+          throw new Error("simulated deletion failure");
+        },
+        setActive: setActiveProfile,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ConfigurationError);
+    expect((thrown as ConfigurationError).message).toContain("rollback was incomplete");
+    expect((thrown as ConfigurationError).cause).toBeInstanceOf(Error);
+    expect(((thrown as ConfigurationError).cause as Error).message).toBe(
+      "simulated deletion failure",
+    );
+    expect((thrown as ConfigurationError).details).toContain(
+      "Rollback failure (restore secret api-key): simulated secret restore failure",
+    );
+  });
+
   test("renames profile config, active selection, and secrets", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     setActiveProfile("staging");
@@ -239,6 +277,42 @@ describe("profile model", () => {
     expect(getActiveProfileName()).toBe("staging");
     expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
     expect(keychain.store.secretGet("api-key", "acme_staging")).toBe("");
+  });
+
+  test("reports incomplete recovery after profile rename fails", () => {
+    createEmptyProfile("staging");
+    setActiveProfile("staging");
+    const keychain = createFakeKeychain();
+
+    let thrown: unknown;
+    try {
+      renameProfile("staging", "acme_staging", keychain.store, {
+        renameDirectory(source, target) {
+          renameSync(profileDir(source), profileDir(target));
+        },
+        removeDirectory(name) {
+          rmSync(profileDir(name), { recursive: true, force: true });
+        },
+        setActive(name) {
+          throw new Error(
+            name === "acme_staging"
+              ? "simulated rename completion failure"
+              : "simulated active restore failure",
+          );
+        },
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ConfigurationError);
+    expect((thrown as ConfigurationError).message).toContain("rollback was incomplete");
+    expect(((thrown as ConfigurationError).cause as Error).message).toBe(
+      "simulated rename completion failure",
+    );
+    expect((thrown as ConfigurationError).details).toContain(
+      "Rollback failure (restore active profile): simulated active restore failure",
+    );
   });
 
   test("rejects a no-op rename when the source profile does not exist", () => {

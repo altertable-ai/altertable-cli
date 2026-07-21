@@ -82,6 +82,34 @@ const PROFILE_MUTATION_OPERATIONS: ProfileMutationOperations = {
   setActive: setActiveProfile,
 };
 
+type ProfileRollbackFailure = {
+  step: string;
+  error: unknown;
+};
+
+function profileMutationErrorDetail(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function rethrowAfterProfileRollback(
+  originalError: unknown,
+  rollbackFailures: ProfileRollbackFailure[],
+  message: string,
+): never {
+  if (rollbackFailures.length === 0) {
+    throw originalError;
+  }
+  throw new ConfigurationError(`${message} Automatic rollback was incomplete.`, {
+    cause: originalError,
+    details: [
+      `Original failure: ${profileMutationErrorDetail(originalError)}`,
+      ...rollbackFailures.map(
+        ({ step, error }) => `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`,
+      ),
+    ].join("\n"),
+  });
+}
+
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
 export type ProfileAuth = {
@@ -473,28 +501,45 @@ export function renameProfile(
       operations.setActive(target);
     }
   } catch (error) {
+    const rollbackFailures: ProfileRollbackFailure[] = [];
     if (secretsMoved) {
       try {
         secrets.moveProfileSecrets(target, source, [...PROFILE_SECRET_ACCOUNTS]);
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
+      } catch (rollbackError) {
+        rollbackFailures.push({ step: "restore secrets", error: rollbackError });
       }
     }
     if (profileExists(target) && !profileExists(source)) {
       try {
         operations.renameDirectory(target, source);
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
+      } catch (rollbackError) {
+        rollbackFailures.push({ step: "restore profile directory", error: rollbackError });
       }
     }
     if (active === source) {
       try {
         operations.setActive(source);
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
+      } catch (rollbackError) {
+        rollbackFailures.push({ step: "restore active profile", error: rollbackError });
       }
     }
-    throw error;
+    if (!profileExists(source)) {
+      rollbackFailures.push({
+        step: "verify source profile",
+        error: new Error(`Profile directory is missing: ${source}`),
+      });
+    }
+    if (profileExists(target)) {
+      rollbackFailures.push({
+        step: "verify target cleanup",
+        error: new Error(`Renamed profile directory still exists: ${target}`),
+      });
+    }
+    rethrowAfterProfileRollback(
+      error,
+      rollbackFailures,
+      `Failed to rename profile "${source}" to "${target}". Inspect both profiles before retrying.`,
+    );
   }
 }
 
@@ -533,21 +578,25 @@ export function deleteProfile(
     }
     operations.removeDirectory(quarantinedName);
   } catch (error) {
+    const rollbackFailures: ProfileRollbackFailure[] = [];
     for (const savedSecret of savedSecrets) {
       if (savedSecret.value.length === 0) {
         continue;
       }
       try {
         secrets.secretSet(savedSecret.account, savedSecret.value, name);
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
+      } catch (rollbackError) {
+        rollbackFailures.push({
+          step: `restore secret ${savedSecret.account}`,
+          error: rollbackError,
+        });
       }
     }
     if (profileExists(quarantinedName) && !profileExists(name)) {
       try {
         operations.renameDirectory(quarantinedName, name);
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
+      } catch (rollbackError) {
+        rollbackFailures.push({ step: "restore profile directory", error: rollbackError });
       }
     }
     try {
@@ -555,10 +604,26 @@ export function deleteProfile(
       if (savedConfig) {
         writeFileSync(profileConfigFile(name), savedConfig.contents, { mode: savedConfig.mode });
       }
-    } catch {
-      // Best-effort rollback; preserve the original failure for the caller.
+    } catch (rollbackError) {
+      rollbackFailures.push({ step: "restore profile configuration", error: rollbackError });
     }
-    throw error;
+    if (!profileExists(name)) {
+      rollbackFailures.push({
+        step: "verify source profile",
+        error: new Error(`Profile directory is missing: ${name}`),
+      });
+    }
+    if (profileExists(quarantinedName)) {
+      rollbackFailures.push({
+        step: "verify quarantine cleanup",
+        error: new Error(`Quarantined profile directory still exists: ${quarantinedName}`),
+      });
+    }
+    rethrowAfterProfileRollback(
+      error,
+      rollbackFailures,
+      `Failed to delete profile "${name}". Inspect the profile before retrying.`,
+    );
   }
 }
 
