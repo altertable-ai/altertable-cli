@@ -13,7 +13,7 @@ import {
   type QueryDataType,
 } from "@/lib/query-column-types.ts";
 import { pluralizeLabel } from "@/lib/pluralize.ts";
-import { redactPasswordFieldInText, redactSensitiveJsonValue } from "@/lib/redact.ts";
+import { redactPasswordFieldInText, redactSensitiveJsonText } from "@/lib/redact.ts";
 import { formatRelativeTimestamp, formatTimestampWithRelative } from "@/lib/relative-time.ts";
 import {
   getTerminalWidth,
@@ -98,11 +98,7 @@ function parseJsonStringValue(value: string): string | null {
     return null;
   }
   try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    const redacted = redactSensitiveJsonValue(parsed);
-    const normalized = JSON.stringify(parsed);
-    const normalizedRedacted = JSON.stringify(redacted);
-    return normalized === normalizedRedacted ? trimmed : normalizedRedacted;
+    return redactSensitiveJsonText(trimmed);
   } catch {
     return null;
   }

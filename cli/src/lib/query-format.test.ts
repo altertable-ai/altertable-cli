@@ -132,12 +132,12 @@ describe("formatQueryCell", () => {
 
   test("redacts sensitive keys inside JSON string cells", () => {
     const output = formatQueryCell(
-      '{"password":"secret","nested":{"access_token":"token-value"},"name":"safe"}',
+      '{"password":"secret","nested":{"access_token":"token-value"},"id":9007199254740993,"name":"safe"}',
       {},
     );
 
     expect(output).toBe(
-      '{"password":"[REDACTED]","nested":{"access_token":"[REDACTED]"},"name":"safe"}',
+      '{"password":"[REDACTED]","nested":{"access_token":"[REDACTED]"},"id":9007199254740993,"name":"safe"}',
     );
     expect(output).not.toContain("secret");
     expect(output).not.toContain("token-value");
