@@ -91,23 +91,39 @@ function profileMutationErrorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function rethrowAfterProfileRollback(
+function runProfileRollbackStep(
+  failures: ProfileRollbackFailure[],
+  step: string,
+  operation: () => void,
+): void {
+  try {
+    operation();
+  } catch (error) {
+    failures.push({ step, error });
+  }
+}
+
+function rethrowProfileMutationFailure(
   originalError: unknown,
   rollbackFailures: ProfileRollbackFailure[],
-  message: string,
+  operation: string,
+  recoveryAdvice: string,
 ): never {
   if (rollbackFailures.length === 0) {
     throw originalError;
   }
-  throw new ConfigurationError(`${message} Automatic rollback was incomplete.`, {
-    cause: originalError,
-    details: [
-      `Original failure: ${profileMutationErrorDetail(originalError)}`,
-      ...rollbackFailures.map(
-        ({ step, error }) => `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`,
-      ),
-    ].join("\n"),
-  });
+  throw new ConfigurationError(
+    `${operation} failed and automatic rollback was incomplete. ${recoveryAdvice}`,
+    {
+      cause: originalError,
+      details: [
+        `Original failure: ${profileMutationErrorDetail(originalError)}`,
+        ...rollbackFailures.map(
+          ({ step, error }) => `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`,
+        ),
+      ].join("\n"),
+    },
+  );
 }
 
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
@@ -471,6 +487,127 @@ export function updateProfile(name: string, update: ProfileUpdate): ProfileInspe
   return inspectProfile(name);
 }
 
+type ProfileConfigSnapshot = {
+  contents: Buffer;
+  mode: number;
+};
+
+type ProfileSecretSnapshot = {
+  account: (typeof PROFILE_SECRET_ACCOUNTS)[number];
+  value: string;
+};
+
+function snapshotProfileConfig(name: string): ProfileConfigSnapshot | undefined {
+  const filePath = profileConfigFile(name);
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  return {
+    contents: readFileSync(filePath),
+    mode: statSync(filePath).mode & 0o777,
+  };
+}
+
+function snapshotProfileSecrets(
+  name: string,
+  secrets: ProfileSecretStore,
+): ProfileSecretSnapshot[] {
+  return PROFILE_SECRET_ACCOUNTS.map((account) => ({
+    account,
+    value: secrets.secretGet(account, name),
+  }));
+}
+
+function rollbackProfileRename(options: {
+  source: string;
+  target: string;
+  wasActive: boolean;
+  secretsMoved: boolean;
+  secrets: ProfileSecretStore;
+  operations: ProfileMutationOperations;
+}): ProfileRollbackFailure[] {
+  const { source, target, wasActive, secretsMoved, secrets, operations } = options;
+  const failures: ProfileRollbackFailure[] = [];
+
+  if (secretsMoved) {
+    runProfileRollbackStep(failures, "restore secrets", () => {
+      secrets.moveProfileSecrets(target, source, PROFILE_SECRET_ACCOUNTS);
+    });
+  }
+  if (profileExists(target) && !profileExists(source)) {
+    runProfileRollbackStep(failures, "restore profile directory", () => {
+      operations.renameDirectory(target, source);
+    });
+  }
+  if (wasActive) {
+    runProfileRollbackStep(failures, "restore active profile", () => {
+      operations.setActive(source);
+    });
+  }
+
+  if (!profileExists(source)) {
+    failures.push({
+      step: "verify source profile",
+      error: new Error(`Profile directory is missing: ${source}`),
+    });
+  }
+  if (profileExists(target)) {
+    failures.push({
+      step: "verify target cleanup",
+      error: new Error(`Renamed profile directory still exists: ${target}`),
+    });
+  }
+  return failures;
+}
+
+function rollbackProfileDelete(options: {
+  name: string;
+  quarantinedName: string;
+  configSnapshot: ProfileConfigSnapshot | undefined;
+  secretSnapshots: ProfileSecretSnapshot[];
+  secrets: ProfileSecretStore;
+  operations: ProfileMutationOperations;
+}): ProfileRollbackFailure[] {
+  const { name, quarantinedName, configSnapshot, secretSnapshots, secrets, operations } = options;
+  const failures: ProfileRollbackFailure[] = [];
+
+  for (const { account, value } of secretSnapshots) {
+    if (value.length === 0) continue;
+    runProfileRollbackStep(failures, `restore secret ${account}`, () => {
+      secrets.secretSet(account, value, name);
+    });
+  }
+
+  if (profileExists(quarantinedName) && !profileExists(name)) {
+    runProfileRollbackStep(failures, "restore profile directory", () => {
+      operations.renameDirectory(quarantinedName, name);
+    });
+  }
+
+  runProfileRollbackStep(failures, "restore profile configuration", () => {
+    mkdirSync(profileDir(name), { recursive: true });
+    if (configSnapshot) {
+      writeFileSync(profileConfigFile(name), configSnapshot.contents, {
+        mode: configSnapshot.mode,
+      });
+    }
+  });
+
+  if (!profileExists(name)) {
+    failures.push({
+      step: "verify source profile",
+      error: new Error(`Profile directory is missing: ${name}`),
+    });
+  }
+  if (profileExists(quarantinedName)) {
+    failures.push({
+      step: "verify quarantine cleanup",
+      error: new Error(`Quarantined profile directory still exists: ${quarantinedName}`),
+    });
+  }
+  return failures;
+}
+
 export function renameProfile(
   source: string,
   target: string,
@@ -491,54 +628,29 @@ export function renameProfile(
     throw new ConfigurationError(`Profile already exists: ${target}`);
   }
 
-  const active = getActiveProfileName();
+  const wasActive = getActiveProfileName() === source;
   operations.renameDirectory(source, target);
   let secretsMoved = false;
   try {
-    secrets.moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+    secrets.moveProfileSecrets(source, target, PROFILE_SECRET_ACCOUNTS);
     secretsMoved = true;
-    if (active === source) {
+    if (wasActive) {
       operations.setActive(target);
     }
   } catch (error) {
-    const rollbackFailures: ProfileRollbackFailure[] = [];
-    if (secretsMoved) {
-      try {
-        secrets.moveProfileSecrets(target, source, [...PROFILE_SECRET_ACCOUNTS]);
-      } catch (rollbackError) {
-        rollbackFailures.push({ step: "restore secrets", error: rollbackError });
-      }
-    }
-    if (profileExists(target) && !profileExists(source)) {
-      try {
-        operations.renameDirectory(target, source);
-      } catch (rollbackError) {
-        rollbackFailures.push({ step: "restore profile directory", error: rollbackError });
-      }
-    }
-    if (active === source) {
-      try {
-        operations.setActive(source);
-      } catch (rollbackError) {
-        rollbackFailures.push({ step: "restore active profile", error: rollbackError });
-      }
-    }
-    if (!profileExists(source)) {
-      rollbackFailures.push({
-        step: "verify source profile",
-        error: new Error(`Profile directory is missing: ${source}`),
-      });
-    }
-    if (profileExists(target)) {
-      rollbackFailures.push({
-        step: "verify target cleanup",
-        error: new Error(`Renamed profile directory still exists: ${target}`),
-      });
-    }
-    rethrowAfterProfileRollback(
+    const rollbackFailures = rollbackProfileRename({
+      source,
+      target,
+      wasActive,
+      secretsMoved,
+      secrets,
+      operations,
+    });
+    rethrowProfileMutationFailure(
       error,
       rollbackFailures,
-      `Failed to rename profile "${source}" to "${target}". Inspect both profiles before retrying.`,
+      `Renaming profile "${source}" to "${target}"`,
+      "Inspect both profiles before retrying.",
     );
   }
 }
@@ -562,14 +674,8 @@ export function deleteProfile(
     );
   }
 
-  const savedSecrets = PROFILE_SECRET_ACCOUNTS.map((account) => ({
-    account,
-    value: secrets.secretGet(account, name),
-  }));
-  const configPath = profileConfigFile(name);
-  const savedConfig = existsSync(configPath)
-    ? { contents: readFileSync(configPath), mode: statSync(configPath).mode & 0o777 }
-    : undefined;
+  const secretSnapshots = snapshotProfileSecrets(name, secrets);
+  const configSnapshot = snapshotProfileConfig(name);
   const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
   operations.renameDirectory(name, quarantinedName);
   try {
@@ -578,51 +684,19 @@ export function deleteProfile(
     }
     operations.removeDirectory(quarantinedName);
   } catch (error) {
-    const rollbackFailures: ProfileRollbackFailure[] = [];
-    for (const savedSecret of savedSecrets) {
-      if (savedSecret.value.length === 0) {
-        continue;
-      }
-      try {
-        secrets.secretSet(savedSecret.account, savedSecret.value, name);
-      } catch (rollbackError) {
-        rollbackFailures.push({
-          step: `restore secret ${savedSecret.account}`,
-          error: rollbackError,
-        });
-      }
-    }
-    if (profileExists(quarantinedName) && !profileExists(name)) {
-      try {
-        operations.renameDirectory(quarantinedName, name);
-      } catch (rollbackError) {
-        rollbackFailures.push({ step: "restore profile directory", error: rollbackError });
-      }
-    }
-    try {
-      mkdirSync(profileDir(name), { recursive: true });
-      if (savedConfig) {
-        writeFileSync(profileConfigFile(name), savedConfig.contents, { mode: savedConfig.mode });
-      }
-    } catch (rollbackError) {
-      rollbackFailures.push({ step: "restore profile configuration", error: rollbackError });
-    }
-    if (!profileExists(name)) {
-      rollbackFailures.push({
-        step: "verify source profile",
-        error: new Error(`Profile directory is missing: ${name}`),
-      });
-    }
-    if (profileExists(quarantinedName)) {
-      rollbackFailures.push({
-        step: "verify quarantine cleanup",
-        error: new Error(`Quarantined profile directory still exists: ${quarantinedName}`),
-      });
-    }
-    rethrowAfterProfileRollback(
+    const rollbackFailures = rollbackProfileDelete({
+      name,
+      quarantinedName,
+      configSnapshot,
+      secretSnapshots,
+      secrets,
+      operations,
+    });
+    rethrowProfileMutationFailure(
       error,
       rollbackFailures,
-      `Failed to delete profile "${name}". Inspect the profile before retrying.`,
+      `Deleting profile "${name}"`,
+      "Inspect the profile before retrying.",
     );
   }
 }
