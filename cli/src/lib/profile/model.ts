@@ -1,5 +1,13 @@
 import { randomBytes } from "node:crypto";
-import { renameSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import {
   configDir,
   configFile,
@@ -513,6 +521,10 @@ export function deleteProfile(
     account,
     value: secrets.secretGet(account, name),
   }));
+  const configPath = profileConfigFile(name);
+  const savedConfig = existsSync(configPath)
+    ? { contents: readFileSync(configPath), mode: statSync(configPath).mode & 0o777 }
+    : undefined;
   const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
   operations.renameDirectory(name, quarantinedName);
   try {
@@ -534,6 +546,14 @@ export function deleteProfile(
     if (profileExists(quarantinedName) && !profileExists(name)) {
       try {
         operations.renameDirectory(quarantinedName, name);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    if (savedConfig) {
+      try {
+        mkdirSync(profileDir(name), { recursive: true });
+        writeFileSync(profileConfigFile(name), savedConfig.contents, { mode: savedConfig.mode });
       } catch {
         // Best-effort rollback; preserve the original failure for the caller.
       }

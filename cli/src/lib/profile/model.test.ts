@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, renameSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setCliContext } from "@/context.ts";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/profile/model.ts";
 import {
   getActiveProfileName,
+  profileConfigFile,
   profileDir,
   profileExists,
   setActiveProfile,
@@ -134,6 +135,8 @@ describe("profile model", () => {
 
   test("restores profile config and secrets when directory deletion fails", () => {
     createEmptyProfile("staging");
+    updateProfile("staging", { organizationSlug: "acme", environment: "staging" });
+    const originalConfig = readFileSync(profileConfigFile("staging"));
     const keychain = createFakeKeychain();
     keychain.store.secretSet("api-key", "atm_staging", "staging");
 
@@ -142,14 +145,16 @@ describe("profile model", () => {
         renameDirectory(source, target) {
           renameSync(profileDir(source), profileDir(target));
         },
-        removeDirectory() {
-          throw new Error("simulated remove failure");
+        removeDirectory(name) {
+          rmSync(profileConfigFile(name));
+          throw new Error("simulated partial remove failure");
         },
         setActive: setActiveProfile,
       }),
-    ).toThrow("simulated remove failure");
+    ).toThrow("simulated partial remove failure");
 
     expect(profileExists("staging")).toBe(true);
+    expect(readFileSync(profileConfigFile("staging"))).toEqual(originalConfig);
     expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
   });
 
