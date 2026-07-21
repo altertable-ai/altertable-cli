@@ -217,16 +217,9 @@ export function createSecretStore(
     targetProfile: string,
     keys: readonly string[],
   ): void {
-    const prepared: Array<{ key: string; targetValue: string }> = [];
+    const prepared: Array<{ key: string; sourceValue: string; targetValue: string }> = [];
 
-    try {
-      for (const key of keys) {
-        const sourceValue = secretGet(key, sourceProfile);
-        if (sourceValue.length === 0) continue;
-        prepared.push({ key, targetValue: secretGet(key, targetProfile) });
-        secretSet(key, sourceValue, targetProfile);
-      }
-    } catch (error) {
+    function restoreTargetSecrets(): void {
       for (const entry of prepared.toReversed()) {
         try {
           if (entry.targetValue.length > 0) {
@@ -238,10 +231,33 @@ export function createSecretStore(
           // Best-effort rollback; preserve the original failure for the caller.
         }
       }
+    }
+
+    try {
+      for (const key of keys) {
+        const sourceValue = secretGet(key, sourceProfile);
+        if (sourceValue.length === 0) continue;
+        prepared.push({ key, sourceValue, targetValue: secretGet(key, targetProfile) });
+        secretSet(key, sourceValue, targetProfile);
+      }
+    } catch (error) {
+      restoreTargetSecrets();
       throw error;
     }
 
-    for (const { key } of prepared) secretDelete(key, sourceProfile);
+    try {
+      for (const { key } of prepared) secretDelete(key, sourceProfile);
+    } catch (error) {
+      for (const entry of prepared) {
+        try {
+          secretSet(entry.key, entry.sourceValue, sourceProfile);
+        } catch {
+          // Best-effort rollback; preserve the original failure for the caller.
+        }
+      }
+      restoreTargetSecrets();
+      throw error;
+    }
   }
 
   function secretStoreDisplay(): string {

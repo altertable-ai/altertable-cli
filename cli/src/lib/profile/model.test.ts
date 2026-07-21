@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, renameSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setCliContext } from "@/context.ts";
@@ -13,7 +13,12 @@ import {
   renameProfile,
   updateProfile,
 } from "@/lib/profile/model.ts";
-import { getActiveProfileName, profileExists, setActiveProfile } from "@/lib/profile-store.ts";
+import {
+  getActiveProfileName,
+  profileDir,
+  profileExists,
+  setActiveProfile,
+} from "@/lib/profile-store.ts";
 import { secretGet } from "@/lib/secrets.ts";
 import { createFakeKeychain } from "@/test-utils/keychain.ts";
 
@@ -127,6 +132,27 @@ describe("profile model", () => {
     expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
   });
 
+  test("restores profile config and secrets when directory deletion fails", () => {
+    createEmptyProfile("staging");
+    const keychain = createFakeKeychain();
+    keychain.store.secretSet("api-key", "atm_staging", "staging");
+
+    expect(() =>
+      deleteProfile("staging", keychain.store, {
+        renameDirectory(source, target) {
+          renameSync(profileDir(source), profileDir(target));
+        },
+        removeDirectory() {
+          throw new Error("simulated remove failure");
+        },
+        setActive: setActiveProfile,
+      }),
+    ).toThrow("simulated remove failure");
+
+    expect(profileExists("staging")).toBe(true);
+    expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
+  });
+
   test("renames profile config, active selection, and secrets", async () => {
     await configureRunSet({ profile: "staging", apiKey: "atm_staging", env: "staging" });
     setActiveProfile("staging");
@@ -157,5 +183,39 @@ describe("profile model", () => {
     expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
     expect(keychain.store.secretGet("lakehouse/password", "staging")).toBe("lakehouse-secret");
     expect(keychain.store.secretGet("api-key", "acme_staging")).toBe("");
+  });
+
+  test("rolls back config and secrets when switching the renamed active profile fails", () => {
+    createEmptyProfile("staging");
+    setActiveProfile("staging");
+    const keychain = createFakeKeychain();
+    keychain.store.secretSet("api-key", "atm_staging", "staging");
+
+    expect(() =>
+      renameProfile("staging", "acme_staging", keychain.store, {
+        renameDirectory(source, target) {
+          renameSync(profileDir(source), profileDir(target));
+        },
+        removeDirectory(name) {
+          rmSync(profileDir(name), { recursive: true, force: true });
+        },
+        setActive(name) {
+          if (name === "acme_staging") {
+            throw new Error("simulated active-profile failure");
+          }
+          setActiveProfile(name);
+        },
+      }),
+    ).toThrow("simulated active-profile failure");
+
+    expect(profileExists("staging")).toBe(true);
+    expect(profileExists("acme_staging")).toBe(false);
+    expect(getActiveProfileName()).toBe("staging");
+    expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
+    expect(keychain.store.secretGet("api-key", "acme_staging")).toBe("");
+  });
+
+  test("rejects a no-op rename when the source profile does not exist", () => {
+    expect(() => renameProfile("missing", "missing")).toThrow("Profile not found: missing");
   });
 });

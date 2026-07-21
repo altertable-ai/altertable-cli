@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { renameSync, rmSync } from "node:fs";
 import {
   configDir,
@@ -14,6 +15,8 @@ import {
   moveProfileSecrets,
   secretDelete,
   secretExists,
+  secretGet,
+  secretSet,
   secretStoreDisplay,
   type SecretStore,
 } from "@/lib/secrets.ts";
@@ -43,9 +46,33 @@ const PROFILE_SECRET_ACCOUNTS = [
   "oauth/refresh-token",
 ] as const;
 
-type ProfileSecretStore = Pick<SecretStore, "moveProfileSecrets" | "secretDelete">;
+type ProfileSecretStore = Pick<
+  SecretStore,
+  "moveProfileSecrets" | "secretDelete" | "secretGet" | "secretSet"
+>;
 
-const PROFILE_SECRET_STORE: ProfileSecretStore = { moveProfileSecrets, secretDelete };
+const PROFILE_SECRET_STORE: ProfileSecretStore = {
+  moveProfileSecrets,
+  secretDelete,
+  secretGet,
+  secretSet,
+};
+
+type ProfileMutationOperations = {
+  renameDirectory(source: string, target: string): void;
+  removeDirectory(name: string): void;
+  setActive(name: string): void;
+};
+
+const PROFILE_MUTATION_OPERATIONS: ProfileMutationOperations = {
+  renameDirectory(source, target) {
+    renameSync(profileDir(source), profileDir(target));
+  },
+  removeDirectory(name) {
+    rmSync(profileDir(name), { recursive: true, force: true });
+  },
+  setActive: setActiveProfile,
+};
 
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
@@ -412,40 +439,61 @@ export function renameProfile(
   source: string,
   target: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
 ): void {
   assertSafeProfileName(source);
   assertSafeProfileName(target);
   ensureProfilesLayout();
 
-  if (source === target) {
-    return;
-  }
   if (!profileExists(source)) {
     throw new ConfigurationError(`Profile not found: ${source}`);
+  }
+  if (source === target) {
+    return;
   }
   if (profileExists(target)) {
     throw new ConfigurationError(`Profile already exists: ${target}`);
   }
 
   const active = getActiveProfileName();
-  renameSync(profileDir(source), profileDir(target));
+  operations.renameDirectory(source, target);
+  let secretsMoved = false;
   try {
     secrets.moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
+    secretsMoved = true;
+    if (active === source) {
+      operations.setActive(target);
+    }
   } catch (error) {
+    if (secretsMoved) {
+      try {
+        secrets.moveProfileSecrets(target, source, [...PROFILE_SECRET_ACCOUNTS]);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
     if (profileExists(target) && !profileExists(source)) {
-      renameSync(profileDir(target), profileDir(source));
+      try {
+        operations.renameDirectory(target, source);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    if (active === source) {
+      try {
+        operations.setActive(source);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
     }
     throw error;
-  }
-
-  if (active === source) {
-    setActiveProfile(target);
   }
 }
 
 export function deleteProfile(
   name: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
 ): void {
   assertSafeProfileName(name);
   ensureProfilesLayout();
@@ -461,11 +509,37 @@ export function deleteProfile(
     );
   }
 
-  for (const account of PROFILE_SECRET_ACCOUNTS) {
-    secrets.secretDelete(account, name);
+  const savedSecrets = PROFILE_SECRET_ACCOUNTS.map((account) => ({
+    account,
+    value: secrets.secretGet(account, name),
+  }));
+  const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
+  operations.renameDirectory(name, quarantinedName);
+  try {
+    for (const account of PROFILE_SECRET_ACCOUNTS) {
+      secrets.secretDelete(account, name);
+    }
+    operations.removeDirectory(quarantinedName);
+  } catch (error) {
+    for (const savedSecret of savedSecrets) {
+      if (savedSecret.value.length === 0) {
+        continue;
+      }
+      try {
+        secrets.secretSet(savedSecret.account, savedSecret.value, name);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    if (profileExists(quarantinedName) && !profileExists(name)) {
+      try {
+        operations.renameDirectory(quarantinedName, name);
+      } catch {
+        // Best-effort rollback; preserve the original failure for the caller.
+      }
+    }
+    throw error;
   }
-
-  rmSync(profileDir(name), { recursive: true, force: true });
 }
 
 export type ConfigureCredentialStatus = {
