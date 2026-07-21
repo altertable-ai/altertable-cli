@@ -504,6 +504,12 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     );
   }
 
+  if (readTimeoutMs > 0) {
+    timeout = setTimeout(() => {
+      abortController.abort();
+    }, readTimeoutMs);
+  }
+
   let responseBody: string;
   try {
     responseBody = await response.text();
@@ -512,6 +518,8 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
+  } finally {
+    clearActiveTimeout();
   }
   throwHttpError(
     response.status,

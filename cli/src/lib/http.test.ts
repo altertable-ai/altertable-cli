@@ -469,6 +469,43 @@ describe("httpSendStream live timeouts", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("positive readTimeoutMs also aborts stalled error response bodies", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = Object.assign(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const signal = init?.signal;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              signal?.addEventListener("abort", () => {
+                controller.error(new DOMException("error body timed out", "AbortError"));
+              });
+            },
+          }),
+          { status: 500 },
+        );
+      },
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      expect(
+        httpSendStream({
+          method: "POST",
+          url: "https://example.com/query",
+          authHeader: "Authorization: Bearer test",
+          body: "{}",
+          connectTimeoutMs: 50,
+          readTimeoutMs: 5,
+        }),
+      ).rejects.toBeInstanceOf(TimeoutError);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 describe("debug response redaction", () => {
