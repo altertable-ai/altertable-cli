@@ -20,7 +20,7 @@ import {
 import { ConfigurationError } from "@/lib/errors.ts";
 import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
 import {
-  moveProfileSecrets,
+  migrateProfileSecrets,
   secretDelete,
   secretExists,
   secretGet,
@@ -56,11 +56,11 @@ const PROFILE_SECRET_ACCOUNTS = [
 
 type ProfileSecretStore = Pick<
   SecretStore,
-  "moveProfileSecrets" | "secretDelete" | "secretGet" | "secretSet"
+  "migrateProfileSecrets" | "secretDelete" | "secretGet" | "secretSet"
 >;
 
 const PROFILE_SECRET_STORE: ProfileSecretStore = {
-  moveProfileSecrets,
+  migrateProfileSecrets,
   secretDelete,
   secretGet,
   secretSet,
@@ -522,18 +522,11 @@ function rollbackProfileRename(options: {
   source: string;
   target: string;
   wasActive: boolean;
-  secretsMoved: boolean;
-  secrets: ProfileSecretStore;
   operations: ProfileMutationOperations;
 }): ProfileRollbackFailure[] {
-  const { source, target, wasActive, secretsMoved, secrets, operations } = options;
+  const { source, target, wasActive, operations } = options;
   const failures: ProfileRollbackFailure[] = [];
 
-  if (secretsMoved) {
-    runProfileRollbackStep(failures, "restore secrets", () => {
-      secrets.moveProfileSecrets(target, source, PROFILE_SECRET_ACCOUNTS);
-    });
-  }
   if (profileExists(target) && !profileExists(source)) {
     runProfileRollbackStep(failures, "restore profile directory", () => {
       operations.renameDirectory(target, source);
@@ -571,13 +564,6 @@ function rollbackProfileDelete(options: {
   const { name, quarantinedName, configSnapshot, secretSnapshots, secrets, operations } = options;
   const failures: ProfileRollbackFailure[] = [];
 
-  for (const { account, value } of secretSnapshots) {
-    if (value.length === 0) continue;
-    runProfileRollbackStep(failures, `restore secret ${account}`, () => {
-      secrets.secretSet(account, value, name);
-    });
-  }
-
   if (profileExists(quarantinedName) && !profileExists(name)) {
     runProfileRollbackStep(failures, "restore profile directory", () => {
       operations.renameDirectory(quarantinedName, name);
@@ -592,6 +578,13 @@ function rollbackProfileDelete(options: {
       });
     }
   });
+
+  for (const { account, value } of secretSnapshots) {
+    if (value.length === 0) continue;
+    runProfileRollbackStep(failures, `restore secret ${account}`, () => {
+      secrets.secretSet(account, value, name);
+    });
+  }
 
   if (!profileExists(name)) {
     failures.push({
@@ -629,11 +622,9 @@ export function renameProfile(
   }
 
   const wasActive = getActiveProfileName() === source;
+  secrets.migrateProfileSecrets(source, PROFILE_SECRET_ACCOUNTS);
   operations.renameDirectory(source, target);
-  let secretsMoved = false;
   try {
-    secrets.moveProfileSecrets(source, target, PROFILE_SECRET_ACCOUNTS);
-    secretsMoved = true;
     if (wasActive) {
       operations.setActive(target);
     }
@@ -642,8 +633,6 @@ export function renameProfile(
       source,
       target,
       wasActive,
-      secretsMoved,
-      secrets,
       operations,
     });
     rethrowProfileMutationFailure(
@@ -674,13 +663,14 @@ export function deleteProfile(
     );
   }
 
+  secrets.migrateProfileSecrets(name, PROFILE_SECRET_ACCOUNTS);
   const secretSnapshots = snapshotProfileSecrets(name, secrets);
   const configSnapshot = snapshotProfileConfig(name);
   const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
   operations.renameDirectory(name, quarantinedName);
   try {
     for (const account of PROFILE_SECRET_ACCOUNTS) {
-      secrets.secretDelete(account, name);
+      secrets.secretDelete(account, quarantinedName);
     }
     operations.removeDirectory(quarantinedName);
   } catch (error) {
