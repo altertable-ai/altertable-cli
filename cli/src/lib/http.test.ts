@@ -506,6 +506,45 @@ describe("httpSendStream live timeouts", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("reports peer-aborted streams as network errors instead of timeouts", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = Object.assign(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(new DOMException("peer aborted", "AbortError"));
+            },
+          }),
+          { status: 200 },
+        ),
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      const stream = await httpSendStream({
+        method: "POST",
+        url: "https://example.com/query",
+        authHeader: "Authorization: Bearer test",
+        body: "{}",
+        connectTimeoutMs: 50,
+        readTimeoutMs: 50,
+      });
+
+      try {
+        await stream.getReader().read();
+        expect.unreachable("stream read should have failed");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect(error).not.toBeInstanceOf(TimeoutError);
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 describe("debug response redaction", () => {

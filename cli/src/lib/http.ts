@@ -98,10 +98,6 @@ export function resolveFetchTimeoutMs(options: HttpSendOptions): number {
   return connectTimeoutMs;
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
-
 /** Flatten an Error's `cause` chain into a readable detail (e.g. fetch failed -> TLS reason). */
 function unwrapErrorDetail(error: unknown): string {
   const messages: string[] = [];
@@ -152,9 +148,7 @@ function streamWithTimeoutCleanup(
       } catch (error) {
         clearTimeoutAfterRead();
         controller.error(
-          signal.aborted || isAbortError(error)
-            ? timeoutError(options, error)
-            : connectionError(options, error),
+          signal.aborted ? timeoutError(options, error) : connectionError(options, error),
         );
       }
     },
@@ -414,7 +408,7 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
       dispatcher: getSharedDispatcher(),
     } as RequestInit);
   } catch (error) {
-    if (signal.aborted || isAbortError(error)) {
+    if (signal.aborted) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
@@ -424,7 +418,7 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
   try {
     responseBody = await response.text();
   } catch (error) {
-    if (signal.aborted || isAbortError(error)) {
+    if (signal.aborted) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
@@ -480,7 +474,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
-    if (abortController.signal.aborted || isAbortError(error)) {
+    if (abortController.signal.aborted) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
@@ -514,7 +508,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
   try {
     responseBody = await response.text();
   } catch (error) {
-    if (abortController.signal.aborted || isAbortError(error)) {
+    if (abortController.signal.aborted) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
