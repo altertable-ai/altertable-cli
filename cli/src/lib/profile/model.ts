@@ -1,4 +1,13 @@
-import { renameSync, rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import {
   configDir,
   configFile,
@@ -11,9 +20,11 @@ import {
 import { ConfigurationError } from "@/lib/errors.ts";
 import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
 import {
-  moveProfileSecrets,
+  migrateProfileSecrets,
   secretDelete,
   secretExists,
+  secretGet,
+  secretSet,
   secretStoreDisplay,
   type SecretStore,
 } from "@/lib/secrets.ts";
@@ -43,9 +54,77 @@ const PROFILE_SECRET_ACCOUNTS = [
   "oauth/refresh-token",
 ] as const;
 
-type ProfileSecretStore = Pick<SecretStore, "moveProfileSecrets" | "secretDelete">;
+type ProfileSecretStore = Pick<
+  SecretStore,
+  "migrateProfileSecrets" | "secretDelete" | "secretGet" | "secretSet"
+>;
 
-const PROFILE_SECRET_STORE: ProfileSecretStore = { moveProfileSecrets, secretDelete };
+const PROFILE_SECRET_STORE: ProfileSecretStore = {
+  migrateProfileSecrets,
+  secretDelete,
+  secretGet,
+  secretSet,
+};
+
+type ProfileMutationOperations = {
+  renameDirectory(source: string, target: string): void;
+  removeDirectory(name: string): void;
+  setActive(name: string): void;
+};
+
+const PROFILE_MUTATION_OPERATIONS: ProfileMutationOperations = {
+  renameDirectory(source, target) {
+    renameSync(profileDir(source), profileDir(target));
+  },
+  removeDirectory(name) {
+    rmSync(profileDir(name), { recursive: true, force: true });
+  },
+  setActive: setActiveProfile,
+};
+
+type ProfileRollbackFailure = {
+  step: string;
+  error: unknown;
+};
+
+function profileMutationErrorDetail(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function runProfileRollbackStep(
+  failures: ProfileRollbackFailure[],
+  step: string,
+  operation: () => void,
+): void {
+  try {
+    operation();
+  } catch (error) {
+    failures.push({ step, error });
+  }
+}
+
+function rethrowProfileMutationFailure(
+  originalError: unknown,
+  rollbackFailures: ProfileRollbackFailure[],
+  operation: string,
+  recoveryAdvice: string,
+): never {
+  if (rollbackFailures.length === 0) {
+    throw originalError;
+  }
+  throw new ConfigurationError(
+    `${operation} failed and automatic rollback was incomplete. ${recoveryAdvice}`,
+    {
+      cause: originalError,
+      details: [
+        `Original failure: ${profileMutationErrorDetail(originalError)}`,
+        ...rollbackFailures.map(
+          ({ step, error }) => `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`,
+        ),
+      ].join("\n"),
+    },
+  );
+}
 
 type ProfileManagementAuth = "oauth" | "api_key" | "none";
 type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
@@ -408,44 +487,167 @@ export function updateProfile(name: string, update: ProfileUpdate): ProfileInspe
   return inspectProfile(name);
 }
 
+type ProfileConfigSnapshot = {
+  contents: Buffer;
+  mode: number;
+};
+
+type ProfileSecretSnapshot = {
+  account: (typeof PROFILE_SECRET_ACCOUNTS)[number];
+  value: string;
+};
+
+function snapshotProfileConfig(name: string): ProfileConfigSnapshot | undefined {
+  const filePath = profileConfigFile(name);
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  return {
+    contents: readFileSync(filePath),
+    mode: statSync(filePath).mode & 0o777,
+  };
+}
+
+function snapshotProfileSecrets(
+  name: string,
+  secrets: ProfileSecretStore,
+): ProfileSecretSnapshot[] {
+  return PROFILE_SECRET_ACCOUNTS.map((account) => ({
+    account,
+    value: secrets.secretGet(account, name),
+  }));
+}
+
+function rollbackProfileRename(options: {
+  source: string;
+  target: string;
+  wasActive: boolean;
+  operations: ProfileMutationOperations;
+}): ProfileRollbackFailure[] {
+  const { source, target, wasActive, operations } = options;
+  const failures: ProfileRollbackFailure[] = [];
+
+  if (profileExists(target) && !profileExists(source)) {
+    runProfileRollbackStep(failures, "restore profile directory", () => {
+      operations.renameDirectory(target, source);
+    });
+  }
+  if (wasActive) {
+    runProfileRollbackStep(failures, "restore active profile", () => {
+      operations.setActive(source);
+    });
+  }
+
+  if (!profileExists(source)) {
+    failures.push({
+      step: "verify source profile",
+      error: new Error(`Profile directory is missing: ${source}`),
+    });
+  }
+  if (profileExists(target)) {
+    failures.push({
+      step: "verify target cleanup",
+      error: new Error(`Renamed profile directory still exists: ${target}`),
+    });
+  }
+  return failures;
+}
+
+function rollbackProfileDelete(options: {
+  name: string;
+  quarantinedName: string;
+  configSnapshot: ProfileConfigSnapshot | undefined;
+  secretSnapshots: ProfileSecretSnapshot[];
+  secrets: ProfileSecretStore;
+  operations: ProfileMutationOperations;
+}): ProfileRollbackFailure[] {
+  const { name, quarantinedName, configSnapshot, secretSnapshots, secrets, operations } = options;
+  const failures: ProfileRollbackFailure[] = [];
+
+  if (profileExists(quarantinedName) && !profileExists(name)) {
+    runProfileRollbackStep(failures, "restore profile directory", () => {
+      operations.renameDirectory(quarantinedName, name);
+    });
+  }
+
+  runProfileRollbackStep(failures, "restore profile configuration", () => {
+    mkdirSync(profileDir(name), { recursive: true });
+    if (configSnapshot) {
+      writeFileSync(profileConfigFile(name), configSnapshot.contents, {
+        mode: configSnapshot.mode,
+      });
+    }
+  });
+
+  for (const { account, value } of secretSnapshots) {
+    if (value.length === 0) continue;
+    runProfileRollbackStep(failures, `restore secret ${account}`, () => {
+      secrets.secretSet(account, value, name);
+    });
+  }
+
+  if (!profileExists(name)) {
+    failures.push({
+      step: "verify source profile",
+      error: new Error(`Profile directory is missing: ${name}`),
+    });
+  }
+  if (profileExists(quarantinedName)) {
+    failures.push({
+      step: "verify quarantine cleanup",
+      error: new Error(`Quarantined profile directory still exists: ${quarantinedName}`),
+    });
+  }
+  return failures;
+}
+
 export function renameProfile(
   source: string,
   target: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
 ): void {
   assertSafeProfileName(source);
   assertSafeProfileName(target);
   ensureProfilesLayout();
 
-  if (source === target) {
-    return;
-  }
   if (!profileExists(source)) {
     throw new ConfigurationError(`Profile not found: ${source}`);
+  }
+  if (source === target) {
+    return;
   }
   if (profileExists(target)) {
     throw new ConfigurationError(`Profile already exists: ${target}`);
   }
 
-  const active = getActiveProfileName();
-  renameSync(profileDir(source), profileDir(target));
+  const wasActive = getActiveProfileName() === source;
+  secrets.migrateProfileSecrets(source, PROFILE_SECRET_ACCOUNTS);
+  operations.renameDirectory(source, target);
   try {
-    secrets.moveProfileSecrets(source, target, [...PROFILE_SECRET_ACCOUNTS]);
-  } catch (error) {
-    if (profileExists(target) && !profileExists(source)) {
-      renameSync(profileDir(target), profileDir(source));
+    if (wasActive) {
+      operations.setActive(target);
     }
-    throw error;
-  }
-
-  if (active === source) {
-    setActiveProfile(target);
+  } catch (error) {
+    const rollbackFailures = rollbackProfileRename({
+      source,
+      target,
+      wasActive,
+      operations,
+    });
+    rethrowProfileMutationFailure(
+      error,
+      rollbackFailures,
+      `Renaming profile "${source}" to "${target}"`,
+      "Inspect both profiles before retrying.",
+    );
   }
 }
 
 export function deleteProfile(
   name: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
 ): void {
   assertSafeProfileName(name);
   ensureProfilesLayout();
@@ -461,11 +663,32 @@ export function deleteProfile(
     );
   }
 
-  for (const account of PROFILE_SECRET_ACCOUNTS) {
-    secrets.secretDelete(account, name);
+  secrets.migrateProfileSecrets(name, PROFILE_SECRET_ACCOUNTS);
+  const secretSnapshots = snapshotProfileSecrets(name, secrets);
+  const configSnapshot = snapshotProfileConfig(name);
+  const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
+  operations.renameDirectory(name, quarantinedName);
+  try {
+    for (const account of PROFILE_SECRET_ACCOUNTS) {
+      secrets.secretDelete(account, quarantinedName);
+    }
+    operations.removeDirectory(quarantinedName);
+  } catch (error) {
+    const rollbackFailures = rollbackProfileDelete({
+      name,
+      quarantinedName,
+      configSnapshot,
+      secretSnapshots,
+      secrets,
+      operations,
+    });
+    rethrowProfileMutationFailure(
+      error,
+      rollbackFailures,
+      `Deleting profile "${name}"`,
+      "Inspect the profile before retrying.",
+    );
   }
-
-  rmSync(profileDir(name), { recursive: true, force: true });
 }
 
 export type ConfigureCredentialStatus = {

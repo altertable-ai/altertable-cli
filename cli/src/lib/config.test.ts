@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -12,9 +12,11 @@ import {
   getQueryDefaultPager,
   kvGet,
   kvSet,
+  kvUnset,
   resolveApiBase,
   resolveManagementApiBase,
 } from "@/lib/config.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 import { profileConfigFile } from "@/lib/profile-store.ts";
 
 let testHome = "";
@@ -43,6 +45,15 @@ describe("config", () => {
     expect(kvGet(filePath, "user")).toBe("bob");
     expect(statSync(filePath).mode & 0o777).toBe(0o600);
     expect(configGet("missing", profileName)).toBe("");
+  });
+
+  test("reports configuration I/O failures instead of treating them as missing files", () => {
+    const directoryPath = join(testHome, "not-a-file");
+    mkdirSync(directoryPath);
+
+    expect(() => kvGet(directoryPath, "user")).toThrow(ConfigurationError);
+    expect(() => kvSet(directoryPath, "user", "alice")).toThrow(ConfigurationError);
+    expect(() => kvUnset(directoryPath, "user")).toThrow(ConfigurationError);
   });
 
   test("resolves API bases from defaults, stored config, and environment overrides", () => {

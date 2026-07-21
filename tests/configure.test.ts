@@ -4,6 +4,17 @@ import { jsonMock, whoamiMock } from "./mock-http.ts";
 
 const queryMock = [jsonMock("POST", "/query", {})];
 
+async function storedProfileSecret(
+  workspace: TestWorkspace,
+  account: string,
+  value: string,
+): Promise<string> {
+  const config = await workspace.readFile(workspace.defaultProfileConfig);
+  const profileId = /^profile_id=(.+)$/m.exec(config)?.[1];
+  if (!profileId) throw new Error("Default profile ID is missing");
+  return `profile/${profileId}/${account}=${value}\n`;
+}
+
 describe("altertable profile configure", () => {
   let workspace: TestWorkspace;
 
@@ -20,16 +31,22 @@ describe("altertable profile configure", () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --user u_blabla --password s_llll")).exitCode).toBe(0);
     expect(await workspace.readFile(workspace.defaultProfileConfig)).toContain("user=u_blabla\n");
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/lakehouse/password=s_llll\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "lakehouse/password", "s_llll"),
+    );
     expect(await workspace.fileMode(workspace.credentialsFile)).toBe("600");
 
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --basic-token dG9rZW4=")).exitCode).toBe(0);
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/lakehouse/basic-token=dG9rZW4=\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "lakehouse/basic-token", "dG9rZW4="),
+    );
 
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --api-key atm_prod --env production")).exitCode).toBe(0);
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/api-key=atm_prod\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "api-key", "atm_prod"),
+    );
     expect(await workspace.readFile(workspace.defaultProfileConfig)).toContain("api_key_env=production\n");
   });
 
@@ -38,15 +55,19 @@ describe("altertable profile configure", () => {
     expect((await workspace.runCommand("altertable profile configure --user u1 --password p1")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable profile configure --api-key atm_x --env prod")).exitCode).toBe(0);
     expect(await workspace.readFile(workspace.defaultProfileConfig)).toContain("user=u1\n");
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/lakehouse/password=p1\n");
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/api-key=atm_x\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "lakehouse/password", "p1"),
+    );
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "api-key", "atm_x"),
+    );
 
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --api-key atm_x --env prod")).exitCode).toBe(0);
     expect((await workspace.runCommand("altertable profile configure --api-key atm_y --env staging")).exitCode).toBe(0);
     const credentials = await workspace.readFile(workspace.credentialsFile);
     expect(credentials).not.toContain("atm_x");
-    expect(credentials).toContain("profile/default/api-key=atm_y\n");
+    expect(credentials).toContain(await storedProfileSecret(workspace, "api-key", "atm_y"));
     expect(await workspace.readFile(workspace.defaultProfileConfig)).toContain("api_key_env=staging\n");
   });
 
@@ -61,10 +82,14 @@ describe("altertable profile configure", () => {
   test("reads stdin secrets", async () => {
     await workspace.resetConfig();
     expect((await workspace.runCommand("altertable profile configure --user alice --password-stdin", { stdin: "s_fromstdin" })).exitCode).toBe(0);
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/lakehouse/password=s_fromstdin\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "lakehouse/password", "s_fromstdin"),
+    );
 
     expect((await workspace.runCommand("altertable profile configure --api-key-stdin --env prod", { stdin: "atm_fromstdin" })).exitCode).toBe(0);
-    expect(await workspace.readFile(workspace.credentialsFile)).toContain("profile/default/api-key=atm_fromstdin\n");
+    expect(await workspace.readFile(workspace.credentialsFile)).toContain(
+      await storedProfileSecret(workspace, "api-key", "atm_fromstdin"),
+    );
   });
 
   test("profile show reports auth without leaking secrets, and non-TTY configure requires flags", async () => {
