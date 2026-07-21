@@ -74,16 +74,17 @@ describe("api-body", () => {
   test("preserves typed integers outside JavaScript's safe range", () => {
     const payload = resolveApiRequestPayload({
       method: "POST",
-      typedFields: ["id=9007199254740993", "negative=-9007199254740993"],
+      typedFields: ["id=0009007199254740993", "negative=-0009007199254740993", "zero=-000"],
     });
 
-    expect(payload.body).toBe('{"id":9007199254740993,"negative":-9007199254740993}');
+    expect(payload.body).toBe('{"id":9007199254740993,"negative":-9007199254740993,"zero":0}');
+    expect(() => JSON.parse(payload.body ?? "")).not.toThrow();
 
     expect(
       resolveApiHttp({
         endpoint: "/records",
         method: "GET",
-        typedFields: ["id=9007199254740993"],
+        typedFields: ["id=0009007199254740993"],
       }).endpoint,
     ).toBe("/records?id=9007199254740993");
   });

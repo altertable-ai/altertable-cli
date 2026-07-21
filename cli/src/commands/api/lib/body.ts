@@ -67,6 +67,13 @@ type ExactJsonInteger = {
   source: string;
 };
 
+function canonicalIntegerSource(value: string): string {
+  const negative = value.startsWith("-");
+  const digits = negative ? value.slice(1) : value;
+  const canonicalDigits = digits.replace(/^0+/, "") || "0";
+  return negative && canonicalDigits !== "0" ? `-${canonicalDigits}` : canonicalDigits;
+}
+
 export type ApiFieldValue = string | number | boolean | null | ExactJsonInteger;
 
 export type ParsedApiField = {
@@ -85,8 +92,9 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
     return null;
   }
   if (/^-?\d+$/.test(value)) {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", source: value };
+    const source = canonicalIntegerSource(value);
+    const parsed = Number(source);
+    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", source };
   }
   if (value === "@-") {
     return readFileSync(0, "utf8");
