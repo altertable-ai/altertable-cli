@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { configGet } from "@/lib/config.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 import { configureRunClear, configureRunSet } from "@/lib/profile-configure-core.ts";
 import { profileExists } from "@/lib/profile-store.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
@@ -90,5 +91,11 @@ describe("configureRunClear", () => {
     expect(secretGet("api-key", "staging")).toBe("");
     expect(secretGet("api-key", "prod")).toBe("");
     expect(secretGet("lakehouse/password", "staging")).toBe("");
+  });
+
+  test("reports failures while removing configuration", () => {
+    mkdirSync(join(testHome, "config"));
+
+    expect(() => configureRunClear()).toThrow(ConfigurationError);
   });
 });
