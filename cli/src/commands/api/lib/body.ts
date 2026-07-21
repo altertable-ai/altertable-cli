@@ -64,10 +64,10 @@ function parseFieldEntry(entry: string): [string, string] {
 
 type ExactJsonInteger = {
   kind: "exact_json_integer";
-  source: string;
+  json: string;
 };
 
-function canonicalIntegerSource(value: string): string {
+function canonicalizeJsonInteger(value: string): string {
   const negative = value.startsWith("-");
   const digits = negative ? value.slice(1) : value;
   const canonicalDigits = digits.replace(/^0+/, "") || "0";
@@ -92,9 +92,9 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
     return null;
   }
   if (/^-?\d+$/.test(value)) {
-    const source = canonicalIntegerSource(value);
-    const parsed = Number(source);
-    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", source };
+    const json = canonicalizeJsonInteger(value);
+    const parsed = Number(json);
+    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", json };
   }
   if (value === "@-") {
     return readFileSync(0, "utf8");
@@ -132,23 +132,26 @@ function isExactJsonInteger(value: ApiFieldValue): value is ExactJsonInteger {
   return typeof value === "object" && value !== null && value.kind === "exact_json_integer";
 }
 
-export function apiFieldValueText(value: ApiFieldValue): string {
+export function formatApiFieldValue(value: ApiFieldValue): string {
   if (isExactJsonInteger(value)) {
-    return value.source;
+    return value.json;
   }
   return value === null ? "null" : String(value);
 }
 
-function serializeFieldValue(value: ApiFieldValue): string {
-  return isExactJsonInteger(value) ? value.source : JSON.stringify(value);
+function serializeApiFieldValue(value: ApiFieldValue): string {
+  return isExactJsonInteger(value) ? value.json : JSON.stringify(value);
 }
 
-function serializeParsedFields(fields: ParsedApiField[]): string {
-  const body = new Map<string, ApiFieldValue>();
+function serializeApiFields(fields: ParsedApiField[]): string {
+  const valuesByKey = new Map<string, ApiFieldValue>();
   for (const field of fields) {
-    body.set(field.key, field.value);
+    valuesByKey.set(field.key, field.value);
   }
-  return `{${[...body].map(([key, value]) => `${JSON.stringify(key)}:${serializeFieldValue(value)}`).join(",")}}`;
+  const properties = [...valuesByKey].map(
+    ([key, value]) => `${JSON.stringify(key)}:${serializeApiFieldValue(value)}`,
+  );
+  return `{${properties.join(",")}}`;
 }
 
 export type ResolveApiBodyOptions = {
@@ -218,7 +221,7 @@ export function resolveApiRequestPayload(
 
   if (hasFields) {
     return {
-      body: serializeParsedFields(parsedFields),
+      body: serializeApiFields(parsedFields),
       queryFields: [],
     };
   }

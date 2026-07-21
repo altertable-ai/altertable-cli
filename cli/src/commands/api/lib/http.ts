@@ -1,5 +1,5 @@
 import {
-  apiFieldValueText,
+  formatApiFieldValue,
   resolveApiRequestPayload,
   type ParsedApiField,
 } from "@/commands/api/lib/body.ts";
@@ -110,7 +110,7 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
   const separator = endpoint.includes("?") ? "&" : "?";
   const searchParams = new URLSearchParams();
   for (const field of fields) {
-    searchParams.append(field.key, apiFieldValueText(field.value));
+    searchParams.append(field.key, formatApiFieldValue(field.value));
   }
   return `${endpoint}${separator}${searchParams.toString()}`;
 }
