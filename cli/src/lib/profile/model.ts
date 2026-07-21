@@ -550,13 +550,13 @@ export function deleteProfile(
         // Best-effort rollback; preserve the original failure for the caller.
       }
     }
-    if (savedConfig) {
-      try {
-        mkdirSync(profileDir(name), { recursive: true });
+    try {
+      mkdirSync(profileDir(name), { recursive: true });
+      if (savedConfig) {
         writeFileSync(profileConfigFile(name), savedConfig.contents, { mode: savedConfig.mode });
-      } catch {
-        // Best-effort rollback; preserve the original failure for the caller.
       }
+    } catch {
+      // Best-effort rollback; preserve the original failure for the caller.
     }
     throw error;
   }

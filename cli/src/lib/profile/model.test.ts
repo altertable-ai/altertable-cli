@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setCliContext } from "@/context.ts";
@@ -156,6 +156,27 @@ describe("profile model", () => {
     expect(profileExists("staging")).toBe(true);
     expect(readFileSync(profileConfigFile("staging"))).toEqual(originalConfig);
     expect(keychain.store.secretGet("api-key", "staging")).toBe("atm_staging");
+  });
+
+  test("restores a configless profile after its quarantined directory was removed", () => {
+    mkdirSync(profileDir("configless"), { recursive: true });
+    const keychain = createFakeKeychain();
+
+    expect(() =>
+      deleteProfile("configless", keychain.store, {
+        renameDirectory(source, target) {
+          renameSync(profileDir(source), profileDir(target));
+        },
+        removeDirectory(name) {
+          rmSync(profileDir(name), { recursive: true });
+          throw new Error("simulated remove-then-fail");
+        },
+        setActive: setActiveProfile,
+      }),
+    ).toThrow("simulated remove-then-fail");
+
+    expect(profileExists("configless")).toBe(true);
+    expect(existsSync(profileConfigFile("configless"))).toBe(false);
   });
 
   test("renames profile config, active selection, and secrets", async () => {
