@@ -131,6 +131,8 @@ function connectionError(options: HttpSendOptions, cause: unknown): NetworkError
 function streamWithTimeoutCleanup(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
+  signal: AbortSignal,
+  options: HttpStreamOptions,
 ): ReadableStream<Uint8Array> {
   let reader: ReturnType<typeof stream.getReader> | undefined;
   return new ReadableStream<Uint8Array>({
@@ -149,7 +151,11 @@ function streamWithTimeoutCleanup(
         }
       } catch (error) {
         clearTimeoutAfterRead();
-        controller.error(error);
+        controller.error(
+          signal.aborted || isAbortError(error)
+            ? timeoutError(options, error)
+            : connectionError(options, error),
+        );
       }
     },
     cancel(reason) {
@@ -408,13 +414,21 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
       dispatcher: getSharedDispatcher(),
     } as RequestInit);
   } catch (error) {
-    if (isAbortError(error)) {
+    if (signal.aborted || isAbortError(error)) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
   }
 
-  const responseBody = await response.text();
+  let responseBody: string;
+  try {
+    responseBody = await response.text();
+  } catch (error) {
+    if (signal.aborted || isAbortError(error)) {
+      throw timeoutError(options, error);
+    }
+    throw connectionError(options, error);
+  }
 
   logHttpDebug([
     `< HTTP/${response.status}`,
@@ -466,7 +480,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
-    if (isAbortError(error)) {
+    if (abortController.signal.aborted || isAbortError(error)) {
       throw timeoutError(options, error);
     }
     throw connectionError(options, error);
@@ -482,10 +496,23 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     timeout = setTimeout(() => {
       abortController.abort();
     }, readTimeoutMs);
-    return streamWithTimeoutCleanup(response.body, clearActiveTimeout);
+    return streamWithTimeoutCleanup(
+      response.body,
+      clearActiveTimeout,
+      abortController.signal,
+      options,
+    );
   }
 
-  const responseBody = await response.text();
+  let responseBody: string;
+  try {
+    responseBody = await response.text();
+  } catch (error) {
+    if (abortController.signal.aborted || isAbortError(error)) {
+      throw timeoutError(options, error);
+    }
+    throw connectionError(options, error);
+  }
   throwHttpError(
     response.status,
     responseBody,

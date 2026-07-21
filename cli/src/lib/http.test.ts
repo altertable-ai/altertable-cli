@@ -458,8 +458,11 @@ describe("httpSendStream live timeouts", () => {
         await reader.read();
         expect.unreachable("stream read should have timed out");
       } catch (error) {
-        expect(error).toBeInstanceOf(DOMException);
-        expect((error as DOMException).message).toBe("stream timed out");
+        expect(error).toBeInstanceOf(TimeoutError);
+        expect((error as TimeoutError).exitCode).toBe(9);
+        expect((error as TimeoutError).message).toBe(
+          "Request timed out: POST https://example.com/query",
+        );
       }
       expect(abortObserved).toBe(true);
     } finally {
