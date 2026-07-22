@@ -41,6 +41,134 @@ export function redactSensitiveJsonValue(value: unknown): unknown {
   return value;
 }
 
+class SourcePreservingJsonRedactor {
+  private position = 0;
+
+  constructor(private readonly source: string) {}
+
+  redact(): string {
+    const leadingWhitespace = this.takeWhitespace();
+    const value = this.redactValue(false);
+    return leadingWhitespace + value + this.takeWhitespace();
+  }
+
+  private takeWhitespace(): string {
+    const start = this.position;
+    while (/\s/.test(this.source[this.position] ?? "")) this.position += 1;
+    return this.source.slice(start, this.position);
+  }
+
+  private redactValue(shouldRedact: boolean): string {
+    if (shouldRedact) {
+      this.position = this.findValueEnd(this.position);
+      return '"[REDACTED]"';
+    }
+    if (this.source[this.position] === "{") return this.redactObject();
+    if (this.source[this.position] === "[") return this.redactArray();
+
+    const end = this.findValueEnd(this.position);
+    const value = this.source.slice(this.position, end);
+    this.position = end;
+    return value;
+  }
+
+  private redactObject(): string {
+    let output = "{";
+    this.position += 1;
+    output += this.takeWhitespace();
+
+    while (this.source[this.position] !== "}") {
+      const keyStart = this.position;
+      const keyEnd = this.findStringEnd(keyStart);
+      const rawKey = this.source.slice(keyStart, keyEnd);
+      const key = JSON.parse(rawKey) as string;
+
+      output += rawKey;
+      this.position = keyEnd;
+      output += this.takeWhitespace();
+      output += this.source[this.position] ?? "";
+      this.position += 1;
+      output += this.takeWhitespace();
+      output += this.redactValue(isSensitiveJsonKey(key));
+      output += this.takeWhitespace();
+
+      if (this.source[this.position] === ",") {
+        output += ",";
+        this.position += 1;
+        output += this.takeWhitespace();
+      }
+    }
+
+    this.position += 1;
+    return `${output}}`;
+  }
+
+  private redactArray(): string {
+    let output = "[";
+    this.position += 1;
+    output += this.takeWhitespace();
+
+    while (this.source[this.position] !== "]") {
+      output += this.redactValue(false);
+      output += this.takeWhitespace();
+      if (this.source[this.position] === ",") {
+        output += ",";
+        this.position += 1;
+        output += this.takeWhitespace();
+      }
+    }
+
+    this.position += 1;
+    return `${output}]`;
+  }
+
+  private findStringEnd(start: number): number {
+    let position = start + 1;
+    while (position < this.source.length) {
+      if (this.source[position] === "\\") {
+        position += 2;
+        continue;
+      }
+      if (this.source[position] === '"') return position + 1;
+      position += 1;
+    }
+    return this.source.length;
+  }
+
+  private findValueEnd(start: number): number {
+    const firstCharacter = this.source[start];
+    if (firstCharacter === '"') return this.findStringEnd(start);
+    if (firstCharacter !== "{" && firstCharacter !== "[") {
+      let position = start;
+      while (position < this.source.length && !/[\s,}\]]/.test(this.source[position] ?? "")) {
+        position += 1;
+      }
+      return position;
+    }
+
+    const closingCharacters = [firstCharacter === "{" ? "}" : "]"];
+    let position = start + 1;
+    while (position < this.source.length && closingCharacters.length > 0) {
+      const character = this.source[position];
+      if (character === '"') {
+        position = this.findStringEnd(position);
+        continue;
+      }
+      if (character === "{") closingCharacters.push("}");
+      if (character === "[") closingCharacters.push("]");
+      if (character === closingCharacters.at(-1)) closingCharacters.pop();
+      position += 1;
+    }
+    return position;
+  }
+}
+
+/** Redact sensitive object fields while preserving all non-sensitive JSON source lexemes. */
+export function redactSensitiveJsonText(source: string): string {
+  JSON.parse(source);
+  return new SourcePreservingJsonRedactor(source).redact();
+}
+
 export function truncateBodySnippet(body: string, maxLength = BODY_MAX_LENGTH): string {
   if (body.length <= maxLength) {
     return body;

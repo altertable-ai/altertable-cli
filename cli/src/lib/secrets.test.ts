@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createFakeKeychain } from "@/test-utils/keychain.ts";
+import { getProfileId } from "@/lib/profile-store.ts";
 import { secretExists, secretGet, secretSet } from "@/lib/secrets.ts";
 
 let testHome = "";
@@ -56,8 +57,8 @@ describe("secretSet", () => {
 describe("secretDelete", () => {
   test("fails closed when Keychain deletion fails", () => {
     const keychain = createFakeKeychain();
-    const account = "profile/default/api-key";
     keychain.store.secretSet("api-key", "atm_test", "default");
+    const account = `profile/${getProfileId("default")}/api-key`;
     keychain.failingDeletes.add(account);
 
     expect(() => keychain.store.secretDelete("api-key", "default")).toThrow(

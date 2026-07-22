@@ -13,7 +13,7 @@ import {
   type QueryDataType,
 } from "@/lib/query-column-types.ts";
 import { pluralizeLabel } from "@/lib/pluralize.ts";
-import { redactPasswordFieldInText } from "@/lib/redact.ts";
+import { redactPasswordFieldInText, redactSensitiveJsonText } from "@/lib/redact.ts";
 import { formatRelativeTimestamp, formatTimestampWithRelative } from "@/lib/relative-time.ts";
 import {
   getTerminalWidth,
@@ -98,8 +98,7 @@ function parseJsonStringValue(value: string): string | null {
     return null;
   }
   try {
-    JSON.parse(trimmed);
-    return trimmed;
+    return redactSensitiveJsonText(trimmed);
   } catch {
     return null;
   }
@@ -192,14 +191,14 @@ function formatStringQueryCell(
   options: QueryCellOptions,
   colorize: boolean,
 ): string {
-  const sanitized = redactPasswordFieldInText(value);
+  const jsonText = parseJsonStringValue(value);
+  const sanitized = jsonText ?? redactPasswordFieldInText(value);
   if (sanitized.length === 0) {
     return colorize ? renderDisplayText([span('""', "subtle")]) : '""';
   }
 
   const columnTypeMap = options.columnTypeMap ?? new Map();
   const dataType = resolveCellDataType(sanitized, options.columnName, columnTypeMap);
-  const jsonText = parseJsonStringValue(sanitized);
 
   if (dataType === "timestamp" && isTimestampValue(sanitized)) {
     return formatTimestampQueryCell(sanitized, options, colorize);

@@ -130,6 +130,19 @@ describe("formatQueryCell", () => {
     expect(formatQueryCell("{}", { maxWidth: 10 })).toBe("{}");
   });
 
+  test("redacts sensitive keys inside JSON string cells", () => {
+    const output = formatQueryCell(
+      '{"password":"secret","nested":{"access_token":"token-value"},"id":9007199254740993,"name":"safe"}',
+      {},
+    );
+
+    expect(output).toBe(
+      '{"password":"[REDACTED]","nested":{"access_token":"[REDACTED]"},"id":9007199254740993,"name":"safe"}',
+    );
+    expect(output).not.toContain("secret");
+    expect(output).not.toContain("token-value");
+  });
+
   test("appends relative time to timestamps while keeping absolute form", () => {
     const timestamp = "2026-06-21T06:35:24.409Z";
     const nowMs = Date.parse("2026-06-27T12:00:00.000Z");

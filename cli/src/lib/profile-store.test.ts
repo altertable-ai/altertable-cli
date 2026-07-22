@@ -8,6 +8,7 @@ import {
   ensureProfileExists,
   ensureProfilesLayout,
   getActiveProfileName,
+  getProfileId,
   profileConfigFile,
   profileExists,
   resolveWorkingProfile,
@@ -33,7 +34,8 @@ describe("profile store", () => {
   test("creates the default profile layout and active selection", () => {
     ensureProfilesLayout();
 
-    expect(existsSync(profileConfigFile(DEFAULT_PROFILE_NAME))).toBe(false);
+    expect(existsSync(profileConfigFile(DEFAULT_PROFILE_NAME))).toBe(true);
+    expect(getProfileId(DEFAULT_PROFILE_NAME)).toMatch(/^[0-9a-f-]{36}$/);
     expect(existsSync(join(testHome, "profiles", DEFAULT_PROFILE_NAME))).toBe(true);
     expect(kvGet(join(testHome, "config"), "active_profile")).toBe(DEFAULT_PROFILE_NAME);
   });
