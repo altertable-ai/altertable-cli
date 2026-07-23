@@ -18,8 +18,8 @@ bun run lint:fix               # oxlint --fix
 bun run format                 # oxfmt
 bun run format:check           # CI formatting check
 bun run knip                   # required dead-code/unused-export check
-bun run generate               # regenerate OpenAPI types, operation index, and COMMANDS.md
-bun run generate:commands      # regenerate only COMMANDS.md after command changes
+bun run generate               # regenerate OpenAPI types, operation index, and command references
+bun run generate:commands      # regenerate COMMANDS.md and cli-reference.json after command changes
 bun run generate:check         # non-mutating generated-artifact drift check
 bun run spec:refresh           # fetch hosted OpenAPI spec (see specs/rest/SPEC.md) + generate
 bun run build                  # bundle to cli/dist/cli.js

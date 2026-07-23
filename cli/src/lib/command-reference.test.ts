@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { buildMainCommand } from "@/cli.ts";
 import { resolveCommandDescriptor, validateCommandDescriptor } from "@/lib/command-descriptor.ts";
 import { renderCommandReference } from "@/lib/command-reference.ts";
+import { renderCommandReferenceJson } from "@/lib/command-reference-json.ts";
+import { VERSION } from "@/version.ts";
 
 describe("command reference", () => {
   test("renders the validated descriptor into canonical command documentation", async () => {
@@ -26,5 +28,35 @@ describe("command reference", () => {
     );
     expect(reference).not.toContain("altertable profile rename");
     expect(readFileSync(join(import.meta.dir, "../../../COMMANDS.md"), "utf8")).toBe(reference);
+  });
+
+  test("renders a versioned JSON contract for documentation consumers", async () => {
+    const descriptor = await resolveCommandDescriptor(buildMainCommand());
+    validateCommandDescriptor(descriptor);
+
+    const reference = renderCommandReferenceJson(descriptor, VERSION);
+    const parsed = JSON.parse(reference);
+    const upload = parsed.groups
+      .find((group: { id: string }) => group.id === "ingest")
+      .commands.find((command: { id: string }) => command.id === "altertable-upload");
+
+    expect(parsed).toMatchObject({
+      schemaVersion: 1,
+      cliVersion: VERSION,
+      globalOptions: expect.arrayContaining([
+        expect.objectContaining({ name: "help", aliases: ["h"], scope: "global" }),
+      ]),
+    });
+    expect(upload).toMatchObject({
+      command: "altertable upload",
+      usage: ["altertable upload [options] <FILE>"],
+      aliases: [],
+      arguments: [expect.objectContaining({ name: "file", required: true })],
+      subcommands: [],
+    });
+    expect(reference).not.toContain('"rename"');
+    expect(readFileSync(join(import.meta.dir, "../../../cli-reference.json"), "utf8")).toBe(
+      reference,
+    );
   });
 });
