@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildMainCommand } from "@/cli.ts";
 import { resolveCommandDescriptor, validateCommandDescriptor } from "@/lib/command-descriptor.ts";
+import {
+  ALTERTABLE_COMMAND_GROUPS,
+  COMMAND_ARGUMENT_TYPES,
+  COMMAND_FLAG_SCOPES,
+  POSITIONAL_COMPLETION_KINDS,
+} from "@/lib/command.ts";
 import { VERSION } from "@/version.ts";
 import {
   buildCommandReference,
@@ -15,6 +21,36 @@ async function resolveReference() {
   validateCommandDescriptor(descriptor);
   return buildCommandReference(descriptor, VERSION);
 }
+
+type ReferenceSchema = {
+  additionalProperties: boolean;
+  required: string[];
+  properties: {
+    schemaVersion: { const: number };
+  };
+  $defs: {
+    argument: {
+      additionalProperties: boolean;
+      required: string[];
+      properties: {
+        type: { enum: string[] };
+        scope: { enum: string[] };
+        positionalCompletion: { enum: string[] };
+      };
+    };
+    command: {
+      additionalProperties: boolean;
+      required: string[];
+    };
+    group: {
+      additionalProperties: boolean;
+      required: string[];
+      properties: {
+        id: { enum: string[] };
+      };
+    };
+  };
+};
 
 describe("command reference", () => {
   test("renders the canonical model into command documentation", async () => {
@@ -62,5 +98,31 @@ describe("command reference", () => {
     expect(reference).not.toContain('"requiredExplicitly"');
     expect(reference).not.toContain('"rename"');
     expect(readFileSync(join(import.meta.dir, "../../cli-reference.json"), "utf8")).toBe(reference);
+  });
+
+  test("keeps the published schema aligned with the CLI command contract", () => {
+    const canonicalSchema = readFileSync(
+      join(import.meta.dir, "../schemas/cli-reference.schema.json"),
+      "utf8",
+    );
+    const schema = JSON.parse(canonicalSchema) as ReferenceSchema;
+
+    expect(readFileSync(join(import.meta.dir, "../../cli-reference.schema.json"), "utf8")).toBe(
+      canonicalSchema,
+    );
+    expect(schema.properties.schemaVersion.const).toBe(1);
+    expect(schema.$defs.argument.properties.type.enum).toEqual([...COMMAND_ARGUMENT_TYPES]);
+    expect(schema.$defs.argument.properties.scope.enum).toEqual([...COMMAND_FLAG_SCOPES]);
+    expect(schema.$defs.argument.properties.positionalCompletion.enum).toEqual([
+      ...POSITIONAL_COMPLETION_KINDS,
+    ]);
+    expect(schema.$defs.group.properties.id.enum).toEqual(
+      ALTERTABLE_COMMAND_GROUPS.map(({ id }) => id),
+    );
+    expect(schema.additionalProperties).toBeFalse();
+    expect(schema.$defs.argument.additionalProperties).toBeFalse();
+    expect(schema.$defs.command.additionalProperties).toBeFalse();
+    expect(schema.$defs.group.additionalProperties).toBeFalse();
+    expect(schema.required).toEqual(["schemaVersion", "cliVersion", "globalOptions", "groups"]);
   });
 });
