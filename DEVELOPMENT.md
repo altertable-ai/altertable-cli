@@ -19,12 +19,18 @@ bun run format                 # oxfmt
 bun run format:check           # CI formatting check
 bun run knip                   # required dead-code/unused-export check
 bun run generate               # regenerate OpenAPI types, operation index, and command references
-bun run generate:commands      # regenerate COMMANDS.md and cli-reference.json after command changes
+bun run generate:commands      # regenerate Markdown, JSON, and JSON Schema command references
 bun run generate:check         # non-mutating generated-artifact drift check
 bun run spec:refresh           # fetch hosted OpenAPI spec (see specs/rest/SPEC.md) + generate
 bun run build                  # bundle to cli/dist/cli.js
 bun run pack:check             # build + dry-run pack (verify publish contents)
 ```
+
+The CLI reference wire contract is owned by
+[`cli/schemas/cli-reference.schema.json`](cli/schemas/cli-reference.schema.json). The generated
+root copy is published with `cli-reference.json` in every GitHub release. Additive optional fields
+may retain the current schema version; removing or renaming fields, changing their meaning, or
+making fields newly required must bump both `schemaVersion` and the schema `$id`.
 
 API specifications live in the `specs/` submodule ([altertable-client-specs](https://github.com/altertable-ai/altertable-client-specs)). Pin updates deliberately:
 

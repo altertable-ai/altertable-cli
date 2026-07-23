@@ -31,7 +31,8 @@ Query and manage your Altertable data platform from the terminal.
 - [Development](#development)
 
 For the complete generated command contract, see [COMMANDS.md](COMMANDS.md). The documentation
-site consumes the companion [cli-reference.json](cli-reference.json) artifact.
+site consumes [cli-reference.json](cli-reference.json), whose public wire format is defined by
+[cli-reference.schema.json](cli-reference.schema.json).
 
 ---
 
@@ -86,6 +87,8 @@ Download the platform binary from [GitHub Releases](https://github.com/altertabl
 | `altertable-linux-x64`    | Linux x86-64                         |
 | `altertable-linux-arm64`  | Linux ARM64                          |
 | `altertable-cli.js`       | Bun bundle (`bun altertable-cli.js`) |
+| `cli-reference.json`      | Versioned CLI documentation data     |
+| `cli-reference.schema.json` | JSON Schema for the CLI reference  |
 | `checksums.txt`           | SHA-256 checksums for all assets     |
 | `release-manifest.json`   | Versioned artifact and build metadata |
 
