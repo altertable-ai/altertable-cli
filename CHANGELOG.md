@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/altertable-ai/altertable-cli/compare/v1.3.0...v1.4.0) (2026-07-23)
+
+
+### Features
+
+* add `doctor` command for CLI diagnostics ([#79](https://github.com/altertable-ai/altertable-cli/issues/79)) ([57b1440](https://github.com/altertable-ai/altertable-cli/commit/57b14404f0e137541a43ca18886f7638aea8b835))
+* **cli:** simplify the command API surface area ([#75](https://github.com/altertable-ai/altertable-cli/issues/75)) ([f3a1d4d](https://github.com/altertable-ai/altertable-cli/commit/f3a1d4d53452febcb9cf3bcf0d5d01ef9790a2ed))
+
+
+### Bug Fixes
+
+* **ci:** enable shell completion verification ([#77](https://github.com/altertable-ai/altertable-cli/issues/77)) ([db7c52f](https://github.com/altertable-ai/altertable-cli/commit/db7c52ff851eb8443a78949d994987938472e813))
+* harden transport, JSON fidelity, and profile recovery ([#80](https://github.com/altertable-ai/altertable-cli/issues/80)) ([facdf90](https://github.com/altertable-ai/altertable-cli/commit/facdf901b850dea99e7684ce6f6af0c47d61dde7))
+
 ## [1.3.0](https://github.com/altertable-ai/altertable-cli/compare/v1.2.0...v1.3.0) (2026-07-16)
 
 
