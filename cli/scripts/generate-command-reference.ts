@@ -1,9 +1,12 @@
 import { join } from "node:path";
 import { buildMainCommand } from "@/cli.ts";
 import { resolveCommandDescriptor, validateCommandDescriptor } from "@/lib/command-descriptor.ts";
-import { renderCommandReference } from "@/lib/command-reference.ts";
-import { renderCommandReferenceJson } from "@/lib/command-reference-json.ts";
 import { VERSION } from "@/version.ts";
+import {
+  buildCommandReference,
+  renderCommandReferenceJson,
+  renderCommandReferenceMarkdown,
+} from "@/../scripts/command-reference.ts";
 import {
   parseGeneratedArtifactMode,
   updateOrCheckGeneratedArtifact,
@@ -11,15 +14,16 @@ import {
 
 const descriptor = await resolveCommandDescriptor(buildMainCommand());
 validateCommandDescriptor(descriptor);
+const reference = buildCommandReference(descriptor, VERSION);
 const mode = parseGeneratedArtifactMode(process.argv.slice(2));
 const artifacts = [
   {
     outputPath: join(import.meta.dir, "../../COMMANDS.md"),
-    content: renderCommandReference(descriptor),
+    content: renderCommandReferenceMarkdown(reference),
   },
   {
     outputPath: join(import.meta.dir, "../../cli-reference.json"),
-    content: renderCommandReferenceJson(descriptor, VERSION),
+    content: renderCommandReferenceJson(reference),
   },
 ];
 

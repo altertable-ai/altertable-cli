@@ -23,7 +23,12 @@ export type CommandArgument = {
 };
 
 export type CommandArguments = Record<string, CommandArgument>;
-export type AltertableCommandGroup = "platform" | "ingest" | "query";
+export const ALTERTABLE_COMMAND_GROUPS = [
+  { id: "platform", title: "Platform" },
+  { id: "ingest", title: "Ingest" },
+  { id: "query", title: "Query" },
+] as const;
+export type AltertableCommandGroup = (typeof ALTERTABLE_COMMAND_GROUPS)[number]["id"];
 
 export type CommandMetadata = {
   name?: string;
