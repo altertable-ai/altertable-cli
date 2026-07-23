@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet } from "@/lib/config-files.ts";
@@ -5,6 +6,8 @@ import { ConfigurationError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
+const PROFILE_ID_KEY = "profile_id";
+const PROFILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 // Reserved pseudo-profile: the identity in effect when credentials come from
 // environment variables rather than a stored profile. Never a real directory.
@@ -107,9 +110,30 @@ export function profileExists(name: string): boolean {
   return existsSync(profileDir(name));
 }
 
+export function getProfileId(name: string): string | undefined {
+  if (isFromEnvProfile(name) || !profileExists(name)) {
+    return undefined;
+  }
+  const id = kvGet(profileConfigFile(name), PROFILE_ID_KEY);
+  return PROFILE_ID_PATTERN.test(id) ? id : undefined;
+}
+
+export function ensureProfileId(name: string): string {
+  assertSafeProfileName(name);
+  mkdirSync(profileDir(name), { recursive: true });
+  const existingId = getProfileId(name);
+  if (existingId) {
+    return existingId;
+  }
+  const id = randomUUID();
+  kvSet(profileConfigFile(name), PROFILE_ID_KEY, id);
+  return id;
+}
+
 export function ensureProfilesLayout(): void {
   if (!existsSync(profilesDir())) {
     mkdirSync(profileDir(DEFAULT_PROFILE_NAME), { recursive: true });
+    ensureProfileId(DEFAULT_PROFILE_NAME);
   }
   if (kvGet(configFile(), "active_profile").length === 0) {
     kvSet(configFile(), "active_profile", DEFAULT_PROFILE_NAME);
@@ -202,6 +226,7 @@ export function ensureProfileExists(name: string): void {
   if (!profileExists(name)) {
     mkdirSync(profileDir(name), { recursive: true });
   }
+  ensureProfileId(name);
 }
 
 export function configGet(key: string, profileName: string): string {

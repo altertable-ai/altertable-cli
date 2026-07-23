@@ -458,10 +458,89 @@ describe("httpSendStream live timeouts", () => {
         await reader.read();
         expect.unreachable("stream read should have timed out");
       } catch (error) {
-        expect(error).toBeInstanceOf(DOMException);
-        expect((error as DOMException).message).toBe("stream timed out");
+        expect(error).toBeInstanceOf(TimeoutError);
+        expect((error as TimeoutError).exitCode).toBe(9);
+        expect((error as TimeoutError).message).toBe(
+          "Request timed out: POST https://example.com/query",
+        );
       }
       expect(abortObserved).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("positive readTimeoutMs also aborts stalled error response bodies", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = Object.assign(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const signal = init?.signal;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              signal?.addEventListener("abort", () => {
+                controller.error(new DOMException("error body timed out", "AbortError"));
+              });
+            },
+          }),
+          { status: 500 },
+        );
+      },
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      expect(
+        httpSendStream({
+          method: "POST",
+          url: "https://example.com/query",
+          authHeader: "Authorization: Bearer test",
+          body: "{}",
+          connectTimeoutMs: 50,
+          readTimeoutMs: 5,
+        }),
+      ).rejects.toBeInstanceOf(TimeoutError);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("reports peer-aborted streams as network errors instead of timeouts", async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = Object.assign(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(new DOMException("peer aborted", "AbortError"));
+            },
+          }),
+          { status: 200 },
+        ),
+      { preconnect: originalFetch.preconnect },
+    );
+
+    try {
+      const stream = await httpSendStream({
+        method: "POST",
+        url: "https://example.com/query",
+        authHeader: "Authorization: Bearer test",
+        body: "{}",
+        connectTimeoutMs: 50,
+        readTimeoutMs: 50,
+      });
+
+      try {
+        await stream.getReader().read();
+        expect.unreachable("stream read should have failed");
+      } catch (error) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect(error).not.toBeInstanceOf(TimeoutError);
+      }
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -5,7 +5,12 @@ import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
 import { CliError } from "@/lib/errors.ts";
 import { logWarn } from "@/lib/log.ts";
 import { readEnv } from "@/lib/env.ts";
-import { assertSafeProfileName, isFromEnvProfile } from "@/lib/profile-store.ts";
+import {
+  assertSafeProfileName,
+  ensureProfileId,
+  getProfileId,
+  isFromEnvProfile,
+} from "@/lib/profile-store.ts";
 
 type SecretBackend = "macos" | "file";
 
@@ -36,7 +41,7 @@ export type SecretStore = {
   secretGet(key: string, profileName: string): string;
   secretExists(key: string, profileName: string): boolean;
   secretDelete(key: string, profileName: string): void;
-  moveProfileSecrets(sourceProfile: string, targetProfile: string, keys: readonly string[]): void;
+  migrateProfileSecrets(profileName: string, keys: readonly string[]): void;
   secretStoreDisplay(): string;
 };
 
@@ -75,9 +80,13 @@ function requireSafeCredentialsFile(): void {
   }
 }
 
-function resolveSecretKey(key: string, profileName: string): string {
+function legacySecretKey(key: string, profileName: string): string {
   assertSafeProfileName(profileName);
   return `profile/${profileName}/${key}`;
+}
+
+function stableSecretKey(key: string, profileId: string): string {
+  return `profile/${profileId}/${key}`;
 }
 
 export function createSecretStore(
@@ -122,6 +131,53 @@ export function createSecretStore(
     }
   }
 
+  function readStoredSecret(storageAccount: string): string {
+    if (secretBackend() === "macos") {
+      const result = secretProcess.spawnSync(
+        "security",
+        ["find-generic-password", "-s", "altertable", "-a", storageAccount, "-w"],
+        { encoding: "utf8" },
+      );
+      if (keychainLookupFailed(result)) {
+        throw new CliError(`Failed to read secret from macOS keychain (${storageAccount}).`);
+      }
+      const keychainValue = result.status === 0 ? String(result.stdout).trim() : "";
+      if (keychainValue !== "") return keychainValue;
+    }
+    requireSafeCredentialsFile();
+    return kvGet(credentialsFile(), storageAccount);
+  }
+
+  function storedSecretExists(storageAccount: string): boolean {
+    if (secretBackend() === "macos") {
+      const result = secretProcess.spawnSync(
+        "security",
+        ["find-generic-password", "-s", "altertable", "-a", storageAccount],
+        { stdio: "ignore" },
+      );
+      if (result.status === 0) return true;
+      if (keychainLookupFailed(result)) {
+        throw new CliError(`Failed to inspect secret in macOS keychain (${storageAccount}).`);
+      }
+    }
+    requireSafeCredentialsFile();
+    return kvGet(credentialsFile(), storageAccount) !== "";
+  }
+
+  function deleteStoredSecret(storageAccount: string): void {
+    if (secretBackend() === "macos") {
+      const result = secretProcess.spawnSync(
+        "security",
+        ["delete-generic-password", "-s", "altertable", "-a", storageAccount],
+        { stdio: "ignore" },
+      );
+      if (result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS) {
+        throw new CliError(`Failed to delete secret from macOS keychain (${storageAccount}).`);
+      }
+    }
+    kvUnset(credentialsFile(), storageAccount);
+  }
+
   function secretSet(
     account: string,
     value: string,
@@ -132,7 +188,7 @@ export function createSecretStore(
     // commands are refused in env mode; in-process caches are deliberately dropped.
     if (isFromEnvProfile(profileName)) return;
 
-    const storageAccount = resolveSecretKey(account, profileName);
+    const storageAccount = stableSecretKey(account, ensureProfileId(profileName));
     const backend = secretBackend();
     if (backend === "macos" && !options?.fromArgv) {
       secretSetMacos(storageAccount, value);
@@ -148,100 +204,55 @@ export function createSecretStore(
   function secretGet(key: string, profileName: string): string {
     if (isFromEnvProfile(profileName)) return "";
 
-    const secretKey = resolveSecretKey(key, profileName);
-    const backend = secretBackend();
-    if (backend === "macos") {
-      const result = secretProcess.spawnSync(
-        "security",
-        ["find-generic-password", "-s", "altertable", "-a", secretKey, "-w"],
-        { encoding: "utf8" },
-      );
-      if (keychainLookupFailed(result)) {
-        throw new CliError(`Failed to read secret from macOS keychain (${secretKey}).`);
-      }
-      const keychainValue = result.status === 0 ? String(result.stdout).trim() : "";
-      if (keychainValue !== "") return keychainValue;
-      requireSafeCredentialsFile();
-      return kvGet(credentialsFile(), secretKey);
+    const profileId = getProfileId(profileName);
+    if (profileId) {
+      const value = readStoredSecret(stableSecretKey(key, profileId));
+      if (value !== "") return value;
     }
-
-    requireSafeCredentialsFile();
-    return kvGet(credentialsFile(), secretKey);
+    return readStoredSecret(legacySecretKey(key, profileName));
   }
 
   function secretExists(key: string, profileName: string): boolean {
     if (isFromEnvProfile(profileName)) return false;
 
-    const secretKey = resolveSecretKey(key, profileName);
-    const backend = secretBackend();
-    if (backend === "macos") {
-      const result = secretProcess.spawnSync(
-        "security",
-        ["find-generic-password", "-s", "altertable", "-a", secretKey],
-        { stdio: "ignore" },
-      );
-      if (result.status === 0) return true;
-      if (keychainLookupFailed(result)) {
-        throw new CliError(`Failed to inspect secret in macOS keychain (${secretKey}).`);
-      }
-      requireSafeCredentialsFile();
-      return kvGet(credentialsFile(), secretKey) !== "";
+    const profileId = getProfileId(profileName);
+    if (profileId && storedSecretExists(stableSecretKey(key, profileId))) {
+      return true;
     }
-
-    requireSafeCredentialsFile();
-    return kvGet(credentialsFile(), secretKey) !== "";
+    return storedSecretExists(legacySecretKey(key, profileName));
   }
 
   function secretDelete(key: string, profileName: string): void {
     if (isFromEnvProfile(profileName)) return;
 
-    const secretKey = resolveSecretKey(key, profileName);
-    if (secretBackend() === "macos") {
-      const result = secretProcess.spawnSync(
-        "security",
-        ["delete-generic-password", "-s", "altertable", "-a", secretKey],
-        { stdio: "ignore" },
-      );
-      if (result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS) {
-        throw new CliError(`Failed to delete secret from macOS keychain (${secretKey}).`);
-      }
-      kvUnset(credentialsFile(), secretKey);
-      return;
+    const profileId = getProfileId(profileName);
+    if (profileId) {
+      deleteStoredSecret(stableSecretKey(key, profileId));
     }
-
-    kvUnset(credentialsFile(), secretKey);
+    deleteStoredSecret(legacySecretKey(key, profileName));
   }
 
-  function moveProfileSecrets(
-    sourceProfile: string,
-    targetProfile: string,
-    keys: readonly string[],
-  ): void {
-    const prepared: Array<{ key: string; targetValue: string }> = [];
+  function migrateProfileSecrets(profileName: string, keys: readonly string[]): void {
+    const profileId = ensureProfileId(profileName);
+    const legacySecrets = keys.flatMap((key) => {
+      const value = readStoredSecret(legacySecretKey(key, profileName));
+      return value === "" ? [] : [{ key, value }];
+    });
 
-    try {
-      for (const key of keys) {
-        const sourceValue = secretGet(key, sourceProfile);
-        if (sourceValue.length === 0) continue;
-        prepared.push({ key, targetValue: secretGet(key, targetProfile) });
-        secretSet(key, sourceValue, targetProfile);
-      }
-    } catch (error) {
-      for (const entry of prepared.toReversed()) {
-        try {
-          if (entry.targetValue.length > 0) {
-            secretSet(entry.key, entry.targetValue, targetProfile);
-          } else {
-            secretDelete(entry.key, targetProfile);
-          }
-        } catch {
-          // Best-effort rollback; preserve the original failure for the caller.
+    for (const { key, value } of legacySecrets) {
+      const storageAccount = stableSecretKey(key, profileId);
+      if (!storedSecretExists(storageAccount)) {
+        if (secretBackend() === "macos") {
+          secretSetMacos(storageAccount, value);
+        } else {
+          kvSet(credentialsFile(), storageAccount, value);
+          chmodSync(credentialsFile(), 0o600);
         }
       }
-      throw error;
     }
-
-    for (const { key } of prepared) secretDelete(key, sourceProfile);
+    for (const { key } of legacySecrets) {
+      deleteStoredSecret(legacySecretKey(key, profileName));
+    }
   }
 
   function secretStoreDisplay(): string {
@@ -253,7 +264,7 @@ export function createSecretStore(
     secretGet,
     secretExists,
     secretDelete,
-    moveProfileSecrets,
+    migrateProfileSecrets,
     secretStoreDisplay,
   };
 }
@@ -281,12 +292,8 @@ export function secretDelete(key: string, profileName: string): void {
   systemSecretStore.secretDelete(key, profileName);
 }
 
-export function moveProfileSecrets(
-  sourceProfile: string,
-  targetProfile: string,
-  keys: readonly string[],
-): void {
-  systemSecretStore.moveProfileSecrets(sourceProfile, targetProfile, keys);
+export function migrateProfileSecrets(profileName: string, keys: readonly string[]): void {
+  systemSecretStore.migrateProfileSecrets(profileName, keys);
 }
 
 export function secretStoreDisplay(): string {

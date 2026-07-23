@@ -1,6 +1,6 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
-import { CliError } from "@/lib/errors.ts";
+import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
 import {
   ensureProfileExists,
@@ -228,14 +228,25 @@ export function configureRunClear(sink: OutputSink = getOutputSink()): void {
   for (const filePath of [configFile(), credentialsFile()]) {
     try {
       unlinkSync(filePath);
-    } catch {
-      // already removed
+    } catch (error) {
+      if (
+        typeof error !== "object" ||
+        error === null ||
+        !("code" in error) ||
+        (error as { code?: unknown }).code !== "ENOENT"
+      ) {
+        throw new ConfigurationError(`Unable to remove configuration file: ${filePath}`, {
+          cause: error,
+        });
+      }
     }
   }
   try {
     rmSync(profilesDir(), { recursive: true, force: true });
-  } catch {
-    // already removed
+  } catch (error) {
+    throw new ConfigurationError(`Unable to remove profiles directory: ${profilesDir()}`, {
+      cause: error,
+    });
   }
   getCliRuntime().session = undefined;
   sink.writeMetadata([

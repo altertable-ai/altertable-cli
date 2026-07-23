@@ -1,4 +1,8 @@
-import { resolveApiRequestPayload, type ParsedApiField } from "@/commands/api/lib/body.ts";
+import {
+  formatApiFieldValue,
+  resolveApiRequestPayload,
+  type ParsedApiField,
+} from "@/commands/api/lib/body.ts";
 import type { CommandOutputMode } from "@/lib/command-output.ts";
 import { CliError } from "@/lib/errors.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
@@ -106,7 +110,7 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
   const separator = endpoint.includes("?") ? "&" : "?";
   const searchParams = new URLSearchParams();
   for (const field of fields) {
-    searchParams.append(field.key, field.value === null ? "null" : String(field.value));
+    searchParams.append(field.key, formatApiFieldValue(field.value));
   }
   return `${endpoint}${separator}${searchParams.toString()}`;
 }

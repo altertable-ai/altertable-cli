@@ -2,13 +2,58 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readEnv } from "@/lib/env.ts";
-
-function trim(value: string): string {
-  return value.trim();
-}
+import { ConfigurationError } from "@/lib/errors.ts";
 
 function tempSiblingPath(filePath: string): string {
   return join(dirname(filePath), `.altertable-kv-${randomBytes(8).toString("hex")}`);
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
+}
+
+function configFileError(action: string, filePath: string, cause: unknown): ConfigurationError {
+  return new ConfigurationError(`Unable to ${action} configuration file: ${filePath}`, { cause });
+}
+
+function configKey(line: string): string {
+  const separatorIndex = line.indexOf("=");
+  return line.slice(0, separatorIndex === -1 ? undefined : separatorIndex).trim();
+}
+
+function readConfigFileIfPresent(filePath: string): string | undefined {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch (error) {
+    if (isFileNotFound(error)) {
+      return undefined;
+    }
+    throw configFileError("read", filePath, error);
+  }
+}
+
+function writeConfigFileAtomically(filePath: string, content: string, action: string): void {
+  const temporaryPath = tempSiblingPath(filePath);
+  let failure: unknown;
+  try {
+    writeFileSync(temporaryPath, content, { mode: 0o600 });
+    renameSync(temporaryPath, filePath);
+  } catch (error) {
+    failure = error;
+  }
+  try {
+    rmSync(temporaryPath, { force: true });
+  } catch (error) {
+    failure ??= error;
+  }
+  if (failure !== undefined) {
+    throw configFileError(action, filePath, failure);
+  }
 }
 
 export function configDir(): string {
@@ -29,97 +74,63 @@ export function credentialsFile(): string {
 }
 
 export function kvGet(filePath: string, key: string): string {
-  try {
-    const content = readFileSync(filePath, "utf8");
-    for (const line of content.split("\n")) {
-      if (line === "" || line.startsWith("#")) {
-        continue;
-      }
-      const eqIndex = line.indexOf("=");
-      if (eqIndex === -1) {
-        continue;
-      }
-      const lineKey = trim(line.slice(0, eqIndex));
-      if (lineKey === key) {
-        return trim(line.slice(eqIndex + 1));
-      }
-    }
-  } catch {
+  const content = readConfigFileIfPresent(filePath);
+  if (content === undefined) {
     return "";
+  }
+  for (const line of content.split("\n")) {
+    if (line === "" || line.startsWith("#")) {
+      continue;
+    }
+    const eqIndex = line.indexOf("=");
+    if (eqIndex === -1) {
+      continue;
+    }
+    const lineKey = line.slice(0, eqIndex).trim();
+    if (lineKey === key) {
+      return line.slice(eqIndex + 1).trim();
+    }
   }
   return "";
 }
 
 export function kvSet(filePath: string, key: string, value: string): void {
-  mkdirSync(dirname(filePath), { recursive: true });
-  const tmpPath = tempSiblingPath(filePath);
-  let found = false;
-  let lines: string[] = [];
-
   try {
-    lines = readFileSync(filePath, "utf8").split("\n");
-  } catch {
-    lines = [];
+    mkdirSync(dirname(filePath), { recursive: true });
+  } catch (error) {
+    throw configFileError("write", filePath, error);
   }
 
-  const output: string[] = [];
-  for (const line of lines) {
-    if (line === "" && output.length === 0 && lines.length === 1) {
-      continue;
-    }
-    const eqIndex = line.indexOf("=");
-    const lineKey = eqIndex === -1 ? trim(line) : trim(line.slice(0, eqIndex));
-    if (lineKey === key) {
-      output.push(`${key}=${value}`);
+  const lines = readConfigFileIfPresent(filePath)?.split("\n") ?? [];
+  let found = false;
+  const output = lines
+    .filter((line) => line !== "" || lines.length > 1)
+    .map((line) => {
+      if (configKey(line) !== key) {
+        return line;
+      }
       found = true;
-    } else {
-      output.push(line);
-    }
-  }
-
+      return `${key}=${value}`;
+    });
   if (!found) {
     output.push(`${key}=${value}`);
   }
 
-  try {
-    writeFileSync(
-      tmpPath,
-      output
-        .filter((line, index, array) => {
-          if (index === array.length - 1 && line === "") {
-            return false;
-          }
-          return true;
-        })
-        .join("\n") + (output.length > 0 ? "\n" : ""),
-      { mode: 0o600 },
-    );
-    renameSync(tmpPath, filePath);
-  } finally {
-    rmSync(tmpPath, { force: true });
+  while (output.at(-1) === "") {
+    output.pop();
   }
+  writeConfigFileAtomically(filePath, `${output.join("\n")}\n`, "write");
 }
 
 export function kvUnset(filePath: string, key: string): void {
-  try {
-    const lines = readFileSync(filePath, "utf8").split("\n");
-    const tmpPath = tempSiblingPath(filePath);
-    const output: string[] = [];
-    for (const line of lines) {
-      const eqIndex = line.indexOf("=");
-      const lineKey = eqIndex === -1 ? trim(line) : trim(line.slice(0, eqIndex));
-      if (lineKey === key) {
-        continue;
-      }
-      output.push(line);
-    }
-    try {
-      writeFileSync(tmpPath, output.join("\n"), { mode: 0o600 });
-      renameSync(tmpPath, filePath);
-    } finally {
-      rmSync(tmpPath, { force: true });
-    }
-  } catch {
-    // file does not exist
+  const content = readConfigFileIfPresent(filePath);
+  if (content === undefined) {
+    return;
   }
+
+  const output = content
+    .split("\n")
+    .filter((line) => configKey(line) !== key)
+    .join("\n");
+  writeConfigFileAtomically(filePath, output, "update");
 }
