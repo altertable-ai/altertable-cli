@@ -4,6 +4,8 @@ export { RELEASE_CHECKSUMS_ASSET, RELEASE_TARGETS } from "@/release-manifest.ts"
 export type { ReleaseTarget } from "@/release-manifest.ts";
 
 export const RELEASE_BUNDLE_ASSET = "altertable-cli.js";
+export const RELEASE_CLI_REFERENCE_ASSET = "cli-reference.json";
+export const RELEASE_CLI_REFERENCE_SCHEMA_ASSET = "cli-reference.schema.json";
 export const RELEASE_METADATA_ASSET = "release-manifest.json";
 
 type ReleaseBunTarget = (typeof RELEASE_TARGETS)[number]["bunTarget"];
