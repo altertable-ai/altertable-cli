@@ -92,6 +92,45 @@ describe("environment schema", () => {
       ConfigurationError,
     );
   });
+
+  test("rejects a lone lakehouse username or password", () => {
+    expect(() => validateEnvironment({ ALTERTABLE_LAKEHOUSE_USERNAME: "u" })).toThrow(
+      "ALTERTABLE_LAKEHOUSE_USERNAME is set but ALTERTABLE_LAKEHOUSE_PASSWORD is not; set both or neither.",
+    );
+    expect(() => validateEnvironment({ ALTERTABLE_LAKEHOUSE_PASSWORD: "p" })).toThrow(
+      "ALTERTABLE_LAKEHOUSE_PASSWORD is set but ALTERTABLE_LAKEHOUSE_USERNAME is not; set both or neither.",
+    );
+  });
+
+  test("rejects endpoint or environment variables without env credentials", () => {
+    expect(() => validateEnvironment({ ALTERTABLE_ENV: "production" })).toThrow(
+      "Incomplete environment configuration: ALTERTABLE_ENV is set without credentials",
+    );
+    expect(() =>
+      validateEnvironment({
+        ALTERTABLE_API_BASE: "https://api.example.com",
+        ALTERTABLE_ENV: "production",
+      }),
+    ).toThrow("ALTERTABLE_ENV, ALTERTABLE_API_BASE are set without credentials");
+    expect(() =>
+      validateEnvironment({ ALTERTABLE_MANAGEMENT_API_BASE: "https://app.example.com" }),
+    ).toThrow(ConfigurationError);
+  });
+
+  test("accepts complete environment configurations", () => {
+    expect(() => validateEnvironment({})).not.toThrow();
+    expect(() =>
+      validateEnvironment({ ALTERTABLE_API_KEY: "atm_x", ALTERTABLE_ENV: "production" }),
+    ).not.toThrow();
+    expect(() => validateEnvironment({ ALTERTABLE_BASIC_AUTH_TOKEN: "token" })).not.toThrow();
+    expect(() =>
+      validateEnvironment({
+        ALTERTABLE_LAKEHOUSE_USERNAME: "u",
+        ALTERTABLE_LAKEHOUSE_PASSWORD: "p",
+        ALTERTABLE_API_BASE: "https://api.example.com",
+      }),
+    ).not.toThrow();
+  });
 });
 
 test("production modules access the environment only through env.ts", async () => {

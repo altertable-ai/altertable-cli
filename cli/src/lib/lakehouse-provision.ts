@@ -9,6 +9,7 @@ import {
 import { configGet, configSet, resolveManagementApiBase } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
+import { isFromEnvProfile } from "@/lib/profile-store.ts";
 import { httpSend } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
@@ -34,6 +35,7 @@ export function hasManagementCredentials(profileName: string): boolean {
  */
 export function canRecoverLakehouseAuth(profileName: string): boolean {
   return (
+    !isFromEnvProfile(profileName) &&
     !hasLakehouseEnvCredentials() &&
     configGet("lakehouse_credential_expiry", profileName) !== "" &&
     hasManagementCredentials(profileName)
@@ -61,6 +63,11 @@ async function sendManagementRequest(
 }
 
 export async function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
+  if (isFromEnvProfile(context.profile)) {
+    throw new ConfigurationError(
+      "Lakehouse credentials are not auto-provisioned while environment configuration is active. Set ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD.",
+    );
+  }
   context.output.writeMetadata([
     renderDisplayText([span("Refreshing lakehouse credentials...", "muted")]),
   ]);

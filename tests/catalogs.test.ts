@@ -28,12 +28,14 @@ describe("altertable catalogs", () => {
     expect(result.stdout).toContain('Created catalog "My Cat"');
   });
 
-  test("create requires an environment", async () => {
+  test("create requires a configured management plane", async () => {
     const result = await workspace.runCommand("altertable catalogs create X", {
       env: { ALTERTABLE_ENV: "" },
     });
     expect(result.exitCode).toBe(10);
-    expect(result.stderr).toContain("No environment set");
+    expect(result.stderr).toContain(
+      "Creating a catalog requires the management API, but the management plane is not configured. Set ALTERTABLE_API_KEY and ALTERTABLE_ENV.",
+    );
   });
 
   test("create rejects flag-shaped and extra input before sending a request", async () => {

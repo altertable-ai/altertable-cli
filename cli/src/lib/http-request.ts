@@ -56,6 +56,7 @@ async function resolveRequestAuthHeader(
     return existing;
   }
   if (request.authRecovery !== false && hasManagementCredentials(context.profile)) {
+    // In env config mode this throws instead of minting a credential.
     return provisionLakehouseCredential(context);
   }
   return getLakehouseAuthHeader(context.profile);

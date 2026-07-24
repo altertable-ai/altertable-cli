@@ -26,7 +26,9 @@ Sign in with your browser (OAuth) and store the session.
 
 **Usage**
 
-`altertable login [options]`
+```bash
+altertable login [options]
+```
 
 **Options**
 
@@ -50,7 +52,9 @@ Remove stored credentials and settings for all profiles.
 
 **Usage**
 
-`altertable logout`
+```bash
+altertable logout
+```
 
 **Examples**
 
@@ -64,7 +68,9 @@ Manage named profiles and stored credentials.
 
 **Usage**
 
-`altertable profile configure|list|show|status|switch|current|env|delete`
+```bash
+altertable profile configure|list|show|status|switch|current|env|delete
+```
 
 **Subcommands**
 
@@ -97,7 +103,9 @@ Create or update a profile's credentials and settings
 
 **Usage**
 
-`altertable profile configure [options] [NAME]`
+```bash
+altertable profile configure [options] [NAME]
+```
 
 **Arguments**
 
@@ -136,7 +144,9 @@ List configured profiles
 
 **Usage**
 
-`altertable profile list`
+```bash
+altertable profile list
+```
 
 #### `altertable profile show`
 
@@ -144,7 +154,9 @@ Show a profile's stored identity, auth, and endpoints
 
 **Usage**
 
-`altertable profile show [NAME]`
+```bash
+altertable profile show [NAME]
+```
 
 **Arguments**
 
@@ -158,7 +170,9 @@ Verify stored credentials and show the profile
 
 **Usage**
 
-`altertable profile status [NAME]`
+```bash
+altertable profile status [NAME]
+```
 
 **Arguments**
 
@@ -172,7 +186,9 @@ Interactively switch the active profile
 
 **Usage**
 
-`altertable profile switch [NAME]`
+```bash
+altertable profile switch [NAME]
+```
 
 **Arguments**
 
@@ -186,7 +202,9 @@ Show the active profile name
 
 **Usage**
 
-`altertable profile current`
+```bash
+altertable profile current
+```
 
 #### `altertable profile env`
 
@@ -194,7 +212,9 @@ Print shell exports for a profile
 
 **Usage**
 
-`altertable profile env [NAME]`
+```bash
+altertable profile env [NAME]
+```
 
 **Arguments**
 
@@ -208,7 +228,9 @@ Delete a profile
 
 **Usage**
 
-`altertable profile delete [options] <NAME>`
+```bash
+altertable profile delete [options] <NAME>
+```
 
 **Arguments**
 
@@ -228,8 +250,10 @@ Manage catalogs (databases and connections) in the current environment.
 
 **Usage**
 
-`altertable catalogs`
-`altertable catalogs create`
+```bash
+altertable catalogs
+altertable catalogs create
+```
 
 **Subcommands**
 
@@ -248,7 +272,9 @@ Create an Altertable catalog.
 
 **Usage**
 
-`altertable catalogs create <NAME>`
+```bash
+altertable catalogs create <NAME>
+```
 
 **Arguments**
 
@@ -268,8 +294,10 @@ Management REST API — HTTP invoker and OpenAPI spec.
 
 **Usage**
 
-`altertable api [options] <ENDPOINT>`
-`altertable api routes|spec`
+```bash
+altertable api [options] <ENDPOINT>
+altertable api routes|spec
+```
 
 **Arguments**
 
@@ -308,7 +336,9 @@ List management API paths and methods from the bundled OpenAPI spec.
 
 **Usage**
 
-`altertable api routes [OPERATION]`
+```bash
+altertable api routes [OPERATION]
+```
 
 **Arguments**
 
@@ -329,7 +359,9 @@ Print the bundled management OpenAPI specification (YAML by default; JSON with -
 
 **Usage**
 
-`altertable api spec`
+```bash
+altertable api spec
+```
 
 **Examples**
 
@@ -344,7 +376,9 @@ Diagnose local configuration and Altertable connectivity.
 
 **Usage**
 
-`altertable doctor [options]`
+```bash
+altertable doctor [options]
+```
 
 **Options**
 
@@ -366,7 +400,9 @@ Update Altertable CLI to the latest release.
 
 **Usage**
 
-`altertable update [options] [VERSION]`
+```bash
+altertable update [options] [VERSION]
+```
 
 **Aliases:** `upgrade`
 
@@ -397,8 +433,10 @@ Generate or install shell completion scripts.
 
 **Usage**
 
-`altertable completion`
-`altertable completion generate|install`
+```bash
+altertable completion
+altertable completion generate|install
+```
 
 **Subcommands**
 
@@ -419,7 +457,9 @@ Generate a shell completion script.
 
 **Usage**
 
-`altertable completion generate <BASH|FISH|ZSH>`
+```bash
+altertable completion generate <BASH|FISH|ZSH>
+```
 
 **Arguments**
 
@@ -440,7 +480,9 @@ Install shell completion for the current shell.
 
 **Usage**
 
-`altertable completion install [options] [BASH|FISH|ZSH]`
+```bash
+altertable completion install [options] [BASH|FISH|ZSH]
+```
 
 **Arguments**
 
@@ -470,8 +512,10 @@ Append JSON rows to a table.
 
 **Usage**
 
-`altertable append [options] <DATA>`
-`altertable append status`
+```bash
+altertable append [options] <DATA>
+altertable append status
+```
 
 **Arguments**
 
@@ -503,7 +547,9 @@ Fetch status for an append operation.
 
 **Usage**
 
-`altertable append status <APPEND-ID>`
+```bash
+altertable append status <APPEND-ID>
+```
 
 **Arguments**
 
@@ -517,7 +563,9 @@ Upload a file to create, append to, or overwrite a table.
 
 **Usage**
 
-`altertable upload [options] <FILE>`
+```bash
+altertable upload [options] <FILE>
+```
 
 **Arguments**
 
@@ -546,7 +594,9 @@ Upload a file and match existing rows by primary key.
 
 **Usage**
 
-`altertable upsert [options] <FILE>`
+```bash
+altertable upsert [options] <FILE>
+```
 
 **Arguments**
 
@@ -576,8 +626,10 @@ Run SQL queries against the lakehouse.
 
 **Usage**
 
-`altertable query [options] <STATEMENT>`
-`altertable query show|cancel`
+```bash
+altertable query [options] <STATEMENT>
+altertable query show|cancel
+```
 
 **Arguments**
 
@@ -616,7 +668,9 @@ Fetch metadata for a completed or running query.
 
 **Usage**
 
-`altertable query show <QUERY-ID>`
+```bash
+altertable query show <QUERY-ID>
+```
 
 **Arguments**
 
@@ -630,7 +684,9 @@ Cancel a running query.
 
 **Usage**
 
-`altertable query cancel [options] <QUERY-ID>`
+```bash
+altertable query cancel [options] <QUERY-ID>
+```
 
 **Arguments**
 
@@ -650,7 +706,9 @@ List schemas, tables, and columns for a catalog.
 
 **Usage**
 
-`altertable schema [options] <CATALOG>`
+```bash
+altertable schema [options] <CATALOG>
+```
 
 **Arguments**
 
@@ -678,7 +736,9 @@ Open a DuckDB shell attached to lakehouse catalogs (all of them by default).
 
 **Usage**
 
-`altertable duckdb [CATALOG]`
+```bash
+altertable duckdb [CATALOG]
+```
 
 **Arguments**
 

@@ -107,7 +107,9 @@ function renderCommand(
     "",
     "**Usage**",
     "",
-    ...usages.map((usage) => `\`${usage}\``),
+    "```bash",
+    ...usages,
+    "```",
     "",
   ];
 

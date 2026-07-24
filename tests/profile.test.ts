@@ -5,7 +5,10 @@ describe("profile switching", () => {
   let workspace: TestWorkspace;
 
   beforeAll(async () => {
-    workspace = await createTestWorkspace({ ALTERTABLE_API_KEY: undefined, ALTERTABLE_ENV: undefined });
+    workspace = await createTestWorkspace({
+      ALTERTABLE_API_KEY: undefined,
+      ALTERTABLE_ENV: undefined,
+    });
   });
 
   beforeEach(async () => {
@@ -44,7 +47,9 @@ describe("profile switching", () => {
 
   test("rename carries the active profile", async () => {
     expect((await workspace.runCommand("altertable profile switch acme_staging")).exitCode).toBe(0);
-    expect((await workspace.runCommand("altertable profile rename acme_staging acme_stage")).exitCode).toBe(0);
+    expect(
+      (await workspace.runCommand("altertable profile rename acme_staging acme_stage")).exitCode,
+    ).toBe(0);
     const result = await workspace.runCommand("altertable profile current");
 
     expect(result.exitCode).toBe(0);
@@ -52,7 +57,13 @@ describe("profile switching", () => {
   });
 
   test("profile configure, status, env, and delete cover metadata workflows", async () => {
-    expect((await workspace.runCommand("altertable profile configure globex_dev --api-key atm_globex --env dev")).exitCode).toBe(0);
+    expect(
+      (
+        await workspace.runCommand(
+          "altertable profile configure globex_dev --api-key atm_globex --env dev",
+        )
+      ).exitCode,
+    ).toBe(0);
     let result = await workspace.runCommand("altertable profile status globex_dev");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("globex_dev");
@@ -102,22 +113,86 @@ describe("profile switching", () => {
     expect(use.exitCode).not.toBe(0);
     expect(use.stderr).toContain("aren't available when configuring through environment variables");
 
-    const created = await workspace.runCommand("altertable profile configure globex --api-key atm_x --env dev", {
-      env: { ALTERTABLE_ENV: "staging" },
-    });
+    const created = await workspace.runCommand(
+      "altertable profile configure globex --api-key atm_x --env dev",
+      {
+        env: { ALTERTABLE_API_KEY: "atm_env", ALTERTABLE_ENV: "staging" },
+      },
+    );
     expect(created.exitCode).not.toBe(0);
-    expect(created.stderr).toContain("aren't available when configuring through environment variables");
+    expect(created.stderr).toContain(
+      "aren't available when configuring through environment variables",
+    );
     expect(created.stderr).toContain("ALTERTABLE_ENV");
 
     const switched = await workspace.runCommand("altertable profile switch acme_staging", {
       env: { ALTERTABLE_LAKEHOUSE_USERNAME: "u", ALTERTABLE_LAKEHOUSE_PASSWORD: "p" },
     });
     expect(switched.exitCode).not.toBe(0);
-    expect(switched.stderr).toContain("aren't available when configuring through environment variables");
+    expect(switched.stderr).toContain(
+      "aren't available when configuring through environment variables",
+    );
+
+    const logout = await workspace.runCommand("altertable logout", {
+      env: { ALTERTABLE_API_KEY: "atm_env" },
+    });
+    expect(logout.exitCode).not.toBe(0);
+    expect(logout.stderr).toContain(
+      "aren't available when configuring through environment variables",
+    );
+  });
+
+  test("env configuration rejects an explicit profile selection", async () => {
+    const flagged = await workspace.runCommand(
+      'altertable query "SELECT 1" --profile acme_staging',
+      {
+        env: { ALTERTABLE_API_KEY: "atm_env" },
+      },
+    );
+    expect(flagged.exitCode).not.toBe(0);
+    expect(flagged.stderr).toContain('Cannot select profile "acme_staging" through --profile');
+    expect(flagged.stderr).toContain("ALTERTABLE_API_KEY");
+
+    const inherited = await workspace.runCommand('altertable query "SELECT 1"', {
+      env: { ALTERTABLE_PROFILE: "acme_staging", ALTERTABLE_API_KEY: "atm_env" },
+    });
+    expect(inherited.exitCode).not.toBe(0);
+    expect(inherited.stderr).toContain(
+      'Cannot select profile "acme_staging" through ALTERTABLE_PROFILE',
+    );
+  });
+
+  test("incomplete environment configuration is rejected at startup", async () => {
+    const endpointOnly = await workspace.runCommand("altertable profile list", {
+      env: { ALTERTABLE_ENV: "staging" },
+    });
+    expect(endpointOnly.exitCode).not.toBe(0);
+    expect(endpointOnly.stderr).toContain("Incomplete environment configuration");
+    expect(endpointOnly.stderr).toContain("ALTERTABLE_ENV");
+
+    const loneUsername = await workspace.runCommand("altertable profile list", {
+      env: { ALTERTABLE_LAKEHOUSE_USERNAME: "u" },
+    });
+    expect(loneUsername.exitCode).not.toBe(0);
+    expect(loneUsername.stderr).toContain(
+      "ALTERTABLE_LAKEHOUSE_USERNAME is set but ALTERTABLE_LAKEHOUSE_PASSWORD is not",
+    );
   });
 });
 
 async function seedAcmeProfiles(workspace: TestWorkspace): Promise<void> {
-  expect((await workspace.runCommand("altertable profile configure acme_staging --api-key atm_staging --env staging")).exitCode).toBe(0);
-  expect((await workspace.runCommand("altertable profile configure acme_production --api-key atm_prod --env production")).exitCode).toBe(0);
+  expect(
+    (
+      await workspace.runCommand(
+        "altertable profile configure acme_staging --api-key atm_staging --env staging",
+      )
+    ).exitCode,
+  ).toBe(0);
+  expect(
+    (
+      await workspace.runCommand(
+        "altertable profile configure acme_production --api-key atm_prod --env production",
+      )
+    ).exitCode,
+  ).toBe(0);
 }

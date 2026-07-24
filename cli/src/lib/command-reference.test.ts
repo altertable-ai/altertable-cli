@@ -12,10 +12,12 @@ describe("command reference", () => {
 
     const reference = renderCommandReference(descriptor);
 
-    expect(reference).toContain("`altertable query [options] <STATEMENT>`");
-    expect(reference).toContain("`altertable profile env [NAME]`");
-    expect(reference).toContain("`altertable completion generate <BASH|FISH|ZSH>`");
-    expect(reference).toContain("`altertable catalogs create <NAME>`");
+    expect(reference).toContain(
+      "```bash\naltertable query [options] <STATEMENT>\naltertable query show|cancel\n```",
+    );
+    expect(reference).toContain("```bash\naltertable profile env [NAME]\n```");
+    expect(reference).toContain("```bash\naltertable completion generate <BASH|FISH|ZSH>\n```");
+    expect(reference).toContain("```bash\naltertable catalogs create <NAME>\n```");
     expect(reference).toContain("`-h, --help`");
     expect(reference).toContain("`-v, --version`");
     expect(reference).toContain("`--to <TO>` | Destination as catalog.schema.table Required.");
