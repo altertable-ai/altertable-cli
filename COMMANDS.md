@@ -2,7 +2,7 @@
 
 # Altertable CLI command reference
 
-Altertable CLI v1.3.0 • Query and manage your data platform from the terminal.
+Altertable CLI v1.3.0 • Query and manage your data platform from the terminal. <!-- x-release-please-version -->
 
 **Global options**
 

@@ -16,6 +16,11 @@
           "type": "generic",
           "path": "cli/src/version.ts",
           "glob": false
+        },
+        {
+          "type": "generic",
+          "path": "COMMANDS.md",
+          "glob": false
         }
       ]
     }
