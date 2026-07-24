@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { configDir, configFile, kvGet, kvSet } from "@/lib/config-files.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { readEnv } from "@/lib/env.ts";
+import { configuredEnvConfig, readEnv } from "@/lib/env.ts";
 
 export const DEFAULT_PROFILE_NAME = "default";
 const PROFILE_ID_KEY = "profile_id";
@@ -161,10 +161,31 @@ export function setActiveProfile(name: string): void {
   kvSet(configFile(), "active_profile", name);
 }
 
+// Env configuration isolates the active identity; an explicit --profile /
+// ALTERTABLE_PROFILE selection alongside it is a contradiction, so refuse it
+// rather than silently pick a side.
+function assertNoProfileSelectionInEnvMode(override: string | undefined): void {
+  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
+  if (explicit.length === 0) {
+    return;
+  }
+  const selector = override ? "--profile" : "ALTERTABLE_PROFILE";
+  const lines = configuredEnvConfig().map(({ name, display }) => `  ${name.padEnd(32)} ${display}`);
+  throw new ConfigurationError(
+    [
+      `Cannot select profile "${explicit}" through ${selector}: environment configuration is active, so stored profiles are ignored.`,
+      "",
+      "Currently configured:",
+      ...lines,
+      "",
+      "Unset these variables to use stored profiles, or drop the profile selection.",
+    ].join("\n"),
+  );
+}
+
 export function resolveWorkingProfile(override?: string): string {
-  // Env configuration isolates the active identity; it wins even over an
-  // explicit --profile / ALTERTABLE_PROFILE so nothing stored leaks in.
   if (envConfigMode()) {
+    assertNoProfileSelectionInEnvMode(override);
     return FROM_ENV_PSEUDOPROFILE_NAME;
   }
 
@@ -185,6 +206,7 @@ export function resolveWorkingProfile(override?: string): string {
 
 export function resolveProfileReference(override?: string): string {
   if (envConfigMode()) {
+    assertNoProfileSelectionInEnvMode(override);
     return FROM_ENV_PSEUDOPROFILE_NAME;
   }
 

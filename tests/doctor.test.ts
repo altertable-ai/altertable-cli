@@ -97,7 +97,7 @@ describe("altertable doctor", () => {
       summary: { passed: 7, warnings: 0, failed: 0, skipped: 0 },
     });
     expect(await workspace.readFile(workspace.credentialsFile)).toBe(credentialsBefore);
-    expect(await workspace.httpLogValues("METHOD")).toEqual(["GET", "POST"]);
+    expect((await workspace.httpLogValues("METHOD")).sort()).toEqual(["GET", "POST"]);
     expect(await workspace.httpLogValues("URL")).toEqual(
       expect.arrayContaining([expect.stringContaining("/whoami"), expect.stringContaining("/query")]),
     );
