@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
 import {
-  getLoginLakehouseCredentials,
-  requireManagementEnv,
-  type LakehouseCredentials,
+  getLakehouseCredentialPair,
+  requireManagementPlane,
+  type LakehouseBasicAuthPair,
 } from "@/lib/auth.ts";
-import { configureVerify } from "@/lib/profile-status.ts";
+import { configureVerify, type ConfigureAuthPlane } from "@/lib/profile-status.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { optionalStringArg } from "@/lib/args.ts";
@@ -31,8 +31,6 @@ export const duckdbCommand = defineCommand({
     runDuckdb({ catalog: optionalStringArg(args, "catalog") }, execution),
 });
 
-const LOGIN_PROMPT = "Log in with 'altertable login' to use altertable duckdb.";
-
 function escapeSql(value: string): string {
   return value.replaceAll("'", "''");
 }
@@ -41,14 +39,14 @@ function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-function attachStatement(credentials: LakehouseCredentials, catalog: string): string {
+function attachStatement(credentials: LakehouseBasicAuthPair, catalog: string): string {
   const connection = `user=${escapeSql(credentials.user)} password=${escapeSql(credentials.password)} catalog=${escapeSql(catalog)}`;
   return `ATTACH
 '${connection}'
 AS ${quoteIdentifier(catalog)} (TYPE ALTERTABLE);`;
 }
 
-function buildDuckdbAttachSnippet(credentials: LakehouseCredentials, catalogs: string[]): string {
+function buildDuckdbAttachSnippet(credentials: LakehouseBasicAuthPair, catalogs: string[]): string {
   return [
     "INSTALL altertable FROM community;",
     "LOAD altertable;",
@@ -56,23 +54,49 @@ function buildDuckdbAttachSnippet(credentials: LakehouseCredentials, catalogs: s
   ].join("\n");
 }
 
-// Attach the requested catalog (verified against the environment) or every available one.
-function selectCatalogsToAttach(rows: CatalogRow[], requested: string | undefined): string[] {
+function availableCatalogs(rows: CatalogRow[]): string[] {
   const available = [
     ...new Set(rows.map((row) => row.catalog).filter((catalog) => catalog.length > 0)),
   ];
-  if (requested !== undefined) {
-    if (!available.includes(requested)) {
-      throw new ConfigurationError(
-        `Catalog "${requested}" not found. Available catalogs: ${available.join(", ") || "none"}.`,
-      );
-    }
-    return [requested];
-  }
   if (available.length === 0) {
     throw new ConfigurationError("No catalogs found in this environment.");
   }
   return available;
+}
+
+async function verifyConfiguredPlanes(
+  planes: ConfigureAuthPlane[],
+  execution: ExecutionContext,
+): Promise<void> {
+  const verify = await configureVerify(planes, execution);
+  const failedPlane = verify.configured.find((plane) => !verify.verified[plane]);
+  if (failedPlane) {
+    const detail = verify.errors.find((error) => error.plane === failedPlane)?.message;
+    throw new ConfigurationError(detail ?? `${failedPlane} credentials verification failed.`);
+  }
+}
+
+type DuckdbAttachPlan = { credentials: LakehouseBasicAuthPair; catalogs: string[] };
+
+// Attaching one named catalog needs only lakehouse credentials; the catalog is
+// not validated against the management API and a typo surfaces from DuckDB.
+async function duckdbAttachSingleCatalog(
+  catalog: string,
+  execution: ExecutionContext,
+): Promise<DuckdbAttachPlan> {
+  await verifyConfiguredPlanes(["lakehouse"], execution);
+  return { credentials: getLakehouseCredentialPair(execution.profile), catalogs: [catalog] };
+}
+
+async function duckdbAttachAll(execution: ExecutionContext): Promise<DuckdbAttachPlan> {
+  const managementEnv = requireManagementPlane(execution.profile, {
+    requirement: "Attaching all catalogs requires the management API to list them",
+    alternative: "attach a single catalog directly: altertable duckdb <catalog>",
+  });
+  await verifyConfiguredPlanes(["management", "lakehouse"], execution);
+  const credentials = getLakehouseCredentialPair(execution.profile);
+  const rows = await fetchManagementCatalogRows(managementEnv, execution);
+  return { credentials, catalogs: availableCatalogs(rows) };
 }
 
 type DuckdbInput = { catalog: string | undefined };
@@ -85,20 +109,12 @@ async function runDuckdb(input: DuckdbInput, execution: ExecutionContext): Promi
     );
   }
 
-  const verify = await configureVerify(["lakehouse"], execution);
-  if (!verify.verified.lakehouse) {
-    throw new ConfigurationError(LOGIN_PROMPT);
-  }
+  const plan =
+    input.catalog === undefined
+      ? await duckdbAttachAll(execution)
+      : await duckdbAttachSingleCatalog(input.catalog, execution);
 
-  const credentials = getLoginLakehouseCredentials(execution.profile);
-  if (!credentials) {
-    throw new ConfigurationError(LOGIN_PROMPT);
-  }
-
-  const rows = await fetchManagementCatalogRows(requireManagementEnv(execution.profile), execution);
-  const catalogs = selectCatalogsToAttach(rows, input.catalog);
-
-  const snippet = buildDuckdbAttachSnippet(credentials, catalogs);
+  const snippet = buildDuckdbAttachSnippet(plan.credentials, plan.catalogs);
   const result = spawnSync(duckdb, ["-cmd", snippet], { stdio: "inherit" });
   if (result.error) {
     throw new ConfigurationError(`Failed to launch duckdb: ${result.error.message}`);

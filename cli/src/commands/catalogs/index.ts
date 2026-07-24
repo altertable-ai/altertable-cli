@@ -1,6 +1,6 @@
 import { defineCommand } from "@/lib/command.ts";
 import { catalogsCreateCommand } from "@/commands/catalogs/create.ts";
-import { requireManagementEnv } from "@/lib/auth.ts";
+import { requireManagementPlane } from "@/lib/auth.ts";
 import { fetchManagementCatalogRows } from "@/lib/management/catalogs.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
 import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/render.ts";
@@ -20,7 +20,9 @@ export const catalogsCommand = defineCommand({
   },
   async run({ execution, sink }) {
     const rows = await fetchManagementCatalogRows(
-      requireManagementEnv(execution.profile),
+      requireManagementPlane(execution.profile, {
+        requirement: "Listing catalogs requires the management API",
+      }),
       execution,
     );
     const summary = formatCatalogsSummary(rows);

@@ -157,12 +157,43 @@ export function copyProcessEnv(): NodeJS.ProcessEnv {
   return { ...process.env };
 }
 
+function assertCoherentEnvConfig(source: EnvSource): void {
+  const user = readEnvFrom(source, "ALTERTABLE_LAKEHOUSE_USERNAME");
+  const password = readEnvFrom(source, "ALTERTABLE_LAKEHOUSE_PASSWORD");
+  if (Boolean(user) !== Boolean(password)) {
+    const set = user ? "ALTERTABLE_LAKEHOUSE_USERNAME" : "ALTERTABLE_LAKEHOUSE_PASSWORD";
+    const missing = user ? "ALTERTABLE_LAKEHOUSE_PASSWORD" : "ALTERTABLE_LAKEHOUSE_USERNAME";
+    throw new ConfigurationError(`${set} is set but ${missing} is not; set both or neither.`);
+  }
+
+  const hasCredential = Boolean(
+    readEnvFrom(source, "ALTERTABLE_API_KEY") ||
+    readEnvFrom(source, "ALTERTABLE_BASIC_AUTH_TOKEN") ||
+    (user && password),
+  );
+  if (hasCredential) {
+    return;
+  }
+  const credentialless = (
+    ["ALTERTABLE_ENV", "ALTERTABLE_API_BASE", "ALTERTABLE_MANAGEMENT_API_BASE"] as const
+  ).filter((name) => readEnvFrom(source, name));
+  if (credentialless.length > 0) {
+    throw new ConfigurationError(
+      [
+        `Incomplete environment configuration: ${credentialless.join(", ")} ${credentialless.length === 1 ? "is" : "are"} set without credentials, and environment configuration replaces stored profiles entirely.`,
+        "Set ALTERTABLE_API_KEY, ALTERTABLE_BASIC_AUTH_TOKEN, or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD — or unset these variables to use stored profiles.",
+      ].join("\n"),
+    );
+  }
+}
+
 export function validateEnvironment(source: EnvSource = process.env): void {
   for (const name of Object.keys(ENV_SCHEMA) as EnvName[]) {
     if (name.startsWith("ALTERTABLE_")) {
       readEnvFrom(source, name);
     }
   }
+  assertCoherentEnvConfig(source);
 }
 
 export type ConfigEnvName =
@@ -186,4 +217,16 @@ export const CONFIG_ENV_NAMES = [
 
 export function isSecretEnv(name: EnvName): boolean {
   return "secret" in ENV_SCHEMA[name] && ENV_SCHEMA[name].secret === true;
+}
+
+export function configuredEnvConfig(
+  source: EnvSource = process.env,
+): Array<{ name: ConfigEnvName; display: string }> {
+  return CONFIG_ENV_NAMES.flatMap((name) => {
+    const value = readEnvFrom(source, name);
+    if (!value) {
+      return [];
+    }
+    return [{ name, display: isSecretEnv(name) ? "set (hidden)" : String(value) }];
+  });
 }

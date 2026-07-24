@@ -1,4 +1,4 @@
-import { requireManagementEnv } from "@/lib/auth.ts";
+import { requireManagementPlane } from "@/lib/auth.ts";
 import { buildCatalogCreateRequest } from "@/commands/catalogs/lib/requests.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -18,7 +18,9 @@ export const catalogsCreateCommand = defineCommand({
     },
   },
   async run({ args, execution, sink }) {
-    const env = requireManagementEnv(execution.profile);
+    const env = requireManagementPlane(execution.profile, {
+      requirement: "Creating a catalog requires the management API",
+    });
     const name = String(args.name);
     const response = await sendHttp(buildCatalogCreateRequest(env, name), execution);
     await writeCommandOutput(

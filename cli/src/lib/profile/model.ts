@@ -18,7 +18,7 @@ import {
   resolveManagementApiBase,
 } from "@/lib/config.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
-import { CONFIG_ENV_NAMES, isSecretEnv, readEnv } from "@/lib/env.ts";
+import { configuredEnvConfig, readEnv } from "@/lib/env.ts";
 import {
   migrateProfileSecrets,
   secretDelete,
@@ -795,16 +795,7 @@ function hasStoredLakehouseCredentials(profileName: string): boolean {
   );
 }
 
-/** The profile-configuring env vars currently set, with secrets masked. */
-export function configuredEnvConfig(): Array<{ name: string; display: string }> {
-  return CONFIG_ENV_NAMES.flatMap((name) => {
-    const value = readEnv(name);
-    if (!value) {
-      return [];
-    }
-    return [{ name, display: isSecretEnv(name) ? "set (hidden)" : String(value) }];
-  });
-}
+export { configuredEnvConfig };
 
 /**
  * Guard for commands that mutate stored-profile state (login, switching,
