@@ -153,7 +153,7 @@ export function renderCommandReference(root: CommandDescriptor): string {
     "",
     "# Altertable CLI command reference",
     "",
-    root.metadata.description,
+    `${root.metadata.description} <!-- x-release-please-version -->`,
     "",
     ...renderArgumentTable("Global options", rootOptions, optionLabel),
   ];
