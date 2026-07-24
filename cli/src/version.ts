@@ -1,2 +1,2 @@
-export const VERSION = "1.3.0"; // x-release-please-version
+export const VERSION = "1.4.0"; // x-release-please-version
 export const USER_AGENT = `altertable-cli/${VERSION}`;
