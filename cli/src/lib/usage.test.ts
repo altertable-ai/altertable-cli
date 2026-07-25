@@ -184,7 +184,10 @@ describe("renderAltertableUsage", () => {
       expect.objectContaining({ name: "statement", type: "positional" }),
     );
     expect(help.options).toContainEqual(
-      expect.objectContaining({ name: "format", values: ["csv", "markdown"] }),
+      expect.objectContaining({
+        name: "format",
+        values: ["csv", "jsonl", "parquet", "markdown"],
+      }),
     );
     expect(help.global_options).toContainEqual(expect.objectContaining({ name: "json" }));
     expect(help.global_options).toContainEqual(

@@ -55,8 +55,8 @@ export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
   subcommands?: Resolvable<Record<string, Resolvable<Command>>>;
   /**
    * Values that select direct execution only when they are the command's sole
-   * positional operand. This resolves intentional command/subcommand ambiguity,
-   * such as `query show` (SQL) versus `query show <query-id>`.
+   * positional operand. Use this for intentional parent/subcommand name collisions
+   * (for example a keyword that is both a statement and a subcommand name).
    */
   soleDirectOperands?: readonly string[];
   run?: (context: CommandRunContext<T>) => void | Promise<void>;

@@ -275,11 +275,11 @@ describe("command descriptor", () => {
     );
   });
 
-  test("describes intentional direct and subcommand operand collisions", async () => {
+  test("describes query show as a subcommand without sole-direct collisions", async () => {
     const root = await resolveCommandDescriptor(buildMainCommand());
     const query = root.subcommands.find((command) => command.key === "query");
 
-    expect(query?.soleDirectOperands).toEqual(["show"]);
+    expect(query?.soleDirectOperands).toEqual([]);
     expect(query?.subcommands.map((command) => command.metadata.name)).toContain("show");
   });
 

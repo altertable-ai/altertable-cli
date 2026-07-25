@@ -331,10 +331,16 @@ altertable query "SELECT event, user_id, timestamp FROM analytics.main.events OR
 altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --columns event,user_id,timestamp
 altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --max-width 24
 
-# Serialized output
+# Serialized / API-native output
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format csv
-altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --json
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format jsonl --output events.jsonl
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format parquet --output users.parquet
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --format markdown
+altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 100" --json
+
+# Request options
+altertable query "SELECT 1" --compute-size M
+altertable query "SELECT * FROM users" --catalog analytics --schema main --dialect snowflake
 
 # Long results — pipe through a pager
 altertable query "SELECT * FROM analytics.main.orders ORDER BY created_at DESC" --pager always
@@ -347,7 +353,7 @@ altertable --json query "SELECT 1"
 altertable --agent query "SELECT 1"
 ```
 
-Human output is the default and respects `--layout auto|table|line`, `--columns`, `--max-width`, and `--pager auto|always|never`. Use `--format csv|markdown` for serialized text, or the global `--json`/`--agent` flags for structured JSON. Serialized output skips pager and layout controls.
+Human output is the default and respects `--layout auto|table|line`, `--columns`, `--max-width`, and `--pager auto|always|never`. Use `--format csv|jsonl|parquet` to stream those encodings from the lakehouse API, `--format markdown` for CLI-rendered markdown, or the global `--json`/`--agent` flags for structured JSON. API-native formats cannot be combined with `--json`/`--agent` or layout/pager flags. `--output` writes to a file (stdout by default). `--compute-size` defaults to `AUTO` (omit with `--session-id` unless you set `XS|S|M|L|XL`).
 
 Set display defaults in `~/.config/altertable/config`:
 
