@@ -21,6 +21,11 @@
           "type": "generic",
           "path": "COMMANDS.md",
           "glob": false
+        },
+        {
+          "type": "json",
+          "path": "cli-reference.json",
+          "jsonpath": "$.cliVersion"
         }
       ]
     }

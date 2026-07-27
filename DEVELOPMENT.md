@@ -88,7 +88,7 @@ bun run release:smoke --target=bun-linux-x64-baseline
 
 ## Versioning
 
-The CLI version comes from `cli/src/version.ts` (`altertable --version`). [release-please](https://github.com/googleapis/release-please) bumps `cli/package.json`, `cli/src/version.ts`, and `.release-please-manifest.json` on release PRs. Do not edit the version in one file without updating the others.
+The CLI version comes from `cli/src/version.ts` (`altertable --version`). [release-please](https://github.com/googleapis/release-please) bumps `cli/package.json`, `cli/src/version.ts`, `cli-reference.json`'s `cliVersion`, and `.release-please-manifest.json` on release PRs. Command changes still require `bun run generate:commands` to refresh the complete generated reference. Do not edit the version in one file without updating the others.
 
 ## Release workflow
 

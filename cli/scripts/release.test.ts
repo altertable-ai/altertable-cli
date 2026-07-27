@@ -421,6 +421,20 @@ describe("GitHub release publication", () => {
 });
 
 describe("release infrastructure wiring", () => {
+  test("updates the generated CLI reference version in release PRs", async () => {
+    const releasePleaseConfig = JSON.parse(
+      await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
+    ) as {
+      packages: Record<string, { "extra-files"?: unknown[] }>;
+    };
+
+    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
+      type: "json",
+      path: "cli-reference.json",
+      jsonpath: "$.cliVersion",
+    });
+  });
+
   test("keeps target literals out of build and workflow orchestration", async () => {
     const files = [
       "Makefile",
