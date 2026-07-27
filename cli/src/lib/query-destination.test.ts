@@ -45,4 +45,58 @@ describe("writeQueryDestination", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  test("writes multi-chunk streams incrementally without buffering", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const written: Uint8Array[] = [];
+    runtime.output.writeBytes = (body) => {
+      written.push(body);
+    };
+
+    const chunks = [
+      new Uint8Array([0x50, 0x41]),
+      new Uint8Array([0x52, 0x31]),
+      new Uint8Array([0x00, 0xff]),
+    ];
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    });
+
+    await writeQueryDestination(stream, { sink: runtime.output });
+
+    expect(written).toHaveLength(chunks.length);
+    expect(written).toEqual(chunks);
+  });
+
+  test("writes multi-chunk streams to a file without loss", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
+    const path = join(dir, "out.parquet");
+    try {
+      const chunks = [
+        new Uint8Array([0x50, 0x41]),
+        new Uint8Array([0x52, 0x31]),
+        new Uint8Array([0x00, 0xff]),
+      ];
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        },
+      });
+
+      await writeQueryDestination(stream, { outputPath: path });
+      expect(new Uint8Array(readFileSync(path))).toEqual(
+        new Uint8Array([0x50, 0x41, 0x52, 0x31, 0x00, 0xff]),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
