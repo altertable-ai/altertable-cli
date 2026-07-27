@@ -433,6 +433,11 @@ describe("release infrastructure wiring", () => {
       path: "cli-reference.json",
       jsonpath: "$.cliVersion",
     });
+    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
+      type: "generic",
+      path: "cli-reference.schema.json",
+      glob: false,
+    });
   });
 
   test("keeps target literals out of build and workflow orchestration", async () => {

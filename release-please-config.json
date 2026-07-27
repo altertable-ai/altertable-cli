@@ -26,6 +26,11 @@
           "type": "json",
           "path": "cli-reference.json",
           "jsonpath": "$.cliVersion"
+        },
+        {
+          "type": "generic",
+          "path": "cli-reference.schema.json",
+          "glob": false
         }
       ]
     }
