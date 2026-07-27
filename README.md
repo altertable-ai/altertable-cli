@@ -30,9 +30,7 @@ Query and manage your Altertable data platform from the terminal.
 - [Scripting](#scripting)
 - [Development](#development)
 
-For the complete generated command contract, see [COMMANDS.md](COMMANDS.md). The documentation
-site consumes [cli-reference.json](cli-reference.json), whose public wire format is defined by
-[cli-reference.schema.json](cli-reference.schema.json).
+For the complete generated command contract, see [COMMANDS.md](COMMANDS.md).
 
 ---
 
