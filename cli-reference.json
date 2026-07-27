@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "1.3.0",
+  "cliVersion": "1.4.0",
   "globalOptions": [
     {
       "name": "help",
@@ -1123,12 +1123,14 @@
               "name": "format",
               "aliases": [],
               "type": "enum",
-              "description": "Serialized output format; use global --json for JSON",
+              "description": "Result format: csv, jsonl, and parquet stream from the API; markdown is rendered by the CLI. Use global --json for structured JSON",
               "required": false,
               "repeatable": false,
               "scope": "command",
               "values": [
                 "csv",
+                "jsonl",
+                "parquet",
                 "markdown"
               ]
             },
@@ -1166,6 +1168,64 @@
               "scope": "command",
               "values": [],
               "default": "32"
+            },
+            {
+              "name": "compute-size",
+              "aliases": [],
+              "type": "enum",
+              "description": "Compute size for the query",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "XS",
+                "S",
+                "M",
+                "L",
+                "XL",
+                "AUTO"
+              ],
+              "default": "AUTO"
+            },
+            {
+              "name": "dialect",
+              "aliases": [],
+              "type": "string",
+              "description": "Source SQL dialect to transpile from (server default: DuckDB)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "catalog",
+              "aliases": [],
+              "type": "string",
+              "description": "Catalog name (optional; can also come from the session)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "schema",
+              "aliases": [],
+              "type": "string",
+              "description": "Schema name (optional; can also come from the session)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "output",
+              "aliases": [],
+              "type": "string",
+              "description": "Write result bytes/text to this path instead of stdout",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
             },
             {
               "name": "query-id",
@@ -1206,6 +1266,7 @@
           "examples": [
             "altertable query \"SELECT id, email, plan FROM analytics.main.users LIMIT 10\"",
             "altertable query \"SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10\" --json",
+            "altertable query \"SELECT 1\" --format csv --output results.csv",
             "altertable query show <query-id>"
           ],
           "subcommands": [
