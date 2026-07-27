@@ -18,13 +18,19 @@ bun run lint:fix               # oxlint --fix
 bun run format                 # oxfmt
 bun run format:check           # CI formatting check
 bun run knip                   # required dead-code/unused-export check
-bun run generate               # regenerate OpenAPI types, operation index, and COMMANDS.md
-bun run generate:commands      # regenerate only COMMANDS.md after command changes
+bun run generate               # regenerate OpenAPI types, operation index, and command references
+bun run generate:commands      # regenerate Markdown, JSON, and JSON Schema command references
 bun run generate:check         # non-mutating generated-artifact drift check
 bun run spec:refresh           # fetch hosted OpenAPI spec (see specs/rest/SPEC.md) + generate
 bun run build                  # bundle to cli/dist/cli.js
 bun run pack:check             # build + dry-run pack (verify publish contents)
 ```
+
+The CLI reference wire contract is rendered from the command-reference module into
+[`cli-reference.schema.json`](cli-reference.schema.json). The generated root artifact is published
+with `cli-reference.json` in every GitHub release. Additive optional fields
+may retain the current schema version; removing or renaming fields, changing their meaning, or
+making fields newly required must bump both `schemaVersion` and the schema `$id`.
 
 API specifications live in the `specs/` submodule ([altertable-client-specs](https://github.com/altertable-ai/altertable-client-specs)). Pin updates deliberately:
 
@@ -82,7 +88,7 @@ bun run release:smoke --target=bun-linux-x64-baseline
 
 ## Versioning
 
-The CLI version comes from `cli/src/version.ts` (`altertable --version`). [release-please](https://github.com/googleapis/release-please) bumps `cli/package.json`, `cli/src/version.ts`, and `.release-please-manifest.json` on release PRs. Do not edit the version in one file without updating the others.
+The CLI version comes from `cli/src/version.ts` (`altertable --version`). [release-please](https://github.com/googleapis/release-please) bumps `cli/package.json`, `cli/src/version.ts`, `cli-reference.json`'s `cliVersion`, and `.release-please-manifest.json` on release PRs. Command changes still require `bun run generate:commands` to refresh the complete generated reference. Do not edit the version in one file without updating the others.
 
 ## Release workflow
 

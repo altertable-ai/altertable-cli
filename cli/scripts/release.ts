@@ -9,13 +9,16 @@ import {
   findReleaseTargetByPlatform,
   RELEASE_BUNDLE_ASSET,
   RELEASE_CHECKSUMS_ASSET,
+  RELEASE_CLI_REFERENCE_ASSET,
+  RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
   RELEASE_METADATA_ASSET,
   RELEASE_TARGETS,
   releaseCiMatrix,
   type ReleaseTarget,
 } from "@/../scripts/release-manifest.ts";
+import { CLI_REFERENCE_SCHEMA_VERSION } from "@/../scripts/command-reference.ts";
 
-export const RELEASE_MANIFEST_SCHEMA_VERSION = 2;
+export const RELEASE_MANIFEST_SCHEMA_VERSION = 3;
 export const SUPPORTED_BUN_RUNTIME_RANGE = ">=1.1.0";
 
 export const HARDENED_COMPILE_FLAGS = [
@@ -43,7 +46,7 @@ type PackageJson = typeof packageJson & {
 };
 
 export type ReleaseArtifact = {
-  kind: "native" | "javascript";
+  kind: "native" | "javascript" | "documentation";
   file: string;
   bytes: number;
   sha256: string;
@@ -62,6 +65,10 @@ export type ReleaseArtifact = {
         target: "bun";
         minify: boolean;
         sourcemap: "none";
+      }
+    | {
+        builder: "command-reference";
+        schemaVersion: number;
       };
 };
 
@@ -175,6 +182,63 @@ export async function buildJavaScriptBundle(
   return outputPath;
 }
 
+export async function stageCommandReferenceAssets(
+  outputDirectory = defaultOutputDirectory,
+): Promise<ReleaseArtifact[]> {
+  await mkdir(outputDirectory, { recursive: true });
+  const sourcePaths = [
+    join(repositoryRoot, RELEASE_CLI_REFERENCE_ASSET),
+    join(repositoryRoot, RELEASE_CLI_REFERENCE_SCHEMA_ASSET),
+  ];
+
+  const reference = (await Bun.file(sourcePaths[0]!).json()) as {
+    cliVersion?: unknown;
+    schemaVersion?: unknown;
+  };
+  if (reference.cliVersion !== VERSION) {
+    throw new Error(
+      `${RELEASE_CLI_REFERENCE_ASSET} version must be ${VERSION}; received ${String(reference.cliVersion)}.`,
+    );
+  }
+  if (reference.schemaVersion !== CLI_REFERENCE_SCHEMA_VERSION) {
+    throw new Error(
+      `${RELEASE_CLI_REFERENCE_ASSET} schema version must be ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(reference.schemaVersion)}.`,
+    );
+  }
+
+  const schema = (await Bun.file(sourcePaths[1]!).json()) as {
+    properties?: { schemaVersion?: { const?: unknown } };
+  };
+  const schemaVersion = schema.properties?.schemaVersion?.const;
+  if (schemaVersion !== CLI_REFERENCE_SCHEMA_VERSION) {
+    throw new Error(
+      `${RELEASE_CLI_REFERENCE_SCHEMA_ASSET} must describe schema version ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(schemaVersion)}.`,
+    );
+  }
+
+  return await Promise.all(
+    sourcePaths.map(async (sourcePath): Promise<ReleaseArtifact> => {
+      const fileName = sourcePath.endsWith(RELEASE_CLI_REFERENCE_SCHEMA_ASSET)
+        ? RELEASE_CLI_REFERENCE_SCHEMA_ASSET
+        : RELEASE_CLI_REFERENCE_ASSET;
+      const outputPath = join(outputDirectory, fileName);
+      await copyFile(sourcePath, outputPath);
+      await assertNonemptyFile(outputPath);
+      const file = Bun.file(outputPath);
+      return {
+        kind: "documentation",
+        file: fileName,
+        bytes: file.size,
+        sha256: await sha256(file),
+        recipe: {
+          builder: "command-reference",
+          schemaVersion: CLI_REFERENCE_SCHEMA_VERSION,
+        },
+      };
+    }),
+  );
+}
+
 export async function buildAllReleaseArtifacts(
   options: {
     outputDirectory?: string;
@@ -227,6 +291,7 @@ export async function writeReleaseMetadata(
   if (!(await bundle.exists()) || bundle.size === 0) {
     throw new Error(`Missing or empty release artifact: ${RELEASE_BUNDLE_ASSET}.`);
   }
+  const documentationArtifacts = await stageCommandReferenceAssets(outputDirectory);
 
   const metadata: ReleaseMetadata = {
     schemaVersion: RELEASE_MANIFEST_SCHEMA_VERSION,
@@ -249,6 +314,7 @@ export async function writeReleaseMetadata(
           ...NPM_BUNDLE_OPTIONS,
         },
       },
+      ...documentationArtifacts,
     ],
   };
 

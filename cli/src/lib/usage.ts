@@ -1,5 +1,5 @@
 import type { Command } from "@/lib/command.ts";
-import type { AltertableCommandGroup } from "@/lib/command.ts";
+import { ALTERTABLE_COMMAND_GROUPS, type AltertableCommandGroup } from "@/lib/command.ts";
 import {
   resolveCommandDescriptor,
   visibleCommandDescriptors,
@@ -18,12 +18,6 @@ const HELP_COLUMN_GAP = "  ";
 const HELP_MIN_DESCRIPTION_WIDTH = 16;
 const HELP_FALLBACK_TERMINAL_WIDTH = 68;
 const COMMAND_PATTERN = /altertable(?:\s+[^\s'",]+)*/g;
-const COMMAND_GROUP_TITLES: Record<AltertableCommandGroup, string> = {
-  platform: "Platform",
-  ingest: "Ingest",
-  query: "Query",
-};
-
 function renderHighlightedCommands(text: string): string {
   const spans: DisplaySpan[] = [];
   let offset = 0;
@@ -325,11 +319,9 @@ function renderCommandUsage(
 
 function renderRootUsage(descriptor: CommandDescriptor): string {
   const metadata = descriptor.metadata;
-  const groupedEntries: Record<AltertableCommandGroup, HelpEntry[]> = {
-    platform: [],
-    ingest: [],
-    query: [],
-  };
+  const groupedEntries = Object.fromEntries(
+    ALTERTABLE_COMMAND_GROUPS.map(({ id }) => [id, [] as HelpEntry[]]),
+  ) as Record<AltertableCommandGroup, HelpEntry[]>;
   const lines = [
     ...wrapHelpText(metadata.description, getHelpTerminalWidth()),
     "",
@@ -352,13 +344,12 @@ function renderRootUsage(descriptor: CommandDescriptor): string {
   }
 
   let renderedGroup = false;
-  for (const [group, entries] of Object.entries(groupedEntries) as Array<
-    [AltertableCommandGroup, HelpEntry[]]
-  >) {
+  for (const { id, title } of ALTERTABLE_COMMAND_GROUPS) {
+    const entries = groupedEntries[id];
     if (entries.length > 0) {
       lines.push(
         ...(renderedGroup ? [""] : []),
-        `    ${renderDisplayText([span(COMMAND_GROUP_TITLES[group], "muted")])}`,
+        `    ${renderDisplayText([span(title, "muted")])}`,
         ...formatHelpEntries(entries),
       );
       renderedGroup = true;

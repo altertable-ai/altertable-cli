@@ -2,10 +2,13 @@ import type { ExecutionContext } from "@/lib/execution-context.ts";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 
 export type Resolvable<T> = T | Promise<T> | (() => T | Promise<T>);
-export type PositionalCompletionKind = "finite" | "file" | "freeform";
-export type CommandFlagScope = "root-only" | "global" | "command";
+export const POSITIONAL_COMPLETION_KINDS = ["finite", "file", "freeform"] as const;
+export type PositionalCompletionKind = (typeof POSITIONAL_COMPLETION_KINDS)[number];
+export const COMMAND_FLAG_SCOPES = ["root-only", "global", "command"] as const;
+export type CommandFlagScope = (typeof COMMAND_FLAG_SCOPES)[number];
 export type CommandInvocationKind = "direct" | "subcommand";
-export type CommandArgumentType = "boolean" | "string" | "enum" | "positional";
+export const COMMAND_ARGUMENT_TYPES = ["boolean", "string", "enum", "positional"] as const;
+export type CommandArgumentType = (typeof COMMAND_ARGUMENT_TYPES)[number];
 
 export type CommandArgument = {
   type?: CommandArgumentType;
@@ -23,7 +26,12 @@ export type CommandArgument = {
 };
 
 export type CommandArguments = Record<string, CommandArgument>;
-export type AltertableCommandGroup = "platform" | "ingest" | "query";
+export const ALTERTABLE_COMMAND_GROUPS = [
+  { id: "platform", title: "Platform" },
+  { id: "ingest", title: "Ingest" },
+  { id: "query", title: "Query" },
+] as const;
+export type AltertableCommandGroup = (typeof ALTERTABLE_COMMAND_GROUPS)[number]["id"];
 
 export type CommandMetadata = {
   name?: string;

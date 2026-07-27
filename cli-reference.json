@@ -1,0 +1,1424 @@
+{
+  "schemaVersion": 1,
+  "cliVersion": "1.4.0",
+  "globalOptions": [
+    {
+      "name": "help",
+      "aliases": [
+        "h"
+      ],
+      "type": "boolean",
+      "description": "Show this help",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "version",
+      "aliases": [
+        "v"
+      ],
+      "type": "boolean",
+      "description": "Show the Altertable CLI version",
+      "required": false,
+      "repeatable": false,
+      "scope": "root-only",
+      "values": []
+    },
+    {
+      "name": "debug",
+      "aliases": [
+        "d"
+      ],
+      "type": "boolean",
+      "description": "Enable debug output",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "json",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Machine-readable JSON output",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "agent",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Agent-friendly preset: structured JSON output, no pager or terminal styling",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "no-color",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Disable terminal colors and styling",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "profile",
+      "aliases": [],
+      "type": "string",
+      "description": "Use a named profile for this command only",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "connect-timeout",
+      "aliases": [],
+      "type": "string",
+      "description": "HTTP connect timeout in seconds (default 5)",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "read-timeout",
+      "aliases": [],
+      "type": "string",
+      "description": "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "platform",
+      "title": "Platform",
+      "commands": [
+        {
+          "id": "altertable-login",
+          "command": "altertable login",
+          "description": "Sign in with your browser (OAuth) and store the session.",
+          "usage": [
+            "altertable login [options]"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [
+            {
+              "name": "control-plane-url",
+              "aliases": [],
+              "type": "string",
+              "description": "Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "data-plane-url",
+              "aliases": [],
+              "type": "string",
+              "description": "Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "allow-insecure-http",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Allow http:// URLs other than localhost for --control-plane-url (for development only)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "replace-profile",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Store the login session in the current profile instead of switching profiles",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
+          "examples": [
+            "altertable login",
+            "altertable login --replace-profile"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-logout",
+          "command": "altertable logout",
+          "description": "Remove stored credentials and settings for all profiles.",
+          "usage": [
+            "altertable logout"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [],
+          "examples": [
+            "altertable logout"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-profile",
+          "command": "altertable profile",
+          "description": "Manage named profiles and stored credentials.",
+          "usage": [
+            "altertable profile configure|list|show|status|switch|current|env|delete"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [],
+          "examples": [
+            "altertable profile show",
+            "altertable profile configure",
+            "altertable profile configure acme_production --api-key atm_xxx --env production",
+            "altertable profile configure --scope lakehouse",
+            "altertable profile list",
+            "altertable profile switch",
+            "altertable profile status",
+            "eval \"$(altertable profile env acme_staging)\"",
+            "altertable --profile acme_staging profile show"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-profile-configure",
+              "command": "altertable profile configure",
+              "description": "Create or update a profile's credentials and settings",
+              "usage": [
+                "altertable profile configure [options] [NAME]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name (default: selected or active profile)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [
+                {
+                  "name": "user",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Lakehouse username (global)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "password",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Lakehouse password (global)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "basic-token",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Pre-encoded HTTP Basic token",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "api-key",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Management API key for the --env environment",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "env",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Target environment (management API keys are per-environment)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "password-stdin",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Read the lakehouse password from stdin",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "api-key-stdin",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Read the management API key from stdin",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "data-plane-url",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Data-plane base URL; can be set alone or with a credential (default: https://api.altertable.ai)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "control-plane-url",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Control-plane server root; the CLI appends /rest/v1 (default: https://app.altertable.ai)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "allow-insecure-http",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Allow http:// URLs other than localhost (not recommended)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "scope",
+                  "aliases": [],
+                  "type": "enum",
+                  "description": "Limit the interactive wizard to one plane (default: both)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [
+                    "management",
+                    "lakehouse"
+                  ]
+                }
+              ],
+              "examples": [
+                "altertable profile configure",
+                "altertable profile configure acme_production --api-key atm_xxx --env production",
+                "altertable profile configure acme_staging --user alice --password-stdin",
+                "altertable profile configure --scope lakehouse"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-list",
+              "command": "altertable profile list",
+              "description": "List configured profiles",
+              "usage": [
+                "altertable profile list"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-show",
+              "command": "altertable profile show",
+              "description": "Show a profile's stored identity, auth, and endpoints",
+              "usage": [
+                "altertable profile show [NAME]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name (default: selected or active profile)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-status",
+              "command": "altertable profile status",
+              "description": "Verify stored credentials and show the profile",
+              "usage": [
+                "altertable profile status [NAME]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name (default: selected or active profile)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-switch",
+              "command": "altertable profile switch",
+              "description": "Interactively switch the active profile",
+              "usage": [
+                "altertable profile switch [NAME]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-current",
+              "command": "altertable profile current",
+              "description": "Show the active profile name",
+              "usage": [
+                "altertable profile current"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-env",
+              "command": "altertable profile env",
+              "description": "Print shell exports for a profile",
+              "usage": [
+                "altertable profile env [NAME]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name (default: active profile)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-profile-delete",
+              "command": "altertable profile delete",
+              "description": "Delete a profile",
+              "usage": [
+                "altertable profile delete [options] <NAME>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Profile name",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [
+                {
+                  "name": "yes",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Confirm deletion",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [],
+              "subcommands": []
+            }
+          ]
+        },
+        {
+          "id": "altertable-catalogs",
+          "command": "altertable catalogs",
+          "description": "Manage catalogs (databases and connections) in the current environment.",
+          "usage": [
+            "altertable catalogs",
+            "altertable catalogs create"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [],
+          "examples": [
+            "altertable catalogs",
+            "altertable catalogs create Analytics"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-catalogs-create",
+              "command": "altertable catalogs create",
+              "description": "Create an Altertable catalog.",
+              "usage": [
+                "altertable catalogs create <NAME>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Catalog name",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [
+                "altertable catalogs create Analytics"
+              ],
+              "subcommands": []
+            }
+          ]
+        },
+        {
+          "id": "altertable-api",
+          "command": "altertable api",
+          "description": "Management REST API — HTTP invoker and OpenAPI spec.",
+          "usage": [
+            "altertable api [options] <ENDPOINT>",
+            "altertable api routes|spec"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "endpoint",
+              "aliases": [],
+              "type": "positional",
+              "description": "Path under /rest/v1, e.g. /whoami",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [
+            {
+              "name": "method",
+              "aliases": [
+                "X"
+              ],
+              "type": "enum",
+              "description": "HTTP method override (default GET, or POST when fields/input are provided)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "GET",
+                "POST",
+                "PATCH",
+                "DELETE",
+                "PUT"
+              ]
+            },
+            {
+              "name": "raw-field",
+              "aliases": [
+                "f"
+              ],
+              "type": "string",
+              "description": "String request parameter key=value (repeatable; gh api -f semantics)",
+              "required": false,
+              "repeatable": true,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "field",
+              "aliases": [
+                "F"
+              ],
+              "type": "string",
+              "description": "Typed request parameter key=value (true, false, null, integers; repeatable)",
+              "required": false,
+              "repeatable": true,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "input",
+              "aliases": [],
+              "type": "string",
+              "description": "File to use as the request body; use - for stdin",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "env",
+              "aliases": [],
+              "type": "string",
+              "description": "Replace {environment_id} in the path",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "format",
+              "aliases": [],
+              "type": "enum",
+              "description": "Serialized output format; use global --json for JSON",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "csv",
+                "markdown"
+              ]
+            }
+          ],
+          "examples": [
+            "altertable api /whoami",
+            "altertable api routes",
+            "altertable api /environments/production/connections",
+            "altertable api /service_accounts -X POST -F label=\"CI Bot\""
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-api-routes",
+              "command": "altertable api routes",
+              "description": "List management API paths and methods from the bundled OpenAPI spec.",
+              "usage": [
+                "altertable api routes [OPERATION]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "operation",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Optional operationId to inspect, e.g. createDatabase",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [
+                "altertable api routes",
+                "altertable api routes createDatabase"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-api-spec",
+              "command": "altertable api spec",
+              "description": "Print the bundled management OpenAPI specification (YAML by default; JSON with --json).",
+              "usage": [
+                "altertable api spec"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [],
+              "examples": [
+                "altertable api spec",
+                "altertable api spec --json"
+              ],
+              "subcommands": []
+            }
+          ]
+        },
+        {
+          "id": "altertable-doctor",
+          "command": "altertable doctor",
+          "description": "Diagnose local configuration and Altertable connectivity.",
+          "usage": [
+            "altertable doctor [options]"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [
+            {
+              "name": "offline",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Inspect local configuration without contacting Altertable APIs.",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
+          "examples": [
+            "altertable doctor",
+            "altertable doctor --offline",
+            "altertable --json doctor"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-update",
+          "command": "altertable update",
+          "description": "Update Altertable CLI to the latest release.",
+          "usage": [
+            "altertable update [options] [VERSION]"
+          ],
+          "aliases": [
+            "upgrade"
+          ],
+          "arguments": [
+            {
+              "name": "version",
+              "aliases": [],
+              "type": "positional",
+              "description": "Specific version to install (default: latest).",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [
+            {
+              "name": "check",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Check for an update without installing it.",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "force",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Reinstall or downgrade to the selected release.",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
+          "examples": [
+            "altertable update",
+            "altertable update --check",
+            "altertable update 1.2.0 --force"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-completion",
+          "command": "altertable completion",
+          "description": "Generate or install shell completion scripts.",
+          "usage": [
+            "altertable completion",
+            "altertable completion generate|install"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [],
+          "examples": [
+            "altertable completion install",
+            "altertable completion install zsh",
+            "altertable completion generate bash > ~/.local/share/bash-completion/completions/altertable"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-completion-generate",
+              "command": "altertable completion generate",
+              "description": "Generate a shell completion script.",
+              "usage": [
+                "altertable completion generate <BASH|FISH|ZSH>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "shell",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Shell to generate completion for",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [
+                    "bash",
+                    "fish",
+                    "zsh"
+                  ],
+                  "positionalCompletion": "finite"
+                }
+              ],
+              "options": [],
+              "examples": [
+                "altertable completion generate bash",
+                "altertable completion generate zsh > ~/.local/share/zsh/site-functions/_altertable"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-completion-install",
+              "command": "altertable completion install",
+              "description": "Install shell completion for the current shell.",
+              "usage": [
+                "altertable completion install [options] [BASH|FISH|ZSH]"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "shell",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Shell to install completion for (default: detected shell)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [
+                    "bash",
+                    "fish",
+                    "zsh"
+                  ],
+                  "positionalCompletion": "finite"
+                }
+              ],
+              "options": [
+                {
+                  "name": "no-rc",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Write the completion file without updating shell startup files.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable completion install",
+                "altertable completion install fish",
+                "altertable completion install zsh --no-rc"
+              ],
+              "subcommands": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ingest",
+      "title": "Ingest",
+      "commands": [
+        {
+          "id": "altertable-append",
+          "command": "altertable append",
+          "description": "Append JSON rows to a table.",
+          "usage": [
+            "altertable append [options] <DATA>",
+            "altertable append status"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "data",
+              "aliases": [],
+              "type": "positional",
+              "description": "JSON object, array, or @file",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [
+            {
+              "name": "to",
+              "aliases": [],
+              "type": "string",
+              "description": "Destination as catalog.schema.table",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "sync",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Wait for the append operation to finish before returning",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
+          "examples": [
+            "altertable append '{\"event\":\"checkout_completed\",\"user_id\":\"usr_123\",\"revenue\":99}' --to analytics.main.events",
+            "altertable append status <append-id>"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-append-status",
+              "command": "altertable append status",
+              "description": "Fetch status for an append operation.",
+              "usage": [
+                "altertable append status <APPEND-ID>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "append-id",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Append id returned by append",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            }
+          ]
+        },
+        {
+          "id": "altertable-upload",
+          "command": "altertable upload",
+          "description": "Upload a file to create, append to, or overwrite a table.",
+          "usage": [
+            "altertable upload [options] <FILE>"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "file",
+              "aliases": [],
+              "type": "positional",
+              "description": "Local file to upload",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "file"
+            }
+          ],
+          "options": [
+            {
+              "name": "to",
+              "aliases": [],
+              "type": "string",
+              "description": "Destination as catalog.schema.table",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "format",
+              "aliases": [],
+              "type": "enum",
+              "description": "Input format; inferred from the filename when omitted",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "csv",
+                "json",
+                "parquet"
+              ]
+            },
+            {
+              "name": "mode",
+              "aliases": [],
+              "type": "enum",
+              "description": "create, append, or overwrite",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "create",
+                "append",
+                "overwrite"
+              ],
+              "default": "create"
+            }
+          ],
+          "examples": [
+            "altertable upload users.csv --to analytics.main.users",
+            "altertable upload orders.parquet --to analytics.main.orders --mode overwrite"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-upsert",
+          "command": "altertable upsert",
+          "description": "Upload a file and match existing rows by primary key.",
+          "usage": [
+            "altertable upsert [options] <FILE>"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "file",
+              "aliases": [],
+              "type": "positional",
+              "description": "Local file to upload",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "file"
+            }
+          ],
+          "options": [
+            {
+              "name": "to",
+              "aliases": [],
+              "type": "string",
+              "description": "Destination as catalog.schema.table",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "format",
+              "aliases": [],
+              "type": "enum",
+              "description": "Input format; inferred from the filename when omitted",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "csv",
+                "json",
+                "parquet"
+              ]
+            },
+            {
+              "name": "key",
+              "aliases": [],
+              "type": "string",
+              "description": "Column name used to match existing rows",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
+          "examples": [
+            "altertable upsert users.csv --to analytics.main.users --key id"
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "title": "Query",
+      "commands": [
+        {
+          "id": "altertable-query",
+          "command": "altertable query",
+          "description": "Run SQL queries against the lakehouse.",
+          "usage": [
+            "altertable query [options] <STATEMENT>",
+            "altertable query show|cancel"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "statement",
+              "aliases": [],
+              "type": "positional",
+              "description": "SQL statement to run",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [
+            {
+              "name": "format",
+              "aliases": [],
+              "type": "enum",
+              "description": "Result format: csv, jsonl, and parquet stream from the API; markdown is rendered by the CLI. Use global --json for structured JSON",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "csv",
+                "jsonl",
+                "parquet",
+                "markdown"
+              ]
+            },
+            {
+              "name": "layout",
+              "aliases": [],
+              "type": "enum",
+              "description": "Human layout: auto, table, or line",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "auto",
+                "table",
+                "line"
+              ]
+            },
+            {
+              "name": "columns",
+              "aliases": [],
+              "type": "string",
+              "description": "Comma-separated columns to show",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "max-width",
+              "aliases": [],
+              "type": "string",
+              "description": "Maximum display width for table columns",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "default": "32"
+            },
+            {
+              "name": "compute-size",
+              "aliases": [],
+              "type": "enum",
+              "description": "Compute size for the query",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "XS",
+                "S",
+                "M",
+                "L",
+                "XL",
+                "AUTO"
+              ],
+              "default": "AUTO"
+            },
+            {
+              "name": "dialect",
+              "aliases": [],
+              "type": "string",
+              "description": "Source SQL dialect to transpile from (server default: DuckDB)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "catalog",
+              "aliases": [],
+              "type": "string",
+              "description": "Catalog name (optional; can also come from the session)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "schema",
+              "aliases": [],
+              "type": "string",
+              "description": "Schema name (optional; can also come from the session)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "output",
+              "aliases": [],
+              "type": "string",
+              "description": "Write result bytes/text to this path instead of stdout",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "query-id",
+              "aliases": [],
+              "type": "string",
+              "description": "Optional stable query id",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "session-id",
+              "aliases": [],
+              "type": "string",
+              "description": "Optional session id",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
+            {
+              "name": "pager",
+              "aliases": [],
+              "type": "enum",
+              "description": "Pager mode for human output: auto, always, or never",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "auto",
+                "always",
+                "never"
+              ],
+              "default": "auto"
+            }
+          ],
+          "examples": [
+            "altertable query \"SELECT id, email, plan FROM analytics.main.users LIMIT 10\"",
+            "altertable query \"SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10\" --json",
+            "altertable query \"SELECT 1\" --format csv --output results.csv",
+            "altertable query show <query-id>"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-query-show",
+              "command": "altertable query show",
+              "description": "Fetch metadata for a completed or running query.",
+              "usage": [
+                "altertable query show <QUERY-ID>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "query-id",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Query id returned by the API",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-query-cancel",
+              "command": "altertable query cancel",
+              "description": "Cancel a running query.",
+              "usage": [
+                "altertable query cancel [options] <QUERY-ID>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "query-id",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Query id to cancel",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [
+                {
+                  "name": "session-id",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Session id that owns the query",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [],
+              "subcommands": []
+            }
+          ]
+        },
+        {
+          "id": "altertable-schema",
+          "command": "altertable schema",
+          "description": "List schemas, tables, and columns for a catalog.",
+          "usage": [
+            "altertable schema [options] <CATALOG>"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "catalog",
+              "aliases": [],
+              "type": "positional",
+              "description": "Catalog name",
+              "required": true,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [
+            {
+              "name": "format",
+              "aliases": [],
+              "type": "enum",
+              "description": "Serialized output format; use global --json for JSON",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "csv",
+                "markdown"
+              ]
+            },
+            {
+              "name": "pager",
+              "aliases": [],
+              "type": "enum",
+              "description": "Pager mode for human output: auto, always, or never",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [
+                "auto",
+                "always",
+                "never"
+              ],
+              "default": "auto"
+            }
+          ],
+          "examples": [
+            "altertable schema analytics",
+            "altertable schema analytics --json"
+          ],
+          "subcommands": []
+        },
+        {
+          "id": "altertable-duckdb",
+          "command": "altertable duckdb",
+          "description": "Open a DuckDB shell attached to lakehouse catalogs (all of them by default).",
+          "usage": [
+            "altertable duckdb [CATALOG]"
+          ],
+          "aliases": [],
+          "arguments": [
+            {
+              "name": "catalog",
+              "aliases": [],
+              "type": "positional",
+              "description": "Catalog to attach (defaults to all catalogs)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "positionalCompletion": "freeform"
+            }
+          ],
+          "options": [],
+          "examples": [
+            "altertable duckdb",
+            "altertable duckdb analytics"
+          ],
+          "subcommands": []
+        }
+      ]
+    }
+  ]
+}
