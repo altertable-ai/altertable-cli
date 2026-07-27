@@ -46,8 +46,8 @@ export async function writeQueryDestination(
   if (outputPath !== undefined) {
     const writer = Bun.file(outputPath).writer();
     try {
-      await writeStreamChunks(content, (chunk) => {
-        writer.write(chunk);
+      await writeStreamChunks(content, async (chunk) => {
+        await writer.write(chunk);
       });
     } finally {
       await writer.end();
