@@ -71,17 +71,22 @@ describe("query command", () => {
     });
   });
 
-  test("rejects explicit AUTO compute size with a session", async () => {
-    expect(
-      runCommandWithTestRuntime([
-        "query",
-        "SELECT 1",
-        "--session-id",
-        "session-1",
-        "--compute-size",
-        "AUTO",
-      ]),
-    ).rejects.toThrow("--compute-size AUTO cannot be combined with --session-id.");
+  test("sends explicit AUTO compute size with a session to the API", async () => {
+    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
+
+    await runCommandWithTestRuntime([
+      "query",
+      "SELECT 1",
+      "--session-id",
+      "session-1",
+      "--compute-size",
+      "AUTO",
+    ]);
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
+      session_id: "session-1",
+      compute_size: "AUTO",
+    });
   });
 
   test("streams API-native csv bytes instead of client-rendered CSV", async () => {

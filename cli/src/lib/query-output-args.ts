@@ -1,6 +1,7 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { defineArguments } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
+import { LAKEHOUSE_COMPUTE_SIZES, type LakehouseComputeSize } from "@/lib/lakehouse/query.ts";
 import {
   isApiNativeQueryFormat,
   parseQueryResultFormat,
@@ -13,7 +14,6 @@ import { isQueryLayout, QUERY_LAYOUT_OPTIONS } from "@/ui/layouts/query.ts";
 const MIN_MAX_COLUMN_WIDTH = 8;
 const PRESENTATION_RESULT_FORMAT_OPTIONS = ["csv", "markdown"] as const;
 const QUERY_RESULT_FORMAT_OPTIONS = ["csv", "jsonl", "parquet", "markdown"] as const;
-const COMPUTE_SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "AUTO"] as const;
 const PAGER_MODE_OPTIONS = ["auto", "always", "never"] as const;
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = ["--layout", "--pager", "--max-width"] as const;
@@ -69,9 +69,9 @@ export const queryPagerArgs = defineArguments({
 export const queryRequestArgs = defineArguments({
   "compute-size": {
     type: "enum",
-    description: "Compute size for the query (AUTO cannot be combined with --session-id)",
+    description: "Compute size for the query",
     default: "AUTO",
-    options: [...COMPUTE_SIZE_OPTIONS],
+    options: [...LAKEHOUSE_COMPUTE_SIZES],
   },
   dialect: {
     type: "string",
@@ -96,7 +96,7 @@ export type QueryOutputOptions = {
   displayOptions: QueryDisplayOptions;
   pagerOptions: PagerOptions;
   outputPath?: string;
-  computeSize?: string;
+  computeSize?: LakehouseComputeSize;
   dialect?: string;
   catalog?: string;
   schema?: string;
@@ -192,21 +192,25 @@ function optionalTrimmedString(args: Record<string, unknown>, name: string): str
   return trimmed === "" ? undefined : trimmed;
 }
 
+function isLakehouseComputeSize(value: string): value is LakehouseComputeSize {
+  return (LAKEHOUSE_COMPUTE_SIZES as readonly string[]).includes(value);
+}
+
+function parseLakehouseComputeSize(value: string): LakehouseComputeSize {
+  if (!isLakehouseComputeSize(value)) {
+    throw new CliError(`--compute-size must be one of ${LAKEHOUSE_COMPUTE_SIZES.join(", ")}.`);
+  }
+  return value;
+}
+
 export function resolveQueryComputeSize(options: {
   sessionId?: string;
-  computeSizeArg?: string;
+  computeSizeArg?: LakehouseComputeSize;
   computeSizeExplicit: boolean;
-}): string | undefined {
+}): LakehouseComputeSize | undefined {
   const computeSize = options.computeSizeArg ?? "AUTO";
 
-  if (options.sessionId) {
-    if (options.computeSizeExplicit && computeSize === "AUTO") {
-      throw new CliError("--compute-size AUTO cannot be combined with --session-id.");
-    }
-    if (!options.computeSizeExplicit) return undefined;
-    return computeSize;
-  }
-
+  if (options.sessionId && !options.computeSizeExplicit) return undefined;
   return computeSize;
 }
 
@@ -224,7 +228,9 @@ export function parseQueryOutputOptions(
   const computeSize = resolveQueryComputeSize({
     sessionId,
     computeSizeArg:
-      args["compute-size"] === undefined ? undefined : asCliArgString(args["compute-size"]),
+      args["compute-size"] === undefined
+        ? undefined
+        : parseLakehouseComputeSize(asCliArgString(args["compute-size"])),
     computeSizeExplicit: hasArgvFlag(options.rawArgs, "--compute-size"),
   });
 

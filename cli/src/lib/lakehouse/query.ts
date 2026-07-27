@@ -9,11 +9,14 @@ import { STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 
 export type LakehouseApiQueryFormat = "csv" | "jsonl" | "parquet";
 
+export const LAKEHOUSE_COMPUTE_SIZES = ["XS", "S", "M", "L", "XL", "AUTO"] as const;
+export type LakehouseComputeSize = (typeof LAKEHOUSE_COMPUTE_SIZES)[number];
+
 export type LakehouseQueryInput = {
   statement: string;
   queryId?: string;
   sessionId?: string;
-  computeSize?: string;
+  computeSize?: LakehouseComputeSize;
   format?: LakehouseApiQueryFormat;
   dialect?: string;
   catalog?: string;

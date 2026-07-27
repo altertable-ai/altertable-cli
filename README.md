@@ -353,7 +353,7 @@ altertable --json query "SELECT 1"
 altertable --agent query "SELECT 1"
 ```
 
-Human output is the default and respects `--layout auto|table|line`, `--columns`, `--max-width`, and `--pager auto|always|never`. Use `--format csv|jsonl|parquet` to stream those encodings from the lakehouse API, `--format markdown` for CLI-rendered markdown, or the global `--json`/`--agent` flags for structured JSON. API-native formats cannot be combined with `--json`/`--agent` or layout/pager flags. `--output` writes to a file (stdout by default). `--compute-size` defaults to `AUTO` (omit with `--session-id` unless you set `XS|S|M|L|XL`).
+Human output is the default and respects `--layout auto|table|line`, `--columns`, `--max-width`, and `--pager auto|always|never`. Use `--format csv|jsonl|parquet` to stream those encodings from the lakehouse API, `--format markdown` for CLI-rendered markdown, or the global `--json`/`--agent` flags for structured JSON. API-native formats cannot be combined with `--json`/`--agent` or layout/pager flags. `--output` writes to a file (stdout by default). `--compute-size` defaults to `AUTO` (omitted with `--session-id` unless set explicitly).
 
 Set display defaults in `~/.config/altertable/config`:
 

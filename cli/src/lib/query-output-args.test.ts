@@ -55,15 +55,6 @@ describe("parseQueryOutputOptions", () => {
           { format: "csv", layout: "table" },
           { agent: false, json: false, rawArgs: ["--format", "csv", "--layout", "table"] },
         ),
-      () =>
-        parseQueryOutputOptions(
-          { "session-id": "session-1", "compute-size": "AUTO" },
-          {
-            agent: false,
-            json: false,
-            rawArgs: ["--session-id", "session-1", "--compute-size", "AUTO"],
-          },
-        ),
     ]) {
       expect(run).toThrow(CliError);
     }
@@ -91,6 +82,19 @@ describe("parseQueryOutputOptions", () => {
       computeSize: "L",
     });
   });
+
+  test("passes explicit AUTO with a session through to the request", () => {
+    const options = parseQueryOutputOptions(
+      { "session-id": "session-1", "compute-size": "AUTO" },
+      {
+        agent: false,
+        json: false,
+        rawArgs: ["--session-id", "session-1", "--compute-size", "AUTO"],
+      },
+    );
+
+    expect(options.computeSize).toBe("AUTO");
+  });
 });
 
 describe("resolveQueryComputeSize", () => {
@@ -112,5 +116,15 @@ describe("resolveQueryComputeSize", () => {
         computeSizeExplicit: true,
       }),
     ).toBe("M");
+  });
+
+  test("keeps explicit AUTO with a session for the backend to validate", () => {
+    expect(
+      resolveQueryComputeSize({
+        sessionId: "session-1",
+        computeSizeArg: "AUTO",
+        computeSizeExplicit: true,
+      }),
+    ).toBe("AUTO");
   });
 });
