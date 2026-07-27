@@ -18,7 +18,11 @@ import {
 import { getQueryColumnNames } from "@/lib/query-format.ts";
 import { httpSendStream } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
-import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
+import {
+  buildLakehouseQueryRequest,
+  executeLakehouseQuery,
+  executeLakehouseQueryBytes,
+} from "@/lib/lakehouse/query.ts";
 import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
 
 const SAMPLE_NDJSON = [
@@ -245,6 +249,36 @@ describe("parseLakehouseQueryStream", () => {
   });
 });
 
+describe("buildLakehouseQueryRequest", () => {
+  test("includes optional QueryRequest fields in the JSON body", () => {
+    const request = buildLakehouseQueryRequest(
+      {
+        statement: "SELECT 1",
+        queryId: "query-1",
+        sessionId: "session-1",
+        computeSize: "M",
+        format: "csv",
+        dialect: "snowflake",
+        catalog: "analytics",
+        schema: "main",
+      },
+      false,
+    );
+
+    expect(typeof request.body).toBe("string");
+    expect(JSON.parse(request.body as string)).toEqual({
+      statement: "SELECT 1",
+      query_id: "query-1",
+      session_id: "session-1",
+      compute_size: "M",
+      format: "csv",
+      dialect: "snowflake",
+      catalog: "analytics",
+      schema: "main",
+    });
+  });
+});
+
 describe("executeLakehouseQuery", () => {
   test("returns the same result as parseLakehouseQueryResponse", async () => {
     writeFileSync(
@@ -268,6 +302,36 @@ describe("executeLakehouseQuery", () => {
     const bufferedResult = parseLakehouseQueryResponse(SAMPLE_NDJSON);
 
     expect(streamedResult).toEqual(bufferedResult);
+  });
+});
+
+describe("executeLakehouseQueryBytes", () => {
+  test("streams raw response bytes for API-native formats", async () => {
+    const csvBody = "id,name\n1,Alice\n";
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/query",
+          method: "POST",
+          chunked: true,
+          body: csvBody,
+        },
+      ]),
+    );
+
+    const runtime = getCliRuntime();
+    const stream = await executeLakehouseQueryBytes(
+      { statement: "SELECT 1", format: "csv", computeSize: "AUTO" },
+      createExecutionContext(runtime),
+    );
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const body = Buffer.concat(chunks).toString("utf8");
+    expect(body).toContain("id,name");
+    expect(body).toContain("1,Alice");
   });
 });
 

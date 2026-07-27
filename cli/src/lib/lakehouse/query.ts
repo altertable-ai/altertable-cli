@@ -7,10 +7,20 @@ import {
 import { sendHttp, sendHttpStream, type HttpRequest } from "@/lib/http-request.ts";
 import { STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 
+export type LakehouseApiQueryFormat = "csv" | "jsonl" | "parquet";
+
+export const LAKEHOUSE_COMPUTE_SIZES = ["XS", "S", "M", "L", "XL", "AUTO"] as const;
+export type LakehouseComputeSize = (typeof LAKEHOUSE_COMPUTE_SIZES)[number];
+
 export type LakehouseQueryInput = {
   statement: string;
   queryId?: string;
   sessionId?: string;
+  computeSize?: LakehouseComputeSize;
+  format?: LakehouseApiQueryFormat;
+  dialect?: string;
+  catalog?: string;
+  schema?: string;
   httpOptions?: { readTimeoutMs?: number };
 };
 
@@ -23,6 +33,11 @@ function buildQueryPayload(input: LakehouseQueryInput): Record<string, string> {
   const payload: Record<string, string> = { statement: input.statement };
   if (input.queryId) payload.query_id = input.queryId;
   if (input.sessionId) payload.session_id = input.sessionId;
+  if (input.computeSize) payload.compute_size = input.computeSize;
+  if (input.format) payload.format = input.format;
+  if (input.dialect) payload.dialect = input.dialect;
+  if (input.catalog) payload.catalog = input.catalog;
+  if (input.schema) payload.schema = input.schema;
   return payload;
 }
 
@@ -66,6 +81,13 @@ export async function executeLakehouseQuery(
     return collectQueryStream(await sendHttpStream(request, execution));
   }
   return parseLakehouseQueryResponse(await sendHttp(request, execution));
+}
+
+export async function executeLakehouseQueryBytes(
+  input: LakehouseQueryInput,
+  execution: ExecutionContext,
+): Promise<ReadableStream<Uint8Array>> {
+  return sendHttpStream(buildLakehouseQueryRequest(input, true), execution);
 }
 
 export function buildLakehouseQueryShowRequest(queryId: string): HttpRequest {

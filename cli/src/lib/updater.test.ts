@@ -730,6 +730,7 @@ describe("automatic update checks", () => {
         writeStderr() {},
         writeJson() {},
         writeRaw() {},
+        writeBytes() {},
         writeHuman() {},
         writeMetadata(lines) {
           stderr.push(...lines);
@@ -760,6 +761,7 @@ describe("automatic update checks", () => {
         writeStderr() {},
         writeJson() {},
         writeRaw() {},
+        writeBytes() {},
         writeHuman() {},
         writeMetadata(lines) {
           stderr.push(...lines);

@@ -20,6 +20,9 @@ export function createCliTestHarness(
   runtime.output.writeStderr = (line) => stderr.push(line);
   runtime.output.writeJson = (data) => stdout.push(JSON.stringify(data));
   runtime.output.writeRaw = (body) => stdout.push(body);
+  runtime.output.writeBytes = (body) => {
+    stdout.push(Buffer.from(body).toString("utf8"));
+  };
   runtime.output.writeHuman = (text) => stdout.push(text);
   runtime.output.writeMetadata = (lines) => stderr.push(...lines);
 

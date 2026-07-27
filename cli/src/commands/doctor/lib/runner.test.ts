@@ -15,6 +15,7 @@ function createDoctorContext(offline = false): DoctorCheckContext {
         writeStderr() {},
         writeJson() {},
         writeRaw() {},
+        writeBytes() {},
         writeHuman() {},
         writeMetadata() {},
       },

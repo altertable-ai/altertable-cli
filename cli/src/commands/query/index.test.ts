@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import {
   createLakehouseTestWorkspace,
@@ -15,7 +18,7 @@ beforeEach(() => {
 afterEach(() => workspace.cleanup());
 
 describe("query command", () => {
-  test("sends the statement and optional identifiers", async () => {
+  test("sends statement identifiers and default compute size", async () => {
     workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
 
     await runCommandWithTestRuntime([
@@ -23,15 +26,128 @@ describe("query command", () => {
       "SELECT 1",
       "--query-id",
       "query-1",
-      "--session-id",
-      "session-1",
+      "--dialect",
+      "snowflake",
+      "--catalog",
+      "analytics",
+      "--schema",
+      "main",
     ]);
 
     expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
       statement: "SELECT 1",
       query_id: "query-1",
+      compute_size: "AUTO",
+      dialect: "snowflake",
+      catalog: "analytics",
+      schema: "main",
+    });
+  });
+
+  test("omits compute size with session unless an explicit size is set", async () => {
+    workspace.writeMocks([
+      { urlPattern: "/query", method: "POST", body: QUERY_RESPONSE },
+      { urlPattern: "/query", method: "POST", body: QUERY_RESPONSE },
+    ]);
+
+    await runCommandWithTestRuntime(["query", "SELECT 1", "--session-id", "session-1"]);
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
       session_id: "session-1",
     });
+
+    await runCommandWithTestRuntime([
+      "query",
+      "SELECT 1",
+      "--session-id",
+      "session-1",
+      "--compute-size",
+      "S",
+    ]);
+    expect(JSON.parse(workspace.readPayloads()[1] ?? "")).toEqual({
+      statement: "SELECT 1",
+      session_id: "session-1",
+      compute_size: "S",
+    });
+  });
+
+  test("sends explicit AUTO compute size with a session to the API", async () => {
+    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
+
+    await runCommandWithTestRuntime([
+      "query",
+      "SELECT 1",
+      "--session-id",
+      "session-1",
+      "--compute-size",
+      "AUTO",
+    ]);
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
+      session_id: "session-1",
+      compute_size: "AUTO",
+    });
+  });
+
+  test("streams API-native csv bytes instead of client-rendered CSV", async () => {
+    const apiCsv = "id,name\n9,from-api\n";
+    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: apiCsv }]);
+
+    const harness = await runCommandWithTestRuntime(["query", "SELECT 1", "--format", "csv"], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
+      compute_size: "AUTO",
+      format: "csv",
+    });
+    expect(harness.stdout.join("")).toContain("9,from-api");
+  });
+
+  test("writes API-native output to --output", async () => {
+    const outputDir = mkdtempSync(join(tmpdir(), "altertable-query-output-"));
+    const outputPath = join(outputDir, "result.csv");
+    try {
+      workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: "id\n42\n" }]);
+
+      await runCommandWithTestRuntime(
+        ["query", "SELECT 1", "--format", "csv", "--output", outputPath],
+        { debug: false, json: false, agent: false },
+      );
+
+      expect(readFileSync(outputPath, "utf8")).toContain("42");
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  test("keeps markdown as client-rendered NDJSON output", async () => {
+    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
+
+    const harness = await runCommandWithTestRuntime(["query", "SELECT 1", "--format", "markdown"], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
+      statement: "SELECT 1",
+      compute_size: "AUTO",
+    });
+    expect(harness.stdout.join("")).toContain("|");
+  });
+
+  test("rejects API-native format with --json", async () => {
+    expect(
+      runCommandWithTestRuntime(["query", "SELECT 1", "--format", "parquet"], {
+        debug: false,
+        json: true,
+        agent: false,
+      }),
+    ).rejects.toThrow("cannot be combined with --json or --agent");
   });
 
   test("dispatches show and cancel without run arguments", async () => {
@@ -51,14 +167,10 @@ describe("query command", () => {
     );
   });
 
-  test("executes a bare lowercase show statement as SQL", async () => {
-    workspace.writeMocks([{ urlPattern: "/query", method: "POST", body: QUERY_RESPONSE }]);
-
-    await runCommandWithTestRuntime(["query", "show"]);
-
-    expect(JSON.parse(workspace.readPayloads()[0] ?? "")).toEqual({
-      statement: "show",
-    });
+  test("requires a query id for show instead of running bare show as SQL", async () => {
+    expect(runCommandWithTestRuntime(["query", "show"])).rejects.toThrow(
+      "Missing required argument: query-id.",
+    );
   });
 
   test("URL-encodes query identifiers", async () => {
