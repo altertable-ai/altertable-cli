@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/altertable-ai/altertable-cli/compare/v1.4.0...v1.5.0) (2026-07-27)
+
+
+### Features
+
+* **docs:** generate versioned CLI reference contract ([#90](https://github.com/altertable-ai/altertable-cli/issues/90)) ([15bc1f4](https://github.com/altertable-ai/altertable-cli/commit/15bc1f48cf06b5333aad4b264b3108edd13b521b))
+* **query:** implement a few missing and useless options + fix `query show` ([#89](https://github.com/altertable-ai/altertable-cli/issues/89)) ([137ef20](https://github.com/altertable-ai/altertable-cli/commit/137ef20e5c6e1491308572bb8791022448d79d16))
+
 ## [1.4.0](https://github.com/altertable-ai/altertable-cli/compare/v1.3.0...v1.4.0) (2026-07-24)
 
 
