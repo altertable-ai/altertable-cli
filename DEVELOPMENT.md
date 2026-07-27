@@ -26,9 +26,9 @@ bun run build                  # bundle to cli/dist/cli.js
 bun run pack:check             # build + dry-run pack (verify publish contents)
 ```
 
-The CLI reference wire contract is owned by
-[`cli/schemas/cli-reference.schema.json`](cli/schemas/cli-reference.schema.json). The generated
-root copy is published with `cli-reference.json` in every GitHub release. Additive optional fields
+The CLI reference wire contract is rendered from the command-reference module into
+[`cli-reference.schema.json`](cli-reference.schema.json). The generated root artifact is published
+with `cli-reference.json` in every GitHub release. Additive optional fields
 may retain the current schema version; removing or renaming fields, changing their meaning, or
 making fields newly required must bump both `schemaVersion` and the schema `$id`.
 

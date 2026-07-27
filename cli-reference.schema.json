@@ -5,7 +5,12 @@
   "description": "Versioned public documentation contract generated from the Altertable CLI command descriptor.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "cliVersion", "globalOptions", "groups"],
+  "required": [
+    "schemaVersion",
+    "cliVersion",
+    "globalOptions",
+    "groups"
+  ],
   "properties": {
     "schemaVersion": {
       "const": 1
@@ -51,7 +56,12 @@
           }
         },
         "type": {
-          "enum": ["boolean", "string", "enum", "positional"]
+          "enum": [
+            "boolean",
+            "string",
+            "enum",
+            "positional"
+          ]
         },
         "description": {
           "type": "string"
@@ -63,7 +73,11 @@
           "type": "boolean"
         },
         "scope": {
-          "enum": ["root-only", "global", "command"]
+          "enum": [
+            "root-only",
+            "global",
+            "command"
+          ]
         },
         "values": {
           "type": "array",
@@ -72,7 +86,11 @@
           }
         },
         "positionalCompletion": {
-          "enum": ["finite", "file", "freeform"]
+          "enum": [
+            "finite",
+            "file",
+            "freeform"
+          ]
         },
         "valueHint": {
           "type": "string"
@@ -145,10 +163,18 @@
     "group": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "commands"],
+      "required": [
+        "id",
+        "title",
+        "commands"
+      ],
       "properties": {
         "id": {
-          "enum": ["platform", "ingest", "query"]
+          "enum": [
+            "platform",
+            "ingest",
+            "query"
+          ]
         },
         "title": {
           "type": "string"

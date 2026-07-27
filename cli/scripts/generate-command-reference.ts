@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildMainCommand } from "@/cli.ts";
 import { resolveCommandDescriptor, validateCommandDescriptor } from "@/lib/command-descriptor.ts";
 import { VERSION } from "@/version.ts";
 import {
   buildCommandReference,
+  renderCliReferenceSchema,
   renderCommandReferenceJson,
   renderCommandReferenceMarkdown,
 } from "@/../scripts/command-reference.ts";
@@ -17,7 +17,6 @@ const descriptor = await resolveCommandDescriptor(buildMainCommand());
 validateCommandDescriptor(descriptor);
 const reference = buildCommandReference(descriptor, VERSION);
 const mode = parseGeneratedArtifactMode(process.argv.slice(2));
-const schemaPath = join(import.meta.dir, "../schemas/cli-reference.schema.json");
 const artifacts = [
   {
     outputPath: join(import.meta.dir, "../../COMMANDS.md"),
@@ -29,7 +28,7 @@ const artifacts = [
   },
   {
     outputPath: join(import.meta.dir, "../../cli-reference.schema.json"),
-    content: readFileSync(schemaPath, "utf8"),
+    content: renderCliReferenceSchema(),
   },
 ];
 

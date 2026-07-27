@@ -12,6 +12,7 @@ import {
 import { VERSION } from "@/version.ts";
 import {
   buildCommandReference,
+  renderCliReferenceSchema,
   renderCommandReferenceJson,
   renderCommandReferenceMarkdown,
 } from "@/../scripts/command-reference.ts";
@@ -100,15 +101,12 @@ describe("command reference", () => {
     expect(readFileSync(join(import.meta.dir, "../../cli-reference.json"), "utf8")).toBe(reference);
   });
 
-  test("keeps the published schema aligned with the CLI command contract", () => {
-    const canonicalSchema = readFileSync(
-      join(import.meta.dir, "../schemas/cli-reference.schema.json"),
-      "utf8",
-    );
-    const schema = JSON.parse(canonicalSchema) as ReferenceSchema;
+  test("renders the published schema from the CLI command contract", () => {
+    const renderedSchema = renderCliReferenceSchema();
+    const schema = JSON.parse(renderedSchema) as ReferenceSchema;
 
     expect(readFileSync(join(import.meta.dir, "../../cli-reference.schema.json"), "utf8")).toBe(
-      canonicalSchema,
+      renderedSchema,
     );
     expect(schema.properties.schemaVersion.const).toBe(1);
     expect(schema.$defs.argument.properties.type.enum).toEqual([...COMMAND_ARGUMENT_TYPES]);

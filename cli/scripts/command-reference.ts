@@ -1,4 +1,10 @@
-import { ALTERTABLE_COMMAND_GROUPS, type AltertableCommandGroup } from "@/lib/command.ts";
+import {
+  ALTERTABLE_COMMAND_GROUPS,
+  COMMAND_ARGUMENT_TYPES,
+  COMMAND_FLAG_SCOPES,
+  POSITIONAL_COMPLETION_KINDS,
+  type AltertableCommandGroup,
+} from "@/lib/command.ts";
 import {
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
@@ -257,4 +263,90 @@ export function renderCommandReferenceMarkdown(reference: CommandReferenceModel)
 export function renderCommandReferenceJson(reference: CommandReferenceModel): string {
   const { rootDescription: _rootDescription, ...publicReference } = reference;
   return `${JSON.stringify(publicReference, null, 2)}\n`;
+}
+
+export function renderCliReferenceSchema(): string {
+  const schema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "https://altertable.ai/schemas/cli-reference/v1.json",
+    title: "Altertable CLI reference",
+    description:
+      "Versioned public documentation contract generated from the Altertable CLI command descriptor.",
+    type: "object",
+    additionalProperties: false,
+    required: ["schemaVersion", "cliVersion", "globalOptions", "groups"],
+    properties: {
+      schemaVersion: { const: CLI_REFERENCE_SCHEMA_VERSION },
+      cliVersion: { type: "string" },
+      globalOptions: { type: "array", items: { $ref: "#/$defs/argument" } },
+      groups: { type: "array", items: { $ref: "#/$defs/group" } },
+    },
+    $defs: {
+      argument: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "name",
+          "aliases",
+          "type",
+          "description",
+          "required",
+          "repeatable",
+          "scope",
+          "values",
+        ],
+        properties: {
+          name: { type: "string" },
+          aliases: { type: "array", items: { type: "string" } },
+          type: { enum: COMMAND_ARGUMENT_TYPES },
+          description: { type: "string" },
+          required: { type: "boolean" },
+          repeatable: { type: "boolean" },
+          scope: { enum: COMMAND_FLAG_SCOPES },
+          values: { type: "array", items: { type: "string" } },
+          positionalCompletion: { enum: POSITIONAL_COMPLETION_KINDS },
+          valueHint: { type: "string" },
+          default: {},
+        },
+      },
+      command: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "id",
+          "command",
+          "description",
+          "usage",
+          "aliases",
+          "arguments",
+          "options",
+          "examples",
+          "subcommands",
+        ],
+        properties: {
+          id: { type: "string" },
+          command: { type: "string" },
+          description: { type: "string" },
+          usage: { type: "array", items: { type: "string" } },
+          aliases: { type: "array", items: { type: "string" } },
+          arguments: { type: "array", items: { $ref: "#/$defs/argument" } },
+          options: { type: "array", items: { $ref: "#/$defs/argument" } },
+          examples: { type: "array", items: { type: "string" } },
+          subcommands: { type: "array", items: { $ref: "#/$defs/command" } },
+        },
+      },
+      group: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "title", "commands"],
+        properties: {
+          id: { enum: ALTERTABLE_COMMAND_GROUPS.map(({ id }) => id) },
+          title: { type: "string" },
+          commands: { type: "array", items: { $ref: "#/$defs/command" } },
+        },
+      },
+    },
+  };
+
+  return `${JSON.stringify(schema, null, 2)}\n`;
 }
