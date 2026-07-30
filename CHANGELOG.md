@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/altertable-ai/altertable-cli/compare/v1.5.1...v1.6.0) (2026-07-30)
+
+
+### Features
+
+* add `altertable duckdb` command ([#27](https://github.com/altertable-ai/altertable-cli/issues/27)) ([e114b11](https://github.com/altertable-ai/altertable-cli/commit/e114b11ae7c0dde20359dd03d6cefdb2405c1211))
+* add `doctor` command for CLI diagnostics ([#79](https://github.com/altertable-ai/altertable-cli/issues/79)) ([57b1440](https://github.com/altertable-ai/altertable-cli/commit/57b14404f0e137541a43ca18886f7638aea8b835))
+* add `schema` command ([#21](https://github.com/altertable-ai/altertable-cli/issues/21)) ([f713a80](https://github.com/altertable-ai/altertable-cli/commit/f713a80c2909dd876348d4073c76bec71a467254))
+* add first-class profile workflows and OAuth login profiles ([#23](https://github.com/altertable-ai/altertable-cli/issues/23)) ([3ce655f](https://github.com/altertable-ai/altertable-cli/commit/3ce655f9f914dadcb58e9761774e2462abd2a39a))
+* add one-shot shell completion installer ([#9](https://github.com/altertable-ai/altertable-cli/issues/9)) ([3984fe8](https://github.com/altertable-ai/altertable-cli/commit/3984fe86807c3de4f70d2350d1296138c233c368))
+* allow to attach all available catalogs ([#44](https://github.com/altertable-ai/altertable-cli/issues/44)) ([d3b42c2](https://github.com/altertable-ai/altertable-cli/commit/d3b42c29b1e3403930e9f7e64237d2190ffcc3b8))
+* auto-provision ephemeral lakehouse credentials after login ([#22](https://github.com/altertable-ai/altertable-cli/issues/22)) ([d9d815f](https://github.com/altertable-ai/altertable-cli/commit/d9d815fc431fa3bea9f7cf8b9b8384ba99460108))
+* avoid `--statement` flag for query ([#26](https://github.com/altertable-ai/altertable-cli/issues/26)) ([23c5dc8](https://github.com/altertable-ai/altertable-cli/commit/23c5dc8c0fc9abbec9b4e4c30574bd1f00d5a6a1))
+* **cli:** add origin-aware CLI update command ([#18](https://github.com/altertable-ai/altertable-cli/issues/18)) ([5077028](https://github.com/altertable-ai/altertable-cli/commit/50770289ebdc3bcc9cec971c703ce06c52eedfdc))
+* **cli:** redesign help across command tree ([#53](https://github.com/altertable-ai/altertable-cli/issues/53)) ([e35c2fe](https://github.com/altertable-ai/altertable-cli/commit/e35c2fe474050c9a8c354b30138b27e45f297f3c))
+* **cli:** simplify the command API surface area ([#75](https://github.com/altertable-ai/altertable-cli/issues/75)) ([f3a1d4d](https://github.com/altertable-ai/altertable-cli/commit/f3a1d4d53452febcb9cf3bcf0d5d01ef9790a2ed))
+* **cli:** support lakehouse upsert endpoint ([#5](https://github.com/altertable-ai/altertable-cli/issues/5)) ([d6ec3b8](https://github.com/altertable-ai/altertable-cli/commit/d6ec3b8630233b6f6dc9c99c0a6e1e0bb12719aa))
+* **docs:** generate versioned CLI reference contract ([#90](https://github.com/altertable-ai/altertable-cli/issues/90)) ([15bc1f4](https://github.com/altertable-ai/altertable-cli/commit/15bc1f48cf06b5333aad4b264b3108edd13b521b))
+* implement `login` command ([#20](https://github.com/altertable-ai/altertable-cli/issues/20)) ([1300577](https://github.com/altertable-ai/altertable-cli/commit/13005776e4978bf0e2b6e2ac8cd1c37df700e13e))
+* improve human and agent experience ([#8](https://github.com/altertable-ai/altertable-cli/issues/8)) ([135414f](https://github.com/altertable-ai/altertable-cli/commit/135414fabfde46c03d2b3d04be3b2e9838a2ab8d))
+* **query:** implement a few missing and useless options + fix `query show` ([#89](https://github.com/altertable-ai/altertable-cli/issues/89)) ([137ef20](https://github.com/altertable-ai/altertable-cli/commit/137ef20e5c6e1491308572bb8791022448d79d16))
+* refine shell completion UX ([#33](https://github.com/altertable-ai/altertable-cli/issues/33)) ([bd2c605](https://github.com/altertable-ai/altertable-cli/commit/bd2c605fac8d4b1943101f48f813608ffb048fa8))
+* **release:** centralize and harden artifact publishing ([#55](https://github.com/altertable-ai/altertable-cli/issues/55)) ([8db771a](https://github.com/altertable-ai/altertable-cli/commit/8db771a0515927bde31fb5c7b8a8d056051897e9))
+* replace `configure` by `profile --configure` ([#28](https://github.com/altertable-ai/altertable-cli/issues/28)) ([fcf05b5](https://github.com/altertable-ai/altertable-cli/commit/fcf05b59741ced1aa7484404889e822f6a355614))
+* **update:** simplify `update` command behavior and API ([#64](https://github.com/altertable-ai/altertable-cli/issues/64)) ([310acdf](https://github.com/altertable-ai/altertable-cli/commit/310acdf0be659100e06ed016aa58d7b518d6631a))
+
+
+### Bug Fixes
+
+* **api:** normalize api args to ensure the HTTP verb is optional ([#11](https://github.com/altertable-ai/altertable-cli/issues/11)) ([78b32df](https://github.com/altertable-ai/altertable-cli/commit/78b32df88de1848c6898e9347222272a193b1c92))
+* **api:** prevent wide API tables from soft-wrapping ([#13](https://github.com/altertable-ai/altertable-cli/issues/13)) ([56fbeb6](https://github.com/altertable-ai/altertable-cli/commit/56fbeb6ff3de90f46e94395d3a500db88371bedb))
+* **ci:** enable shell completion verification ([#77](https://github.com/altertable-ai/altertable-cli/issues/77)) ([db7c52f](https://github.com/altertable-ai/altertable-cli/commit/db7c52ff851eb8443a78949d994987938472e813))
+* **ci:** verify executable step path ([#1](https://github.com/altertable-ai/altertable-cli/issues/1)) ([4044001](https://github.com/altertable-ai/altertable-cli/commit/40440010a4eef01178e1c34ad931ae7ccb4a0f05))
+* clarify duckdb command requirements and isolate env/profile config ([#84](https://github.com/altertable-ai/altertable-cli/issues/84)) ([b5f6208](https://github.com/altertable-ai/altertable-cli/commit/b5f6208da7c0c14c1afe6a3753693a604d7c5d57))
+* **cli:** ignore unrelated Altertable environment variables ([#67](https://github.com/altertable-ai/altertable-cli/issues/67)) ([8fe9041](https://github.com/altertable-ai/altertable-cli/commit/8fe9041bf4af2695e2373c9873afe61ae64a4f19))
+* **cli:** remove active context from usage output ([#32](https://github.com/altertable-ai/altertable-cli/issues/32)) ([9d2a4ad](https://github.com/altertable-ai/altertable-cli/commit/9d2a4adcd3c2aa004737da495fa7c6a0159f5306))
+* **compute_size:** avoid parsing the compute size and trust the API to do it ([#92](https://github.com/altertable-ai/altertable-cli/issues/92)) ([e9130c5](https://github.com/altertable-ai/altertable-cli/commit/e9130c5e6dfd7854166234f4f67cbcebd63ac3da))
+* forbid profile commands when config is env set ([#48](https://github.com/altertable-ai/altertable-cli/issues/48)) ([63a5fc4](https://github.com/altertable-ai/altertable-cli/commit/63a5fc40718dc8a9d3b9155adf94a16c7496b6fc))
+* harden profile reuse and uniformize profile display and reuse ([#45](https://github.com/altertable-ai/altertable-cli/issues/45)) ([23ca8f1](https://github.com/altertable-ai/altertable-cli/commit/23ca8f1eadad316bbeab1f7ffab8166731c68a36))
+* harden transport, JSON fidelity, and profile recovery ([#80](https://github.com/altertable-ai/altertable-cli/issues/80)) ([facdf90](https://github.com/altertable-ai/altertable-cli/commit/facdf901b850dea99e7684ce6f6af0c47d61dde7))
+* keep COMMANDS.md version in sync with release-please ([#87](https://github.com/altertable-ai/altertable-cli/issues/87)) ([cbb8d65](https://github.com/altertable-ai/altertable-cli/commit/cbb8d65a5574d18111733ab92f5b0a03a973e492))
+* **lakehouse:** allow append task without append row flags ([#19](https://github.com/altertable-ai/altertable-cli/issues/19)) ([6ded957](https://github.com/altertable-ai/altertable-cli/commit/6ded9576f06a692abae6756b335e81365bb674d8))
+* main concurrent merge issue ([#37](https://github.com/altertable-ai/altertable-cli/issues/37)) ([335252c](https://github.com/altertable-ai/altertable-cli/commit/335252c7b6cc053716a5f89739cea1b46e700c85))
+* **release:** checkout merge commit for draft release verification ([#58](https://github.com/altertable-ai/altertable-cli/issues/58)) ([988c95d](https://github.com/altertable-ai/altertable-cli/commit/988c95d922c8efcc4fe78e3d4edfd7f827fa6dc0))
+* **release:** narrow release workflow to published tags ([#40](https://github.com/altertable-ai/altertable-cli/issues/40)) ([f224328](https://github.com/altertable-ai/altertable-cli/commit/f224328f3e70b137c5cfbcdc5790b8031cfde71c))
+* **release:** run recovery with current publication code ([#63](https://github.com/altertable-ai/altertable-cli/issues/63)) ([eab2c4a](https://github.com/altertable-ai/altertable-cli/commit/eab2c4a09164f0da75b1a6a08021f50146c64287))
+* subsequent login mixing current profile ([#46](https://github.com/altertable-ai/altertable-cli/issues/46)) ([992aaee](https://github.com/altertable-ai/altertable-cli/commit/992aaeeee25a2d1c7d548525a0ffeddbd115d40a))
+* sync --version output and wire release-please marker ([#50](https://github.com/altertable-ai/altertable-cli/issues/50)) ([a3e86e8](https://github.com/altertable-ai/altertable-cli/commit/a3e86e818aa7737e5fbf746425cf64d0eb30ad34))
+* tighten body validation and stream timeout handling ([#16](https://github.com/altertable-ai/altertable-cli/issues/16)) ([4c4ce08](https://github.com/altertable-ai/altertable-cli/commit/4c4ce080981af4499eefbfae4ce8d767440fb089))
+* **updater:** make CLI updates resilient and actionable ([#52](https://github.com/altertable-ai/altertable-cli/issues/52)) ([5d0c0af](https://github.com/altertable-ai/altertable-cli/commit/5d0c0af511fb1c63fd6f55daf972b8c029d0f5c9))
+* validate lakehouse upload files before streaming the payload ([#15](https://github.com/altertable-ai/altertable-cli/issues/15)) ([0e49b6e](https://github.com/altertable-ai/altertable-cli/commit/0e49b6eb019659293d6e2bfd44de016b31087425))
+
 ## [1.5.1](https://github.com/altertable-ai/altertable-cli/compare/v1.5.0...v1.5.1) (2026-07-30)
 
 
