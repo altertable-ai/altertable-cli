@@ -215,9 +215,7 @@ export function parseQueryOutputOptions(
   const computeSize = resolveQueryComputeSize({
     sessionId,
     computeSizeArg:
-      args["compute-size"] === undefined
-        ? undefined
-        : asCliArgString(args["compute-size"]),
+      args["compute-size"] === undefined ? undefined : asCliArgString(args["compute-size"]),
     computeSizeExplicit: hasArgvFlag(options.rawArgs, "--compute-size"),
   });
 
