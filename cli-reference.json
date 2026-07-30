@@ -1172,19 +1172,12 @@
             {
               "name": "compute-size",
               "aliases": [],
-              "type": "enum",
+              "type": "string",
               "description": "Compute size for the query",
               "required": false,
               "repeatable": false,
               "scope": "command",
-              "values": [
-                "XS",
-                "S",
-                "M",
-                "L",
-                "XL",
-                "AUTO"
-              ],
+              "values": [],
               "default": "AUTO"
             },
             {

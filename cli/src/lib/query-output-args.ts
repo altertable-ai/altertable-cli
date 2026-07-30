@@ -1,7 +1,6 @@
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { defineArguments } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
-import { LAKEHOUSE_COMPUTE_SIZES, type LakehouseComputeSize } from "@/lib/lakehouse/query.ts";
 import {
   isApiNativeQueryFormat,
   parseQueryResultFormat,
@@ -68,10 +67,9 @@ export const queryPagerArgs = defineArguments({
 
 export const queryRequestArgs = defineArguments({
   "compute-size": {
-    type: "enum",
+    type: "string",
     description: "Compute size for the query",
     default: "AUTO",
-    options: [...LAKEHOUSE_COMPUTE_SIZES],
   },
   dialect: {
     type: "string",
@@ -96,7 +94,7 @@ export type QueryOutputOptions = {
   displayOptions: QueryDisplayOptions;
   pagerOptions: PagerOptions;
   outputPath?: string;
-  computeSize?: LakehouseComputeSize;
+  computeSize?: string;
   dialect?: string;
   catalog?: string;
   schema?: string;
@@ -192,22 +190,11 @@ function optionalTrimmedString(args: Record<string, unknown>, name: string): str
   return trimmed === "" ? undefined : trimmed;
 }
 
-function isLakehouseComputeSize(value: string): value is LakehouseComputeSize {
-  return (LAKEHOUSE_COMPUTE_SIZES as readonly string[]).includes(value);
-}
-
-function parseLakehouseComputeSize(value: string): LakehouseComputeSize {
-  if (!isLakehouseComputeSize(value)) {
-    throw new CliError(`--compute-size must be one of ${LAKEHOUSE_COMPUTE_SIZES.join(", ")}.`);
-  }
-  return value;
-}
-
 export function resolveQueryComputeSize(options: {
   sessionId?: string;
-  computeSizeArg?: LakehouseComputeSize;
+  computeSizeArg?: string;
   computeSizeExplicit: boolean;
-}): LakehouseComputeSize | undefined {
+}): string | undefined {
   const computeSize = options.computeSizeArg ?? "AUTO";
 
   if (options.sessionId && !options.computeSizeExplicit) return undefined;
@@ -228,9 +215,7 @@ export function parseQueryOutputOptions(
   const computeSize = resolveQueryComputeSize({
     sessionId,
     computeSizeArg:
-      args["compute-size"] === undefined
-        ? undefined
-        : parseLakehouseComputeSize(asCliArgString(args["compute-size"])),
+      args["compute-size"] === undefined ? undefined : asCliArgString(args["compute-size"]),
     computeSizeExplicit: hasArgvFlag(options.rawArgs, "--compute-size"),
   });
 
