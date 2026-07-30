@@ -645,7 +645,7 @@ altertable query show|cancel
 | `--layout <AUTO\|TABLE\|LINE>` | Human layout: auto, table, or line Values: auto, table, line. |
 | `--columns <COLUMNS>` | Comma-separated columns to show |
 | `--max-width <MAX-WIDTH>` | Maximum display width for table columns Default: "32". |
-| `--compute-size <XS\|S\|M\|L\|XL\|AUTO>` | Compute size for the query Values: XS, S, M, L, XL, AUTO. Default: "AUTO". |
+| `--compute-size <COMPUTE-SIZE>` | Compute size for the query Default: "AUTO". |
 | `--dialect <DIALECT>` | Source SQL dialect to transpile from (server default: DuckDB) |
 | `--catalog <CATALOG>` | Catalog name (optional; can also come from the session) |
 | `--schema <SCHEMA>` | Schema name (optional; can also come from the session) |
