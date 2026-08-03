@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Check out released revision
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # Draft releases do not create a fetchable Git tag until publication.
@@ -173,7 +173,7 @@ jobs:
 
     steps:
       - name: Check out released revision
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.release-context.outputs.release_ref }}
@@ -238,14 +238,14 @@ jobs:
 
     steps:
       - name: Check out released revision
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.release-context.outputs.release_ref }}
           submodules: recursive
 
       - name: Check out current release orchestration
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ needs.release-context.outputs.orchestration_ref }}
@@ -310,7 +310,7 @@ jobs:
         working-directory: dist
 
       - name: Attest release provenance
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-checksums: dist/checksums.txt
 
