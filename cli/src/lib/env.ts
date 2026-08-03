@@ -67,6 +67,7 @@ const ENV_SCHEMA = {
   ALTERTABLE_DOCKER_USER: { parse: optional },
   ALTERTABLE_ENV: { parse: optional },
   ALTERTABLE_HTTP_LOG: { parse: optional },
+  ALTERTABLE_IGNORE_SSL_ERRORS: { parse: booleanValue },
   ALTERTABLE_LAKEHOUSE_PASSWORD: { parse: optional, secret: true },
   ALTERTABLE_LAKEHOUSE_USERNAME: { parse: optional },
   ALTERTABLE_MANAGEMENT_API_BASE: { parse: optional },

@@ -73,6 +73,12 @@ const ROOT_ARGS = defineArguments({
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
     flagScope: "global",
   },
+  "ignore-ssl-errors": {
+    type: "boolean",
+    description:
+      "Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers)",
+    flagScope: "global",
+  },
 });
 
 export function buildMainCommand(): Command {

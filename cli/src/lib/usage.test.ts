@@ -249,6 +249,7 @@ describe("renderAltertableUsage", () => {
       "profile",
       "connect-timeout",
       "read-timeout",
+      "ignore-ssl-errors",
     ]);
     expect(help.global_options).toContainEqual(
       expect.objectContaining({ name: "version", scope: "root-only" }),
