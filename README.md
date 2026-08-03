@@ -492,6 +492,7 @@ These flags apply to every command and may be placed before or after commands:
 | `--debug`, `-d`         | Enable debug output                                                         |
 | `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
 | `--read-timeout <s>`    | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams)   |
+| `--ignore-ssl-errors`   | Skip TLS certificate verification (development only; e.g. self-signed local servers) |
 
 Per-request read timeout on `query`, `upload`, and `upsert`:
 

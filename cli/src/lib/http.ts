@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import { getCliContext, getConnectTimeoutMs } from "@/context.ts";
 import { USER_AGENT } from "@/version.ts";
 import { CliError, HttpError, NetworkError, TimeoutError, type AuthPlane } from "@/lib/errors.ts";
-import { logDebug } from "@/lib/log.ts";
+import { logDebug, logWarn } from "@/lib/log.ts";
 import { getOutputSink } from "@/lib/runtime.ts";
 import {
   redactResponseBodyForDebug,
@@ -46,6 +46,23 @@ type MockHttpEntry = {
   retryAfter?: string;
 };
 
+type UndiciAgentOptions = {
+  keepAliveTimeout: number;
+  keepAliveMaxTimeout: number;
+  connect?: { rejectUnauthorized: boolean };
+};
+
+function createDispatcher(options: UndiciAgentOptions): unknown {
+  try {
+    const undici = require("undici") as {
+      Agent: new (options: UndiciAgentOptions) => unknown;
+    };
+    return new undici.Agent(options);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Best-effort shared keep-alive dispatcher; mock requests bypass fetch entirely. */
 let sharedDispatcher: unknown;
 let sharedDispatcherInitialized = false;
@@ -56,19 +73,73 @@ export function getSharedDispatcher(): unknown {
   }
 
   sharedDispatcherInitialized = true;
-  try {
-    const undici = require("undici") as {
-      Agent: new (options: { keepAliveTimeout: number; keepAliveMaxTimeout: number }) => unknown;
-    };
-    sharedDispatcher = new undici.Agent({
-      keepAliveTimeout: 30_000,
-      keepAliveMaxTimeout: 60_000,
-    });
-  } catch {
-    sharedDispatcher = undefined;
-  }
+  sharedDispatcher = createDispatcher({
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 60_000,
+  });
 
   return sharedDispatcher;
+}
+
+/** Same keep-alive dispatcher, with TLS verification off for --ignore-ssl-errors. */
+let insecureDispatcher: unknown;
+let insecureDispatcherInitialized = false;
+
+function getInsecureDispatcher(): unknown {
+  if (insecureDispatcherInitialized) {
+    return insecureDispatcher;
+  }
+
+  insecureDispatcherInitialized = true;
+  insecureDispatcher = createDispatcher({
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 60_000,
+    connect: { rejectUnauthorized: false },
+  });
+
+  return insecureDispatcher;
+}
+
+export function shouldIgnoreSslErrors(): boolean {
+  return (
+    getCliContext().ignoreSslErrors === true || readEnv("ALTERTABLE_IGNORE_SSL_ERRORS") === true
+  );
+}
+
+let insecureTlsWarned = false;
+
+function warnInsecureTlsOnce(): void {
+  if (insecureTlsWarned) {
+    return;
+  }
+  insecureTlsWarned = true;
+  logWarn(
+    "TLS certificate verification is disabled (--ignore-ssl-errors); connections are not protected against interception.",
+  );
+}
+
+/**
+ * Bun's fetch reads `tls`; Node/undici reads `dispatcher`. Set both so the
+ * escape hatch works under either runtime.
+ */
+export function buildFetchInit(
+  options: HttpSendOptions,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): RequestInit {
+  const ignoreSslErrors = shouldIgnoreSslErrors();
+  if (ignoreSslErrors) {
+    warnInsecureTlsOnce();
+  }
+
+  return {
+    method: options.method,
+    headers,
+    body: options.body,
+    signal,
+    dispatcher: ignoreSslErrors ? getInsecureDispatcher() : getSharedDispatcher(),
+    ...(ignoreSslErrors ? { tls: { rejectUnauthorized: false } } : {}),
+  } as RequestInit;
 }
 
 function resolveConnectTimeoutMs(options: HttpSendOptions): number {
@@ -406,13 +477,7 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
 
   let response: Response;
   try {
-    response = await fetch(options.url, {
-      method: options.method,
-      headers,
-      body: options.body,
-      signal,
-      dispatcher: getSharedDispatcher(),
-    } as RequestInit);
+    response = await fetch(options.url, buildFetchInit(options, headers, signal));
   } catch (error) {
     throw transportError(options, signal, error);
   }
@@ -467,13 +532,7 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
 
   let response: Response;
   try {
-    response = await fetch(options.url, {
-      method: options.method,
-      headers,
-      body: options.body,
-      signal: abortController.signal,
-      dispatcher: getSharedDispatcher(),
-    } as RequestInit);
+    response = await fetch(options.url, buildFetchInit(options, headers, abortController.signal));
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
