@@ -97,6 +97,16 @@
       "repeatable": false,
       "scope": "global",
       "values": []
+    },
+    {
+      "name": "ignore-ssl-errors",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers)",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
     }
   ],
   "groups": [

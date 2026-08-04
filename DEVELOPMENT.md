@@ -164,11 +164,16 @@ Localhost HTTP works without `--allow-insecure-http`. For LAN or other non-local
 When the control plane serves HTTPS with a self-signed / local-CA certificate, the CLI's `fetch` (Bun) rejects it with `unable to get local issuer certificate` — e.g. the OAuth token exchange fails with `Request failed (network error): POST https://.../oauth/token`.
 
 ```bash
-# Quick escape hatch: disable TLS verification for this process only
-NODE_TLS_REJECT_UNAUTHORIZED=0 altertable login
+altertable login --ignore-ssl-errors --control-plane-url https://app.altertable.test
+altertable --ignore-ssl-errors query "SELECT 1"
+
+# Same effect, for a whole dev shell
+ALTERTABLE_IGNORE_SSL_ERRORS=1 altertable login
 ```
 
-`NODE_TLS_REJECT_UNAUTHORIZED=0` turns off certificate verification for **every** request in the process — keep it inline or scoped to a dev shell, never in a shared profile or CI.
+`--ignore-ssl-errors` is a global flag: it disables certificate verification for **every** HTTPS request the invocation makes (OAuth token exchange, control plane, data plane, update check), and prints a `[WARN]` line on the first request. Keep it to local development — never in CI or a shared profile.
+
+The stored profile records only the URLs, not the flag, so subsequent commands against the self-signed backend need it again (or `ALTERTABLE_IGNORE_SSL_ERRORS=1` exported in the dev shell).
 
 ## Verify (agents and contributors)
 
