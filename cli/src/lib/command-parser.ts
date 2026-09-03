@@ -5,8 +5,10 @@ import {
   type CommandArgument,
   type CommandArguments,
   type CommandMetadata,
+  type CommandRunResult,
 } from "@/lib/command.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
+import { EXIT_SUCCESS } from "@/lib/errors.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
 
 type ParsedArgumentValue = string | boolean | string[] | undefined;
@@ -43,6 +45,8 @@ export type CommandSelection = {
   parent?: Command;
   commandPath: string[];
 };
+
+export type CommandExecutionResult = CommandSelection & CommandRunResult;
 
 export class CommandParseError extends Error {
   code: string;
@@ -390,19 +394,21 @@ function createRunContext(command: Command, args: ParsedArguments, rawArgs: read
 export async function executeCommand(
   root: Command,
   rawArgs: readonly string[],
-): Promise<CommandSelection> {
+): Promise<CommandExecutionResult> {
   const invocation = await selectInvocation(root, rawArgs, "strict");
   const parsed = parseInvocationArguments(invocation, rawArgs);
+  let runResult: void | CommandRunResult = undefined;
   if (root.run) {
-    await root.run(createRunContext(root, parsed, rawArgs));
+    runResult = await root.run(createRunContext(root, parsed, rawArgs));
   }
   const selected = invocation.command.definition;
   if (selected !== root && selected.run) {
-    await selected.run(createRunContext(selected, parsed, rawArgs));
+    runResult = await selected.run(createRunContext(selected, parsed, rawArgs));
   }
   return {
     command: selected,
     ...(invocation.parent ? { parent: invocation.parent } : {}),
     commandPath: invocation.commandPath,
+    exitCode: runResult?.exitCode ?? EXIT_SUCCESS,
   };
 }

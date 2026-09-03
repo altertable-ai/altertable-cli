@@ -32,6 +32,23 @@ describe("command composition", () => {
     expect(executionIsStable).toBe(true);
   });
 
+  test("returns a completed command's requested exit code", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const root = defineCommand({
+      subcommands: {
+        check: defineCommand({
+          run() {
+            return { exitCode: 1 };
+          },
+        }),
+      },
+    });
+
+    const result = await runWithCliRuntime(runtime, () => executeCommand(root, ["check"]));
+
+    expect(result.exitCode).toBe(1);
+  });
+
   test("parses global and command flags in every position", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     const received: Array<Record<string, unknown>> = [];

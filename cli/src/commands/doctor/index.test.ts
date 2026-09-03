@@ -53,6 +53,7 @@ describe("doctor command", () => {
       profile: "default",
       summary: { passed: 3, failed: 2, skipped: 2 },
     });
+    expect(harness.exitCode).toBe(1);
     expect(await Bun.file(join(testHome, "config")).exists()).toBe(false);
     expect(await Bun.file(join(testHome, "profiles", "default", "config")).exists()).toBe(false);
   });
@@ -82,6 +83,7 @@ describe("doctor command", () => {
       healthy: true,
       summary: { passed: 7, failed: 0, skipped: 0 },
     });
+    expect(harness.exitCode).toBe(0);
     expect(report.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

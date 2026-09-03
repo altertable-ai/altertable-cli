@@ -57,6 +57,10 @@ export type CommandRunContext<T extends CommandArguments = CommandArguments> = {
   readonly execution: ExecutionContext;
 };
 
+export type CommandRunResult = {
+  exitCode: number;
+};
+
 export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
   metadata?: Resolvable<CommandMetadata | undefined>;
   args?: Resolvable<T>;
@@ -67,7 +71,9 @@ export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
    * (for example a keyword that is both a statement and a subcommand name).
    */
   soleDirectOperands?: readonly string[];
-  run?: (context: CommandRunContext<T>) => void | Promise<void>;
+  run?: (
+    context: CommandRunContext<T>,
+  ) => void | CommandRunResult | Promise<void | CommandRunResult>;
 };
 
 export type Command = CommandDefinition<any>;

@@ -91,6 +91,22 @@ describe("runDoctorChecks", () => {
     expect(report.checks[0]).toMatchObject({ status: "skipped", message: "Offline mode." });
   });
 
+  test("keeps warning-only reports healthy", async () => {
+    const report = await runDoctorChecks(
+      [
+        {
+          id: "warning",
+          label: "Warning",
+          run: () => ({ status: "warn", message: "Degraded but usable." }),
+        },
+      ],
+      createDoctorContext(),
+    );
+
+    expect(report.healthy).toBe(true);
+    expect(report.summary).toEqual({ passed: 0, warnings: 1, failed: 0, skipped: 0 });
+  });
+
   test("runs independent checks concurrently and preserves report order", async () => {
     const started: string[] = [];
     let finishFirst!: () => void;

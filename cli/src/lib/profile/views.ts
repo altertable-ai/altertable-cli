@@ -79,6 +79,39 @@ export function buildProfileInspectView(profile: ProfileInspect): DisplayDocumen
   return document(section(rows(profileInspectRows(profile))));
 }
 
+export function profileInspectNextSteps(profile: ProfileInspect, interactive = true): string[] {
+  if (profile.status === "configured") return [];
+  if (interactive) return ["Run: altertable profile configure"];
+
+  const nextSteps: string[] = [];
+  if (profile.auth.management === "none") {
+    nextSteps.push(
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+    );
+  }
+  if (profile.auth.lakehouse === "none") {
+    nextSteps.push(
+      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+    );
+  }
+  return nextSteps.length > 0 ? nextSteps : ["Run: altertable profile configure"];
+}
+
+export function buildProfileInspectResultView(
+  profile: ProfileInspect,
+  interactive = true,
+): DisplayDocument {
+  const nextSteps = profileInspectNextSteps(profile, interactive);
+  return document(
+    ...buildProfileInspectView(profile).sections,
+    ...(nextSteps.length > 0 ? [section(text(["Next steps:", ...nextSteps]))] : []),
+  );
+}
+
+export function profileInspectToJson(profile: ProfileInspect): Record<string, unknown> {
+  return { profile, next_steps: profileInspectNextSteps(profile, false) };
+}
+
 function formatProfilePrincipal(profile: ProfileInspect): string {
   if (profile.principal.email) {
     return profile.principal.name

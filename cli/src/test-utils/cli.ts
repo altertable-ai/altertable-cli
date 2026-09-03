@@ -8,6 +8,7 @@ export type CliTestHarness = {
   runtime: CliRuntime;
   stdout: string[];
   stderr: string[];
+  exitCode: number;
   run(rawArgs: string[]): Promise<void>;
 };
 
@@ -30,8 +31,12 @@ export function createCliTestHarness(
     runtime,
     stdout,
     stderr,
+    exitCode: 0,
     async run(rawArgs) {
-      await runWithCliRuntime(runtime, () => executeCommand(buildMainCommand(), rawArgs));
+      const result = await runWithCliRuntime(runtime, () =>
+        executeCommand(buildMainCommand(), rawArgs),
+      );
+      this.exitCode = result.exitCode;
     },
   };
 }

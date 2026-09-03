@@ -1,5 +1,6 @@
 import {
   buildProfileInspectView,
+  buildProfileInspectResultView,
   buildProfileListView,
   buildProfileStatusView,
   configureAuthenticationRows,
@@ -21,6 +22,10 @@ import {
 
 export function formatProfileInspect(profile: ProfileInspect): string {
   return renderDocumentText(buildProfileInspectView(profile));
+}
+
+export function formatProfileInspectResult(profile: ProfileInspect, interactive = true): string {
+  return renderDocumentText(buildProfileInspectResultView(profile, interactive));
 }
 
 export function formatProfileStatus(result: ProfileStatusResult): string {
