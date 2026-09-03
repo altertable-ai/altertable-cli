@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProfileInspect } from "@/lib/profile/model.ts";
-import {
-  formatProfileInspectResult,
-  formatProfileStatus,
-} from "@/lib/profile/render.ts";
+import { formatProfileInspectResult, formatProfileStatus } from "@/lib/profile/render.ts";
 
 const profile: ProfileInspect = {
   name: "acme_prod",
