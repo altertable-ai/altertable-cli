@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProfileInspect } from "@/lib/profile/model.ts";
 import {
-  formatProfileInspect,
   formatProfileInspectResult,
   formatProfileStatus,
 } from "@/lib/profile/render.ts";
@@ -21,7 +20,7 @@ const profile: ProfileInspect = {
 
 describe("profile rendering", () => {
   test("renders stored profile details without exposing credentials", () => {
-    const output = formatProfileInspect(profile);
+    const output = formatProfileInspectResult(profile);
 
     expect(output).toContain("Management auth");
     expect(output).toContain("api_key");

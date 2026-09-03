@@ -1,5 +1,4 @@
 import {
-  buildProfileInspectView,
   buildProfileInspectResultView,
   buildProfileListView,
   buildProfileStatusView,
@@ -19,10 +18,6 @@ import {
   TERMINAL_LABEL_WIDTH,
   TERMINAL_NESTED_LABEL_WIDTH,
 } from "@/ui/terminal/spacing.ts";
-
-export function formatProfileInspect(profile: ProfileInspect): string {
-  return renderDocumentText(buildProfileInspectView(profile));
-}
 
 export function formatProfileInspectResult(profile: ProfileInspect, interactive = true): string {
   return renderDocumentText(buildProfileInspectResultView(profile, interactive));
