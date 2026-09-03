@@ -47,8 +47,7 @@ describe("runDoctorChecks", () => {
         run() {
           throw new ConfigurationError("Missing.");
         },
-        remediation: ({ error, context }) => {
-          expect(error).toBeInstanceOf(ConfigurationError);
+        remediation: (context) => {
           expect(context.execution.profile).toBe("test");
           return ["Configure it."];
         },

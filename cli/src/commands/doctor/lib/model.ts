@@ -36,16 +36,11 @@ export type DoctorCheckContext = {
 
 export type DoctorCheckOutcome = Omit<DoctorCheckResult, "id" | "label">;
 
-export type DoctorCheckFailure = {
-  error: unknown;
-  context: DoctorCheckContext;
-};
-
 export type DoctorCheck = {
   id: string;
   label: string;
   requires?: readonly string[];
   skip?: (context: DoctorCheckContext) => string | undefined;
   run: (context: DoctorCheckContext) => DoctorCheckOutcome | Promise<DoctorCheckOutcome>;
-  remediation?: (failure: DoctorCheckFailure) => string[];
+  remediation?: (context: DoctorCheckContext) => string[];
 };

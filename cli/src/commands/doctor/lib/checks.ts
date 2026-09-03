@@ -190,7 +190,7 @@ export function createDoctorChecks(): DoctorCheck[] {
         const identity = formatManagementIdentity(body);
         return passOutcome(`${endpoint} · ${identity}`, { endpoint, identity });
       },
-      remediation: ({ context }) => [
+      remediation: (context) => [
         "Check the control-plane URL and management credentials.",
         ...managementCredentialRemediation(context),
       ],
@@ -215,7 +215,7 @@ export function createDoctorChecks(): DoctorCheck[] {
         validateLakehouseProbeResponse(body);
         return passOutcome(`${endpoint} · SELECT 1 succeeded.`, { endpoint });
       },
-      remediation: ({ context }) => [
+      remediation: (context) => [
         "Check the data-plane URL and lakehouse credentials.",
         ...lakehouseCredentialRemediation(context),
       ],
