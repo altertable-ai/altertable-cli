@@ -8,9 +8,9 @@ export function renderCliErrorJson(error: unknown): string {
 
 export function renderCliError(error: unknown): string {
   if (error instanceof CliError || (error instanceof Error && error.name === "CLIError")) {
-    return renderDisplayText([span("ERROR", "error"), span(` ${error.message}`)]);
+    return renderCliErrorDetails(error.message);
   }
-  return renderDisplayText([span("ERROR", "error"), span(" Unexpected error.")]);
+  return renderCliErrorDetails("Unexpected error.");
 }
 
 export function renderCliErrorDetails(details: string): string {
@@ -18,7 +18,7 @@ export function renderCliErrorDetails(details: string): string {
     .split(/\r\n|\r|\n/)
     .map((line, index) =>
       index === 0
-        ? renderDisplayText([span("ERROR", "error"), span(` ${line}`)])
+        ? renderDisplayText([span("[ERROR]", "error"), span(` ${line}`)])
         : renderDisplayText(line),
     )
     .join("\n");

@@ -39,11 +39,19 @@ describe("altertable doctor", () => {
           id: "management.credentials",
           status: "fail",
           code: "configuration_error",
+          remediation: [
+            `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+            "Or set: ALTERTABLE_API_KEY and ALTERTABLE_ENV",
+          ],
         }),
         expect.objectContaining({
           id: "lakehouse.credentials",
           status: "fail",
           code: "configuration_error",
+          remediation: [
+            `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+            "Or set: ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME and ALTERTABLE_LAKEHOUSE_PASSWORD",
+          ],
         }),
       ]),
     );
@@ -109,7 +117,10 @@ describe("altertable doctor", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("ALTERTABLE CLI DOCTOR");
     expect(result.stdout).toContain("Management auth");
-    expect(result.stdout).toContain("altertable profile configure --scope management");
+    expect(result.stdout).toContain("--api-key-stdin --env <name>");
+    expect(result.stdout).toContain("--user <username> --password-stdin");
+    expect(result.stdout).not.toContain("altertable login");
+    expect(result.stdout).not.toContain("--scope");
     expect(result.stdout).toContain("Result: unhealthy");
     expect(result.stdout).not.toContain("undefined");
   });

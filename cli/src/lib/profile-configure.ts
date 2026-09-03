@@ -84,7 +84,7 @@ function writeOutro(
 export function configureNonTtyErrorMessage(): string {
   return (
     "Interactive configure requires a TTY. Examples:\n" +
-    "  altertable profile configure --api-key atm_xxx --env production\n" +
+    `  printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env production\n` +
     "  printf '%s' \"$PASS\" | altertable profile configure --user alice --password-stdin"
   );
 }

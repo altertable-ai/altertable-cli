@@ -89,6 +89,25 @@ describe("scriptable exit codes and JSON errors", () => {
     }
   });
 
+  test("missing query credentials identify the lakehouse plane", async () => {
+    const isolated = await createTestWorkspace({
+      ALTERTABLE_API_KEY: undefined,
+      ALTERTABLE_ENV: undefined,
+    });
+    try {
+      const result = await isolated.runCommand(`altertable --json query "SELECT 1"`);
+      const error = JSON.parse(result.stderr);
+
+      expect(result.exitCode).toBe(10);
+      expect(error).toMatchObject({
+        code: "configuration_error",
+        message: expect.stringContaining("No lakehouse credentials"),
+      });
+    } finally {
+      await isolated.cleanup();
+    }
+  });
+
   test("network errors exit 9 with network_error", async () => {
     const result = await workspace.runCommand("altertable api /whoami --json", {
       env: { ALTERTABLE_MANAGEMENT_API_BASE: "http://127.0.0.1:1", ALTERTABLE_MOCK_HTTP_FILE: undefined },
@@ -110,6 +129,31 @@ describe("scriptable exit codes and JSON errors", () => {
 
     expect(result.exitCode).toBe(1);
   });
+
+  test.each(["login", "profile configure"])(
+    "%s renders multiline configuration guidance without command examples",
+    async (command) => {
+      const isolated = await createTestWorkspace({
+        ALTERTABLE_API_KEY: undefined,
+        ALTERTABLE_ENV: undefined,
+      });
+      try {
+        const result = await isolated.runCommand(`altertable ${command}`);
+
+        expect(result.exitCode).toBe(10);
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toStartWith("[ERROR] ");
+        expect(result.stderr).toContain("altertable profile configure");
+        expect(result.stderr).toContain("--api-key-stdin");
+        expect(result.stderr).not.toContain("--api-key atm_");
+        expect(result.stderr.trimEnd().split("\n").length).toBeGreaterThan(1);
+        expect(result.stderr).not.toContain("\\x0a");
+        expect(result.stderr).not.toContain("\nEXAMPLES\n");
+      } finally {
+        await isolated.cleanup();
+      }
+    },
+  );
 
   test("invalid trailing timeouts use the JSON error envelope", async () => {
     const result = await workspace.runCommand(

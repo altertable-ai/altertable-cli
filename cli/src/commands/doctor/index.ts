@@ -22,6 +22,7 @@ export const doctorCommand = defineCommand({
     const report = await runDoctorChecks(createDoctorChecks(), {
       execution: createDiagnosticExecutionContext(runtime),
       offline: args.offline === true,
+      interactive: !runtime.context.json && !runtime.context.agent && process.stdin.isTTY === true,
     });
     await writeCommandOutput(
       {

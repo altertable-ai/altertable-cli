@@ -40,16 +40,24 @@ afterEach(() => {
 
 describe("errors", () => {
   test("renderCliError formats CliError", () => {
-    expect(renderCliError(new CliError("x"))).toBe("ERROR x");
+    expect(renderCliError(new CliError("x"))).toBe("[ERROR] x");
   });
 
-  test("renderCliErrorDetails preserves trusted line structure and sanitizes each line", () => {
-    const rendered = renderCliErrorDetails("First line\nRun this\u001b]0;spoofed\u0007");
+  test("renderCliError preserves trusted line structure and sanitizes each line", () => {
+    const rendered = renderCliError(
+      new ConfigurationError("First line\nRun this\u001b]0;spoofed\u0007"),
+    );
 
-    expect(rendered).toBe("ERROR First line\nRun this\\x1b]0;spoofed\\x07");
+    expect(rendered).toBe("[ERROR] First line\nRun this\\x1b]0;spoofed\\x07");
     expect(rendered).not.toContain("\\x0a");
     expect(rendered).not.toContain("\u001b");
     expect(rendered).not.toContain("\u0007");
+  });
+
+  test("renderCliErrorDetails prefixes the first line with the documented marker", () => {
+    expect(renderCliErrorDetails("First detail\nSecond detail")).toBe(
+      "[ERROR] First detail\nSecond detail",
+    );
   });
 
   test("ConfigurationError uses EXIT_CONFIG", () => {
@@ -60,14 +68,14 @@ describe("errors", () => {
 
   test("unknown errors render without stack traces", () => {
     const rendered = renderCliError(new TypeError("secret internal detail"));
-    expect(rendered).toBe("ERROR Unexpected error.");
+    expect(rendered).toBe("[ERROR] Unexpected error.");
     expect(rendered).not.toContain("secret internal detail");
     expect(rendered).not.toContain("TypeError");
   });
 
-  test("shouldShowCommandExamplesOnError is true for usage CliErrors", () => {
+  test("shouldShowCommandExamplesOnError is true only for usage CliErrors", () => {
     expect(shouldShowCommandExamplesOnError(new CliError("Endpoint path is required."))).toBe(true);
-    expect(shouldShowCommandExamplesOnError(new ConfigurationError("Not configured."))).toBe(true);
+    expect(shouldShowCommandExamplesOnError(new ConfigurationError("Not configured."))).toBe(false);
   });
 
   test("shouldShowCommandExamplesOnError is false for transport and HTTP errors", () => {
