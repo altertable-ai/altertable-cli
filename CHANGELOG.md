@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2](https://github.com/altertable-ai/altertable-cli/compare/v1.6.1...v1.6.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* make authentication remediation safe for headless use ([#103](https://github.com/altertable-ai/altertable-cli/issues/103)) ([f3336a0](https://github.com/altertable-ai/altertable-cli/commit/f3336a0c62c19baefddb58b13d34e9c74e21d5f0))
+* return unhealthy exit statuses for diagnostic commands ([#104](https://github.com/altertable-ai/altertable-cli/issues/104)) ([96a8474](https://github.com/altertable-ai/altertable-cli/commit/96a8474b172b966974a638237b6aae332cdc03d3))
+
 ## [1.6.1](https://github.com/altertable-ai/altertable-cli/compare/v1.6.0...v1.6.1) (2026-08-21)
 
 
