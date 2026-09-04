@@ -13,6 +13,7 @@ import {
   nativeReleaseTarget,
   readToolchainContract,
   RELEASE_MANIFEST_SCHEMA_VERSION,
+  stageCommandReferenceAssets,
   SUPPORTED_BUN_RUNTIME_RANGE,
   writeReleaseMetadata,
 } from "@/../scripts/release.ts";
@@ -34,6 +35,8 @@ import { releaseAssetName } from "@/lib/updater.ts";
 import {
   RELEASE_BUNDLE_ASSET,
   RELEASE_CHECKSUMS_ASSET,
+  RELEASE_CLI_REFERENCE_ASSET,
+  RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
   RELEASE_METADATA_ASSET,
   RELEASE_TARGETS,
   releaseCiMatrix,
@@ -226,7 +229,7 @@ describe("release metadata", () => {
     expect(metadata.version).toBe(VERSION);
     expect(metadata.tag).toBe(expectedReleaseTag);
     expect(metadata.toolchain.bunVersion).toBe(Bun.version);
-    expect(metadata.artifacts).toHaveLength(RELEASE_TARGETS.length + 1);
+    expect(metadata.artifacts).toHaveLength(RELEASE_TARGETS.length + 3);
     expect(onDisk).toEqual(metadata);
     for (const artifact of metadata.artifacts) {
       expect(artifact.bytes).toBeGreaterThan(0);
@@ -249,6 +252,19 @@ describe("release metadata", () => {
       bunVersion: Bun.version,
       ...JAVASCRIPT_BUNDLE_OPTIONS,
     });
+    const documentationArtifacts = metadata.artifacts.filter(
+      ({ kind }) => kind === "documentation",
+    );
+    expect(documentationArtifacts).toHaveLength(2);
+    for (const artifact of documentationArtifacts) {
+      expect(artifact.recipe).toEqual({
+        builder: "command-reference",
+        schemaVersion: 1,
+      });
+      expect(await readFile(join(directory, artifact.file), "utf8")).toBe(
+        await readFile(join(repositoryRoot, artifact.file), "utf8"),
+      );
+    }
     expect(checksumEntries.get(RELEASE_METADATA_ASSET)).toBe(
       await fileSha256(join(directory, RELEASE_METADATA_ASSET)),
     );
@@ -266,6 +282,23 @@ describe("release metadata", () => {
     const releaseBundle = await buildJavaScriptBundle(directory);
 
     expect(await fileSha256(releaseBundle)).toBe(await fileSha256(NPM_BUNDLE_PATH));
+  });
+
+  test("stages version-matched CLI reference assets", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "altertable-release-reference-test-"));
+    temporaryDirectories.push(directory);
+
+    const artifacts = await stageCommandReferenceAssets(directory);
+
+    expect(artifacts.map(({ file }) => file)).toEqual([
+      RELEASE_CLI_REFERENCE_ASSET,
+      RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
+    ]);
+    for (const artifact of artifacts) {
+      expect(await fileSha256(join(directory, artifact.file))).toBe(
+        await fileSha256(join(repositoryRoot, artifact.file)),
+      );
+    }
   });
 });
 
@@ -333,6 +366,8 @@ describe("GitHub release publication", () => {
     const assetNames = [
       ...RELEASE_TARGETS.map(({ asset }) => asset),
       RELEASE_BUNDLE_ASSET,
+      RELEASE_CLI_REFERENCE_ASSET,
+      RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
       RELEASE_METADATA_ASSET,
       RELEASE_CHECKSUMS_ASSET,
     ];
@@ -344,6 +379,8 @@ describe("GitHub release publication", () => {
         artifacts: [
           ...RELEASE_TARGETS.map(({ asset }) => ({ file: asset })),
           { file: RELEASE_BUNDLE_ASSET },
+          { file: RELEASE_CLI_REFERENCE_ASSET },
+          { file: RELEASE_CLI_REFERENCE_SCHEMA_ASSET },
         ],
       }),
     );
@@ -354,7 +391,13 @@ describe("GitHub release publication", () => {
 
     expect(upload.slice(0, 4)).toEqual(["gh", "release", "upload", "v1.1.0"]);
     for (const target of RELEASE_TARGETS) expect(upload.join("\n")).toContain(target.asset);
-    for (const asset of [RELEASE_BUNDLE_ASSET, RELEASE_METADATA_ASSET, RELEASE_CHECKSUMS_ASSET]) {
+    for (const asset of [
+      RELEASE_BUNDLE_ASSET,
+      RELEASE_CLI_REFERENCE_ASSET,
+      RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
+      RELEASE_METADATA_ASSET,
+      RELEASE_CHECKSUMS_ASSET,
+    ]) {
       expect(upload.join("\n")).toContain(asset);
     }
     expect(upload.at(-1)).toBe("--clobber");
@@ -378,6 +421,25 @@ describe("GitHub release publication", () => {
 });
 
 describe("release infrastructure wiring", () => {
+  test("updates the generated CLI reference version in release PRs", async () => {
+    const releasePleaseConfig = JSON.parse(
+      await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
+    ) as {
+      packages: Record<string, { "extra-files"?: unknown[] }>;
+    };
+
+    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
+      type: "json",
+      path: "cli-reference.json",
+      jsonpath: "$.cliVersion",
+    });
+    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
+      type: "generic",
+      path: "cli-reference.schema.json",
+      glob: false,
+    });
+  });
+
   test("keeps target literals out of build and workflow orchestration", async () => {
     const files = [
       "Makefile",

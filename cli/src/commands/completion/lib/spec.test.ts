@@ -273,10 +273,10 @@ describe("buildCompletionSpec", () => {
     ]);
   });
 
-  test("extracts intentional direct and subcommand operand collisions", async () => {
+  test("exposes empty soleDirectOperands when query has no operand collisions", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
 
-    expect(findNode(spec, "query")?.soleDirectOperands).toEqual(["show"]);
+    expect(findNode(spec, "query")?.soleDirectOperands).toEqual([]);
   });
 
   test("extracts finite shell positional values from completion commands", async () => {
@@ -340,14 +340,14 @@ describe("normalized completion argv", () => {
         positionals: ["qry_123"],
       },
       {
-        argv: ["query", "show", "--layout", "table"],
-        path: ["query"],
-        positionals: ["show"],
-      },
-      {
         argv: ["query", "show", "--help"],
         path: ["query", "show"],
         positionals: [],
+      },
+      {
+        argv: ["query", "SELECT 1", "--layout", "table"],
+        path: ["query"],
+        positionals: ["SELECT 1"],
       },
       {
         argv: ["append", '{"event":"checkout"}', "--sync"],
@@ -536,8 +536,8 @@ describe("executable shell completion contract", () => {
       expect(candidates).not.toContain("--layout");
     });
 
-    shellTest(`${shell} preserves intentional direct operands with trailing flags`, async () => {
-      const direct = await runCompletion([
+    shellTest(`${shell} treats query show as a subcommand, not a SQL direct operand`, async () => {
+      const showLeaf = await runCompletion([
         "altertable",
         "query",
         "show",
@@ -545,8 +545,12 @@ describe("executable shell completion contract", () => {
         "table",
         "--",
       ]);
-      expect(direct).toContain("--columns");
-      expect(direct).toContain("--layout");
+      expect(showLeaf).not.toContain("--columns");
+      expect(showLeaf).not.toContain("--layout");
+
+      const directSql = await runCompletion(["altertable", "query", "SELECT 1", "--"]);
+      expect(directSql).toContain("--columns");
+      expect(directSql).toContain("--layout");
 
       const nested = await runCompletion(["altertable", "query", "show", "qry_1", "--"]);
       expect(nested).not.toContain("--columns");

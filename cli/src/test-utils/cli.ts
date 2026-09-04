@@ -8,6 +8,7 @@ export type CliTestHarness = {
   runtime: CliRuntime;
   stdout: string[];
   stderr: string[];
+  exitCode: number;
   run(rawArgs: string[]): Promise<void>;
 };
 
@@ -20,6 +21,9 @@ export function createCliTestHarness(
   runtime.output.writeStderr = (line) => stderr.push(line);
   runtime.output.writeJson = (data) => stdout.push(JSON.stringify(data));
   runtime.output.writeRaw = (body) => stdout.push(body);
+  runtime.output.writeBytes = (body) => {
+    stdout.push(Buffer.from(body).toString("utf8"));
+  };
   runtime.output.writeHuman = (text) => stdout.push(text);
   runtime.output.writeMetadata = (lines) => stderr.push(...lines);
 
@@ -27,8 +31,12 @@ export function createCliTestHarness(
     runtime,
     stdout,
     stderr,
+    exitCode: 0,
     async run(rawArgs) {
-      await runWithCliRuntime(runtime, () => executeCommand(buildMainCommand(), rawArgs));
+      const result = await runWithCliRuntime(runtime, () =>
+        executeCommand(buildMainCommand(), rawArgs),
+      );
+      this.exitCode = result.exitCode;
     },
   };
 }

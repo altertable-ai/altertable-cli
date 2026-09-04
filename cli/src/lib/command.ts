@@ -2,10 +2,13 @@ import type { ExecutionContext } from "@/lib/execution-context.ts";
 import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
 
 export type Resolvable<T> = T | Promise<T> | (() => T | Promise<T>);
-export type PositionalCompletionKind = "finite" | "file" | "freeform";
-export type CommandFlagScope = "root-only" | "global" | "command";
+export const POSITIONAL_COMPLETION_KINDS = ["finite", "file", "freeform"] as const;
+export type PositionalCompletionKind = (typeof POSITIONAL_COMPLETION_KINDS)[number];
+export const COMMAND_FLAG_SCOPES = ["root-only", "global", "command"] as const;
+export type CommandFlagScope = (typeof COMMAND_FLAG_SCOPES)[number];
 export type CommandInvocationKind = "direct" | "subcommand";
-export type CommandArgumentType = "boolean" | "string" | "enum" | "positional";
+export const COMMAND_ARGUMENT_TYPES = ["boolean", "string", "enum", "positional"] as const;
+export type CommandArgumentType = (typeof COMMAND_ARGUMENT_TYPES)[number];
 
 export type CommandArgument = {
   type?: CommandArgumentType;
@@ -23,7 +26,12 @@ export type CommandArgument = {
 };
 
 export type CommandArguments = Record<string, CommandArgument>;
-export type AltertableCommandGroup = "platform" | "ingest" | "query";
+export const ALTERTABLE_COMMAND_GROUPS = [
+  { id: "platform", title: "Platform" },
+  { id: "ingest", title: "Ingest" },
+  { id: "query", title: "Query" },
+] as const;
+export type AltertableCommandGroup = (typeof ALTERTABLE_COMMAND_GROUPS)[number]["id"];
 
 export type CommandMetadata = {
   name?: string;
@@ -49,17 +57,23 @@ export type CommandRunContext<T extends CommandArguments = CommandArguments> = {
   readonly execution: ExecutionContext;
 };
 
+export type CommandRunResult = {
+  exitCode: number;
+};
+
 export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
   metadata?: Resolvable<CommandMetadata | undefined>;
   args?: Resolvable<T>;
   subcommands?: Resolvable<Record<string, Resolvable<Command>>>;
   /**
    * Values that select direct execution only when they are the command's sole
-   * positional operand. This resolves intentional command/subcommand ambiguity,
-   * such as `query show` (SQL) versus `query show <query-id>`.
+   * positional operand. Use this for intentional parent/subcommand name collisions
+   * (for example a keyword that is both a statement and a subcommand name).
    */
   soleDirectOperands?: readonly string[];
-  run?: (context: CommandRunContext<T>) => void | Promise<void>;
+  run?: (
+    context: CommandRunContext<T>,
+  ) => void | CommandRunResult | Promise<void | CommandRunResult>;
 };
 
 export type Command = CommandDefinition<any>;

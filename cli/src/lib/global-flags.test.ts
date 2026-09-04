@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isJsonOutput, setCliContext } from "@/context.ts";
-import { parseGlobalOutputFlags } from "@/lib/global-flags.ts";
+import { mergeGlobalFlagsFromArgs, parseGlobalOutputFlags } from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
@@ -44,6 +44,21 @@ describe("parseGlobalOutputFlags", () => {
       agent: false,
       noColor: false,
     });
+  });
+});
+
+describe("mergeGlobalFlagsFromArgs", () => {
+  test("carries --ignore-ssl-errors into the context", () => {
+    const merged = mergeGlobalFlagsFromArgs(
+      { debug: false, json: false, agent: false },
+      { "ignore-ssl-errors": true },
+    );
+    expect(merged.ignoreSslErrors).toBe(true);
+  });
+
+  test("leaves TLS verification untouched when the flag is absent", () => {
+    const merged = mergeGlobalFlagsFromArgs({ debug: false, json: false, agent: false }, {});
+    expect(merged.ignoreSslErrors).toBeUndefined();
   });
 });
 

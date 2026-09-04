@@ -31,5 +31,8 @@ export function mergeGlobalFlagsFromArgs(
   if (args["read-timeout"] !== undefined) {
     merged.readTimeoutMs = parseTimeoutSeconds(args["read-timeout"], "--read-timeout");
   }
+  if (args["ignore-ssl-errors"] !== undefined) {
+    merged.ignoreSslErrors = Boolean(args["ignore-ssl-errors"]);
+  }
   return merged;
 }

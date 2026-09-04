@@ -22,10 +22,10 @@ describe("altertable doctor", () => {
     await workspace.resetNetwork();
   });
 
-  test("reports missing credentials as findings instead of a command error", async () => {
+  test("reports missing credentials on stdout with an unhealthy exit status", async () => {
     const result = await workspace.runCommand("altertable --json doctor --offline");
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(1);
     expect(result.stderr).toBe("");
     const report = JSON.parse(result.stdout);
     expect(report).toMatchObject({
@@ -106,11 +106,23 @@ describe("altertable doctor", () => {
   test("renders an actionable human report", async () => {
     const result = await workspace.runCommand("altertable doctor --offline");
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("");
     expect(result.stdout).toContain("ALTERTABLE CLI DOCTOR");
     expect(result.stdout).toContain("Management auth");
     expect(result.stdout).toContain("altertable profile configure --scope management");
     expect(result.stdout).toContain("Result: unhealthy");
     expect(result.stdout).not.toContain("undefined");
+  });
+
+  test("uses the same unhealthy report contract in agent mode", async () => {
+    const result = await workspace.runCommand("altertable --agent doctor --offline");
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      healthy: false,
+      summary: { failed: 2 },
+    });
   });
 });

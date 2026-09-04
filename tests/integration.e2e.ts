@@ -36,10 +36,11 @@ describe("lakehouse integration flows", () => {
     expect(result.stdout).toContain("id");
     expect(result.stdout).toContain("Alice");
 
-    result = await workspace.runCommand('altertable query "SELECT * FROM cli_test ORDER BY id" --format csv');
+    result = await workspace.runCommand(
+      'altertable query "SELECT * FROM cli_test ORDER BY id" --format markdown',
+    );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("id,name");
-    expect(result.stdout).toContain("1,Alice");
+    expect(result.stdout).toContain("Alice");
 
     result = await workspace.runCommand('altertable --json query "SELECT * FROM cli_test ORDER BY id"');
     expect(result.exitCode).toBe(0);

@@ -2,7 +2,7 @@
 
 # Altertable CLI command reference
 
-Altertable CLI v1.3.0 • Query and manage your data platform from the terminal.
+Altertable CLI v1.6.1 • Query and manage your data platform from the terminal. <!-- x-release-please-version -->
 
 **Global options**
 
@@ -17,6 +17,7 @@ Altertable CLI v1.3.0 • Query and manage your data platform from the terminal.
 | `--profile <PROFILE>` | Use a named profile for this command only |
 | `--connect-timeout <CONNECT-TIMEOUT>` | HTTP connect timeout in seconds (default 5) |
 | `--read-timeout <READ-TIMEOUT>` | HTTP read timeout in seconds (default 60; 0 = no limit for streams) |
+| `--ignore-ssl-errors` | Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers) |
 
 ## Platform
 
@@ -641,10 +642,15 @@ altertable query show|cancel
 
 | Option | Description |
 | --- | --- |
-| `--format <CSV\|MARKDOWN>` | Serialized output format; use global --json for JSON Values: csv, markdown. |
+| `--format <CSV\|JSONL\|PARQUET\|MARKDOWN>` | Result format: csv, jsonl, and parquet stream from the API; markdown is rendered by the CLI. Use global --json for structured JSON Values: csv, jsonl, parquet, markdown. |
 | `--layout <AUTO\|TABLE\|LINE>` | Human layout: auto, table, or line Values: auto, table, line. |
 | `--columns <COLUMNS>` | Comma-separated columns to show |
 | `--max-width <MAX-WIDTH>` | Maximum display width for table columns Default: "32". |
+| `--compute-size <COMPUTE-SIZE>` | Compute size for the query Default: "AUTO". |
+| `--dialect <DIALECT>` | Source SQL dialect to transpile from (server default: DuckDB) |
+| `--catalog <CATALOG>` | Catalog name (optional; can also come from the session) |
+| `--schema <SCHEMA>` | Schema name (optional; can also come from the session) |
+| `--output <OUTPUT>` | Write result bytes/text to this path instead of stdout |
 | `--query-id <QUERY-ID>` | Optional stable query id |
 | `--session-id <SESSION-ID>` | Optional session id |
 | `--pager <AUTO\|ALWAYS\|NEVER>` | Pager mode for human output: auto, always, or never Values: auto, always, never. Default: "auto". |
@@ -659,6 +665,7 @@ altertable query show|cancel
 ```bash
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json
+altertable query "SELECT 1" --format csv --output results.csv
 altertable query show <query-id>
 ```
 

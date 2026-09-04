@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
 import { CliError, HttpError, NetworkError, TimeoutError } from "@/lib/errors.ts";
 import {
+  buildFetchInit,
   getSharedDispatcher,
   httpSend,
   httpSendStream,
@@ -12,6 +13,7 @@ import {
   redactHeaderValue,
   resolveFetchTimeoutMs,
   resolveReadTimeoutMs,
+  shouldIgnoreSslErrors,
 } from "@/lib/http.ts";
 import { computeRetryDelayMs, isRetryableMethod, parseRetryAfterMs } from "@/lib/http-retry.ts";
 import { redactResponseBodyForDebug } from "@/lib/redact.ts";
@@ -334,6 +336,45 @@ describe("shared dispatcher", () => {
     const first = getSharedDispatcher();
     const second = getSharedDispatcher();
     expect(first).toBe(second);
+  });
+});
+
+describe("ignore ssl errors", () => {
+  const request = {
+    method: "GET",
+    url: "https://app.altertable.test/rest/v1/whoami",
+    authHeader: "Authorization: Bearer test",
+  };
+
+  afterEach(() => {
+    delete process.env.ALTERTABLE_IGNORE_SSL_ERRORS;
+    setCliContext({ debug: false, json: false, agent: false });
+  });
+
+  test("verification stays on by default", () => {
+    expect(shouldIgnoreSslErrors()).toBe(false);
+    const init = buildFetchInit(request, {}, AbortSignal.timeout(1_000)) as {
+      tls?: unknown;
+      dispatcher?: unknown;
+    };
+    expect(init.tls).toBeUndefined();
+    expect(init.dispatcher).toBe(getSharedDispatcher());
+  });
+
+  test("the global flag disables verification for Bun and undici transports", () => {
+    setCliContext({ debug: false, json: false, agent: false, ignoreSslErrors: true });
+    expect(shouldIgnoreSslErrors()).toBe(true);
+    const init = buildFetchInit(request, {}, AbortSignal.timeout(1_000)) as {
+      tls?: { rejectUnauthorized: boolean };
+      dispatcher?: unknown;
+    };
+    expect(init.tls).toEqual({ rejectUnauthorized: false });
+    expect(init.dispatcher).not.toBe(getSharedDispatcher());
+  });
+
+  test("ALTERTABLE_IGNORE_SSL_ERRORS disables verification without the flag", () => {
+    process.env.ALTERTABLE_IGNORE_SSL_ERRORS = "true";
+    expect(shouldIgnoreSslErrors()).toBe(true);
   });
 });
 

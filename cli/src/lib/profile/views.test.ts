@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 import type { ProfileInspect, ProfileSummary } from "@/lib/profile/model.ts";
 import {
   buildProfileInspectView,
+  buildProfileInspectResultView,
   buildProfileListView,
   buildProfileShellExportView,
   profileStatusToJson,
+  profileInspectToJson,
 } from "@/lib/profile/views.ts";
 
 const profile: ProfileInspect = {
@@ -72,6 +74,26 @@ describe("profile views", () => {
     expect(buildProfileShellExportView("acme_prod")).toEqual({
       env: { ALTERTABLE_PROFILE: "acme_prod" },
     });
+  });
+
+  test.each(["empty", "partial"] as const)(
+    "adds actionable next steps to %s profile inspection",
+    (status) => {
+      const incompleteProfile = { ...profile, status };
+      const view = buildProfileInspectResultView(incompleteProfile);
+
+      expect(view.sections.at(-1)?.blocks).toEqual([
+        { kind: "text", lines: ["Next steps:", "Run: altertable profile configure"] },
+      ]);
+      expect(profileInspectToJson(incompleteProfile)).toMatchObject({
+        profile: { status },
+        next_steps: [expect.stringContaining("--password-stdin")],
+      });
+    },
+  );
+
+  test("omits next steps from configured profile inspection", () => {
+    expect(profileInspectToJson(profile)).toMatchObject({ next_steps: [] });
   });
 
   test("serializes profile status without changing its public shape", () => {

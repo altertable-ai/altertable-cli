@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1](https://github.com/altertable-ai/altertable-cli/compare/v1.6.0...v1.6.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* upgrade Bun to 1.4.0 ([#100](https://github.com/altertable-ai/altertable-cli/issues/100)) ([95bad44](https://github.com/altertable-ai/altertable-cli/commit/95bad44c3f1a6a0218ffeee310474a06cd3acf89))
+
+## [1.6.0](https://github.com/altertable-ai/altertable-cli/compare/v1.5.1...v1.6.0) (2026-08-03)
+
+
+### Features
+
+* allow to ignore SSL errors (development) ([#95](https://github.com/altertable-ai/altertable-cli/issues/95)) ([2b144af](https://github.com/altertable-ai/altertable-cli/commit/2b144afcfa11c4efab4e8e25ad91bb14dbaebf24))
+
+## [1.5.1](https://github.com/altertable-ai/altertable-cli/compare/v1.5.0...v1.5.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* **compute_size:** avoid parsing the compute size and trust the API to do it ([#92](https://github.com/altertable-ai/altertable-cli/issues/92)) ([e9130c5](https://github.com/altertable-ai/altertable-cli/commit/e9130c5e6dfd7854166234f4f67cbcebd63ac3da))
+
+## [1.5.0](https://github.com/altertable-ai/altertable-cli/compare/v1.4.0...v1.5.0) (2026-07-27)
+
+
+### Features
+
+* **docs:** generate versioned CLI reference contract ([#90](https://github.com/altertable-ai/altertable-cli/issues/90)) ([15bc1f4](https://github.com/altertable-ai/altertable-cli/commit/15bc1f48cf06b5333aad4b264b3108edd13b521b))
+* **query:** implement a few missing and useless options + fix `query show` ([#89](https://github.com/altertable-ai/altertable-cli/issues/89)) ([137ef20](https://github.com/altertable-ai/altertable-cli/commit/137ef20e5c6e1491308572bb8791022448d79d16))
+
+## [1.4.0](https://github.com/altertable-ai/altertable-cli/compare/v1.3.0...v1.4.0) (2026-07-24)
+
+
+### Features
+
+* add `doctor` command for CLI diagnostics ([#79](https://github.com/altertable-ai/altertable-cli/issues/79)) ([57b1440](https://github.com/altertable-ai/altertable-cli/commit/57b14404f0e137541a43ca18886f7638aea8b835))
+* **cli:** simplify the command API surface area ([#75](https://github.com/altertable-ai/altertable-cli/issues/75)) ([f3a1d4d](https://github.com/altertable-ai/altertable-cli/commit/f3a1d4d53452febcb9cf3bcf0d5d01ef9790a2ed))
+
+
+### Bug Fixes
+
+* **ci:** enable shell completion verification ([#77](https://github.com/altertable-ai/altertable-cli/issues/77)) ([db7c52f](https://github.com/altertable-ai/altertable-cli/commit/db7c52ff851eb8443a78949d994987938472e813))
+* clarify duckdb command requirements and isolate env/profile config ([#84](https://github.com/altertable-ai/altertable-cli/issues/84)) ([b5f6208](https://github.com/altertable-ai/altertable-cli/commit/b5f6208da7c0c14c1afe6a3753693a604d7c5d57))
+* harden transport, JSON fidelity, and profile recovery ([#80](https://github.com/altertable-ai/altertable-cli/issues/80)) ([facdf90](https://github.com/altertable-ai/altertable-cli/commit/facdf901b850dea99e7684ce6f6af0c47d61dde7))
+* keep COMMANDS.md version in sync with release-please ([#87](https://github.com/altertable-ai/altertable-cli/issues/87)) ([cbb8d65](https://github.com/altertable-ai/altertable-cli/commit/cbb8d65a5574d18111733ab92f5b0a03a973e492))
+
 ## [1.3.0](https://github.com/altertable-ai/altertable-cli/compare/v1.2.0...v1.3.0) (2026-07-16)
 
 
@@ -24,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Simplify `altertable update` to install by default, add `--check` mode, preserve inherited global flags, resolve compiled self-update paths safely, and verify source-checkout updates through the package manager's global binary.
+- Return exit code `1` for unhealthy `doctor` and `profile status` reports while preserving complete stdout output, and add actionable next steps to empty or partial `profile show` results.
 
 ## [1.2.0](https://github.com/altertable-ai/altertable-cli/compare/v1.1.0...v1.2.0) (2026-07-15)
 

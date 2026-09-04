@@ -6,6 +6,7 @@ export type CliContext = {
   profile?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
+  ignoreSslErrors?: boolean;
 };
 
 let bootstrapContext: CliContext = { debug: false, json: false, agent: false };

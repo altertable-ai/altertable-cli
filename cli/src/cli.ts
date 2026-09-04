@@ -73,6 +73,12 @@ const ROOT_ARGS = defineArguments({
     description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
     flagScope: "global",
   },
+  "ignore-ssl-errors": {
+    type: "boolean",
+    description:
+      "Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers)",
+    flagScope: "global",
+  },
 });
 
 export function buildMainCommand(): Command {
@@ -108,7 +114,7 @@ const initialContext = getBootstrapCliContext();
 applyTerminalColorFromContext(initialContext);
 setCliRuntime(createCliRuntime(initialContext));
 
-function handleCliError(error: unknown): never {
+function handleCliError(error: unknown): number {
   const context = getCliContext();
   if (isJsonOutput(context)) {
     console.error(renderCliErrorJson(error));
@@ -124,10 +130,10 @@ function handleCliError(error: unknown): never {
     console.error(error.stack);
   }
 
-  process.exit(getCliExitCode(error));
+  return getCliExitCode(error);
 }
 
-async function bootstrap(): Promise<void> {
+async function bootstrap(): Promise<number> {
   const rawArgs = process.argv.slice(2);
 
   try {
@@ -146,12 +152,12 @@ async function bootstrap(): Promise<void> {
         context: getCliContext(),
         commandName: (await resolveCommandSelection(main, rawArgs)).commandPath.at(0) ?? "help",
       });
-      process.exit(EXIT_SUCCESS);
+      return EXIT_SUCCESS;
     }
 
     if (earlyExit?.id === "version") {
       console.log(VERSION);
-      return;
+      return EXIT_SUCCESS;
     }
 
     validateEnvironment();
@@ -160,6 +166,7 @@ async function bootstrap(): Promise<void> {
       context: getCliContext(),
       commandName: selection.commandPath.at(0),
     });
+    return selection.exitCode;
   } catch (error) {
     const showExamplesOnHumanOutput = !isJsonOutput(getCliContext());
 
@@ -171,10 +178,12 @@ async function bootstrap(): Promise<void> {
     } else if (showExamplesOnHumanOutput && shouldShowCommandExamplesOnError(error)) {
       await showCommandExamplesForArgs(main, rawArgs);
     }
-    handleCliError(error);
+    return handleCliError(error);
   }
 }
 
 if (import.meta.main) {
-  void bootstrap();
+  void bootstrap().then((exitCode) => {
+    process.exitCode = exitCode;
+  });
 }

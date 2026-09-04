@@ -11,6 +11,8 @@ export type OutputSink = {
   writeStderr(line: string): void;
   writeJson(data: unknown): void;
   writeRaw(body: string): void;
+  /** Write opaque bytes to stdout with no trailing newline or text decoding. */
+  writeBytes(body: Uint8Array): void | Promise<void>;
   writeHuman(text: string): void;
   writeMetadata(lines: string[]): void;
 };
@@ -39,6 +41,10 @@ function createDefaultOutputSink(context: CliContext): OutputSink {
     },
     writeRaw(body: string): void {
       console.log(body);
+    },
+    async writeBytes(body: Uint8Array): Promise<void> {
+      // Avoid console.log: it UTF-8-decodes and appends a newline, which breaks parquet.
+      await Bun.write(Bun.stdout, body);
     },
     writeHuman(text: string): void {
       console.log(text);

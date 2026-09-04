@@ -16,6 +16,21 @@
           "type": "generic",
           "path": "cli/src/version.ts",
           "glob": false
+        },
+        {
+          "type": "generic",
+          "path": "COMMANDS.md",
+          "glob": false
+        },
+        {
+          "type": "json",
+          "path": "cli-reference.json",
+          "jsonpath": "$.cliVersion"
+        },
+        {
+          "type": "generic",
+          "path": "cli-reference.schema.json",
+          "glob": false
         }
       ]
     }

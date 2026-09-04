@@ -1,8 +1,9 @@
 import { defineArguments } from "@/lib/command.ts";
 import {
+  queryApiResultFormatArgs,
   queryDisplayArgs,
   queryPagerArgs,
-  queryResultFormatArgs,
+  queryRequestArgs,
 } from "@/lib/query-output-args.ts";
 
 export const queryRunArgs = defineArguments({
@@ -12,8 +13,9 @@ export const queryRunArgs = defineArguments({
     required: false,
     directRequired: true,
   },
-  ...queryResultFormatArgs,
+  ...queryApiResultFormatArgs,
   ...queryDisplayArgs,
+  ...queryRequestArgs,
   "query-id": { type: "string", description: "Optional stable query id" },
   "session-id": { type: "string", description: "Optional session id" },
   ...queryPagerArgs,
