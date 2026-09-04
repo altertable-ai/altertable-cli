@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Make first-run authentication guidance safe for agents and non-interactive shells, and keep configuration errors concise and readable.
 - Simplify `altertable update` to install by default, add `--check` mode, preserve inherited global flags, resolve compiled self-update paths safely, and verify source-checkout updates through the package manager's global binary.
+- Return exit code `1` for unhealthy `doctor` and `profile status` reports while preserving complete stdout output, and add actionable next steps to empty or partial `profile show` results.
 
 ## [1.2.0](https://github.com/altertable-ai/altertable-cli/compare/v1.1.0...v1.2.0) (2026-07-15)
 
