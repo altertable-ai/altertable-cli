@@ -6,6 +6,7 @@ import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
 function createDoctorContext(offline = false): DoctorCheckContext {
   return {
     offline,
+    interactive: false,
     execution: {
       profile: "test",
       cli: { debug: false, json: true, agent: false },
@@ -46,7 +47,10 @@ describe("runDoctorChecks", () => {
         run() {
           throw new ConfigurationError("Missing.");
         },
-        remediation: () => ["Configure it."],
+        remediation: (context) => {
+          expect(context.execution.profile).toBe("test");
+          return ["Configure it."];
+        },
       },
       {
         id: "dependent",
@@ -89,6 +93,22 @@ describe("runDoctorChecks", () => {
     expect(report.healthy).toBe(true);
     expect(report.summary.skipped).toBe(1);
     expect(report.checks[0]).toMatchObject({ status: "skipped", message: "Offline mode." });
+  });
+
+  test("keeps warning-only reports healthy", async () => {
+    const report = await runDoctorChecks(
+      [
+        {
+          id: "warning",
+          label: "Warning",
+          run: () => ({ status: "warn", message: "Degraded but usable." }),
+        },
+      ],
+      createDoctorContext(),
+    );
+
+    expect(report.healthy).toBe(true);
+    expect(report.summary).toEqual({ passed: 0, warnings: 1, failed: 0, skipped: 0 });
   });
 
   test("runs independent checks concurrently and preserves report order", async () => {

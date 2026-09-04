@@ -285,7 +285,7 @@ Profile selection precedence: `--profile` flag → `ALTERTABLE_PROFILE` env var 
 | Global root `config`    | Active profile and display/update preferences such as query layout, query width, and update checks          |
 | Profile-specific config | Credentials metadata, endpoint overrides, organization/principal metadata, and credential expiry timestamps |
 
-`profile status` runs live credential verification and then renders `profile show` (identity and credential details, including OAuth and auto-provisioned lakehouse credential expiry when present) followed by the verification result. `profile show --config` additionally prints the config dir, profile config file, and secret store paths.
+`profile status` runs live credential verification and then renders `profile show` (identity and credential details, including OAuth and auto-provisioned lakehouse credential expiry when present) followed by the verification result. It exits `0` when at least one credential is configured and every configured credential verifies, and `1` when no credentials are configured or any verification fails. The complete report remains on stdout in human, `--json`, and `--agent` modes. `profile show` is observational and always exits `0` after a successful read; empty or partial profiles include setup guidance in human output and a structured `next_steps` array in JSON output. `profile show --config` additionally prints the config dir, profile config file, and secret store paths.
 
 ### Credential precedence
 
@@ -438,8 +438,9 @@ altertable --json doctor
 `--offline` validates only local configuration and credential presence. Network
 checks use the global `--connect-timeout` and `--read-timeout` values. Doctor
 findings do not refresh OAuth tokens, provision lakehouse credentials, or modify
-profile files. A completed diagnostic exits successfully even when its report is
-unhealthy; scripts should inspect the JSON `healthy` field.
+profile files. A completed diagnostic exits `0` when healthy (warnings alone are
+successful) and `1` when any check fails. Human, `--json`, and `--agent` modes all
+write the complete report to stdout, including unhealthy reports.
 
 ### Shell completion
 
@@ -508,7 +509,7 @@ Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited
 
 ## Scripting
 
-Use `--json` or `--agent` for machine-readable output. On failure the error is a JSON object on stderr; stdout remains empty.
+Use `--json` or `--agent` for machine-readable output. Command errors are JSON objects on stderr and leave stdout empty. Completed health checks are different: unhealthy `doctor` and `profile status` reports remain on stdout and exit `1` without an error envelope.
 
 ### Output tiers
 
@@ -516,7 +517,7 @@ With `--json`, success stdout follows one of three contracts:
 
 1. **Raw API** — verbatim API response body (most `api *` commands).
 2. **Normalized query** — `{ metadata, columns, rows }` from `query --json` or `query --agent` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs --json`, `{ profiles: [...] }` from `profile list --json`, or `{ cli_config, profile, details }` from `profile show --json`.
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, next_steps }` from `profile show --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 
@@ -525,7 +526,7 @@ Human mode defaults management list/get output to tables unless `--format` is se
 | Code | Meaning                                    |
 | ---- | ------------------------------------------ |
 | `0`  | Success                                    |
-| `1`  | Usage, validation, or unexpected CLI error |
+| `1`  | Unhealthy check or general CLI error       |
 | `2`  | Authentication failed (HTTP 401)           |
 | `3`  | Permission denied (HTTP 403)               |
 | `4`  | Not found (HTTP 404)                       |

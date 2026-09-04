@@ -90,7 +90,7 @@ export function resolveLakehouseCredential(profileName: string): LakehouseCreden
     return credential;
   }
   throw new ConfigurationError(
-    "No credentials. Run 'altertable login', 'altertable profile configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
+    "No lakehouse credentials. Run 'altertable login', 'altertable profile configure', or set ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD (or ALTERTABLE_BASIC_AUTH_TOKEN).",
   );
 }
 

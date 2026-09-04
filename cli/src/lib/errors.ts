@@ -290,5 +290,5 @@ export function shouldShowCommandExamplesOnError(error: unknown): boolean {
   ) {
     return false;
   }
-  return error.exitCode === EXIT_GENERIC || error.exitCode === EXIT_CONFIG;
+  return error.exitCode === EXIT_GENERIC;
 }

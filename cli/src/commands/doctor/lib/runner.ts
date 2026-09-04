@@ -79,7 +79,7 @@ async function runDoctorCheck(
       code: serialized.code,
       http_status: serialized.status,
       details: serialized.details,
-      remediation: check.remediation?.(error, context),
+      remediation: check.remediation?.(context),
       duration_ms: Math.round(performance.now() - startedAt),
     };
   }

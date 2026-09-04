@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
+import { jsonMock } from "./mock-http.ts";
 
 describe("profile switching", () => {
   let workspace: TestWorkspace;
@@ -64,6 +65,12 @@ describe("profile switching", () => {
         )
       ).exitCode,
     ).toBe(0);
+    await workspace.setupMockHttp([
+      jsonMock("GET", "/whoami", {
+        principal: { type: "User", name: "Jane", email: "jane@example.com" },
+        organization: { name: "Globex", slug: "globex" },
+      }),
+    ]);
     let result = await workspace.runCommand("altertable profile status globex_dev");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("globex_dev");

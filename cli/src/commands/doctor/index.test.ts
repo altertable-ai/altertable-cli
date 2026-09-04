@@ -10,6 +10,7 @@ import { configFile, credentialsFile, kvSet } from "@/lib/config.ts";
 
 let testHome = "";
 let mockFile = "";
+let stdinIsTty: PropertyDescriptor | undefined;
 
 const VALID_WHOAMI = {
   principal: {
@@ -34,9 +35,15 @@ beforeEach(() => {
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
   process.env.ALTERTABLE_SECRET_BACKEND = "file";
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+  stdinIsTty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
 });
 
 afterEach(() => {
+  if (stdinIsTty) {
+    Object.defineProperty(process.stdin, "isTTY", stdinIsTty);
+  } else {
+    Reflect.deleteProperty(process.stdin, "isTTY");
+  }
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
   delete process.env.ALTERTABLE_SECRET_BACKEND;
@@ -53,6 +60,7 @@ describe("doctor command", () => {
       profile: "default",
       summary: { passed: 3, failed: 2, skipped: 2 },
     });
+    expect(harness.exitCode).toBe(1);
     expect(await Bun.file(join(testHome, "config")).exists()).toBe(false);
     expect(await Bun.file(join(testHome, "profiles", "default", "config")).exists()).toBe(false);
   });
@@ -82,6 +90,7 @@ describe("doctor command", () => {
       healthy: true,
       summary: { passed: 7, failed: 0, skipped: 0 },
     });
+    expect(harness.exitCode).toBe(0);
     expect(report.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -186,9 +195,21 @@ describe("doctor command", () => {
         }),
       ]),
     );
+    const remediation = report.checks.flatMap(
+      (check: { remediation?: string[] }) => check.remediation ?? [],
+    );
+    expect(remediation).toContain(
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+    );
+    expect(remediation).toContain(
+      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+    );
+    expect(remediation).not.toContain("Run: altertable login");
+    expect(remediation.every((line: string) => !line.includes("--scope"))).toBe(true);
   });
 
-  test("renders remediation in human output", async () => {
+  test("renders non-interactive remediation when stdin is not a TTY", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
     const harness = await runCommandWithTestRuntime(["doctor", "--offline"], {
       debug: false,
       json: false,
@@ -197,7 +218,39 @@ describe("doctor command", () => {
     });
 
     expect(harness.stdout[0]).toContain("ALTERTABLE CLI DOCTOR");
-    expect(harness.stdout[0]).toContain("altertable profile configure --scope management");
+    expect(harness.stdout[0]).toContain("--api-key-stdin --env <name>");
+    expect(harness.stdout[0]).toContain("--user <username> --password-stdin");
+    expect(harness.stdout[0]).toContain("ALTERTABLE_API_KEY and ALTERTABLE_ENV");
+    expect(harness.stdout[0]).not.toContain("altertable login");
+    expect(harness.stdout[0]).not.toContain("--scope");
     expect(harness.stdout[0]).toContain("Result: unhealthy");
+  });
+
+  test("preserves login-first remediation for an interactive human terminal", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    const harness = await runCommandWithTestRuntime(["doctor", "--offline"], {
+      debug: false,
+      json: false,
+      agent: false,
+      noColor: true,
+    });
+
+    expect(harness.stdout[0]).toContain("Run: altertable login");
+    expect(harness.stdout[0]).toContain("altertable profile configure --scope management");
+    expect(harness.stdout[0]).toContain("altertable profile configure --scope lakehouse");
+  });
+
+  test("uses non-interactive remediation for agent output even with a TTY", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    const harness = await runCommandWithTestRuntime(["--agent", "doctor", "--offline"]);
+    const report = JSON.parse(harness.stdout[0] ?? "");
+    const remediation = report.checks.flatMap(
+      (check: { remediation?: string[] }) => check.remediation ?? [],
+    );
+
+    expect(remediation).toContain(
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+    );
+    expect(remediation).not.toContain("Run: altertable login");
   });
 });

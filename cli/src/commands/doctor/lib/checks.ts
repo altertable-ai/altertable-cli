@@ -57,22 +57,50 @@ function validateLakehouseProbeResponse(body: string): void {
   }
 }
 
-function checkManagementCredentialPresence(auth: ProfileAuth): DoctorCheckOutcome {
+function managementCredentialRemediation(context: DoctorCheckContext): string[] {
+  if (context.interactive) {
+    return ["Run: altertable login", "Or run: altertable profile configure --scope management"];
+  }
+  return [
+    `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+    "Or set: ALTERTABLE_API_KEY and ALTERTABLE_ENV",
+  ];
+}
+
+function lakehouseCredentialRemediation(context: DoctorCheckContext): string[] {
+  if (context.interactive) {
+    return ["Run: altertable login", "Or run: altertable profile configure --scope lakehouse"];
+  }
+  return [
+    `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+    "Or set: ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME and ALTERTABLE_LAKEHOUSE_PASSWORD",
+  ];
+}
+
+function checkManagementCredentialPresence(
+  auth: ProfileAuth,
+  context: DoctorCheckContext,
+): DoctorCheckOutcome {
   if (auth.management === "none") {
-    return failOutcome("No management credentials configured.", "configuration_error", [
-      "Run: altertable login",
-      "Or run: altertable profile configure --scope management",
-    ]);
+    return failOutcome(
+      "No management credentials configured.",
+      "configuration_error",
+      managementCredentialRemediation(context),
+    );
   }
   return passOutcome(`Configured (${auth.management}).`, { auth: auth.management });
 }
 
-function checkLakehouseCredentialPresence(auth: ProfileAuth): DoctorCheckOutcome {
+function checkLakehouseCredentialPresence(
+  auth: ProfileAuth,
+  context: DoctorCheckContext,
+): DoctorCheckOutcome {
   if (auth.lakehouse === "none") {
-    return failOutcome("No lakehouse credentials configured.", "configuration_error", [
-      "Run: altertable login",
-      "Or run: altertable profile configure --scope lakehouse",
-    ]);
+    return failOutcome(
+      "No lakehouse credentials configured.",
+      "configuration_error",
+      lakehouseCredentialRemediation(context),
+    );
   }
   return passOutcome(`Configured (${auth.lakehouse}).`, { auth: auth.lakehouse });
 }
@@ -141,7 +169,7 @@ export function createDoctorChecks(): DoctorCheck[] {
       id: "management.credentials",
       label: "Management auth",
       requires: ["credentials.store"],
-      run: () => checkManagementCredentialPresence(requireProfileAuth()),
+      run: (context) => checkManagementCredentialPresence(requireProfileAuth(), context),
     },
     {
       id: "management.api",
@@ -162,16 +190,16 @@ export function createDoctorChecks(): DoctorCheck[] {
         const identity = formatManagementIdentity(body);
         return passOutcome(`${endpoint} · ${identity}`, { endpoint, identity });
       },
-      remediation: () => [
+      remediation: (context) => [
         "Check the control-plane URL and management credentials.",
-        "Run: altertable profile configure --scope management",
+        ...managementCredentialRemediation(context),
       ],
     },
     {
       id: "lakehouse.credentials",
       label: "Lakehouse auth",
       requires: ["credentials.store"],
-      run: () => checkLakehouseCredentialPresence(requireProfileAuth()),
+      run: (context) => checkLakehouseCredentialPresence(requireProfileAuth(), context),
     },
     {
       id: "lakehouse.api",
@@ -187,9 +215,9 @@ export function createDoctorChecks(): DoctorCheck[] {
         validateLakehouseProbeResponse(body);
         return passOutcome(`${endpoint} · SELECT 1 succeeded.`, { endpoint });
       },
-      remediation: () => [
+      remediation: (context) => [
         "Check the data-plane URL and lakehouse credentials.",
-        "Run: altertable profile configure --scope lakehouse",
+        ...lakehouseCredentialRemediation(context),
       ],
     },
   ];

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProfileInspect } from "@/lib/profile/model.ts";
-import { formatProfileInspect, formatProfileStatus } from "@/lib/profile/render.ts";
+import { formatProfileInspectResult, formatProfileStatus } from "@/lib/profile/render.ts";
 
 const profile: ProfileInspect = {
   name: "acme_prod",
@@ -17,7 +17,7 @@ const profile: ProfileInspect = {
 
 describe("profile rendering", () => {
   test("renders stored profile details without exposing credentials", () => {
-    const output = formatProfileInspect(profile);
+    const output = formatProfileInspectResult(profile);
 
     expect(output).toContain("Management auth");
     expect(output).toContain("api_key");
@@ -41,5 +41,12 @@ describe("profile rendering", () => {
     expect(output).toContain("Verification:");
     expect(output).toContain("Management:");
     expect(output).toContain("verified");
+  });
+
+  test("renders guidance for an empty profile", () => {
+    const output = formatProfileInspectResult({ ...profile, status: "empty" });
+
+    expect(output).toContain("Next steps:");
+    expect(output).toContain("altertable profile configure");
   });
 });

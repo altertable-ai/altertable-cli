@@ -4,6 +4,7 @@ import { createDoctorChecks } from "@/commands/doctor/lib/checks.ts";
 import { formatDoctorReport } from "@/commands/doctor/lib/render.ts";
 import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
 import { createDiagnosticExecutionContext } from "@/lib/execution-context.ts";
+import { EXIT_GENERIC, EXIT_SUCCESS } from "@/lib/errors.ts";
 
 export const doctorCommand = defineCommand({
   metadata: {
@@ -22,6 +23,7 @@ export const doctorCommand = defineCommand({
     const report = await runDoctorChecks(createDoctorChecks(), {
       execution: createDiagnosticExecutionContext(runtime),
       offline: args.offline === true,
+      interactive: !runtime.context.json && !runtime.context.agent && process.stdin.isTTY === true,
     });
     await writeCommandOutput(
       {
@@ -31,5 +33,6 @@ export const doctorCommand = defineCommand({
       },
       sink,
     );
+    return { exitCode: report.healthy ? EXIT_SUCCESS : EXIT_GENERIC };
   },
 });

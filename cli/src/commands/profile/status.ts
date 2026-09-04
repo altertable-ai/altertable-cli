@@ -9,6 +9,7 @@ import {
 } from "@/commands/profile/lib/profile.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
+import { EXIT_GENERIC, EXIT_SUCCESS } from "@/lib/errors.ts";
 
 export const profileStatusCommand = defineCommand({
   metadata: { name: "status", description: "Verify stored credentials and show the profile" },
@@ -35,5 +36,9 @@ export const profileStatusCommand = defineCommand({
       },
       sink,
     );
+    const healthy =
+      verification.configured.length > 0 &&
+      verification.configured.every((plane) => verification.verified[plane]);
+    return { exitCode: healthy ? EXIT_SUCCESS : EXIT_GENERIC };
   },
 });
