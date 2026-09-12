@@ -58,7 +58,7 @@
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   },
   "engines": {
     "bun": ">=1.1.0"
