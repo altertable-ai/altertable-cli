@@ -13,6 +13,7 @@ import {
   nativeReleaseTarget,
   readToolchainContract,
   RELEASE_MANIFEST_SCHEMA_VERSION,
+  darwinSignatureCommand,
   signatureVerificationCommand,
   stageCommandReferenceAssets,
   SUPPORTED_BUN_RUNTIME_RANGE,
@@ -155,17 +156,26 @@ describe("release target manifest", () => {
     );
   });
 
-  test("verifies macOS release signatures before executing binaries", () => {
+  test("signs and verifies macOS release binaries", () => {
     const darwinTarget = RELEASE_TARGETS.find(({ platform }) => platform === "darwin-arm64")!;
     const linuxTarget = RELEASE_TARGETS.find(({ platform }) => platform === "linux-arm64")!;
     const executable = "/tmp/altertable-test-binary";
 
+    expect(darwinSignatureCommand(darwinTarget, executable)).toEqual([
+      "codesign",
+      "--force",
+      "--sign",
+      "-",
+      "--timestamp=none",
+      executable,
+    ]);
     expect(signatureVerificationCommand(darwinTarget, executable)).toEqual([
       "codesign",
       "--verify",
       "--strict",
       executable,
     ]);
+    expect(darwinSignatureCommand(linuxTarget, executable)).toBeUndefined();
     expect(signatureVerificationCommand(linuxTarget, executable)).toBeUndefined();
   });
 });

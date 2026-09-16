@@ -144,6 +144,14 @@ export function compileCommand(target: ReleaseTarget, outputPath: string): strin
   ];
 }
 
+export function darwinSignatureCommand(
+  target: ReleaseTarget,
+  executable: string,
+): string[] | undefined {
+  if (target.os !== "darwin") return undefined;
+  return ["codesign", "--force", "--sign", "-", "--timestamp=none", executable];
+}
+
 export function signatureVerificationCommand(
   target: ReleaseTarget,
   executable: string,
@@ -172,6 +180,8 @@ export async function compileReleaseTarget(
   const outputPath = join(outputDirectory, target.asset);
   await run(compileCommand(target, outputPath));
   await assertNonemptyFile(outputPath);
+  const signingCommand = darwinSignatureCommand(target, outputPath);
+  if (signingCommand) await run(signingCommand);
   return outputPath;
 }
 
