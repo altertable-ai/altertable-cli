@@ -7,10 +7,16 @@ export const logoutCommand = defineCommand({
     name: "logout",
     commandGroup: "platform",
     description: "Remove stored credentials and settings for all profiles.",
-    examples: ["altertable logout"],
+    examples: ["altertable logout", "altertable logout --except-current"],
   },
-  run({ sink }) {
+  args: {
+    "except-current": {
+      type: "boolean",
+      description: "Keep the current profile and remove every other profile",
+    },
+  },
+  run({ args, sink }) {
     assertNoEnvConfigMode();
-    configureRunClear(sink);
+    configureRunClear(sink, { exceptCurrent: Boolean(args["except-current"]) });
   },
 });

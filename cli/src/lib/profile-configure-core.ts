@@ -1,13 +1,17 @@
 import { unlinkSync, rmSync, existsSync } from "node:fs";
 import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
-import { deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
+import { deleteProfile, deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
 import {
   ensureProfileExists,
+  getActiveProfileName,
+  listProfileNames,
   profileConfigFile,
   profilesDir,
   resolveWorkingProfile,
+  setActiveProfile,
 } from "@/lib/profile-store.ts";
+import { pluralizeLabel } from "@/lib/pluralize.ts";
 import { getCliContext } from "@/context.ts";
 import { secretDelete, secretSet } from "@/lib/secrets.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
@@ -108,7 +112,7 @@ export async function configureRunSet(
       Boolean(options.password) && !options.passwordStdin && !options.interactive;
     const apiKeyFromArgv = Boolean(options.apiKey) && !options.apiKeyStdin && !options.interactive;
     if (passwordFromArgv || apiKeyFromArgv) {
-      sink.writeMetadata([renderDisplayText([span(ARGV_SECRET_WARNING, "subtle")])]);
+      sink.writeHuman(renderDisplayText([span(ARGV_SECRET_WARNING, "subtle")]));
     }
 
     const hasAnyInput =
@@ -201,25 +205,55 @@ export async function configureRunSet(
     }
 
     if (hasApiKey) {
-      sink.writeMetadata([
+      sink.writeHuman(
         renderDisplayText([span(`Saved management API key for environment ${env}.`, "subtle")]),
-      ]);
+      );
     } else if (hasLakehouseBasicToken) {
-      sink.writeMetadata([renderDisplayText([span("Saved lakehouse Basic token.", "subtle")])]);
+      sink.writeHuman(renderDisplayText([span("Saved lakehouse Basic token.", "subtle")]));
     } else if (hasLakehouseCredentials) {
-      sink.writeMetadata([
+      sink.writeHuman(
         renderDisplayText([span(`Saved lakehouse credentials for user ${user}.`, "subtle")]),
-      ]);
+      );
     } else if (dataPlaneUrl) {
-      sink.writeMetadata([
-        renderDisplayText([span(`Saved data plane URL ${dataPlaneUrl}.`, "subtle")]),
-      ]);
+      sink.writeHuman(renderDisplayText([span(`Saved data plane URL ${dataPlaneUrl}.`, "subtle")]));
     }
     markCurrentProfileUpdated(profileName);
   });
 }
 
-export function configureRunClear(sink: OutputSink = getOutputSink()): void {
+export type ConfigureClearOptions = {
+  exceptCurrent?: boolean;
+};
+
+function configureClearExceptCurrent(sink: OutputSink): void {
+  const keptProfile = resolveWorkingProfile(getCliContext().profile);
+  ensureProfileExists(keptProfile);
+  if (getActiveProfileName() !== keptProfile) {
+    setActiveProfile(keptProfile);
+  }
+
+  const removed = listProfileNames().filter((name) => name !== keptProfile);
+  for (const name of removed) {
+    deleteProfile(name);
+  }
+
+  getCliRuntime().session = undefined;
+  const summary =
+    removed.length === 0
+      ? `No other profiles to clear; kept "${keptProfile}".`
+      : `Cleared ${pluralizeLabel(removed.length, "profile")}; kept "${keptProfile}".`;
+  sink.writeHuman(renderDisplayText([span(summary, "subtle")]));
+}
+
+export function configureRunClear(
+  sink: OutputSink = getOutputSink(),
+  options: ConfigureClearOptions = {},
+): void {
+  if (options.exceptCurrent) {
+    configureClearExceptCurrent(sink);
+    return;
+  }
+
   const profiles = existsSync(profilesDir()) ? listProfiles() : [];
   for (const profile of profiles) {
     configureClearLakehouseCredentials(profile.name);
@@ -249,7 +283,5 @@ export function configureRunClear(sink: OutputSink = getOutputSink()): void {
     });
   }
   getCliRuntime().session = undefined;
-  sink.writeMetadata([
-    renderDisplayText([span("Cleared all altertable configuration.", "subtle")]),
-  ]);
+  sink.writeHuman(renderDisplayText([span("Cleared all altertable configuration.", "subtle")]));
 }

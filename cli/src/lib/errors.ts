@@ -103,10 +103,12 @@ export class HttpError extends CliError {
     exitCode?: number;
     authPlane?: AuthPlane;
     retryAfterHeader?: string | null;
+    messageOverride?: string;
+    detailsOverride?: string;
   }) {
     super(`Request failed with status ${options.status}.`, {
       exitCode: options.exitCode ?? httpStatusExitCode(options.status),
-      details: options.parsedDetail,
+      details: options.detailsOverride ?? options.parsedDetail,
     });
     this.name = "HttpError";
     this.status = options.status;
@@ -115,7 +117,7 @@ export class HttpError extends CliError {
     this.url = options.url;
     this.parsedDetail = options.parsedDetail;
     this.retryAfterHeader = options.retryAfterHeader;
-    this.message = httpStatusMessage(options.status, options.authPlane);
+    this.message = options.messageOverride ?? httpStatusMessage(options.status, options.authPlane);
   }
 }
 

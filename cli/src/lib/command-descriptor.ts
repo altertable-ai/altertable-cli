@@ -55,6 +55,15 @@ function asStringArray(value: string | readonly string[] | undefined): string[] 
   return value === undefined ? [] : [String(value)];
 }
 
+/**
+ * Single-character aliases are short flags (`-X`); longer ones are additional
+ * long flags (`--svc`). Every place that renders or parses an alias — the
+ * parser, help, generated docs, shell completions — must agree on this.
+ */
+export function aliasFlagToken(alias: string): string {
+  return alias.length === 1 ? `-${alias}` : `--${alias}`;
+}
+
 function normalizeCommandMetadata(metadata: CommandMetadata | undefined): ResolvedCommandMetadata {
   return {
     ...(metadata?.name ? { name: String(metadata.name) } : {}),

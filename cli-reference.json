@@ -163,11 +163,47 @@
               "repeatable": false,
               "scope": "command",
               "values": []
+            },
+            {
+              "name": "service-account",
+              "aliases": [
+                "svc"
+              ],
+              "type": "string",
+              "description": "Create an environment-scoped service account with this label and store its access token instead of your login session",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "LABEL"
+            },
+            {
+              "name": "only",
+              "aliases": [],
+              "type": "string",
+              "description": "Request a service account limited to specific catalogs, e.g. analytics:ro,staging:rw (requires --service-account). The catalog access the server actually grants is reported on success.",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "CATALOG:MODE,..."
+            },
+            {
+              "name": "readonly",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Request a service account with read-only access to every catalog (requires --service-account; cannot be combined with --only)",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
             }
           ],
           "examples": [
             "altertable login",
-            "altertable login --replace-profile"
+            "altertable login --replace-profile",
+            "altertable login --service-account \"CI Bot\" --only analytics:ro",
+            "altertable login --svc \"CI Bot\" --readonly"
           ],
           "subcommands": []
         },
@@ -176,13 +212,25 @@
           "command": "altertable logout",
           "description": "Remove stored credentials and settings for all profiles.",
           "usage": [
-            "altertable logout"
+            "altertable logout [options]"
           ],
           "aliases": [],
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "except-current",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Keep the current profile and remove every other profile",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
           "examples": [
-            "altertable logout"
+            "altertable logout",
+            "altertable logout --except-current"
           ],
           "subcommands": []
         },

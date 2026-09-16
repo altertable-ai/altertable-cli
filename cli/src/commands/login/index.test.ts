@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { configGet } from "@/lib/config.ts";
+import { HttpError } from "@/lib/errors.ts";
 import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
 import { getActiveProfileName, profileExists, setActiveProfile } from "@/lib/profile-store.ts";
@@ -30,6 +31,17 @@ let stdinIsTty: PropertyDescriptor | undefined;
 
 function storedAccessToken(profileName: string): string {
   return secretGet("oauth/access-token", profileName);
+}
+
+// bun-types declare rejects.toThrow() as void, so awaiting it trips the
+// await-thenable lint rule; capture the rejection explicitly instead.
+async function expectRejection(promise: Promise<unknown>, message: string): Promise<void> {
+  const error = await promise.then(
+    () => undefined,
+    (thrown: unknown) => thrown,
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toContain(message);
 }
 
 beforeEach(() => {
@@ -63,10 +75,44 @@ afterEach(() => {
   delete process.env.OSC_HYPERLINK;
 });
 
+const SERVICE_ACCOUNT_RESPONSE = {
+  service_account: { id: "sa-1", label: "My Service", slug: "my-service" },
+  role_assignments: [{ role: "catalog:reader", resource_kind: "catalog", resource_id: "cat-1" }],
+  service_oauth_token: "svc_access_token",
+};
+
+const CATALOG_LIST_MOCKS = [
+  {
+    urlPattern: "/environments/production/databases",
+    method: "GET",
+    body: JSON.stringify({ databases: [{ id: "cat-1", name: "Analytics", slug: "analytics" }] }),
+  },
+  {
+    urlPattern: "/environments/production/connections",
+    method: "GET",
+    body: JSON.stringify({ connections: [{ id: "cat-2", name: "Events", slug: "events" }] }),
+  },
+];
+
+function httpLogJsonPayload(logPath: string, urlSubstring: string): unknown {
+  const entry = readFileSync(logPath, "utf8")
+    .split("---\n")
+    .find((block) => block.includes(`URL=`) && block.includes(urlSubstring));
+  if (!entry) {
+    throw new Error(`No HTTP log entry for ${urlSubstring}`);
+  }
+  const payloadLine = entry.split("\n").find((line) => line.startsWith("PAYLOAD="));
+  if (!payloadLine) {
+    throw new Error(`No PAYLOAD= entry for ${urlSubstring}`);
+  }
+  return JSON.parse(payloadLine.slice("PAYLOAD=".length));
+}
+
 async function completeBrowserLogin(
   rawArgs: string[] = ["login"],
   whoami: object = DEFAULT_WHOAMI,
   accessToken = "access_token",
+  extraMocks: object[] = [],
 ) {
   writeFileSync(
     mockFile,
@@ -87,6 +133,7 @@ async function completeBrowserLogin(
         authPattern: accessToken,
         body: JSON.stringify(whoami),
       },
+      ...extraMocks,
     ]),
   );
 
@@ -96,7 +143,7 @@ async function completeBrowserLogin(
 
   let authorizeUrl: URL | undefined;
   for (let attempt = 0; attempt < 100 && !authorizeUrl; attempt += 1) {
-    const match = cli.stderr.join("\n").match(/https?:\/\/[^\s]+\/oauth\/authorize\?[^\s]+/);
+    const match = cli.stdout.join("\n").match(/https?:\/\/[^\s]+\/oauth\/authorize\?[^\s]+/);
     if (match?.[0]) authorizeUrl = new URL(match[0]);
     if (!authorizeUrl) await delay(5);
   }
@@ -129,7 +176,8 @@ describe("login command", () => {
     expect(configGet("organization_slug", "default")).toBe("altertable");
     expect(configGet("principal_email", "default")).toBe("test.user@altertable.test");
     expect(storedAccessToken("default")).toBe("access_token");
-    expect(cli.stderr.join("\n")).toContain('using profile "default"');
+    expect(cli.stdout.join("\n")).toContain('using profile "default"');
+    expect(cli.stderr).toEqual([]);
   });
 
   test("preserves an authenticated profile when signing into another organization", async () => {
@@ -237,5 +285,309 @@ describe("login command", () => {
     return expect(
       runCommandWithTestRuntime(["login", "--control-plane-url", "http://app.altertable.test"]),
     ).rejects.toThrow();
+  });
+});
+
+describe("login --service-account", () => {
+  const serviceAccountProfile = "altertable_production_my-service";
+  let logFile = "";
+
+  beforeEach(() => {
+    logFile = join(testHome, "http.log");
+    process.env.ALTERTABLE_HTTP_LOG = logFile;
+  });
+
+  afterEach(() => {
+    delete process.env.ALTERTABLE_HTTP_LOG;
+  });
+
+  function serviceAccountMock(
+    body: object | string = SERVICE_ACCOUNT_RESPONSE,
+    status = 201,
+  ): object {
+    return {
+      urlPattern: "/environments/production/service_accounts",
+      method: "POST",
+      status,
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    };
+  }
+
+  function serviceAccountMocks(body: object | string = SERVICE_ACCOUNT_RESPONSE): object[] {
+    return [serviceAccountMock(body), ...CATALOG_LIST_MOCKS];
+  }
+
+  test("provisions a service account and stores its service OAuth token", async () => {
+    const cli = await completeBrowserLogin(
+      ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks(),
+    );
+
+    expect(getActiveProfileName()).toBe(serviceAccountProfile);
+    expect(profileExists(serviceAccountProfile)).toBe(true);
+    expect(configGet("principal_type", serviceAccountProfile)).toBe("ServiceAccount");
+    expect(configGet("principal_slug", serviceAccountProfile)).toBe("my-service");
+    expect(storedAccessToken(serviceAccountProfile)).toBe("svc_access_token");
+    expect(secretGet("oauth/refresh-token", serviceAccountProfile)).toBe("");
+    expect(configGet("oauth_expiry", serviceAccountProfile)).toBe("");
+    expect(secretGet("lakehouse/basic-token", serviceAccountProfile)).toBe("");
+    expect(cli.stdout.join("\n")).toContain("My Service");
+    expect(cli.stdout.join("\n")).toContain(serviceAccountProfile);
+    expect(cli.stdout.join("\n")).toMatch(/CATALOG\s+SLUG\s+ACCESS/);
+    expect(cli.stdout.join("\n")).toMatch(/Analytics\s+analytics\s+ro/);
+    expect(cli.stderr).toEqual([]);
+
+    const payload = httpLogJsonPayload(logFile, "/environments/production/service_accounts") as {
+      label: string;
+      caveats: Record<string, string>;
+    };
+    expect(payload.label).toBe("My Service");
+    expect(payload.caveats).toEqual({ catalog1: "ro" });
+    expect(payload).toHaveProperty("with_service_oauth_token");
+  });
+
+  test("--svc is accepted as an alias", async () => {
+    await completeBrowserLogin(
+      ["login", "--svc", "My Service"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks(),
+    );
+
+    expect(getActiveProfileName()).toBe(serviceAccountProfile);
+    expect(storedAccessToken(serviceAccountProfile)).toBe("svc_access_token");
+  });
+
+  test("leaves the signing-in user's own session unstored", async () => {
+    await completeBrowserLogin(
+      ["login", "--service-account", "My Service"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks(),
+    );
+
+    expect(storedAccessToken("default")).toBe("");
+    expect(secretGet("oauth/refresh-token", "default")).toBe("");
+    expect(storedAccessToken(serviceAccountProfile)).toBe("svc_access_token");
+  });
+
+  test("reports the catalogs the server granted, not the ones --only requested", async () => {
+    const cli = await completeBrowserLogin(
+      ["login", "--service-account", "My Service", "--only", "analytics:rw"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks({
+        ...SERVICE_ACCOUNT_RESPONSE,
+        role_assignments: [
+          { role: "catalog:reader", resource_kind: "catalog", resource_id: "cat-1" },
+          { role: "catalog:writer", resource_kind: "catalog", resource_id: "cat-2" },
+        ],
+      }),
+    );
+
+    const stdout = cli.stdout.join("\n");
+    expect(stdout).toContain("Catalog access");
+    expect(stdout).toMatch(/Analytics\s+analytics\s+ro/);
+    expect(stdout).toMatch(/Events\s+events\s+rw/);
+    expect(stdout).not.toContain("analytics:rw");
+  });
+
+  test("omits assignments that are not catalogs or cannot be resolved to a catalog", async () => {
+    const cli = await completeBrowserLogin(
+      ["login", "--service-account", "My Service"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks({
+        ...SERVICE_ACCOUNT_RESPONSE,
+        role_assignments: [
+          { role: "organization:member", resource_kind: "organization", resource_id: "org-1" },
+          { role: "catalog:reader", resource_kind: "catalog", resource_id: "cat-unknown" },
+        ],
+      }),
+    );
+
+    const stdout = cli.stdout.join("\n");
+    expect(stdout).not.toContain("Catalog access");
+    expect(stdout).not.toContain("org-1");
+    expect(stdout).not.toContain("cat-unknown");
+  });
+
+  test("warns when --only was requested but the server reported no role assignments", async () => {
+    const cli = await completeBrowserLogin(
+      ["login", "--service-account", "My Service", "--only", "analytics:ro"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks({ ...SERVICE_ACCOUNT_RESPONSE, role_assignments: [] }),
+    );
+
+    const stdout = cli.stdout.join("\n");
+    expect(stdout).not.toContain("Catalog access");
+    expect(stdout).toContain("could not be confirmed");
+  });
+
+  test("fails when the response omits the service OAuth token", async () => {
+    await expectRejection(
+      completeBrowserLogin(
+        ["login", "--service-account", "My Service"],
+        DEFAULT_WHOAMI,
+        "access_token",
+        [serviceAccountMock({ ...SERVICE_ACCOUNT_RESPONSE, service_oauth_token: undefined })],
+      ),
+      "service OAuth token",
+    );
+  });
+
+  test("omits caveats when --only is not set", async () => {
+    await completeBrowserLogin(
+      ["login", "--service-account", "My Service"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      [serviceAccountMock()],
+    );
+
+    const payload = httpLogJsonPayload(logFile, "/environments/production/service_accounts") as {
+      caveats?: unknown;
+    };
+    expect(payload).not.toHaveProperty("caveats");
+  });
+
+  test("--readonly sends a blanket read-only caveat", async () => {
+    await completeBrowserLogin(
+      ["login", "--service-account", "My Service", "--readonly"],
+      DEFAULT_WHOAMI,
+      "access_token",
+      serviceAccountMocks(),
+    );
+
+    const payload = httpLogJsonPayload(logFile, "/environments/production/service_accounts") as {
+      caveats: unknown;
+    };
+    expect(payload.caveats).toBe("ro");
+  });
+
+  test("--readonly with --only fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime([
+        "login",
+        "--service-account",
+        "My Service",
+        "--readonly",
+        "--only",
+        "analytics:ro",
+      ]),
+      "--readonly cannot be combined with --only",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  test("--readonly without --service-account fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime(["login", "--readonly"]),
+      "--readonly requires --service-account",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  test("--only without --service-account fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime(["login", "--only", "catalog1:ro"]),
+      "--only requires --service-account",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  test("--service-account with --replace-profile fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime(["login", "--service-account", "My Service", "--replace-profile"]),
+      "--replace-profile",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  test("an empty --service-account label fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime(["login", "--service-account", "   "]),
+      "non-empty label",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  test("malformed --only fails before any HTTP call", async () => {
+    await expectRejection(
+      runCommandWithTestRuntime([
+        "login",
+        "--service-account",
+        "My Service",
+        "--only",
+        "catalog1:read",
+      ]),
+      "catalog1:read",
+    );
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  // A URL rejected late would leave a service account minted server-side whose
+  // token was never stored, and the CLI switched to the empty profile.
+  test("a rejected --data-plane-url fails before the browser flow and mints nothing", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+
+    await expectRejection(
+      runCommandWithTestRuntime([
+        "login",
+        "--service-account",
+        "My Service",
+        "--data-plane-url",
+        "http://evil.example.com",
+      ]),
+      "Insecure HTTP URL",
+    );
+
+    expect(existsSync(logFile)).toBe(false);
+    expect(profileExists(serviceAccountProfile)).toBe(false);
+    expect(getActiveProfileName()).toBe("default");
+  });
+
+  test("surfaces a 403 from the service account endpoint", async () => {
+    try {
+      await completeBrowserLogin(
+        ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+        DEFAULT_WHOAMI,
+        "access_token",
+        [
+          serviceAccountMock(
+            {
+              error: { code: "forbidden", message: "Only org admins can create service accounts" },
+            },
+            403,
+          ),
+        ],
+      );
+      expect.unreachable("login --service-account should have failed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      const httpError = error as HttpError;
+      expect(httpError.message).toContain("service account");
+      expect(httpError.parsedDetail).toBe("Only org admins can create service accounts");
+    }
+  });
+
+  test("names the missing service account endpoint on 404", async () => {
+    try {
+      await completeBrowserLogin(
+        ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+        DEFAULT_WHOAMI,
+        "access_token",
+        [serviceAccountMock("<html>Not Found</html>", 404)],
+      );
+      expect.unreachable("login --service-account should have failed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      const httpError = error as HttpError;
+      expect(httpError.message).toContain("service account");
+      expect(httpError.message).toContain("Not found (404)");
+      expect(httpError.details).toContain("/environments/production/service_accounts");
+    }
   });
 });
