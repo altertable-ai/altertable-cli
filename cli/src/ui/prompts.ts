@@ -64,8 +64,8 @@ function normalizePromptMessage(prompt: string): string {
 }
 
 function resolvePromptResult(result: string | symbol): string {
-  if (isCancel(result)) throw new PromptCancelled();
-  return result;
+  if (typeof result === "string") return result;
+  throw new PromptCancelled();
 }
 
 async function readInteractiveLine(prompt: string): Promise<string> {
