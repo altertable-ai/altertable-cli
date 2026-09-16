@@ -13,6 +13,7 @@ import {
   nativeReleaseTarget,
   readToolchainContract,
   RELEASE_MANIFEST_SCHEMA_VERSION,
+  signatureVerificationCommand,
   stageCommandReferenceAssets,
   SUPPORTED_BUN_RUNTIME_RANGE,
   writeReleaseMetadata,
@@ -152,6 +153,20 @@ describe("release target manifest", () => {
     expect(() => nativeReleaseTarget("win32", "x64")).toThrow(
       "Unsupported native release platform: win32-x64.",
     );
+  });
+
+  test("verifies macOS release signatures before executing binaries", () => {
+    const darwinTarget = RELEASE_TARGETS.find(({ platform }) => platform === "darwin-arm64")!;
+    const linuxTarget = RELEASE_TARGETS.find(({ platform }) => platform === "linux-arm64")!;
+    const executable = "/tmp/altertable-test-binary";
+
+    expect(signatureVerificationCommand(darwinTarget, executable)).toEqual([
+      "codesign",
+      "--verify",
+      "--strict",
+      executable,
+    ]);
+    expect(signatureVerificationCommand(linuxTarget, executable)).toBeUndefined();
   });
 });
 
