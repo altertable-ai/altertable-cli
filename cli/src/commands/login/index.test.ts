@@ -319,7 +319,7 @@ describe("login --service-account", () => {
 
   test("provisions a service account and stores its service OAuth token", async () => {
     const cli = await completeBrowserLogin(
-      ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+      ["login", "--service-account", "My Service", "--scope", "catalog1:ro"],
       DEFAULT_WHOAMI,
       "access_token",
       serviceAccountMocks(),
@@ -348,18 +348,6 @@ describe("login --service-account", () => {
     expect(payload).toHaveProperty("with_service_oauth_token");
   });
 
-  test("--svc is accepted as an alias", async () => {
-    await completeBrowserLogin(
-      ["login", "--svc", "My Service"],
-      DEFAULT_WHOAMI,
-      "access_token",
-      serviceAccountMocks(),
-    );
-
-    expect(getActiveProfileName()).toBe(serviceAccountProfile);
-    expect(storedAccessToken(serviceAccountProfile)).toBe("svc_access_token");
-  });
-
   test("leaves the signing-in user's own session unstored", async () => {
     await completeBrowserLogin(
       ["login", "--service-account", "My Service"],
@@ -373,9 +361,9 @@ describe("login --service-account", () => {
     expect(storedAccessToken(serviceAccountProfile)).toBe("svc_access_token");
   });
 
-  test("reports the catalogs the server granted, not the ones --only requested", async () => {
+  test("reports the catalogs the server granted, not the ones --scope requested", async () => {
     const cli = await completeBrowserLogin(
-      ["login", "--service-account", "My Service", "--only", "analytics:rw"],
+      ["login", "--service-account", "My Service", "--scope", "analytics:rw"],
       DEFAULT_WHOAMI,
       "access_token",
       serviceAccountMocks({
@@ -414,9 +402,9 @@ describe("login --service-account", () => {
     expect(stdout).not.toContain("cat-unknown");
   });
 
-  test("warns when --only was requested but the server reported no role assignments", async () => {
+  test("warns when --scope was requested but the server reported no role assignments", async () => {
     const cli = await completeBrowserLogin(
-      ["login", "--service-account", "My Service", "--only", "analytics:ro"],
+      ["login", "--service-account", "My Service", "--scope", "analytics:ro"],
       DEFAULT_WHOAMI,
       "access_token",
       serviceAccountMocks({ ...SERVICE_ACCOUNT_RESPONSE, role_assignments: [] }),
@@ -435,11 +423,11 @@ describe("login --service-account", () => {
         "access_token",
         [serviceAccountMock({ ...SERVICE_ACCOUNT_RESPONSE, service_oauth_token: undefined })],
       ),
-      "service OAuth token",
+      "assertion failed retrieving service_account.service_oauth_token",
     );
   });
 
-  test("omits caveats when --only is not set", async () => {
+  test("omits the scope when --scope is not set", async () => {
     await completeBrowserLogin(
       ["login", "--service-account", "My Service"],
       DEFAULT_WHOAMI,
@@ -453,9 +441,9 @@ describe("login --service-account", () => {
     expect(payload).not.toHaveProperty("caveats");
   });
 
-  test("--readonly sends a blanket read-only caveat", async () => {
+  test("--scope ro sends a blanket read-only scope", async () => {
     await completeBrowserLogin(
-      ["login", "--service-account", "My Service", "--readonly"],
+      ["login", "--service-account", "My Service", "--scope", "ro"],
       DEFAULT_WHOAMI,
       "access_token",
       serviceAccountMocks(),
@@ -467,33 +455,10 @@ describe("login --service-account", () => {
     expect(payload.caveats).toBe("ro");
   });
 
-  test("--readonly with --only fails before any HTTP call", async () => {
+  test("--scope without --service-account fails before any HTTP call", async () => {
     await expectRejection(
-      runCommandWithTestRuntime([
-        "login",
-        "--service-account",
-        "My Service",
-        "--readonly",
-        "--only",
-        "analytics:ro",
-      ]),
-      "--readonly cannot be combined with --only",
-    );
-    expect(existsSync(logFile)).toBe(false);
-  });
-
-  test("--readonly without --service-account fails before any HTTP call", async () => {
-    await expectRejection(
-      runCommandWithTestRuntime(["login", "--readonly"]),
-      "--readonly requires --service-account",
-    );
-    expect(existsSync(logFile)).toBe(false);
-  });
-
-  test("--only without --service-account fails before any HTTP call", async () => {
-    await expectRejection(
-      runCommandWithTestRuntime(["login", "--only", "catalog1:ro"]),
-      "--only requires --service-account",
+      runCommandWithTestRuntime(["login", "--scope", "catalog1:ro"]),
+      "--scope requires --service-account",
     );
     expect(existsSync(logFile)).toBe(false);
   });
@@ -514,13 +479,13 @@ describe("login --service-account", () => {
     expect(existsSync(logFile)).toBe(false);
   });
 
-  test("malformed --only fails before any HTTP call", async () => {
+  test("malformed --scope fails before any HTTP call", async () => {
     await expectRejection(
       runCommandWithTestRuntime([
         "login",
         "--service-account",
         "My Service",
-        "--only",
+        "--scope",
         "catalog1:read",
       ]),
       "catalog1:read",
@@ -552,7 +517,7 @@ describe("login --service-account", () => {
   test("surfaces a 403 from the service account endpoint", async () => {
     try {
       await completeBrowserLogin(
-        ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+        ["login", "--service-account", "My Service", "--scope", "catalog1:ro"],
         DEFAULT_WHOAMI,
         "access_token",
         [
@@ -576,7 +541,7 @@ describe("login --service-account", () => {
   test("names the missing service account endpoint on 404", async () => {
     try {
       await completeBrowserLogin(
-        ["login", "--service-account", "My Service", "--only", "catalog1:ro"],
+        ["login", "--service-account", "My Service", "--scope", "catalog1:ro"],
         DEFAULT_WHOAMI,
         "access_token",
         [serviceAccountMock("<html>Not Found</html>", 404)],

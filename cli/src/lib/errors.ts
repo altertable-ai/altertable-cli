@@ -51,6 +51,17 @@ export class CliError extends Error {
   }
 }
 
+export function assertRetrieved<T>(
+  value: T | null | undefined,
+  operation: string,
+  path: string,
+): T {
+  if (value === undefined || value === null || value === "") {
+    throw new CliError(`${operation} failed: assertion failed retrieving ${path}`);
+  }
+  return value;
+}
+
 export class ConfigurationError extends CliError {
   constructor(message: string, options: CliErrorOptions = {}) {
     super(message, { ...options, exitCode: options.exitCode ?? EXIT_CONFIG });

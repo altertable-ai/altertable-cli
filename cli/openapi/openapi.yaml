@@ -51,9 +51,13 @@ components:
         slug:
           type: string
         region:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         endpoint:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         provider:
           type: string
           enum:
@@ -109,22 +113,25 @@ components:
           type: string
           enum:
             - postgres
-            - bigquery
+            - big_query
             - redshift
             - snowflake
             - mariadb
             - mysql
             - supabase
-            - buckettables
-            - icebergtables
-            - r2catalog
-            - s3tables
+            - bucket_tables
+            - iceberg_tables
+            - r2_catalog
+            - s3_tables
             - glue
             - duckdb
+            - mongo
         read_only:
           type: boolean
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         labels:
           type: array
           items:
@@ -139,6 +146,11 @@ components:
         updated_at:
           type: string
           format: date-time
+        config:
+          anyOf:
+            - type: object
+              additionalProperties: {}
+            - type: "null"
       required:
         - id
         - name
@@ -154,94 +166,212 @@ components:
       type: object
       properties:
         dataset:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         project_id_override:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionBucketTablesConfig:
       type: object
       properties:
         bucket_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         file_format:
-          type: string
-          enum:
-            - parquet
-            - csv
-            - json
+          anyOf:
+            - type: string
+              enum:
+                - parquet
+                - csv
+                - json
+            - type: "null"
         assume_immutable:
-          type: boolean
-        tables: {}
+          anyOf:
+            - type: boolean
+            - type: "null"
+        tables:
+          type: object
+          additionalProperties:
+            type: string
       required:
         - tables
     ConnectionDuckDBConfig:
       type: object
       properties:
         bucket_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         path:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionGlueConfig:
       type: object
       properties:
         warehouse:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         default_region:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         role_arn:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionIcebergTablesConfig:
       type: object
       properties:
         bucket_id:
-          type: string
-        tables: {}
+          anyOf:
+            - type: string
+            - type: "null"
+        tables:
+          type: object
+          additionalProperties:
+            type: string
       required:
         - tables
+    ConnectionMongoConfig:
+      type: object
+      properties:
+        host:
+          anyOf:
+            - type: string
+            - type: "null"
+        port:
+          anyOf:
+            - type: integer
+            - type: "null"
+        database:
+          anyOf:
+            - type: string
+            - type: "null"
+        username:
+          anyOf:
+            - type: string
+            - type: "null"
+        password:
+          anyOf:
+            - type: string
+            - type: "null"
+        ssh_tunnel:
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSshTunnel"
+            - type: "null"
+        srv:
+          anyOf:
+            - type: boolean
+            - type: "null"
+        tls:
+          anyOf:
+            - type: boolean
+            - type: "null"
+        auth_source:
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionMysqlConfig:
       type: object
       properties:
         host:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         port:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         database:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         username:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         password:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         schema:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         ssh_tunnel:
-          "$ref": "#/components/schemas/ConnectionSshTunnel"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSshTunnel"
+            - type: "null"
+        ssl_mode:
+          anyOf:
+            - type: string
+              enum:
+                - disabled
+                - preferred
+                - verify_identity
+            - type: "null"
     ConnectionPostgresConfig:
       type: object
       properties:
         host:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         port:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         database:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         username:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         password:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         schema:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         ssh_tunnel:
-          "$ref": "#/components/schemas/ConnectionSshTunnel"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSshTunnel"
+            - type: "null"
         sslmode:
-          type: string
+          anyOf:
+            - type: string
+              enum:
+                - disable
+                - allow
+                - prefer
+                - require
+                - verify-ca
+                - verify-full
+            - type: "null"
     ConnectionR2CatalogConfig:
       type: object
       properties:
         warehouse:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         endpoint:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         token:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionResponse:
       type: object
       properties:
@@ -253,52 +383,90 @@ components:
       type: object
       properties:
         warehouse:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         default_region:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         aws_access_key_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         aws_secret_access_key:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionSnowflakeConfig:
       type: object
       properties:
         account_url:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         warehouse:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         username:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         password:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         database:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionSshTunnel:
       type: object
       properties:
         bastion_host:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         bastion_port:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         bastion_username:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     ConnectionStandardConfig:
       type: object
       properties:
         host:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         port:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         database:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         username:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         password:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         schema:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         ssh_tunnel:
-          "$ref": "#/components/schemas/ConnectionSshTunnel"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSshTunnel"
+            - type: "null"
     ConnectionsListResponse:
       type: object
       properties:
@@ -318,9 +486,13 @@ components:
         secret_access_key:
           type: string
         region:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         endpoint:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
       required:
         - name
         - access_key_id
@@ -334,48 +506,81 @@ components:
           type: string
           enum:
             - postgres
-            - bigquery
+            - big_query
             - redshift
             - snowflake
             - mariadb
             - mysql
             - supabase
-            - buckettables
-            - icebergtables
-            - r2catalog
-            - s3tables
+            - bucket_tables
+            - iceberg_tables
+            - r2_catalog
+            - s3_tables
             - glue
             - duckdb
+            - mongo
         read_only:
-          type: boolean
+          anyOf:
+            - type: boolean
+            - type: "null"
         label_ids:
-          type: array
-          items:
-            type: string
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         standard_config:
-          "$ref": "#/components/schemas/ConnectionStandardConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionStandardConfig"
+            - type: "null"
         mysql_config:
-          "$ref": "#/components/schemas/ConnectionMysqlConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionMysqlConfig"
+            - type: "null"
         postgres_config:
-          "$ref": "#/components/schemas/ConnectionPostgresConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionPostgresConfig"
+            - type: "null"
+        mongo_config:
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionMongoConfig"
+            - type: "null"
         bigquery_config:
-          "$ref": "#/components/schemas/ConnectionBigQueryConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionBigQueryConfig"
+            - type: "null"
         snowflake_config:
-          "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
+            - type: "null"
         bucket_tables_config:
-          "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
+            - type: "null"
         iceberg_tables_config:
-          "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
+            - type: "null"
         duckdb_config:
-          "$ref": "#/components/schemas/ConnectionDuckDBConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionDuckDBConfig"
+            - type: "null"
         r2_catalog_config:
-          "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
+            - type: "null"
         s3_tables_config:
-          "$ref": "#/components/schemas/ConnectionS3TablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionS3TablesConfig"
+            - type: "null"
         glue_config:
-          "$ref": "#/components/schemas/ConnectionGlueConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionGlueConfig"
+            - type: "null"
       required:
         - name
         - engine
@@ -383,10 +588,14 @@ components:
       type: object
       properties:
         label:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         expires_at:
-          type: string
-          format: date-time
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
     CreateCredentialResponse:
       type: object
       properties:
@@ -403,17 +612,27 @@ components:
         name:
           type: string
         bucket_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         read_only:
-          type: boolean
+          anyOf:
+            - type: boolean
+            - type: "null"
         label_ids:
-          type: array
-          items:
-            type: string
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
         snapshot_retention_days:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
       required:
         - name
     CreateEnvironmentRequest:
@@ -427,16 +646,49 @@ components:
             - hetzner
             - aws
         cloud_provider_hetzner_region:
-          type: string
-          enum:
-            - fsn1
+          anyOf:
+            - type: string
+              enum:
+                - fsn1
+            - type: "null"
         cloud_provider_aws_region:
-          type: string
-          enum:
-            - eu-west-1
+          anyOf:
+            - type: string
+              enum:
+                - eu-west-1
+            - type: "null"
+        compute_units:
+          anyOf:
+            - type: integer
+            - type: "null"
       required:
         - name
         - cloud_provider
+    CreateEnvironmentServiceAccountRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        caveats:
+          anyOf:
+            - oneOf:
+                - type: string
+                  enum:
+                    - ro
+                    - rw
+                - type: object
+                  additionalProperties:
+                    type: string
+                    enum:
+                      - ro
+                      - rw
+            - type: "null"
+        with_service_oauth_token:
+          anyOf:
+            - type: boolean
+            - type: "null"
+      required:
+        - label
     CreateServiceAccountRequest:
       type: object
       properties:
@@ -444,6 +696,13 @@ components:
           type: string
       required:
         - label
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
     Credential:
       type: object
       properties:
@@ -463,14 +722,20 @@ components:
           type: string
           format: date-time
         expires_at:
-          type: string
-          format: date-time
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
         revoked_at:
-          type: string
-          format: date-time
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
         last_rotated_at:
-          type: string
-          format: date-time
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
       required:
         - id
         - label
@@ -500,7 +765,9 @@ components:
         built_in:
           type: boolean
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         labels:
           type: array
           items:
@@ -510,7 +777,9 @@ components:
         bucket_id:
           type: string
         snapshot_retention_days:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         environment_id:
           type: string
         created_at:
@@ -563,6 +832,8 @@ components:
             - aws
         cloud_provider_region:
           type: string
+        compute_units:
+          type: integer
         created_at:
           type: string
           format: date-time
@@ -575,6 +846,7 @@ components:
         - slug
         - cloud_provider
         - cloud_provider_region
+        - compute_units
         - created_at
         - updated_at
     EnvironmentResponse:
@@ -584,6 +856,22 @@ components:
           "$ref": "#/components/schemas/Environment"
       required:
         - environment
+    EnvironmentServiceAccountResponse:
+      type: object
+      properties:
+        service_account:
+          "$ref": "#/components/schemas/ServiceAccount"
+        role_assignments:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RoleAssignment"
+        service_oauth_token:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - service_account
+        - role_assignments
     Label:
       type: object
       properties:
@@ -623,9 +911,13 @@ components:
         name:
           type: string
         email:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         slug:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
       required:
         - id
         - type
@@ -668,11 +960,13 @@ components:
             - organization:writer
             - organization:admin
         resource_kind:
-          type: string
-          enum:
-            - organization
-            - environment
-            - catalog
+          anyOf:
+            - type: string
+              enum:
+                - organization
+                - environment
+                - catalog
+            - type: "null"
         resource_id:
           type: string
       required:
@@ -702,65 +996,126 @@ components:
       type: object
       properties:
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         access_key_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         secret_access_key:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         region:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         endpoint:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
     UpdateConnectionRequest:
       type: object
       properties:
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         read_only:
-          type: boolean
+          anyOf:
+            - type: boolean
+            - type: "null"
         label_ids:
-          type: array
-          items:
-            type: string
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         standard_config:
-          "$ref": "#/components/schemas/ConnectionStandardConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionStandardConfig"
+            - type: "null"
         mysql_config:
-          "$ref": "#/components/schemas/ConnectionMysqlConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionMysqlConfig"
+            - type: "null"
         postgres_config:
-          "$ref": "#/components/schemas/ConnectionPostgresConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionPostgresConfig"
+            - type: "null"
+        mongo_config:
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionMongoConfig"
+            - type: "null"
         bigquery_config:
-          "$ref": "#/components/schemas/ConnectionBigQueryConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionBigQueryConfig"
+            - type: "null"
         snowflake_config:
-          "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
+            - type: "null"
         bucket_tables_config:
-          "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
+            - type: "null"
         iceberg_tables_config:
-          "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
+            - type: "null"
         duckdb_config:
-          "$ref": "#/components/schemas/ConnectionDuckDBConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionDuckDBConfig"
+            - type: "null"
         r2_catalog_config:
-          "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
+            - type: "null"
         s3_tables_config:
-          "$ref": "#/components/schemas/ConnectionS3TablesConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionS3TablesConfig"
+            - type: "null"
         glue_config:
-          "$ref": "#/components/schemas/ConnectionGlueConfig"
+          anyOf:
+            - "$ref": "#/components/schemas/ConnectionGlueConfig"
+            - type: "null"
     UpdateDatabaseRequest:
       type: object
       properties:
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         read_only:
-          type: boolean
+          anyOf:
+            - type: boolean
+            - type: "null"
         label_ids:
-          type: array
-          items:
-            type: string
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
         snapshot_retention_days:
-          type: integer
+          anyOf:
+            - type: integer
+            - type: "null"
         description:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
+    UpdateEnvironmentRequest:
+      type: object
+      properties:
+        compute_units:
+          type: integer
+      required:
+        - compute_units
     UpdateRoleAssignmentsRequest:
       type: object
       properties:
@@ -781,13 +1136,25 @@ components:
       type: object
       properties:
         id:
+          anyOf:
+            - type: string
+            - type: "null"
+        invitation_id:
+          anyOf:
+            - type: string
+            - type: "null"
+        iac_id:
           type: string
         email:
           type: string
         name:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
       required:
         - id
+        - invitation_id
+        - iac_id
         - email
         - name
     UserResponse:
@@ -807,7 +1174,9 @@ components:
         authentication_scope:
           type: string
         environment_slug:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
       required:
         - principal
         - organization
@@ -1067,6 +1436,71 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /environments/{environment_id}/service_accounts:
+    post:
+      operationId: createEnvironmentServiceAccount
+      summary: Create a service account scoped to a single environment
+      description: |
+        Creates a service account whose roles are confined to the given environment. `caveats`
+        defaults to read-only on the whole environment; pass `"rw"` for read-write, or an object
+        mapping catalog names to `"ro"`/`"rw"` to grant access per catalog. Authenticate with the
+        Altertable CLI and pass `with_service_oauth_token: true` to receive a one-time
+        `service_oauth_token` for the new service account; it expires at the same time as the
+        CLI token used to create it.
+      tags: [Service Accounts]
+      parameters:
+        - name: environment_id
+          in: path
+          required: true
+          description: Environment UUID or slug
+          schema:
+            type: string
+            examples:
+              - "019d7223-796e-7917-8d7e-ca256daa7979"
+              - "production"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnvironmentServiceAccountRequest"
+            examples:
+              environmentReadOnly:
+                summary: Read-only on the whole environment
+                value:
+                  label: CI Deploy
+              withServiceOauthToken:
+                summary: Issue a follow-up CLI OAuth token for the service account
+                value:
+                  label: CI Deploy
+                  with_service_oauth_token: true
+              perCatalog:
+                summary: Read on one catalog, write on another
+                value:
+                  label: CI Deploy
+                  caveats:
+                    analytics: ro
+                    staging: rw
+      responses:
+        "201":
+          description: Service account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentServiceAccountResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /environments/{environment_id}/buckets:
     get:
@@ -1465,13 +1899,47 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /users:
+    post:
+      operationId: createUser
+      summary: Invite a user to the organization
+      description: Creates or reuses a pending invitation. The returned iac_id is the stable Terraform identity.
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateUserRequest" }
+      responses:
+        "200":
+          description: Existing pending invitation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: Validation failed or the email is already an organization member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /users/{id}:
     get:
       operationId: getUser
-      summary: Get a user in the organization by ID
+      summary: Get a user or invitation by Terraform identity
       tags: [Users]
       parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
+        - name: id
+          in: path
+          required: true
+          description: Opaque iac_id returned by the user API; either a user UUID or invitation_id=<UUID>
+          schema: { type: string }
       responses:
         "200":
           description: User
@@ -1481,6 +1949,25 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteUser
+      summary: Cancel an invitation or remove a user from the organization
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Opaque iac_id returned by the user API
+          schema: { type: string }
+      responses:
+        "204": { description: User or invitation is absent }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: The authenticated principal cannot remove itself
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /users/{user_id}/role_assignments:
     get:
@@ -1488,7 +1975,13 @@ paths:
       summary: List a user's direct role assignments
       tags: [Role Assignments]
       parameters:
-        - { name: user_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: user_id,
+            in: path,
+            required: true,
+            description: Opaque user iac_id,
+            schema: { type: string },
+          }
       responses:
         "200":
           description: Role assignments
@@ -1503,7 +1996,13 @@ paths:
       summary: Replace a user's role assignments
       tags: [Role Assignments]
       parameters:
-        - { name: user_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: user_id,
+            in: path,
+            required: true,
+            description: Opaque user iac_id,
+            schema: { type: string },
+          }
       requestBody:
         required: true
         content:
@@ -1518,6 +2017,27 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: resetUserRoleAssignments
+      summary: Reset a user's role assignments to organization:member
+      tags: [Role Assignments]
+      parameters:
+        - {
+            name: user_id,
+            in: path,
+            required: true,
+            description: Opaque user iac_id,
+            schema: { type: string },
+          }
+      responses:
+        "204": { description: Role assignments reset }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "422":
           description: Validation failed
           content:
@@ -1565,6 +2085,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: resetServiceAccountRoleAssignments
+      summary: Reset a service account's role assignments to organization:member
+      tags: [Role Assignments]
+      parameters:
+        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Role assignments reset }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /users/{user_id}/environments/{environment_id}/credentials:
     post:
@@ -1572,7 +2108,13 @@ paths:
       summary: Create a credential for a user (returns the password once)
       tags: [Credentials]
       parameters:
-        - { name: user_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: user_id,
+            in: path,
+            required: true,
+            description: Opaque user iac_id,
+            schema: { type: string },
+          }
         - { name: environment_id, in: path, required: true, schema: { type: string } }
       requestBody:
         required: false
@@ -1600,7 +2142,13 @@ paths:
       summary: Get a user's credential (no secret)
       tags: [Credentials]
       parameters:
-        - { name: user_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: user_id,
+            in: path,
+            required: true,
+            description: Opaque user iac_id,
+            schema: { type: string },
+          }
         - { name: environment_id, in: path, required: true, schema: { type: string } }
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:

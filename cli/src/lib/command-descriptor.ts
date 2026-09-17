@@ -57,7 +57,7 @@ function asStringArray(value: string | readonly string[] | undefined): string[] 
 
 /**
  * Single-character aliases are short flags (`-X`); longer ones are additional
- * long flags (`--svc`). Every place that renders or parses an alias — the
+ * long flags (`--alias`). Every place that renders or parses an alias — the
  * parser, help, generated docs, shell completions — must agree on this.
  */
 export function aliasFlagToken(alias: string): string {

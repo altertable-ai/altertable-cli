@@ -1,5 +1,5 @@
 import type { components } from "@/generated/openapi-types.ts";
-import { ConfigurationError, HttpError } from "@/lib/errors.ts";
+import { assertRetrieved, ConfigurationError, HttpError } from "@/lib/errors.ts";
 import { httpSend } from "@/lib/http.ts";
 import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
@@ -7,27 +7,25 @@ import { parseApiJson } from "@/lib/parse-api-json.ts";
 export type ServiceAccountAccessMode = "ro" | "rw";
 
 // A bare mode applies to every catalog; the map form restricts per catalog.
-export type ServiceAccountCaveats =
+export type ServiceAccountScope =
   | ServiceAccountAccessMode
   | Record<string, ServiceAccountAccessMode>;
 
 export type ServiceAccountRoleAssignment = components["schemas"]["RoleAssignment"];
 
-// Only the envelope is hand-written: operationId createEnvironmentServiceAccount
-// is not in `@/generated/openapi-types.ts` yet. Drop this in favour of the
-// generated response type after `bun run spec:refresh`; the guard test in
-// service-account-provision.test.ts fails once the operation ships.
-export type EnvironmentServiceAccountResponse = components["schemas"]["ServiceAccountResponse"] & {
-  role_assignments: ServiceAccountRoleAssignment[];
-  service_oauth_token: string;
-};
+// The spec leaves `service_oauth_token` optional because the endpoint only issues
+// one when asked; this module always asks and rejects a response without it.
+export type EnvironmentServiceAccountResponse =
+  components["schemas"]["EnvironmentServiceAccountResponse"] & {
+    service_oauth_token: string;
+  };
 
 type ProvisionEnvironmentServiceAccountOptions = {
   managementApiBase: string;
   accessToken: string;
   environment: string;
   label: string;
-  caveats?: ServiceAccountCaveats;
+  scope?: ServiceAccountScope;
 };
 
 type EnvironmentCatalogLookupOptions = {
@@ -40,16 +38,19 @@ type CatalogIdentity = { id?: string; slug?: string; name?: string };
 
 export type EnvironmentCatalog = { name: string; slug: string };
 
-export function parseServiceAccountCaveats(
-  value: string,
-): Record<string, ServiceAccountAccessMode> {
-  const caveats: Record<string, ServiceAccountAccessMode> = {};
+export function parseServiceAccountScope(value: string): ServiceAccountScope {
+  const bareMode = value.trim().toLowerCase();
+  if (bareMode === "ro" || bareMode === "rw") {
+    return bareMode;
+  }
+
+  const scope: Record<string, ServiceAccountAccessMode> = {};
   for (const rawEntry of value.split(",")) {
     const entry = rawEntry.trim();
     const separatorIndex = entry.lastIndexOf(":");
     if (separatorIndex === -1) {
       throw new ConfigurationError(
-        `Invalid --only entry "${entry}": expected catalog:ro or catalog:rw.`,
+        `Invalid --scope entry "${entry}": expected ro, rw, catalog:ro or catalog:rw.`,
       );
     }
 
@@ -59,19 +60,19 @@ export function parseServiceAccountCaveats(
       .trim()
       .toLowerCase();
     if (!catalog) {
-      throw new ConfigurationError(`Invalid --only entry "${entry}": catalog name is required.`);
+      throw new ConfigurationError(`Invalid --scope entry "${entry}": catalog name is required.`);
     }
     if (mode !== "ro" && mode !== "rw") {
-      throw new ConfigurationError(`Invalid --only entry "${entry}": mode must be ro or rw.`);
+      throw new ConfigurationError(`Invalid --scope entry "${entry}": mode must be ro or rw.`);
     }
-    if (caveats[catalog] !== undefined) {
+    if (scope[catalog] !== undefined) {
       throw new ConfigurationError(
-        `Invalid --only entry "${entry}": catalog "${catalog}" is duplicated.`,
+        `Invalid --scope entry "${entry}": catalog "${catalog}" is duplicated.`,
       );
     }
-    caveats[catalog] = mode;
+    scope[catalog] = mode;
   }
-  return caveats;
+  return scope;
 }
 
 /**
@@ -103,13 +104,13 @@ export async function provisionEnvironmentServiceAccount(
   const requestBody: {
     label: string;
     with_service_oauth_token: true;
-    caveats?: ServiceAccountCaveats;
+    caveats?: ServiceAccountScope;
   } = {
     label: options.label,
     with_service_oauth_token: true,
   };
-  if (options.caveats) {
-    requestBody.caveats = options.caveats;
+  if (options.scope) {
+    requestBody.caveats = options.scope;
   }
 
   let response: string;
@@ -125,18 +126,18 @@ export async function provisionEnvironmentServiceAccount(
   } catch (error) {
     throw withServiceAccountRequestContext(error);
   }
-  const created = parseApiJson(response) as EnvironmentServiceAccountResponse;
+  const created = parseApiJson(
+    response,
+  ) as components["schemas"]["EnvironmentServiceAccountResponse"];
 
-  if (!created.service_oauth_token) {
-    throw new ConfigurationError(
-      "Service account creation response was missing a service OAuth token.",
-    );
-  }
-  if (!created.service_account?.slug) {
-    throw new ConfigurationError("Service account creation response was missing a slug.");
-  }
+  const token = assertRetrieved(
+    created.service_oauth_token,
+    "login",
+    "service_account.service_oauth_token",
+  );
+  assertRetrieved(created.service_account?.slug, "login", "service_account.slug");
 
-  return created;
+  return { ...created, service_oauth_token: token };
 }
 
 function collectCatalogs(

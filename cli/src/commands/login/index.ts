@@ -1,5 +1,5 @@
 import { defineCommand } from "@/lib/command.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { assertRetrieved, ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
@@ -22,12 +22,13 @@ import { profileExists, resolveWorkingProfile, setActiveProfile } from "@/lib/pr
 import { secretSet } from "@/lib/secrets.ts";
 import {
   fetchEnvironmentCatalogs,
-  parseServiceAccountCaveats,
+  parseServiceAccountScope,
   provisionEnvironmentServiceAccount,
   type EnvironmentCatalog,
   type EnvironmentServiceAccountResponse,
-  type ServiceAccountCaveats,
+  type ServiceAccountAccessMode,
   type ServiceAccountRoleAssignment,
+  type ServiceAccountScope,
 } from "@/lib/service-account-provision.ts";
 import { document, section, span, table } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
@@ -41,8 +42,8 @@ export const loginCommand = defineCommand({
     examples: [
       "altertable login",
       "altertable login --replace-profile",
-      'altertable login --service-account "CI Bot" --only analytics:ro',
-      'altertable login --svc "CI Bot" --readonly',
+      'altertable login --service-account "CI Bot" --scope analytics:ro',
+      'altertable login --service-account "CI Bot" --scope ro',
     ],
   },
   args: {
@@ -67,21 +68,15 @@ export const loginCommand = defineCommand({
     },
     "service-account": {
       type: "string",
-      alias: "svc",
       valueHint: "LABEL",
       description:
         "Create an environment-scoped service account with this label and store its access token instead of your login session",
     },
-    only: {
+    scope: {
       type: "string",
-      valueHint: "CATALOG:MODE,...",
+      valueHint: "MODE|CATALOG:MODE,...",
       description:
-        "Request a service account limited to specific catalogs, e.g. analytics:ro,staging:rw (requires --service-account). The catalog access the server actually grants is reported on success.",
-    },
-    readonly: {
-      type: "boolean",
-      description:
-        "Request a service account with read-only access to every catalog (requires --service-account; cannot be combined with --only)",
+        "Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.",
     },
   },
   run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
@@ -160,13 +155,7 @@ function selectLoginProfile(
 }
 
 function requireWhoamiEnvironment(whoami: WhoamiResponse): string {
-  const environment = whoami.environment_slug;
-
-  // OAuth login must always return an environment.
-  if (!environment) {
-    throw new Error("No environment returned from `whoami` post-login. Aborting.");
-  }
-  return environment;
+  return assertRetrieved(whoami.environment_slug, "login", "whoami.environment_slug");
 }
 
 function storeLoginProfileMetadata(
@@ -186,8 +175,8 @@ function storeLoginProfileMetadata(
     organizationName: whoami.organization?.name,
     principalType: whoami.principal?.type,
     principalName: whoami.principal?.name,
-    principalEmail: whoami.principal?.email,
-    principalSlug: whoami.principal?.slug,
+    principalEmail: whoami.principal?.email ?? undefined,
+    principalSlug: whoami.principal?.slug ?? undefined,
     ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
     controlPlane,
   });
@@ -201,13 +190,12 @@ type LoginArgs = {
   "allow-insecure-http"?: boolean;
   "replace-profile"?: boolean;
   "service-account"?: string;
-  only?: string;
-  readonly?: boolean;
+  scope?: string;
 };
 
 type ServiceAccountLoginRequest = {
   label: string;
-  caveats?: ServiceAccountCaveats;
+  scope?: ServiceAccountScope;
 };
 
 function resolveLoginEndpoints(
@@ -251,23 +239,10 @@ function applyLoginDataPlaneUrl(args: LoginArgs): void {
   }
 }
 
-function serviceAccountCaveats(args: LoginArgs): ServiceAccountCaveats | undefined {
-  if (args.readonly && args.only !== undefined) {
-    throw new ConfigurationError(
-      "--readonly cannot be combined with --only; --readonly already covers every catalog, and --only sets the mode per catalog.",
-    );
-  }
-  if (args.readonly) {
-    return "ro";
-  }
-  return args.only === undefined ? undefined : parseServiceAccountCaveats(args.only);
-}
-
 function parseServiceAccountLoginArgs(args: LoginArgs): ServiceAccountLoginRequest | undefined {
   const label = args["service-account"];
-  const restrictingFlag = args.only !== undefined ? "--only" : args.readonly ? "--readonly" : "";
-  if (restrictingFlag && label === undefined) {
-    throw new ConfigurationError(`${restrictingFlag} requires --service-account.`);
+  if (args.scope !== undefined && label === undefined) {
+    throw new ConfigurationError("--scope requires --service-account.");
   }
   if (label === undefined) {
     return undefined;
@@ -280,10 +255,9 @@ function parseServiceAccountLoginArgs(args: LoginArgs): ServiceAccountLoginReque
   if (label.trim().length === 0) {
     throw new ConfigurationError("--service-account requires a non-empty label.");
   }
-  const caveats = serviceAccountCaveats(args);
   return {
     label: label.trim(),
-    ...(caveats === undefined ? {} : { caveats }),
+    ...(args.scope === undefined ? {} : { scope: parseServiceAccountScope(args.scope) }),
   };
 }
 
@@ -296,13 +270,15 @@ function activateDerivedProfile(profileName: string): void {
   refreshCliRuntimeContext(getCliContext());
 }
 
-function catalogAccessMode(assignment: ServiceAccountRoleAssignment): "ro" | "rw" | null {
+function catalogAccessMode(
+  assignment: ServiceAccountRoleAssignment,
+): ServiceAccountAccessMode | null {
   if (assignment.role === "catalog:writer") return "rw";
   if (assignment.role === "catalog:reader") return "ro";
   return null;
 }
 
-type CatalogAccessRow = { name: string; slug: string; access: "ro" | "rw" };
+type CatalogAccessRow = { name: string; slug: string; access: ServiceAccountAccessMode };
 
 /**
  * Lists the catalogs the service account can reach, by name. Role assignments
@@ -354,19 +330,18 @@ async function completeServiceAccountLogin(
   sink: OutputSink,
 ): Promise<void> {
   const environment = requireWhoamiEnvironment(whoami);
-  const organizationSlug = whoami.organization?.slug;
-  if (!organizationSlug) {
-    throw new ConfigurationError(
-      "Service account login needs an organization slug from whoami to name the profile.",
-    );
-  }
+  const organizationSlug = assertRetrieved(
+    whoami.organization?.slug,
+    "login",
+    "whoami.organization.slug",
+  );
 
   const created = await provisionEnvironmentServiceAccount({
     managementApiBase,
     accessToken: oauthResponse.access_token,
     environment,
     label: request.label,
-    ...(request.caveats ? { caveats: request.caveats } : {}),
+    ...(request.scope ? { scope: request.scope } : {}),
   });
 
   const profileName = deriveServiceAccountProfileName(
@@ -406,7 +381,7 @@ async function completeServiceAccountLogin(
     lines.push("", renderDisplayText([span("Catalog access", "subtle")]));
     lines.push(formatCatalogAccessTable(catalogAccess));
   }
-  if (request.caveats && (created.role_assignments ?? []).length === 0) {
+  if (request.scope && (created.role_assignments ?? []).length === 0) {
     lines.push(
       renderDisplayText([
         span(

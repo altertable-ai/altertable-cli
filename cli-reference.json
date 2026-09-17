@@ -166,9 +166,7 @@
             },
             {
               "name": "service-account",
-              "aliases": [
-                "svc"
-              ],
+              "aliases": [],
               "type": "string",
               "description": "Create an environment-scoped service account with this label and store its access token instead of your login session",
               "required": false,
@@ -178,32 +176,22 @@
               "valueHint": "LABEL"
             },
             {
-              "name": "only",
+              "name": "scope",
               "aliases": [],
               "type": "string",
-              "description": "Request a service account limited to specific catalogs, e.g. analytics:ro,staging:rw (requires --service-account). The catalog access the server actually grants is reported on success.",
+              "description": "Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.",
               "required": false,
               "repeatable": false,
               "scope": "command",
               "values": [],
-              "valueHint": "CATALOG:MODE,..."
-            },
-            {
-              "name": "readonly",
-              "aliases": [],
-              "type": "boolean",
-              "description": "Request a service account with read-only access to every catalog (requires --service-account; cannot be combined with --only)",
-              "required": false,
-              "repeatable": false,
-              "scope": "command",
-              "values": []
+              "valueHint": "MODE|CATALOG:MODE,..."
             }
           ],
           "examples": [
             "altertable login",
             "altertable login --replace-profile",
-            "altertable login --service-account \"CI Bot\" --only analytics:ro",
-            "altertable login --svc \"CI Bot\" --readonly"
+            "altertable login --service-account \"CI Bot\" --scope analytics:ro",
+            "altertable login --service-account \"CI Bot\" --scope ro"
           ],
           "subcommands": []
         },
