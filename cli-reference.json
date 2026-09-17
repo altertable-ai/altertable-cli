@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "1.6.2",
+  "cliVersion": "1.7.0",
   "globalOptions": [
     {
       "name": "help",
