@@ -144,6 +144,22 @@ export function compileCommand(target: ReleaseTarget, outputPath: string): strin
   ];
 }
 
+export function darwinSignatureCommand(
+  target: ReleaseTarget,
+  executable: string,
+): string[] | undefined {
+  if (target.os !== "darwin") return undefined;
+  return ["codesign", "--force", "--sign", "-", "--timestamp=none", executable];
+}
+
+export function signatureVerificationCommand(
+  target: ReleaseTarget,
+  executable: string,
+): string[] | undefined {
+  if (target.os !== "darwin") return undefined;
+  return ["codesign", "--verify", "--strict", executable];
+}
+
 export function nativeReleaseTarget(
   platform: NodeJS.Platform = process.platform,
   architecture: string = process.arch,
@@ -164,6 +180,8 @@ export async function compileReleaseTarget(
   const outputPath = join(outputDirectory, target.asset);
   await run(compileCommand(target, outputPath));
   await assertNonemptyFile(outputPath);
+  const signingCommand = darwinSignatureCommand(target, outputPath);
+  if (signingCommand) await run(signingCommand);
   return outputPath;
 }
 
@@ -387,6 +405,8 @@ export async function smokeReleaseTarget(
 ): Promise<void> {
   const executable = join(outputDirectory, target.asset);
   await assertNonemptyFile(executable);
+  const verifySignature = signatureVerificationCommand(target, executable);
+  if (verifySignature) await run(verifySignature);
   const version = (await runCapture([executable, "--version"])).trim();
   if (version !== VERSION) {
     throw new Error(`${target.asset} reported version ${version}; expected ${VERSION}.`);
