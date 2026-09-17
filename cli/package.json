@@ -46,19 +46,19 @@
     "knip:production": "knip --production --no-config-hints"
   },
   "dependencies": {
-    "@clack/prompts": "1.7.0",
-    "oauth4webapi": "3.8.7",
-    "yaml": "2.9.0"
+    "@clack/prompts": "1.8.1",
+    "oauth4webapi": "3.8.8",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
     "eslint-plugin-no-relative-import-paths": "1.6.1",
-    "knip": "6.32.2",
+    "knip": "6.35.1",
     "openapi-typescript": "7.13.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
     "oxlint-tsgolint": "7.0.2001",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "engines": {
     "bun": ">=1.1.0"
