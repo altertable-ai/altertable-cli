@@ -10,6 +10,7 @@ import {
   createEmptyProfile,
   deleteProfile,
   deriveProfileName,
+  deriveServiceAccountProfileName,
   inspectProfile,
   listProfiles,
   renameProfile,
@@ -46,6 +47,30 @@ describe("profile model", () => {
   test("derives safe profile names from organization and environment", () => {
     expect(deriveProfileName("Acme Inc.", "Production")).toBe("acme-inc_production");
     expect(deriveProfileName("acme", "prod/eu")).toBe("acme_prod-eu");
+  });
+
+  test("derives service account profile names from org, environment, and slug", () => {
+    expect(deriveServiceAccountProfileName("Altertable", "production", "my-service")).toBe(
+      "altertable_production_my-service",
+    );
+  });
+
+  test("rejects service account profile names with an unusable part", () => {
+    expect(() => deriveServiceAccountProfileName("altertable", "production", "")).toThrow(
+      ConfigurationError,
+    );
+    expect(() => deriveServiceAccountProfileName("altertable", "production", "---")).toThrow(
+      ConfigurationError,
+    );
+    expect(() => deriveServiceAccountProfileName("", "production", "my-service")).toThrow(
+      ConfigurationError,
+    );
+  });
+
+  test("normalizes a server-supplied slug instead of letting it escape the profiles directory", () => {
+    expect(deriveServiceAccountProfileName("altertable", "production", "../../etc")).toBe(
+      "altertable_production_etc",
+    );
   });
 
   test("creates and updates profile metadata without credentials", () => {

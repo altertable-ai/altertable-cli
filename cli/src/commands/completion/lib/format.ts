@@ -4,6 +4,7 @@ import type {
   CompletionFlag,
   CompletionNode,
 } from "@/commands/completion/lib/spec.ts";
+import { aliasFlagToken } from "@/lib/command-descriptor.ts";
 
 const FISH_BINARY_NAME = "altertable";
 
@@ -26,7 +27,7 @@ function formatNameList(names: readonly string[]): string {
 }
 
 function flagForms(flag: CompletionFlag): string[] {
-  return flag.alias ? [`-${flag.alias}`, `--${flag.name}`] : [`--${flag.name}`];
+  return flag.alias ? [aliasFlagToken(flag.alias), `--${flag.name}`] : [`--${flag.name}`];
 }
 
 export function formatBashFlagWordList(flags: readonly CompletionFlag[]): string {
@@ -518,12 +519,13 @@ export function formatFishPathCondition(
 }
 
 function formatFishFlagCompleteLine(flag: CompletionFlag, condition?: string): string {
-  const shortFlag = flag.alias ? ` -s ${flag.alias}` : "";
+  // fish takes short flags via -s and every long form via its own -l.
+  const aliasFlag = flag.alias ? `${flag.alias.length === 1 ? " -s " : " -l "}${flag.alias}` : "";
   const description = flag.description ? ` -d '${escapeFishDescription(flag.description)}'` : "";
   const values =
     flag.values && flag.values.length > 0 ? ` -f -r -a "${flag.values.join(" ")}"` : "";
   const conditionArg = condition ? ` -n "${condition}"` : "";
-  return `complete -c ${FISH_BINARY_NAME}${shortFlag} -l ${flag.name}${description}${values}${conditionArg}`;
+  return `complete -c ${FISH_BINARY_NAME}${aliasFlag} -l ${flag.name}${description}${values}${conditionArg}`;
 }
 
 function formatFishNormalizer(model: CompletionModel): string {

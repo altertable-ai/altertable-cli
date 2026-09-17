@@ -1,6 +1,7 @@
 import type { Command } from "@/lib/command.ts";
 import { ALTERTABLE_COMMAND_GROUPS, type AltertableCommandGroup } from "@/lib/command.ts";
 import {
+  aliasFlagToken,
   resolveCommandDescriptor,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
@@ -165,7 +166,7 @@ function valueHint(argument: CommandArgumentDescriptor): string | undefined {
 }
 
 function flagLabel(argument: CommandArgumentDescriptor): string {
-  const aliases = argument.aliases.map((alias) => `-${alias}`);
+  const aliases = argument.aliases.map(aliasFlagToken);
   const longFlag = `--${argument.name}`;
   const hint = valueHint(argument);
   const value = hint ? ` <${hint}>` : "";

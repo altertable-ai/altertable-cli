@@ -50,13 +50,16 @@ afterEach(() => {
   delete process.env.ALTERTABLE_HTTP_LOG;
 });
 
-function writeMocks(credentialBody: string = CREDENTIAL_BODY): void {
+function writeMocks(
+  credentialBody: string = CREDENTIAL_BODY,
+  options: { whoamiBody?: string; credentialUrlPattern?: string } = {},
+): void {
   writeFileSync(
     mockFile,
     JSON.stringify([
-      { urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY },
+      { urlPattern: "/whoami", method: "GET", body: options.whoamiBody ?? WHOAMI_BODY },
       {
-        urlPattern: "/users/user-1/environments/env-1/credentials",
+        urlPattern: options.credentialUrlPattern ?? "/users/user-1/environments/env-1/credentials",
         method: "POST",
         body: credentialBody,
       },
@@ -100,6 +103,37 @@ describe("lakehouse credential auto-provisioning", () => {
       "URL=https://app.example.com/rest/v1/users/user-1/environments/env-1/credentials",
     );
     expect(logContent).toContain(`"label":"${USER_AGENT}"`);
+  });
+
+  test("provisions through /service_accounts for a service account principal", async () => {
+    writeMocks(CREDENTIAL_BODY, {
+      whoamiBody: JSON.stringify({
+        principal: { id: "svc-1", type: "ServiceAccount", name: "CI Bot" },
+      }),
+      credentialUrlPattern: "/service_accounts/svc-1/environments/env-1/credentials",
+    });
+
+    const response = await sendLakehouseRequest();
+
+    expect(response).toBe("ok");
+    expect(readFileSync(logFile, "utf8")).toContain(
+      "URL=https://app.example.com/rest/v1/service_accounts/svc-1/environments/env-1/credentials",
+    );
+  });
+
+  // A principal type like "constructor" resolves to a truthy Object.prototype
+  // member under a bare lookup, which would build a nonsense credentials URL.
+  test("rejects a principal type that only exists on the object prototype", async () => {
+    writeMocks(CREDENTIAL_BODY, {
+      whoamiBody: JSON.stringify({
+        principal: { id: "weird-1", type: "constructor", name: "Weird" },
+      }),
+    });
+
+    await expectRejection(
+      sendLakehouseRequest(),
+      "Cannot auto-create lakehouse credentials for this identity",
+    );
   });
 
   test("re-provisions when the stored credential is expired", async () => {

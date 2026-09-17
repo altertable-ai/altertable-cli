@@ -48,7 +48,7 @@ afterEach(() => {
 
 describe("openapi HTTP conformance", () => {
   test("covers all generated operations", () => {
-    expect(OPENAPI_OPERATIONS.length).toBe(35);
+    expect(OPENAPI_OPERATIONS.length).toBe(40);
   });
 
   test("every operation is reachable via executeApiHttp", async () => {

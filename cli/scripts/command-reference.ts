@@ -6,6 +6,7 @@ import {
   type AltertableCommandGroup,
 } from "@/lib/command.ts";
 import {
+  aliasFlagToken,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
@@ -59,7 +60,7 @@ function positionalToken(argument: CliReferenceArgument): string {
 }
 
 function optionLabel(argument: CliReferenceArgument): string {
-  const aliases = argument.aliases.map((alias) => `-${alias}`);
+  const aliases = argument.aliases.map(aliasFlagToken);
   const value =
     argument.type === "string" || argument.type === "enum"
       ? ` <${argumentValueLabel(argument)}>`
