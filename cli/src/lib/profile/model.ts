@@ -247,6 +247,24 @@ export function deriveProfileName(org: string, env: string): string {
   return profileName;
 }
 
+export function deriveServiceAccountProfileName(
+  org: string,
+  env: string,
+  serviceAccountSlug: string,
+): string {
+  const orgPart = normalizeProfileNamePart(org);
+  const envPart = normalizeProfileNamePart(env);
+  const slugPart = normalizeProfileNamePart(serviceAccountSlug);
+  if (!orgPart || !envPart || !slugPart) {
+    throw new ConfigurationError(
+      "Profile auto-naming requires non-empty organization, environment, and service account values.",
+    );
+  }
+  const profileName = `${orgPart}_${envPart}_${slugPart}`;
+  assertSafeProfileName(profileName);
+  return profileName;
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "1.6.2",
+  "cliVersion": "1.7.0",
   "globalOptions": [
     {
       "name": "help",
@@ -163,11 +163,35 @@
               "repeatable": false,
               "scope": "command",
               "values": []
+            },
+            {
+              "name": "service-account",
+              "aliases": [],
+              "type": "string",
+              "description": "Create an environment-scoped service account with this label and store its access token instead of your login session",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "LABEL"
+            },
+            {
+              "name": "scope",
+              "aliases": [],
+              "type": "string",
+              "description": "Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "MODE|CATALOG:MODE,..."
             }
           ],
           "examples": [
             "altertable login",
-            "altertable login --replace-profile"
+            "altertable login --replace-profile",
+            "altertable login --service-account \"CI Bot\" --scope analytics:ro",
+            "altertable login --service-account \"CI Bot\" --scope ro"
           ],
           "subcommands": []
         },
@@ -176,13 +200,25 @@
           "command": "altertable logout",
           "description": "Remove stored credentials and settings for all profiles.",
           "usage": [
-            "altertable logout"
+            "altertable logout [options]"
           ],
           "aliases": [],
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "except-current",
+              "aliases": [],
+              "type": "boolean",
+              "description": "Keep the current profile and remove every other profile",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            }
+          ],
           "examples": [
-            "altertable logout"
+            "altertable logout",
+            "altertable logout --except-current"
           ],
           "subcommands": []
         },

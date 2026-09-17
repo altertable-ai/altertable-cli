@@ -65,15 +65,15 @@ describe("configureRunSet", () => {
   });
 
   test("warns when a password is passed on argv", async () => {
-    const metadata: string[] = [];
+    const printed: string[] = [];
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeMetadata = (lines) => metadata.push(...lines);
+    runtime.output.writeHuman = (line) => printed.push(line);
 
     await runWithCliRuntime(runtime, () =>
       configureRunSet({ user: "alice", password: "test-password-value" }),
     );
 
-    expect(metadata.some((line) => line.includes("--password-stdin"))).toBe(true);
+    expect(printed.some((line) => line.includes("--password-stdin"))).toBe(true);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   type CompletionFlag,
   type CompletionNode,
 } from "@/commands/completion/lib/spec.ts";
+import { aliasFlagToken } from "@/lib/command-descriptor.ts";
 
 export type CompletionModel = {
   contexts: CompletionContext[];
@@ -21,7 +22,7 @@ export type NormalizedCompletionArgv = {
 };
 
 function flagForms(flag: CompletionFlag): string[] {
-  return flag.alias ? [`-${flag.alias}`, `--${flag.name}`] : [`--${flag.name}`];
+  return flag.alias ? [aliasFlagToken(flag.alias), `--${flag.name}`] : [`--${flag.name}`];
 }
 
 function allFlags(root: CompletionNode, contexts: readonly CompletionContext[]): CompletionFlag[] {

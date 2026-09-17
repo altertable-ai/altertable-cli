@@ -7,6 +7,7 @@ import {
   type CommandMetadata,
   type CommandRunResult,
 } from "@/lib/command.ts";
+import { aliasFlagToken } from "@/lib/command-descriptor.ts";
 import { createExecutionContext, type ExecutionContext } from "@/lib/execution-context.ts";
 import { EXIT_SUCCESS } from "@/lib/errors.ts";
 import { getCliRuntime } from "@/lib/runtime.ts";
@@ -93,7 +94,7 @@ function optionBindings(commandArguments: CommandArguments): Map<string, OptionB
     const binding = { name, argument };
     bindings.set(`--${name}`, binding);
     for (const alias of stringList(argument.alias)) {
-      bindings.set(`-${alias}`, binding);
+      bindings.set(aliasFlagToken(alias), binding);
     }
   }
   return bindings;

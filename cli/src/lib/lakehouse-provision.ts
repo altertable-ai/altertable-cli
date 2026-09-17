@@ -21,6 +21,21 @@ import { USER_AGENT } from "@/version.ts";
 
 const CREDENTIAL_LABEL = USER_AGENT;
 const CREDENTIAL_TTL_MS = 2 * 60 * 60 * 1000;
+const PRINCIPAL_CREDENTIAL_COLLECTIONS: Record<string, string> = {
+  User: "users",
+  ServiceAccount: "service_accounts",
+};
+
+// hasOwn, not a bare lookup: `principal.type` is server-supplied, and keys like
+// "constructor" would otherwise resolve to a truthy Object.prototype member.
+function principalCredentialCollection(principalType: string | undefined): string | undefined {
+  if (
+    principalType === undefined ||
+    !Object.hasOwn(PRINCIPAL_CREDENTIAL_COLLECTIONS, principalType)
+  )
+    return undefined;
+  return PRINCIPAL_CREDENTIAL_COLLECTIONS[principalType];
+}
 
 export function hasManagementCredentials(profileName: string): boolean {
   // optionalAuth only swallows ConfigurationError ("not configured");
@@ -78,9 +93,10 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
     "/whoami",
   )) as components["schemas"]["WhoamiResponse"];
   const principal = whoami.principal;
-  if (!principal?.id || principal.type !== "User") {
+  const principalCollection = principalCredentialCollection(principal?.type);
+  if (!principal?.id || !principalCollection) {
     throw new ConfigurationError(
-      "Cannot auto-create lakehouse credentials for a non-user identity. Run 'altertable profile configure'.",
+      "Cannot auto-create lakehouse credentials for this identity. Run 'altertable profile configure'.",
     );
   }
 
@@ -88,7 +104,7 @@ export async function provisionLakehouseCredential(context: ExecutionContext): P
   const created = (await sendManagementRequest(
     context,
     "POST",
-    `/users/${principal.id}/environments/${env}/credentials`,
+    `/${principalCollection}/${principal.id}/environments/${env}/credentials`,
     JSON.stringify({ label: CREDENTIAL_LABEL, expires_at: expiresAt }),
   )) as components["schemas"]["CreateCredentialResponse"];
 

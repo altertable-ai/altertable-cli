@@ -125,6 +125,38 @@ describe("command composition", () => {
     }
   });
 
+  test("binds single-character aliases as short flags and longer ones as long flags", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const received: string[] = [];
+    const root = defineCommand({
+      subcommands: {
+        leaf: defineCommand({
+          args: {
+            "service-account": { type: "string", alias: "svc" },
+            columns: { type: "string", alias: "c" },
+          },
+          run({ args }) {
+            received.push(`${String(args["service-account"])}/${String(args.columns)}`);
+          },
+        }),
+      },
+    });
+
+    for (const rawArgs of [
+      ["leaf", "--service-account", "bot", "--columns", "a"],
+      ["leaf", "--svc", "bot", "-c", "a"],
+      ["leaf", "--svc=bot", "-c=a"],
+    ]) {
+      await runWithCliRuntime(runtime, () => executeCommand(root, rawArgs));
+    }
+
+    expect(received).toEqual(["bot/a", "bot/a", "bot/a"]);
+    // A long alias is not also bound as a single-dash flag.
+    expect(
+      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "-svc", "bot"])),
+    ).rejects.toThrow("Unknown option -svc");
+  });
+
   test("accepts an option-like value when it is explicit", async () => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
     let received = "";

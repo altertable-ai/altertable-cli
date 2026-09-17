@@ -1,5 +1,5 @@
 import { defineCommand } from "@/lib/command.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
+import { assertRetrieved, ConfigurationError } from "@/lib/errors.ts";
 import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
 import { assertAllowedApiBase } from "@/lib/url-policy.ts";
 import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
@@ -14,11 +14,24 @@ import {
   assertNoEnvConfigMode,
   createEmptyProfile,
   deriveProfileName,
+  deriveServiceAccountProfileName,
   profileHasAnyAuthConfigured,
   updateProfile,
 } from "@/lib/profile/model.ts";
 import { profileExists, resolveWorkingProfile, setActiveProfile } from "@/lib/profile-store.ts";
-import { span } from "@/ui/document.ts";
+import { secretSet } from "@/lib/secrets.ts";
+import {
+  fetchEnvironmentCatalogs,
+  parseServiceAccountScope,
+  provisionEnvironmentServiceAccount,
+  type EnvironmentCatalog,
+  type EnvironmentServiceAccountResponse,
+  type ServiceAccountAccessMode,
+  type ServiceAccountRoleAssignment,
+  type ServiceAccountScope,
+} from "@/lib/service-account-provision.ts";
+import { document, section, span, table } from "@/ui/document.ts";
+import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
 export const loginCommand = defineCommand({
@@ -26,7 +39,12 @@ export const loginCommand = defineCommand({
     name: "login",
     commandGroup: "platform",
     description: "Sign in with your browser (OAuth) and store the session.",
-    examples: ["altertable login", "altertable login --replace-profile"],
+    examples: [
+      "altertable login",
+      "altertable login --replace-profile",
+      'altertable login --service-account "CI Bot" --scope analytics:ro',
+      'altertable login --service-account "CI Bot" --scope ro',
+    ],
   },
   args: {
     "control-plane-url": {
@@ -47,6 +65,18 @@ export const loginCommand = defineCommand({
     "replace-profile": {
       type: "boolean",
       description: "Store the login session in the current profile instead of switching profiles",
+    },
+    "service-account": {
+      type: "string",
+      valueHint: "LABEL",
+      description:
+        "Create an environment-scoped service account with this label and store its access token instead of your login session",
+    },
+    scope: {
+      type: "string",
+      valueHint: "MODE|CATALOG:MODE,...",
+      description:
+        "Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.",
     },
   },
   run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
@@ -124,37 +154,29 @@ function selectLoginProfile(
   return { profileName: targetProfile, profileAction };
 }
 
+function requireWhoamiEnvironment(whoami: WhoamiResponse): string {
+  return assertRetrieved(whoami.environment_slug, "login", "whoami.environment_slug");
+}
+
 function storeLoginProfileMetadata(
   whoami: WhoamiResponse,
   args: LoginArgs,
   controlPlane: string,
 ): LoginProfileMetadata {
-  const environment = whoami.environment_slug;
-
-  // OAuth login must always return an environment.
-  if (!environment) {
-    throw new Error("No environment returned from `whoami` post-login. Aborting.");
-  }
-
+  const environment = requireWhoamiEnvironment(whoami);
   const { profileName, profileAction } = selectLoginProfile(
     whoami,
     environment,
     Boolean(args["replace-profile"]),
   );
-  if (args["data-plane-url"]) {
-    assertAllowedApiBase(args["data-plane-url"], {
-      allowInsecureHttp: Boolean(args["allow-insecure-http"]),
-    });
-  }
-
   updateProfile(profileName, {
     environment,
     organizationSlug: whoami.organization?.slug,
     organizationName: whoami.organization?.name,
     principalType: whoami.principal?.type,
     principalName: whoami.principal?.name,
-    principalEmail: whoami.principal?.email,
-    principalSlug: whoami.principal?.slug,
+    principalEmail: whoami.principal?.email ?? undefined,
+    principalSlug: whoami.principal?.slug ?? undefined,
     ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
     controlPlane,
   });
@@ -167,6 +189,13 @@ type LoginArgs = {
   "control-plane-url"?: string;
   "allow-insecure-http"?: boolean;
   "replace-profile"?: boolean;
+  "service-account"?: string;
+  scope?: string;
+};
+
+type ServiceAccountLoginRequest = {
+  label: string;
+  scope?: ServiceAccountScope;
 };
 
 function resolveLoginEndpoints(
@@ -202,7 +231,174 @@ async function fetchLoginWhoami(
   return JSON.parse(body) as WhoamiResponse;
 }
 
+function applyLoginDataPlaneUrl(args: LoginArgs): void {
+  if (args["data-plane-url"]) {
+    assertAllowedApiBase(args["data-plane-url"], {
+      allowInsecureHttp: Boolean(args["allow-insecure-http"]),
+    });
+  }
+}
+
+function parseServiceAccountLoginArgs(args: LoginArgs): ServiceAccountLoginRequest | undefined {
+  const label = args["service-account"];
+  if (args.scope !== undefined && label === undefined) {
+    throw new ConfigurationError("--scope requires --service-account.");
+  }
+  if (label === undefined) {
+    return undefined;
+  }
+  if (args["replace-profile"]) {
+    throw new ConfigurationError(
+      "--service-account cannot be combined with --replace-profile; a service account always gets its own profile.",
+    );
+  }
+  if (label.trim().length === 0) {
+    throw new ConfigurationError("--service-account requires a non-empty label.");
+  }
+  return {
+    label: label.trim(),
+    ...(args.scope === undefined ? {} : { scope: parseServiceAccountScope(args.scope) }),
+  };
+}
+
+function activateDerivedProfile(profileName: string): void {
+  if (!profileExists(profileName)) {
+    createEmptyProfile(profileName);
+  }
+  setActiveProfile(profileName);
+  setCliContext({ ...getCliContext(), profile: profileName });
+  refreshCliRuntimeContext(getCliContext());
+}
+
+function catalogAccessMode(
+  assignment: ServiceAccountRoleAssignment,
+): ServiceAccountAccessMode | null {
+  if (assignment.role === "catalog:writer") return "rw";
+  if (assignment.role === "catalog:reader") return "ro";
+  return null;
+}
+
+type CatalogAccessRow = { name: string; slug: string; access: ServiceAccountAccessMode };
+
+/**
+ * Lists the catalogs the service account can reach, by name. Role assignments
+ * carry ids only, and assignments whose catalog is not in the lookup (or whose
+ * role is not a catalog role) are dropped rather than printed as raw ids.
+ */
+function summarizeCatalogAccess(
+  created: EnvironmentServiceAccountResponse,
+  catalogs: Map<string, EnvironmentCatalog>,
+): CatalogAccessRow[] {
+  const rows = new Map<string, CatalogAccessRow>();
+  for (const assignment of created.role_assignments ?? []) {
+    const access = catalogAccessMode(assignment);
+    const catalog = catalogs.get(assignment.resource_id);
+    if (!access || !catalog) continue;
+    const existing = rows.get(assignment.resource_id);
+    if (!existing || access === "rw") {
+      rows.set(assignment.resource_id, { ...catalog, access });
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function formatCatalogAccessTable(rows: CatalogAccessRow[]): string {
+  return renderDocumentText(
+    document(
+      section(
+        table({
+          rows,
+          columns: [
+            { header: "CATALOG", cell: (row) => [span(row.name, "strong")], flex: true },
+            { header: "SLUG", cell: (row) => [span(row.slug, "accent")] },
+            { header: "ACCESS", cell: (row) => [span(row.access, "subtle")] },
+          ],
+          emptyMessage: "",
+        }),
+      ),
+    ),
+  );
+}
+
+async function completeServiceAccountLogin(
+  oauthResponse: TokenResponse,
+  whoami: WhoamiResponse,
+  args: LoginArgs,
+  controlPlane: string,
+  managementApiBase: string,
+  request: ServiceAccountLoginRequest,
+  sink: OutputSink,
+): Promise<void> {
+  const environment = requireWhoamiEnvironment(whoami);
+  const organizationSlug = assertRetrieved(
+    whoami.organization?.slug,
+    "login",
+    "whoami.organization.slug",
+  );
+
+  const created = await provisionEnvironmentServiceAccount({
+    managementApiBase,
+    accessToken: oauthResponse.access_token,
+    environment,
+    label: request.label,
+    ...(request.scope ? { scope: request.scope } : {}),
+  });
+
+  const profileName = deriveServiceAccountProfileName(
+    organizationSlug,
+    environment,
+    created.service_account.slug,
+  );
+  activateDerivedProfile(profileName);
+  updateProfile(profileName, {
+    environment,
+    organizationSlug,
+    organizationName: whoami.organization?.name,
+    principalType: "ServiceAccount",
+    principalName: created.service_account.label,
+    principalSlug: created.service_account.slug,
+    ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
+    controlPlane,
+  });
+
+  secretSet("oauth/access-token", created.service_oauth_token, profileName);
+
+  const catalogs = await fetchEnvironmentCatalogs({
+    managementApiBase,
+    accessToken: oauthResponse.access_token,
+    environment,
+  });
+  const catalogAccess = summarizeCatalogAccess(created, catalogs);
+  const lines = [
+    renderDisplayText([
+      span("✓", "success"),
+      span(
+        ` Created service account "${created.service_account.label}" — profile "${profileName}" is now active; environment "${environment}".`,
+      ),
+    ]),
+  ];
+  if (catalogAccess.length > 0) {
+    lines.push("", renderDisplayText([span("Catalog access", "subtle")]));
+    lines.push(formatCatalogAccessTable(catalogAccess));
+  }
+  if (request.scope && (created.role_assignments ?? []).length === 0) {
+    lines.push(
+      renderDisplayText([
+        span(
+          "! The server reported no role assignments, so the requested restriction could not be confirmed. Check the service account's access before using this token.",
+          "warning",
+        ),
+      ]),
+    );
+  }
+  for (const line of lines) {
+    sink.writeHuman(line);
+  }
+}
+
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
+  const serviceAccountRequest = parseServiceAccountLoginArgs(args);
+  applyLoginDataPlaneUrl(args);
   assertNoEnvConfigMode();
   assertInteractiveLogin();
 
@@ -216,6 +412,19 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const oauthResponse = await runLoginFlow(sink, oauthBase);
   const whoami = await fetchLoginWhoami(oauthResponse, managementApiBase);
 
+  if (serviceAccountRequest) {
+    await completeServiceAccountLogin(
+      oauthResponse,
+      whoami,
+      args,
+      controlPlane,
+      managementApiBase,
+      serviceAccountRequest,
+      sink,
+    );
+    return;
+  }
+
   // Login succeeded and we can now persist whoami metadata and any control-plane override to the profile so later commands target it.
   const { environment, profileName, profileAction } = storeLoginProfileMetadata(
     whoami,
@@ -227,10 +436,10 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
 
   const identity = formatWhoamiPrincipalLine(whoami);
   const profileMessage = `${LOGIN_PROFILE_MESSAGES[profileAction]} "${profileName}"`;
-  sink.writeMetadata([
+  sink.writeHuman(
     renderDisplayText([
       span("✓", "success"),
       span(` Logged in (${identity}) — ${profileMessage}; environment "${environment}".`),
     ]),
-  ]);
+  );
 }

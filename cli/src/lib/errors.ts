@@ -51,6 +51,17 @@ export class CliError extends Error {
   }
 }
 
+export function assertRetrieved<T>(
+  value: T | null | undefined,
+  operation: string,
+  path: string,
+): T {
+  if (value === undefined || value === null || value === "") {
+    throw new CliError(`${operation} failed: assertion failed retrieving ${path}`);
+  }
+  return value;
+}
+
 export class ConfigurationError extends CliError {
   constructor(message: string, options: CliErrorOptions = {}) {
     super(message, { ...options, exitCode: options.exitCode ?? EXIT_CONFIG });
@@ -103,10 +114,12 @@ export class HttpError extends CliError {
     exitCode?: number;
     authPlane?: AuthPlane;
     retryAfterHeader?: string | null;
+    messageOverride?: string;
+    detailsOverride?: string;
   }) {
     super(`Request failed with status ${options.status}.`, {
       exitCode: options.exitCode ?? httpStatusExitCode(options.status),
-      details: options.parsedDetail,
+      details: options.detailsOverride ?? options.parsedDetail,
     });
     this.name = "HttpError";
     this.status = options.status;
@@ -115,7 +128,7 @@ export class HttpError extends CliError {
     this.url = options.url;
     this.parsedDetail = options.parsedDetail;
     this.retryAfterHeader = options.retryAfterHeader;
-    this.message = httpStatusMessage(options.status, options.authPlane);
+    this.message = options.messageOverride ?? httpStatusMessage(options.status, options.authPlane);
   }
 }
 

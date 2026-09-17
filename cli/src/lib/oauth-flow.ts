@@ -259,13 +259,15 @@ export async function runLoginFlow(sink: OutputSink, oauthBase: string): Promise
       { redirectUri: server.redirectUri, challenge, state },
       oauthBase,
     );
-    sink.writeMetadata([renderDisplayText([span("Opening your browser to sign in…", "subtle")])]);
-    sink.writeMetadata([
+    // Login is interactive-only (no --json, no pipes), so its progress belongs on
+    // stdout; stderr stays reserved for failures.
+    sink.writeHuman(renderDisplayText([span("Opening your browser to sign in…", "subtle")]));
+    sink.writeHuman(
       renderDisplayText([
         span("If it doesn't open, visit: ", "subtle"),
         span(authorizeUrl, "accent", authorizeUrl),
       ]),
-    ]);
+    );
     openBrowser(authorizeUrl);
     const code = await server.waitForCode();
     return await exchangeCode({ code, redirectUri: server.redirectUri, verifier }, oauthBase);
