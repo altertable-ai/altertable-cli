@@ -653,7 +653,7 @@ describe("release infrastructure wiring", () => {
     const openapiSpec = await readFile(join(repositoryRoot, "cli/src/lib/openapi-spec.ts"), "utf8");
 
     expect(packageJson.engines.bun).toBe(SUPPORTED_BUN_RUNTIME_RANGE);
-    expect(packageJson.dependencies.yaml).toBe("2.9.0");
+    expect(packageJson.dependencies.yaml).toBe("2.9.1");
     expect(openapiSpec).not.toContain("Bun.YAML");
 
     const verification = await readWorkflow("verify.yml");
