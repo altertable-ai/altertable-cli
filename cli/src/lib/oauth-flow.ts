@@ -52,6 +52,8 @@ export function buildAuthorizeUrl(
     redirectUri: string;
     challenge: string;
     state: string;
+    organization?: string;
+    environment?: string;
   },
   oauthBase: string,
 ): string {
@@ -66,6 +68,12 @@ export function buildAuthorizeUrl(
   const scope = oauthScope();
   if (scope) {
     query.set("scope", scope);
+  }
+  if (params.organization !== undefined) {
+    query.set("organization", params.organization);
+  }
+  if (params.environment !== undefined) {
+    query.set("environment", params.environment);
   }
   return `${oauthBase}/authorize?${query.toString()}`;
 }
@@ -249,14 +257,18 @@ export function openBrowser(url: string): void {
   }
 }
 
-export async function runLoginFlow(sink: OutputSink, oauthBase: string): Promise<TokenResponse> {
+export async function runLoginFlow(
+  sink: OutputSink,
+  oauthBase: string,
+  selection: { organization?: string; environment?: string } = {},
+): Promise<TokenResponse> {
   const verifier = oauth.generateRandomCodeVerifier();
   const challenge = await oauth.calculatePKCECodeChallenge(verifier);
   const state = oauth.generateRandomState();
   const server = await startLoopbackServer(state);
   try {
     const authorizeUrl = buildAuthorizeUrl(
-      { redirectUri: server.redirectUri, challenge, state },
+      { redirectUri: server.redirectUri, challenge, state, ...selection },
       oauthBase,
     );
     // Login is interactive-only (no --json, no pipes), so its progress belongs on

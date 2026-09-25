@@ -81,6 +81,30 @@ describe("buildAuthorizeUrl", () => {
     expect(url.searchParams.get("state")).toBe("st");
     expect(url.searchParams.get("client_id")).toBe("altertable_cli");
     expect(url.searchParams.get("scope")).toBe("management");
+    expect(url.searchParams.has("organization")).toBe(false);
+    expect(url.searchParams.has("environment")).toBe(false);
+  });
+
+  test("adds organization and environment preselection without changing OAuth parameters", () => {
+    const url = new URL(
+      buildAuthorizeUrl(
+        {
+          redirectUri: "http://127.0.0.1:5000/callback",
+          challenge: "chal",
+          state: "st",
+          organization: "acme & co",
+          environment: "stage/blue",
+        },
+        "https://app.example.com/oauth",
+      ),
+    );
+    expect(url.searchParams.get("organization")).toBe("acme & co");
+    expect(url.searchParams.get("environment")).toBe("stage/blue");
+    expect(url.searchParams.has("organization_slug")).toBe(false);
+    expect(url.searchParams.has("environment_slug")).toBe(false);
+    expect(url.searchParams.get("redirect_uri")).toBe("http://127.0.0.1:5000/callback");
+    expect(url.searchParams.get("code_challenge")).toBe("chal");
+    expect(url.searchParams.get("state")).toBe("st");
   });
 });
 

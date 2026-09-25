@@ -180,6 +180,27 @@ describe("login command", () => {
     expect(cli.stderr).toEqual([]);
   });
 
+  test("passes requested organization and environment to browser authorization", async () => {
+    const cli = await completeBrowserLogin(["login", "--org", "acme", "--env", "staging"]);
+    const match = cli.stdout.join("\n").match(/https?:\/\/[^\s]+\/oauth\/authorize\?[^\s]+/);
+    expect(match).not.toBeNull();
+    const url = new URL(match![0]);
+    expect(url.searchParams.get("organization")).toBe("acme");
+    expect(url.searchParams.get("environment")).toBe("staging");
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(storedAccessToken("default")).toBe("access_token");
+  });
+
+  test("rejects empty organization or environment slugs before starting OAuth", async () => {
+    for (const flag of ["--org", "--env"]) {
+      await expectRejection(
+        runCommandWithTestRuntime(["login", flag, "   "]),
+        `${flag} requires a non-empty slug`,
+      );
+    }
+  });
+
   test("preserves an authenticated profile when signing into another organization", async () => {
     storeOAuthTokens(
       { access_token: "org_a_token", refresh_token: "org_a_refresh", expires_in: 3600 },

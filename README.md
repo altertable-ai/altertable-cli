@@ -190,8 +190,11 @@ Sign in interactively with your browser instead of pasting an API key:
 
 ```bash
 altertable login          # opens your browser, stores an OAuth session
+altertable login --org acme --env staging
 altertable logout         # clears stored credentials and settings for all profiles
 ```
+
+The optional slug flags preselect an organization and environment on the browser authorization page. Review and approve the requested access there to complete login.
 
 ### Lakehouse credentials
 
