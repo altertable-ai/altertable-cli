@@ -165,6 +165,28 @@
               "values": []
             },
             {
+              "name": "org",
+              "aliases": [],
+              "type": "string",
+              "description": "Preselect this organization in the browser authorization page",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "SLUG"
+            },
+            {
+              "name": "env",
+              "aliases": [],
+              "type": "string",
+              "description": "Preselect this environment in the browser authorization page",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": [],
+              "valueHint": "SLUG"
+            },
+            {
               "name": "service-account",
               "aliases": [],
               "type": "string",
@@ -189,6 +211,7 @@
           ],
           "examples": [
             "altertable login",
+            "altertable login --org acme --env staging",
             "altertable login --replace-profile",
             "altertable login --service-account \"CI Bot\" --scope analytics:ro",
             "altertable login --service-account \"CI Bot\" --scope ro"

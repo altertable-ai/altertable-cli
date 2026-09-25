@@ -39,6 +39,8 @@ altertable login [options]
 | `--data-plane-url <DATA-PLANE-URL>` | Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai |
 | `--allow-insecure-http` | Allow http:// URLs other than localhost for --control-plane-url (for development only) |
 | `--replace-profile` | Store the login session in the current profile instead of switching profiles |
+| `--org <SLUG>` | Preselect this organization in the browser authorization page |
+| `--env <SLUG>` | Preselect this environment in the browser authorization page |
 | `--service-account <LABEL>` | Create an environment-scoped service account with this label and store its access token instead of your login session |
 | `--scope <MODE\|CATALOG:MODE,...>` | Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success. |
 
@@ -46,6 +48,7 @@ altertable login [options]
 
 ```bash
 altertable login
+altertable login --org acme --env staging
 altertable login --replace-profile
 altertable login --service-account "CI Bot" --scope analytics:ro
 altertable login --service-account "CI Bot" --scope ro
