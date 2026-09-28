@@ -33,7 +33,7 @@
 .altertable-data-panel-count {
   margin-left: 8px;
   color: var(--at-muted, #687078);
-  font-size: 0.8em;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
   white-space: nowrap;
