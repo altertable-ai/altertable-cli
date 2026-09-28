@@ -12,6 +12,7 @@ import type { DataContext } from "./data-context.ts";
 import type { PlayStoryProps } from "./PlayStory.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
+import { DataViewToast } from "./DataViewToast.tsx";
 
 export type DataAppProps = {
   config: DataAppConfig;
@@ -100,6 +101,17 @@ export function DataApp({
       />
       {variables && <VariableBar>{variables}</VariableBar>}
       {children}
+      {request && (
+        <DataViewToast
+          view={request.view}
+          message={
+            request.view.kind === "updating" || request.view.kind === "stale-error"
+              ? request.view.message
+              : undefined
+          }
+          onRetry={request.refresh?.onRefresh}
+        />
+      )}
     </AppLayout>
   );
 }

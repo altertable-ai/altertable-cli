@@ -93,7 +93,12 @@ test("data view keeps the last result visible when refresh fails", async ({ page
   await request.post("/__test/state", { data: "failure" });
   await page.getByRole("button", { name: "Refresh data" }).click();
   await expect(page.getByText("Connection view ready")).toBeVisible();
-  await expect(page.getByText(/Couldn’t refresh. Showing the last result/)).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText(/Couldn’t refresh. Showing the last result/);
+  await expect(page.locator(".altertable-data-boundary-content")).toHaveAttribute(
+    "data-stale-error",
+    "true",
+  );
+  await expect(page.getByLabel("Reporting period")).toContainText("2026-09-01 – 2026-09-30 · UTC");
 });
 
 test("request progress appears before Refresh", async ({ page }) => {

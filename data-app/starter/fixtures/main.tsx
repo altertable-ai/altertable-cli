@@ -97,6 +97,7 @@ function Fixture() {
         </Grid>
         <DataSection
           result={connection}
+          reportingPeriod={{ kind: "calendar", start: "2026-09-01", end: "2026-09-30", timeZone: "UTC" }}
           loading={
             <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
               <GridItem span={2}>
