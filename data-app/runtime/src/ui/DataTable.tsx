@@ -38,7 +38,7 @@ export function DataTable({ className, ref, searchable, ...props }: DataTablePro
   );
 }
 
-/** Compact, aligned percentage for a fraction of the column's stated whole. */
+/** Accepts a fraction of the stated whole, using `formatPercent` semantics. */
 export function DataTableShare({ value }: { value: number }) {
   const ratio = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
   const label = new Intl.NumberFormat("en-US", {
@@ -53,7 +53,6 @@ export type DataTableEmptyRowProps = Pick<EmptyStateProps, "title" | "descriptio
   colSpan: number;
 };
 
-/** An empty tbody row that preserves column headers and native table semantics. */
 export function DataTableEmptyRow({ colSpan, title, description }: DataTableEmptyRowProps) {
   return (
     <tr className="altertable-data-table-empty-row">
@@ -65,13 +64,11 @@ export function DataTableEmptyRow({ colSpan, title, description }: DataTableEmpt
 }
 
 export type DataTableTimestampProps = {
-  /** An ISO timestamp or Date representing an exact instant. */
   value: string | Date;
   children?: ReactNode;
   timeZone?: string;
 };
 
-/** Display a known timestamp in a table with exact and local time on demand. */
 export function DataTableTimestamp({ value, children, timeZone }: DataTableTimestampProps) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return <>{children ?? value.toString()}</>;

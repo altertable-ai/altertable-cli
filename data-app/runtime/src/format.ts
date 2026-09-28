@@ -1,6 +1,6 @@
 type CommonOptions = { locale?: string; missing?: string };
 
-/** Format a finite number with explicit Intl options. Missing values remain visible. */
+/** Missing and non-finite values use the `missing` label; negative zero renders as zero. */
 export function formatNumber(
   value: number | null | undefined,
   options: CommonOptions & Intl.NumberFormatOptions = {},
@@ -11,7 +11,7 @@ export function formatNumber(
     : new Intl.NumberFormat(locale, numberOptions).format(Object.is(value, -0) ? 0 : value);
 }
 
-/** Counts are exact by default. Compact notation is an explicit presentation choice. */
+/** Negative and fractional counts render as missing. Compact notation is opt-in. */
 export function formatCount(
   value: number | null | undefined,
   options: CommonOptions & { compact?: boolean } = {},
@@ -29,7 +29,6 @@ export function formatCount(
 
 const pluralRules = new Intl.PluralRules();
 
-/** Choose the noun for a count; formatCount handles the digits separately. */
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return pluralRules.select(count) === "one" ? singular : plural;
 }

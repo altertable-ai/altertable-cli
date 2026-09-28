@@ -11,7 +11,6 @@ export type CardViewTabsProps = {
   onSelectionChange: (key: string) => void;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Tabs for alternate views of one card's data, with a real tab panel for each view. */
 export function CardViewTabs({
   label,
   views,

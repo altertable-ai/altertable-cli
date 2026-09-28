@@ -11,8 +11,6 @@ export type StatusPanelProps = {
   children?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "children" | "title">;
 
-/** Shared loading, empty, and error surface. Pass a runtime `Button` as the action;
- * children extend the message body. */
 export function StatusPanel({
   status,
   title,

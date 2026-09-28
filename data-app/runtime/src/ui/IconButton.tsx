@@ -17,7 +17,6 @@ export type IconButtonProps = Omit<ComponentPropsWithRef<"button">, "children" |
   children?: ReactNode;
 };
 
-/** One square, labeled icon action. The tooltip and keyboard hint come from the same props. */
 export function IconButton({
   icon,
   label,

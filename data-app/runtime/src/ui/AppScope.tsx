@@ -8,7 +8,6 @@ export type AppScopeProps = {
   children?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Identifies the data context without making each app invent its own header badge. */
 export function AppScope({
   organization,
   environment,

@@ -1,6 +1,6 @@
 {
   "name": "@altertable/data-app-runtime",
-  "version": "0.59.0",
+  "version": "0.59.1",
   "private": true,
   "type": "module",
   "exports": {
@@ -29,7 +29,8 @@
   },
   "files": [
     "src",
-    "package.json"
+    "package.json",
+    "README.md"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",

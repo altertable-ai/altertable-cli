@@ -3,7 +3,10 @@ import type { DataOperations, DisclosedQuery } from "./contract.ts";
 export type InputOf<T> = T extends { input: (value: unknown) => infer Input } ? Input : never;
 export type OutputOf<T> = T extends { output: (value: unknown) => infer Output } ? Output : never;
 
-/** Parsed operation data and query evidence. `queries` is present only when SQL disclosure is allowed. */
+/**
+ * Parsed operation data and query evidence. `queries` is present only when SQL disclosure is
+ * allowed.
+ */
 export type DataResponse<Output, Input = unknown> = {
   data: Output;
   /** The exact browser input that produced this response. Never infer it from current controls. */
@@ -25,7 +28,6 @@ export class DataAppError extends Error {
   }
 }
 
-/** Typed browser API. The generated server runs app parsers before sending results. */
 export type DataClient<Operations extends DataOperations> = {
   query<Name extends keyof Operations & string>(
     name: Name,

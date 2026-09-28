@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 
-/** `alt` is Alt/Option, leaving character keys and browser refresh untouched; `mod` is ⌘ on Apple platforms and Ctrl elsewhere. */
+/**
+ * `alt` is Alt/Option, leaving character keys and browser refresh untouched; `mod` is ⌘ on Apple
+ * platforms and Ctrl elsewhere.
+ */
 export type Shortcut = { modifier: "alt" | "mod"; shift?: boolean; code: string; key: string };
 
 export const shortcuts = {
@@ -31,7 +34,6 @@ export function ariaKeyShortcuts({ modifier, shift, key }: Shortcut): string {
   return modifiers.map((name) => `${name}+${shift ? "Shift+" : ""}${key}`).join(" ");
 }
 
-/** True when a key press belongs to a text field rather than the page. */
 export function isEditingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&

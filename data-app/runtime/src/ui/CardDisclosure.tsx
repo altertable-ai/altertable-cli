@@ -8,7 +8,6 @@ export type CardDisclosureProps = {
   children: ReactNode;
 } & Omit<ComponentPropsWithRef<"details">, "children">;
 
-/** A compact card action that reveals supporting detail without leaving the view. */
 export function CardDisclosure({ label, children, className, ...props }: CardDisclosureProps) {
   return (
     <details {...props} className={classNames("altertable-card-disclosure", className)}>

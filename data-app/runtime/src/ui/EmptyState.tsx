@@ -9,7 +9,6 @@ export type EmptyStateProps = {
   className?: string;
 };
 
-/** Content-level empty state for visualizations and tables with valid, zero-row results. */
 export function EmptyState({ title, description, variant = "visual", className }: EmptyStateProps) {
   return (
     <div

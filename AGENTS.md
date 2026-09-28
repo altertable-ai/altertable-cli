@@ -19,6 +19,8 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 | `specs/`               | Client API specs (submodule — read-only from this repo)   |
 | `bin/altertable`       | Dev launcher — do not edit                                |
 
+For data app runtime, starter, distribution, and browser work, follow [data-app/AGENTS.md](data-app/AGENTS.md).
+
 ## Start here
 
 ```bash

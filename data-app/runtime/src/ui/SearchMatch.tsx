@@ -7,7 +7,6 @@ export type SearchMatchProps = {
   match: SearchMatchValue;
 } & Omit<ComponentPropsWithRef<"span">, "children">;
 
-/** Render a searched field from its original text and match ranges. */
 export function SearchMatch({ match, className, ...props }: SearchMatchProps) {
   const { text, ranges } = match;
   const parts = [];

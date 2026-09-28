@@ -2,6 +2,8 @@
 
 `runtime/` is the private `@altertable/data-app-runtime` package. `starter/` is the actual getting-started application. `tests/` runs browser scenarios against the starter and its separate component fixtures.
 
+The [runtime API map](runtime/README.md) routes readers to public entries and UI source. The [contributor router](AGENTS.md) identifies source and checks for each change.
+
 The runtime owns the standard `DataApp` page shell, `GettingStarted` connection screen, `useDataView` request state, browser and local server entry helpers, and reusable contract parsers. Generated apps keep their question, SQL, validation, exploration context, and view in `src/`.
 
 ## Develop
@@ -24,7 +26,7 @@ Use a configured profile for live data. `--watch-runtime` watches canonical runt
 - `cli/src/commands/app/lib/distribution.ts` declares the starter copy allowlist. `src/`, app configuration, lockfile, and authoring docs ship. Browser fixtures, tests, dependencies, and build outputs do not.
 - `createAppFiles` changes JSON identity fields and the lockfile root name. Application code reads `app.json`; source code has no template tokens.
 - `cli/scripts/package-data-app.ts` supplies the Bun build plugin. It replaces the source payload loader with literal file data. The npm bundle embeds this payload; native releases compile that same bundle. Installed CLIs never read this repository to create an app.
-- Users own their generated `src/`, `app.json`, package manifest, and docs. The CLI owns `.altertable/runtime/` and records its source checksums. Public import paths remain `@altertable/data-app-runtime/...`.
+- Generated apps commit `.altertable/runtime/` because it is a required `file:` dependency; only this repository's starter copy is ignored. Users own their generated `src/`, `app.json`, package manifest, and docs. The CLI owns `.altertable/runtime/` and records its source checksums. Public import paths remain `@altertable/data-app-runtime/...`.
 
 The runtime owns its implementation dependencies. The starter owns React, ReactDOM, and its authoring tools. When runtime dependencies change, refresh the starter lockfile after setup:
 

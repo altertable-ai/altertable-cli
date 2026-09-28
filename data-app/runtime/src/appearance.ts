@@ -48,7 +48,6 @@ function font(value: unknown): value is string {
   );
 }
 
-/** Validate the authored settings once, before applying any browser styles. */
 export function parseAppearance(value: unknown): AppearanceSettings {
   if (value === undefined)
     return {
@@ -159,7 +158,10 @@ function fontStack(family: string): string {
     : `${JSON.stringify(family)}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ui-sans-serif, sans-serif`;
 }
 
-/** Install semantic tokens on the document root, including portaled UI. Returns a cleanup for system-theme listening. */
+/**
+ * Install semantic tokens on the document root, including portaled UI. Returns a cleanup for
+ * system-theme listening.
+ */
 export function applyAppearance(value: unknown): () => void {
   const settings = parseAppearance(value);
   const root = document.documentElement;
@@ -229,7 +231,7 @@ export function applyAppearance(value: unknown): () => void {
   };
 }
 
-/** Apply app-authored appearance while allowing a viewer to choose a persistent color mode. */
+/** Viewer color mode persists independently of app-authored brand tokens. */
 export function createThemeController(value: unknown): ThemeController {
   const settings = parseAppearance(value);
   const storageKey = "altertable.data-app.theme-mode";

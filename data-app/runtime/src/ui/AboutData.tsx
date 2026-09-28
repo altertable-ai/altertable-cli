@@ -27,7 +27,6 @@ export type AboutEmpty = {
   queries: { title: string; description?: string };
 };
 
-/** What a surface, story step, or the toolbar can show in the inspect sheet. */
 export type AboutSubject = {
   empty: AboutEmpty;
   id?: string;
@@ -46,7 +45,10 @@ export type AboutSubject = {
 export type AboutDataProps = AboutSubject & {
   variant?: ButtonProps["variant"];
   iconOnly?: boolean;
-  /** Register the global inspect shortcut. Defaults on for existing toolbar triggers; local triggers set false. */
+  /**
+   * Register the global inspect shortcut. Defaults on for existing toolbar triggers; local
+   * triggers set false.
+   */
   shortcut?: boolean;
   tooltip?: ReactNode;
   children?: ReactNode;
@@ -105,10 +107,10 @@ function resolveTab(tab: string | null | undefined): AboutTab {
   return tab === "queries" ? "queries" : "glossary";
 }
 
-/** Inspect sheet for a card, panel, story step, or the whole app. The header is the
- * subject; the body is the visual, then Glossary and Queries. The toolbar sheet stays
- * high-level. Open state is `?about=` and
- * the selected tab is `?tab=`. Alt/Option+I opens the toolbar sheet. */
+/**
+ * Open state uses `?about=`; tab selection uses `?tab=`. Enable the global shortcut only on the
+ * page-level trigger.
+ */
 export function AboutData({
   id,
   title,

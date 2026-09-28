@@ -74,7 +74,6 @@ export function ThemeSelector({ theme, children, className, ...props }: ThemeSel
   );
 }
 
-/** One-button theme switch for a compact surface such as presentation mode. */
 export function ThemeToggle({
   theme,
   portalRoot,

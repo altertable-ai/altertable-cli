@@ -20,9 +20,10 @@ export type SearchFieldProps = {
   children?: ReactNode;
 } & Omit<ComponentPropsWithRef<"form">, "onChange" | "onSubmit" | "children">;
 
-/** Controlled, scoped search. The caller owns filtering, URL state, and whether
- * the search runs while typing or on submit. Native search input supports touch,
- * text editing, and mobile search keyboards; Escape and Clear reset the query. */
+/**
+ * The caller owns filtering, URL state, and whether search runs while typing or on submit.
+ * Escape and Clear reset the query.
+ */
 export function SearchField({
   label,
   value,

@@ -18,7 +18,6 @@ const CLAUSE =
 const KEYWORD =
   /\b(WITH|SELECT|FROM|WHERE|AND|OR|NOT|IN|AS|ON|JOIN|LEFT|RIGHT|INNER|FULL|OUTER|CROSS|GROUP BY|ORDER BY|HAVING|LIMIT|UNION|ALL|DISTINCT|CASE|WHEN|THEN|ELSE|END|NULL|TRUE|FALSE|BETWEEN|LIKE|ILIKE|EXISTS|VALUES|CAST|COUNT|SUM|AVG|MIN|MAX|QUALIFY|WINDOW|OVER|PARTITION|BY)\b/gi;
 
-/** Break a one-line statement on major clauses. Leave already-wrapped SQL alone. */
 export function formatSql(statement: string): string {
   const trimmed = statement.trim();
   if (!trimmed || trimmed.includes("\n")) return trimmed;
@@ -104,10 +103,10 @@ function QueryFigure({ name, statement }: { name: string; statement: string }) {
   );
 }
 
-/** SQL behind a result. `names` selects the supporting queries; when they were not
- * included with this result, it says so instead of rendering nothing. `expanded` skips
- * the disclosure so a dedicated Queries view can show the statements immediately.
- * Formatting is a small clause break and keyword paint — no highlighter package. */
+/**
+ * `names` selects supporting queries. Missing query evidence is shown explicitly; `expanded`
+ * skips the disclosure in a dedicated Queries view.
+ */
 export function QueryList({
   queries,
   names,

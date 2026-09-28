@@ -7,7 +7,6 @@ export type ButtonProps = ComponentPropsWithRef<"button"> & {
   size?: "default" | "icon";
 };
 
-/** Shared button styling and native button behavior for runtime controls. */
 export function Button({
   className,
   type = "button",

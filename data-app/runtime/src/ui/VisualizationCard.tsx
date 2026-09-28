@@ -17,7 +17,6 @@ export type VisualizationCardProps = {
   empty?: Pick<EmptyStateProps, "title" | "description">;
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
-/** A titled chart or ranking with named visual, interpretation, and inspect slots. */
 export function VisualizationCard({
   title,
   description,

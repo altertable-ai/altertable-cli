@@ -71,6 +71,21 @@ describe("app create", () => {
     const paths = JSON.parse(result.stdout[0]!).files as string[];
     expect(paths).toContain(".altertable/runtime/src/ui/PlayStory.tsx");
     expect(paths).toContain("src/App.tsx");
+    expect(paths).toContain("docs/data.md");
+    expect(paths).toContain(".altertable/runtime/README.md");
+    expect(Bun.spawnSync(["git", "init", "--quiet"], { cwd: directory }).exitCode).toBe(0);
+    const ignored = Bun.spawnSync(
+      [
+        "git",
+        "-c",
+        "core.excludesFile=/dev/null",
+        "check-ignore",
+        "--no-index",
+        ".altertable/runtime/package.json",
+      ],
+      { cwd: directory },
+    );
+    expect(ignored.exitCode).toBe(1);
     expect(paths.some((path) => /tests|fixtures|node_modules|\.txt$/.test(path))).toBe(false);
   });
 

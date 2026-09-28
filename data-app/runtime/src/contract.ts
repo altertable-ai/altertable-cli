@@ -1,11 +1,9 @@
-/** Bounded lakehouse rows, with an optional query ID for provenance. */
 export type QueryResult = {
   columns: { name: string; type?: string }[];
   rows: unknown[][];
   queryId?: string;
 };
 
-/** Validate an operation with no reader inputs. */
 export function parseEmptyInput(value: unknown): Record<string, never> {
   if (
     typeof value !== "object" ||
@@ -18,7 +16,6 @@ export function parseEmptyInput(value: unknown): Record<string, never> {
   return {};
 }
 
-/** Validate a successful probe result after it crosses the JSON boundary. */
 export function parseTrue(value: unknown): true {
   if (value !== true) throw new Error("Expected a successful check.");
   return true;
@@ -61,7 +58,7 @@ export function parseDateRangeInput(
   return { start: start as string, end: end as string };
 }
 
-/** Parse a DuckDB count without accepting fractional or unsafe values. */
+/** Accepts numeric strings from DuckDB; rejects negative, fractional, and unsafe integers. */
 export function parseCount(value: unknown): number {
   const number = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
   if (!Number.isSafeInteger(number) || number < 0 || (typeof value === "string" && !value.trim())) {
@@ -70,7 +67,6 @@ export function parseCount(value: unknown): number {
   return number;
 }
 
-/** Parse a nonempty data label with an explicit maximum length. */
 export function parseLabel(value: unknown, maxLength = 100): string {
   if (typeof value !== "string" || !value || value.length > maxLength) {
     throw new Error("Invalid label in query result.");
@@ -78,7 +74,7 @@ export function parseLabel(value: unknown, maxLength = 100): string {
   return value;
 }
 
-/** Address query rows by named columns, with missing and duplicate columns rejected. */
+/** Rejects missing or duplicate columns and rows whose width differs from the column list. */
 export function rowsAsRecords(
   result: QueryResult,
   requiredColumns: readonly string[],
@@ -127,9 +123,8 @@ export type Lakehouse = {
 export type OperationContext = { lakehouse: Lakehouse; signal: AbortSignal };
 
 /**
- * One app-owned data operation. Parsers validate unknown browser input and the result
- * before it crosses the server/client boundary; TypeScript types alone cannot do that.
- * The app may use Zod or another schema library inside these parser functions.
+ * Both parsers run on the server before results cross the JSON boundary. Schema libraries can be
+ * used inside either parser.
  */
 export type DataOperation<Input, Output> = {
   input: (value: unknown) => Input;
@@ -143,7 +138,6 @@ export type DataOperation<Input, Output> = {
   };
 };
 
-/** Register an app operation with explicit query row, duration, and response limits. */
 export function defineOperation<Input, Output>(operation: DataOperation<Input, Output>) {
   if (
     !Number.isInteger(operation.policy.maxQueryRows) ||
@@ -159,7 +153,7 @@ export function defineOperation<Input, Output>(operation: DataOperation<Input, O
   return operation;
 }
 
-/** Starter probe: a profile is connected only after this bounded SQL request succeeds. */
+/** Success requires a bounded SQL query; it does not establish access to a particular dataset. */
 export function connectionCheck(): DataOperation<Record<string, never>, true> {
   return defineOperation({
     input: parseEmptyInput,
