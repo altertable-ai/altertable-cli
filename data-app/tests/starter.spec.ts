@@ -78,6 +78,22 @@ test("source identifiers retain exact table and column identity in About the dat
   );
 });
 
+test("glossary definitions open in place on hover and keyboard activation", async ({ page }) => {
+  await page.goto("/components");
+  const term = page.getByRole("button", { name: "Explain Orders" });
+  expect(await term.evaluate((element) => getComputedStyle(element).cursor)).toBe("help");
+  await term.hover();
+  const definition = page.getByRole("dialog", { name: "Orders" });
+  await expect(definition).toContainText("Completed orders grouped by customer_id.");
+  await page.mouse.move(0, 0);
+  await expect(definition).toHaveCount(0);
+  await term.focus();
+  await term.press("Enter");
+  await expect(definition).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(definition).toHaveCount(0);
+});
+
 test("Present mode retains navigation, deep links, inspection, and theme switching", async ({
   page,
 }) => {
@@ -192,7 +208,8 @@ test("grid uses one gap and keeps shorter panels at content height", async ({ pa
   const stackGap = await page
     .getByTestId("layout-stack")
     .evaluate((element) => getComputedStyle(element).gap);
-  expect(stackGap).toBe("24px");
+  const expectedGap = testInfo.project.name === "desktop" ? 24 : 16;
+  expect(stackGap).toBe(`${expectedGap}px`);
   const items = grid.locator(":scope > div");
   const short = await items.nth(0).boundingBox();
   const tall = await items.nth(1).boundingBox();
@@ -200,15 +217,15 @@ test("grid uses one gap and keeps shorter panels at content height", async ({ pa
   expect(tall).not.toBeNull();
   expect(short!.height).toBeLessThan(tall!.height);
   if (testInfo.project.name === "desktop") {
-    expect(Math.round(tall!.x - short!.x - short!.width)).toBe(24);
+    expect(Math.round(tall!.x - short!.x - short!.width)).toBe(expectedGap);
   } else {
-    expect(Math.round(tall!.y - short!.y - short!.height)).toBe(24);
+    expect(Math.round(tall!.y - short!.y - short!.height)).toBe(expectedGap);
   }
   const constrained = page.getByTestId("constrained-grid").locator(":scope > div");
   const firstNarrow = await constrained.nth(0).boundingBox();
   const secondNarrow = await constrained.nth(1).boundingBox();
   expect(Math.round(secondNarrow!.x)).toBe(Math.round(firstNarrow!.x));
-  expect(Math.round(secondNarrow!.y - firstNarrow!.y - firstNarrow!.height)).toBe(24);
+  expect(Math.round(secondNarrow!.y - firstNarrow!.y - firstNarrow!.height)).toBe(expectedGap);
   const border = await page
     .locator(".altertable-app-header")
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
@@ -223,6 +240,10 @@ test("grid spans respond to their container at phone, tablet, and desktop widths
     await page.goto("/components");
     const primary = await page.getByTestId("primary-grid-item").boundingBox();
     const support = await page.getByTestId("support-grid-item").boundingBox();
+    const gap = await page
+      .getByTestId("spanned-grid")
+      .evaluate((element) => getComputedStyle(element).gap);
+    expect(gap).toBe(`${Math.max(16, Math.min(24, width * 0.025))}px`);
     const peers = await page.getByTestId("peer-grid").locator(":scope > div").all();
     const firstPeer = await peers[0]!.boundingBox();
     const lastPeer = await peers[2]!.boundingBox();

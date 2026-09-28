@@ -32,7 +32,7 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | Show freshness and refresh | [UpdatedAt](src/ui/UpdatedAt.tsx), [AppToolbar](src/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
 | Bind filters to the URL | [variables](src/ui/variables.ts), [DateRangePicker](src/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/ui/searchItems.ts), [SearchMatch](src/ui/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | GlossaryExplanation, [defineDataIdentifiers](src/ui/data-identifiers.tsx) |
+| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | [GlossaryDefinition](src/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/ui/data-identifiers.tsx) |
 | Present loaded findings | [PlayStory](src/ui/PlayStory.tsx) | StoryStep |
 | Build custom controls and overlays | [Button](src/ui/Button.tsx), [Sheet](src/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
@@ -41,6 +41,8 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 - SQL, credentials, and viewer authorization stay on the server. Hosted apps must authorize each request; the local adapter is for CLI development. SQL disclosure requires both operation policy and server permission.
 - `useDataView` distinguishes requested inputs from the inputs that produced visible data. Let the app define emptiness; a measured zero can be a valid result.
 - `Breakdown` shows parts of a total; `Ranking` scales against the largest visible value. `formatPercent` accepts a ratio, for example `0.116` for 11.6%.
+- Default page, grid, and stack gaps scale with the viewport and appearance density. Keep body and label text legible; scale display headlines instead.
+- Use `GlossaryDefinition` for a term in running text: `<GlossaryDefinition entry={dataContext.glossary.orders}>completed orders</GlossaryDefinition>`. It shows the registered definition on hover or activation; `AboutData` remains the place for full evidence.
 - App variables own URL state. `?view=` belongs to page navigation; `?about=` and `?tab=` belong to inspection; `?present=` and `?step=` belong to Present mode.
 - Present steps use an already loaded result. They carry authored findings and evidence references, without issuing another query.
 

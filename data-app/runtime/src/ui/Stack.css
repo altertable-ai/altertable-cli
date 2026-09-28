@@ -10,5 +10,5 @@
   gap: var(--at-space-md, 16px);
 }
 .altertable-stack[data-gap="lg"] {
-  gap: var(--at-space-lg, 24px);
+  gap: var(--at-layout-gap, 24px);
 }

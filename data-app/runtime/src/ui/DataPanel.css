@@ -11,7 +11,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--at-space-md, 16px);
-  padding: var(--at-space-lg, 24px) var(--at-space-lg, 24px) 0;
+  padding: var(--at-layout-gap, 24px) var(--at-layout-gap, 24px) 0;
 }
 .altertable-data-panel-header > div:first-child {
   flex: 1;
@@ -47,13 +47,13 @@
 }
 .altertable-data-panel-body {
   min-width: 0;
-  padding: var(--at-space-md, 16px) var(--at-space-lg, 24px) var(--at-space-lg, 24px);
+  padding: var(--at-space-md, 16px) var(--at-layout-gap, 24px) var(--at-layout-gap, 24px);
 }
 .altertable-data-panel-body[data-padding="flush"] {
   padding: 0;
 }
 .altertable-data-panel-footer {
-  padding: var(--at-space-md, 16px) var(--at-space-lg, 24px);
+  padding: var(--at-space-md, 16px) var(--at-layout-gap, 24px);
 }
 .altertable-data-panel-body > .altertable-status-panel {
   margin: 0;

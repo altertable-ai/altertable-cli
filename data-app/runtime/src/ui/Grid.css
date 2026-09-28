@@ -4,7 +4,7 @@
   min-width: 0;
   align-items: start;
   align-content: start;
-  --at-grid-gap: var(--at-space-lg, 24px);
+  --at-grid-gap: var(--at-layout-gap, 24px);
   --at-grid-min-item-width: 240px;
   gap: var(--at-grid-gap);
   /* The calculated track caps the column count; the minimum lets narrow containers wrap. */
@@ -27,7 +27,7 @@
   --at-grid-gap: var(--at-space-md, 16px);
 }
 .altertable-grid[data-gap="lg"] {
-  --at-grid-gap: var(--at-space-lg, 24px);
+  --at-grid-gap: var(--at-layout-gap, 24px);
 }
 .altertable-grid[data-min-item-width="compact"] {
   --at-grid-min-item-width: 192px;

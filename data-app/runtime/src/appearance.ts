@@ -176,6 +176,7 @@ export function applyAppearance(value: unknown): () => void {
     "--at-space-md": md,
     "--at-space-lg": lg,
     "--at-space-xl": xl,
+    "--at-layout-gap": `clamp(${md}, 2.5vw, ${lg})`,
     "--at-radius-control": control,
     "--at-radius-surface": surface,
     "--at-radius-overlay": overlay,

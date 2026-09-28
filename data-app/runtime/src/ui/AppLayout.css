@@ -13,11 +13,11 @@ body,
 .altertable-app-main {
   display: grid;
   align-content: start;
-  gap: var(--at-space-lg, 24px);
+  gap: var(--at-layout-gap, 24px);
   min-width: 0;
   width: min(100% - 48px, var(--at-content-width, 1200px));
   margin-inline: auto;
-  padding: var(--at-space-lg, 24px) 0 var(--at-space-md, 16px);
+  padding: var(--at-layout-gap, 24px) 0 var(--at-space-md, 16px);
 }
 .altertable-app-footer {
   margin-top: auto;

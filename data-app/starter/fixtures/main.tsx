@@ -10,6 +10,7 @@ import {
   DateRangePicker,
   Grid,
   GridItem,
+  GlossaryDefinition,
   MetricCard,
   Stack,
   StorySection,
@@ -94,6 +95,13 @@ function Fixture() {
       }}
     >
       <Stack data-testid="layout-stack">
+        <p>
+          Review{" "}
+          <GlossaryDefinition entry={dataContext.glossary.orders}>
+            completed orders
+          </GlossaryDefinition>
+          .
+        </p>
         <Grid columns={3} minItemWidth="compact" data-testid="peer-grid">
           <MetricCard label="Actions" value="120" />
           <MetricCard label="Identities" value="40" />

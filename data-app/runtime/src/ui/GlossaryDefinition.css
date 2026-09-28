@@ -1,0 +1,32 @@
+.altertable-glossary-definition-trigger {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+  text-decoration: underline dotted var(--at-muted, #687078);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+.altertable-glossary-definition-trigger:hover,
+.altertable-glossary-definition-trigger[data-open="true"] {
+  text-decoration-color: var(--at-accent, #405d47);
+}
+.altertable-glossary-definition-trigger:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--at-accent, #405d47);
+  outline-offset: 2px;
+}
+.altertable-glossary-definition-popover {
+  width: min(320px, calc(100vw - 24px));
+}
+.altertable-glossary-definition-popover > strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 650;
+}

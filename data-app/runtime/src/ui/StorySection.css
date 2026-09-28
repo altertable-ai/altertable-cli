@@ -1,6 +1,6 @@
 .altertable-story-section {
   display: grid;
-  gap: var(--at-space-lg, 24px);
+  gap: var(--at-layout-gap, 24px);
   min-width: 0;
 }
 .altertable-story-section-lead {
@@ -19,7 +19,7 @@
 }
 .altertable-story-section-lead .altertable-metric-value {
   margin: var(--at-space-sm, 8px) 0 4px;
-  font-size: clamp(44px, 5vw, 72px);
+  font-size: clamp(32px, 5vw, 72px);
   line-height: 1;
 }
 .altertable-story-section-lead .altertable-metric-description {

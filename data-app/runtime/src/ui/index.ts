@@ -127,6 +127,8 @@ export type {
 export type { DisclosedQuery } from "../contract.ts";
 export { GlossaryExplanation } from "./GlossaryExplanation.tsx";
 export type { GlossaryExplanationProps } from "./GlossaryExplanation.tsx";
+export { GlossaryDefinition } from "./GlossaryDefinition.tsx";
+export type { GlossaryDefinitionProps } from "./GlossaryDefinition.tsx";
 export { AboutData } from "./AboutData.tsx";
 export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./AboutData.tsx";
 
