@@ -17,7 +17,7 @@ const handler = createDataHandler(operations, async () => ({
 }));
 Bun.serve({
   hostname: "127.0.0.1",
-  port: 26418,
+  port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
   routes: { "/": starter, "/components": components },
   async fetch(request) {
     if (new URL(request.url).pathname === "/__test/state") {
