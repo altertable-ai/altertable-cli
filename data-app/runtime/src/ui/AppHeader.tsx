@@ -11,7 +11,7 @@ export type AppHeaderProps = {
   headingProps?: Omit<ComponentPropsWithRef<"div">, "children">;
 } & Omit<ComponentPropsWithRef<"header">, "children" | "title">;
 
-/** Compact page heading with its data scope beside the title and actions at the edge. */
+/** Page identity and actions; on narrow screens the scope shares a row with actions. */
 export function AppHeader({
   scope,
   title,
@@ -28,22 +28,20 @@ export function AppHeader({
         {...headingProps}
         className={classNames("altertable-app-header-heading", headingProps?.className)}
       >
-        <div className="altertable-app-header-copy">
-          <div className="altertable-app-header-identity">
-            <h1>{title}</h1>
-            {scope && (
-              <div className="altertable-app-header-context">
-                <span className="altertable-app-header-connector" aria-hidden="true">
-                  /
-                </span>
-                {scope}
-              </div>
-            )}
-          </div>
-          {description && <p>{description}</p>}
-          {children}
+        <div className="altertable-app-header-primary">
+          <h1>{title}</h1>
+          {scope && (
+            <div className="altertable-app-header-context">
+              <span className="altertable-app-header-connector" aria-hidden="true">
+                /
+              </span>
+              {scope}
+            </div>
+          )}
+          {toolbar && <div className="altertable-app-header-toolbar">{toolbar}</div>}
         </div>
-        {toolbar && <div className="altertable-app-header-toolbar">{toolbar}</div>}
+        {description && <p>{description}</p>}
+        {children}
       </div>
     </header>
   );

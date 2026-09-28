@@ -5,8 +5,10 @@ import { connectionCheck } from "@altertable/data-app-runtime/contract";
 import {
   DataApp,
   DataSection,
+  ContentSkeleton,
   DateRangePicker,
   Grid,
+  GridItem,
   MetricCard,
   Stack,
   StorySection,
@@ -43,6 +45,7 @@ function Fixture() {
   return (
     <DataApp
       config={config}
+      description="Completed orders in production."
       dataContext={dataContext}
       aboutEmpty={empty}
       request={connection}
@@ -67,6 +70,14 @@ function Fixture() {
       }}
     >
       <Stack data-testid="layout-stack">
+        <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
+          <GridItem span={2} data-testid="primary-grid-item">
+            <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
+          </GridItem>
+          <GridItem data-testid="support-grid-item">
+            <VisualizationCard title="Supporting view" visual={<p>Feature reach</p>} />
+          </GridItem>
+        </Grid>
         <StorySection
           label="Order activity"
           data-testid="layout-story"
@@ -84,7 +95,21 @@ function Fixture() {
           <div>First narrow card</div>
           <div>Second narrow card</div>
         </Grid>
-        <DataSection result={connection}>{() => <p>Connection view ready</p>}</DataSection>
+        <DataSection
+          result={connection}
+          loading={
+            <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
+              <GridItem span={2}>
+                <ContentSkeleton variant="ranking" />
+              </GridItem>
+              <GridItem>
+                <ContentSkeleton variant="ranking" />
+              </GridItem>
+            </Grid>
+          }
+        >
+          {() => <p>Connection view ready</p>}
+        </DataSection>
       </Stack>
     </DataApp>
   );

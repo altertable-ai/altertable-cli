@@ -1,5 +1,6 @@
 .altertable-grid {
   display: grid;
+  container: altertable-grid / inline-size;
   min-width: 0;
   align-items: start;
   align-content: start;
@@ -44,4 +45,28 @@
   --at-grid-column-width: calc(
     (100% - var(--at-grid-gap) - var(--at-grid-gap) - var(--at-grid-gap)) / 4
   );
+}
+
+.altertable-grid-item {
+  min-width: 0;
+  min-height: 0;
+}
+
+@container altertable-grid (min-width: 408px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="compact"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
+}
+@container altertable-grid (min-width: 504px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="regular"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
+}
+@container altertable-grid (min-width: 664px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="wide"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
 }

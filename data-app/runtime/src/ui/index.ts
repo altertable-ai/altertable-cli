@@ -8,6 +8,8 @@ export { Stack } from "./Stack.tsx";
 export type { StackProps } from "./Stack.tsx";
 export { Grid } from "./Grid.tsx";
 export type { GridProps } from "./Grid.tsx";
+export { GridItem } from "./GridItem.tsx";
+export type { GridItemProps } from "./GridItem.tsx";
 export { StorySection } from "./StorySection.tsx";
 export type { StorySectionProps } from "./StorySection.tsx";
 export { AppHeader } from "./AppHeader.tsx";

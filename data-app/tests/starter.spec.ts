@@ -136,6 +136,31 @@ test("variables sit below the header divider while actions stay in the header", 
   );
 });
 
+test("mobile header pairs scope with actions and keeps the description below", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/components");
+  const header = page.locator(".altertable-app-header");
+  const title = header.getByRole("heading", { name: "Orders exploration" });
+  const scope = header.locator(".altertable-app-header-context");
+  const actions = header.getByRole("group", { name: "Page actions" });
+  const description = header.locator(":scope > .altertable-app-header-heading > p");
+  const titleBox = await title.boundingBox();
+  const scopeBox = await scope.boundingBox();
+  const actionsBox = await actions.boundingBox();
+  const descriptionBox = await description.boundingBox();
+  expect(scopeBox!.y).toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height);
+  expect(Math.abs(scopeBox!.y - actionsBox!.y)).toBeLessThan(12);
+  expect(descriptionBox!.y).toBeGreaterThanOrEqual(actionsBox!.y + actionsBox!.height);
+  await page.screenshot({ path: testInfo.outputPath("mobile-header.png") });
+
+  await page.setViewportSize({ width: 280, height: 844 });
+  const narrowScope = await scope.boundingBox();
+  const narrowActions = await actions.boundingBox();
+  expect(narrowActions!.y).toBeGreaterThanOrEqual(narrowScope!.y + narrowScope!.height);
+});
+
 test("grid uses one gap and keeps shorter panels at content height", async ({ page }, testInfo) => {
   await page.goto("/components");
   const grid = page.getByTestId("layout-grid");
@@ -163,6 +188,49 @@ test("grid uses one gap and keeps shorter panels at content height", async ({ pa
     .locator(".altertable-app-header")
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(border).toBe("1px");
+});
+
+test("grid spans respond to their container at phone, tablet, and desktop widths", async ({
+  page,
+}) => {
+  for (const width of [390, 800, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/components");
+    const primary = await page.getByTestId("primary-grid-item").boundingBox();
+    const support = await page.getByTestId("support-grid-item").boundingBox();
+    expect(primary).not.toBeNull();
+    expect(support).not.toBeNull();
+    if (width === 390) {
+      expect(support!.y).toBeGreaterThanOrEqual(primary!.y + primary!.height);
+    } else {
+      expect(Math.round(primary!.y)).toBe(Math.round(support!.y));
+      expect(primary!.width).toBeGreaterThan(support!.width * 1.8);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
+});
+
+test("initial loading keeps the grid shape without displaying snapshot values", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/data/connection", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/components");
+  const loading = page.getByTestId("loading-skeleton-grid");
+  await expect(loading.locator(".altertable-content-skeleton")).toHaveCount(2);
+  await expect(loading.locator(".altertable-content-skeleton-row")).toHaveCount(8);
+  await expect(page.getByText("Connection view ready")).toHaveCount(0);
+  release();
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  await expect(loading).toHaveCount(0);
 });
 
 test("story gives its main visual more room and stacks evidence on phones", async ({

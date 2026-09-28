@@ -11,6 +11,7 @@ export type DataSectionProps<Data, Input = unknown> = (
 ) & {
   children: (data: Data) => ReactNode;
   empty?: Pick<EmptyStateProps, "title" | "description">;
+  /** Placeholder layout for an initial request; use the ready view's grid without copied values. */
   loading?: ReactNode;
   error?: { title: ReactNode; description?: ReactNode; onRetry?: () => void };
   label?: string;
