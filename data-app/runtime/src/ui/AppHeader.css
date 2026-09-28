@@ -1,6 +1,6 @@
 .altertable-app-header {
   padding-bottom: 12px;
-  border-bottom: 0;
+  border-bottom: 1px solid var(--at-border, #e3e6e8);
 }
 .altertable-app-header-heading {
   display: flex;

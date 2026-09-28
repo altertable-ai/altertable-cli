@@ -95,3 +95,32 @@ test("data view keeps the last result visible when refresh fails", async ({ page
   await expect(page.getByText("Connection view ready")).toBeVisible();
   await expect(page.getByText(/Couldn’t refresh. Showing the last result/)).toBeVisible();
 });
+
+test("grid uses one gap and keeps shorter panels at content height", async ({ page }, testInfo) => {
+  await page.goto("/components");
+  const grid = page.getByTestId("layout-grid");
+  const stackGap = await page
+    .getByTestId("layout-stack")
+    .evaluate((element) => getComputedStyle(element).gap);
+  expect(stackGap).toBe("24px");
+  const items = grid.locator(":scope > div");
+  const short = await items.nth(0).boundingBox();
+  const tall = await items.nth(1).boundingBox();
+  expect(short).not.toBeNull();
+  expect(tall).not.toBeNull();
+  expect(short!.height).toBeLessThan(tall!.height);
+  if (testInfo.project.name === "desktop") {
+    expect(Math.round(tall!.x - short!.x - short!.width)).toBe(24);
+  } else {
+    expect(Math.round(tall!.y - short!.y - short!.height)).toBe(24);
+  }
+  const constrained = page.getByTestId("constrained-grid").locator(":scope > div");
+  const firstNarrow = await constrained.nth(0).boundingBox();
+  const secondNarrow = await constrained.nth(1).boundingBox();
+  expect(Math.round(secondNarrow!.x)).toBe(Math.round(firstNarrow!.x));
+  expect(Math.round(secondNarrow!.y - firstNarrow!.y - firstNarrow!.height)).toBe(24);
+  const border = await page
+    .locator(".altertable-app-header")
+    .evaluate((element) => getComputedStyle(element).borderBottomWidth);
+  expect(border).toBe("1px");
+});

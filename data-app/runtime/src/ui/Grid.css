@@ -1,41 +1,47 @@
 .altertable-grid {
   display: grid;
   min-width: 0;
+  align-items: start;
   align-content: start;
+  --at-grid-gap: var(--at-space-lg, 24px);
+  --at-grid-min-item-width: 240px;
+  gap: var(--at-grid-gap);
+  /* The calculated track caps the column count; the minimum lets narrow containers wrap. */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, max(var(--at-grid-min-item-width), var(--at-grid-column-width, 100%))), 1fr)
+  );
 }
 .altertable-grid > * {
   min-width: 0;
+  min-height: 0;
 }
-.altertable-grid[data-align="start"] {
-  align-items: start;
+.altertable-grid[data-align="stretch"] {
+  align-items: stretch;
 }
 .altertable-grid[data-gap="sm"] {
-  gap: var(--at-space-sm, 8px);
+  --at-grid-gap: var(--at-space-sm, 8px);
 }
 .altertable-grid[data-gap="md"] {
-  gap: var(--at-space-md, 16px);
+  --at-grid-gap: var(--at-space-md, 16px);
 }
 .altertable-grid[data-gap="lg"] {
-  gap: var(--at-space-lg, 24px);
+  --at-grid-gap: var(--at-space-lg, 24px);
+}
+.altertable-grid[data-min-item-width="compact"] {
+  --at-grid-min-item-width: 192px;
+}
+.altertable-grid[data-min-item-width="wide"] {
+  --at-grid-min-item-width: 320px;
 }
 .altertable-grid[data-columns="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  --at-grid-column-width: calc((100% - var(--at-grid-gap)) / 2);
 }
 .altertable-grid[data-columns="3"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  --at-grid-column-width: calc((100% - var(--at-grid-gap) - var(--at-grid-gap)) / 3);
 }
 .altertable-grid[data-columns="4"] {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-@media (max-width: 1050px) {
-  .altertable-grid[data-columns="4"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 780px) {
-  .altertable-grid[data-columns="2"],
-  .altertable-grid[data-columns="3"],
-  .altertable-grid[data-columns="4"] {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  --at-grid-column-width: calc(
+    (100% - var(--at-grid-gap) - var(--at-grid-gap) - var(--at-grid-gap)) / 4
+  );
 }
