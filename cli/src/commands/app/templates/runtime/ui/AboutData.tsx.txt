@@ -1,0 +1,401 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { useMergeRefs } from "@floating-ui/react";
+import { AppIcon } from "./icons.ts";
+import type { DisclosedQuery } from "../contract.ts";
+import type { ClaimEvidence } from "./ClaimProvenance.tsx";
+import type { MeasureDefinition, Methodology } from "./methodology.ts";
+import { Button, type ButtonProps } from "./Button.tsx";
+import { Kbd } from "./Kbd.tsx";
+import { QueryList } from "./QueryList.tsx";
+import { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
+import { Sheet, type SheetDialogProps } from "./Sheet.tsx";
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from "./Tabs.tsx";
+import { ariaKeyShortcuts, shortcuts, useShortcut } from "./shortcuts.ts";
+import { Tooltip } from "./Tooltip.tsx";
+import "./AboutData.css";
+
+export type AboutTab = "overview" | "measures" | "queries";
+
+/** What a surface, story step, or the toolbar can show in the inspect sheet. */
+export type AboutSubject = {
+  id?: string;
+  title?: ReactNode;
+  description?: ReactNode;
+  visual?: ReactNode;
+  visualKind?: "metric" | "chart";
+  methodology?: Methodology;
+  measure?: MeasureDefinition;
+  measures?: MeasureDefinition[];
+  evidence?: ClaimEvidence;
+  queries?: DisclosedQuery[];
+  queryNames?: string[];
+};
+
+export type AboutDataProps = AboutSubject & {
+  variant?: ButtonProps["variant"];
+  iconOnly?: boolean;
+  /** Register the global inspect shortcut. Defaults on for existing toolbar triggers; local triggers set false. */
+  shortcut?: boolean;
+  tooltip?: ReactNode;
+  children?: ReactNode;
+  footer?: ReactNode;
+  portalRoot?: RefObject<HTMLElement | null>;
+  sheetProps?: SheetDialogProps;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Initial inspect tab. While open, the URL's `tab` parameter tracks selection. */
+  tab?: AboutTab;
+  trigger?: boolean;
+} & Omit<ComponentPropsWithRef<"button">, "children" | "title">;
+
+function namedMeasures(methodology: Methodology | undefined, names: string[]): MeasureDefinition[] {
+  const catalog = methodology?.measures ?? {};
+  return names.map(
+    (name) =>
+      catalog[name] ??
+      Object.values(catalog).find((item) => item.label === name) ?? { label: name, definition: "" },
+  );
+}
+
+function listedMeasures({ measure, measures, methodology, evidence }: AboutSubject): {
+  measures: MeasureDefinition[];
+  scoped: boolean;
+} {
+  if (measures?.length) return { measures, scoped: true };
+  if (measure) return { measures: [measure], scoped: true };
+  if (evidence) return { measures: namedMeasures(methodology, evidence.measures), scoped: true };
+  return { measures: Object.values(methodology?.measures ?? {}), scoped: false };
+}
+
+function measureQueries(subject: AboutSubject): string[] | undefined {
+  if (subject.queryNames?.length) return subject.queryNames;
+  const names = listedMeasures(subject).measures.flatMap((item) => item.queryNames ?? []);
+  return names.length ? names : undefined;
+}
+
+function subjectId({ id, title }: AboutSubject): string {
+  if (id) return id;
+  return typeof title === "string" ? slug(title) : "data";
+}
+
+function factRows(rows: [string, ReactNode | undefined][]) {
+  return rows.filter((row): row is [string, ReactNode] => row[1] != null && row[1] !== "");
+}
+
+function Facts({ rows }: { rows: [string, ReactNode][] }) {
+  if (!rows.length) return null;
+  return (
+    <dl className="altertable-about-facts">
+      {rows.map(([term, value]) => (
+        <div key={term}>
+          <dt>{term}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MeasureDetail({ measure, compact }: { measure: MeasureDefinition; compact: boolean }) {
+  return (
+    <article className="altertable-about-measure">
+      <h3>{measure.label}</h3>
+      {measure.definition ? <p>{measure.definition}</p> : null}
+      {compact ? null : (
+        <Facts
+          rows={factRows([
+            ["Counted as", measure.unit],
+            ["Population", measure.population],
+            [
+              "Sources",
+              measure.sources?.length ? (
+                <ul className="altertable-about-sources">
+                  {measure.sources.map((source) => (
+                    <li key={source}>{source}</li>
+                  ))}
+                </ul>
+              ) : undefined,
+            ],
+          ])}
+        />
+      )}
+    </article>
+  );
+}
+
+function AboutOverview({
+  evidence,
+  methodology,
+  scoped,
+}: {
+  evidence?: ClaimEvidence;
+  methodology?: Methodology;
+  scoped: boolean;
+}) {
+  return (
+    <>
+      {evidence && (
+        <section>
+          <Facts
+            rows={factRows([
+              ["Window", evidence.period],
+              [
+                "Sources",
+                evidence.sources.length ? (
+                  <ul className="altertable-about-sources">
+                    {evidence.sources.map((source) => (
+                      <li key={source}>{source}</li>
+                    ))}
+                  </ul>
+                ) : undefined,
+              ],
+            ])}
+          />
+          {evidence.limitation ? (
+            <p className="altertable-about-limitation">{evidence.limitation}</p>
+          ) : null}
+        </section>
+      )}
+      {!scoped && methodology && (
+        <>
+          <p className="altertable-about-summary">{methodology.summary}</p>
+          <section>
+            <h3>Scope</h3>
+            <Facts
+              rows={factRows([
+                [
+                  "Sources",
+                  <ul className="altertable-about-sources">
+                    {methodology.sources.map((source) => (
+                      <li key={source}>{source}</li>
+                    ))}
+                  </ul>,
+                ],
+                ["Grain", methodology.grain],
+                ["Population", methodology.population],
+                ["Timezone", methodology.timezone],
+              ])}
+            />
+          </section>
+        </>
+      )}
+      {!scoped && methodology?.limitations?.length ? (
+        <section>
+          <h3>Limitations</h3>
+          <ul>
+            {methodology.limitations.map((limitation) => (
+              <li key={limitation}>{limitation}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function resolveTab(tab: string | null | undefined, hasOverview: boolean): AboutTab {
+  return tab === "queries" || tab === "measures" ? tab : hasOverview ? "overview" : "measures";
+}
+
+/** Inspect sheet for a card, panel, story step, or the whole app. The header is the
+ * subject; the body is the visual, then Overview, Measures, and Queries. The toolbar sheet stays
+ * high-level: a measure catalog, not one tab per metric. Open state is `?about=` and
+ * the selected tab is `?tab=`. Alt/Option+I opens the toolbar sheet. */
+export function AboutData({
+  id,
+  title,
+  description,
+  visual,
+  visualKind,
+  variant,
+  methodology,
+  measure,
+  measures,
+  evidence,
+  queries,
+  queryNames,
+  iconOnly = false,
+  shortcut = true,
+  tooltip,
+  children,
+  footer,
+  portalRoot,
+  sheetProps,
+  open: openProp,
+  onOpenChange,
+  tab,
+  trigger = true,
+  className,
+  onClick,
+  ref,
+  ...props
+}: AboutDataProps) {
+  const subject = {
+    id,
+    title,
+    description,
+    visual,
+    methodology,
+    measure,
+    measures,
+    evidence,
+    queries,
+    queryNames,
+  };
+  const listed = listedMeasures(subject);
+  const hasOverview = Boolean(evidence || (!listed.scoped && methodology));
+  const sheetId = subjectId(subject);
+  const initialTab = resolveTab(tab ?? searchParams().get("tab"), hasOverview);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(
+    () => searchParams().get("about") === sheetId,
+  );
+  const [selectedTab, setSelectedTab] = useState(initialTab);
+  const open = openProp ?? uncontrolledOpen;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const mergedTrigger = useMergeRefs([triggerRef, ref]);
+  const heading = title ?? "About the data";
+  const summary =
+    description ?? methodology?.subject ?? "Sources, definitions, and queries behind this view.";
+  const shortcutEnabled = trigger && shortcut && !props.disabled;
+  const hint =
+    tooltip ??
+    (iconOnly && shortcutEnabled ? (
+      <>
+        Explore data <Kbd shortcut={shortcuts.aboutData} />
+      </>
+    ) : (
+      "Explore data"
+    ));
+  function setOpen(next: boolean) {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+    if (next)
+      writeSearch(
+        { about: sheetId, tab: selectedTab },
+        searchParams().get("about") === sheetId ? "replace" : "push",
+      );
+    else if (searchParams().get("about") === sheetId) writeSearch({ about: null, tab: null });
+  }
+  function selectTab(next: string | number) {
+    const id = resolveTab(String(next), hasOverview);
+    setSelectedTab(id);
+    if (open) writeSearch({ about: sheetId, tab: id });
+  }
+  useEffect(() => {
+    function sync() {
+      const about = searchParams().get("about");
+      const urlTab = searchParams().get("tab");
+      if (about === sheetId) {
+        if (openProp === undefined) setUncontrolledOpen(true);
+        if (urlTab) setSelectedTab(resolveTab(urlTab, hasOverview));
+        onOpenChange?.(true);
+      } else if (openProp === undefined) {
+        setUncontrolledOpen(false);
+      }
+    }
+    return subscribeSearch(sync);
+  }, [sheetId, openProp, onOpenChange, hasOverview]);
+  useShortcut(shortcuts.aboutData, () => setOpen(true), shortcutEnabled);
+  const triggerButton = (
+    <Button
+      {...props}
+      ref={mergedTrigger}
+      variant={variant}
+      size={iconOnly ? "icon" : "default"}
+      className={className}
+      data-open={open || undefined}
+      aria-label={
+        props["aria-label"] ??
+        (iconOnly
+          ? title && typeof title === "string"
+            ? `Explore ${title}`
+            : "Explore data"
+          : undefined)
+      }
+      aria-keyshortcuts={
+        props["aria-keyshortcuts"] ??
+        (shortcutEnabled ? ariaKeyShortcuts(shortcuts.aboutData) : undefined)
+      }
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) setOpen(true);
+      }}
+    >
+      {children ?? (
+        <>
+          <AppIcon name="info" />
+          {!iconOnly && "Explore details"}
+        </>
+      )}
+    </Button>
+  );
+
+  return (
+    <>
+      {trigger ? (
+        <Tooltip content={hint} portalRoot={portalRoot}>
+          {triggerButton}
+        </Tooltip>
+      ) : null}
+      <Sheet
+        {...sheetProps}
+        open={open}
+        onOpenChange={setOpen}
+        title={heading}
+        description={summary}
+        wide={!!visual && visualKind !== "metric"}
+        returnFocus={triggerRef}
+        footer={footer}
+      >
+        {visual && (
+          <div className="altertable-about-visual" data-kind={visualKind}>
+            {visual}
+          </div>
+        )}
+        <div className="altertable-about-body">
+          <Tabs
+            selectedKey={selectedTab}
+            onSelectionChange={selectTab}
+            className="altertable-about-tabs"
+          >
+            <div className="altertable-about-tabbar">
+              <TabList aria-label={typeof heading === "string" ? heading : "About the data"}>
+                {hasOverview && <Tab id="overview">Overview</Tab>}
+                <Tab id="measures">Measures</Tab>
+                <Tab id="queries">Queries</Tab>
+              </TabList>
+            </div>
+            <TabPanels>
+              {hasOverview && (
+                <TabPanel id="overview">
+                  <AboutOverview
+                    evidence={evidence}
+                    methodology={methodology}
+                    scoped={listed.scoped}
+                  />
+                </TabPanel>
+              )}
+              <TabPanel id="measures">
+                <div className="altertable-about-measure-list">
+                  {listed.measures.map((item) => (
+                    <MeasureDetail key={item.label} measure={item} compact={!listed.scoped} />
+                  ))}
+                </div>
+              </TabPanel>
+              <TabPanel id="queries">
+                <QueryList queries={queries} names={measureQueries(subject)} expanded />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </div>
+      </Sheet>
+    </>
+  );
+}

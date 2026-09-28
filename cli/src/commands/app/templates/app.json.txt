@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "title": "{{APP_TITLE}}",
+  "scope": { "organization": {{APP_ORG_JSON}}, "environment": {{APP_ENV_JSON}} },
+  "appearance": {
+    "mode": "light",
+    "baseColor": "neutral",
+    "accentColor": "#405d47",
+    "density": "comfortable",
+    "cornerRadius": "medium",
+    "elevation": "subtle",
+    "typography": { "body": "system", "heading": "system" }
+  },
+  "operations": {
+    "tables": {}
+  }
+}

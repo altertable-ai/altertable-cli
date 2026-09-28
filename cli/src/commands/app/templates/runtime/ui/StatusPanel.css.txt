@@ -1,0 +1,37 @@
+.altertable-status-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--at-space-lg, 24px);
+  padding: var(--at-space-lg, 24px);
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-surface, 12px);
+  background: var(--at-surface, #fff);
+  color: var(--at-muted, #687078);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.altertable-status-panel[data-status="error"] {
+  border-color: color-mix(in srgb, var(--at-danger, #b42318) 35%, var(--at-border, #e3e6e8));
+}
+.altertable-status-panel strong {
+  color: var(--at-text, #202124);
+  font-weight: 650;
+}
+.altertable-status-panel p {
+  margin: 4px 0 0;
+}
+.altertable-status-panel small {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.altertable-status-action {
+  flex: none;
+}
+@media (max-width: 600px) {
+  .altertable-status-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

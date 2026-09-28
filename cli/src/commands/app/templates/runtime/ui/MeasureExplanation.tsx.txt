@@ -1,0 +1,48 @@
+import { AppIcon } from "./icons.ts";
+import type { ComponentPropsWithRef, ReactNode } from "react";
+import type { DisclosedQuery } from "../contract.ts";
+import type { Methodology, MeasureDefinition } from "./methodology.ts";
+import { AboutData } from "./AboutData.tsx";
+import "./MeasureExplanation.css";
+
+export type MeasureExplanationProps = {
+  measure: MeasureDefinition;
+  title?: ReactNode;
+  description?: ReactNode;
+  visual?: ReactNode;
+  queries?: DisclosedQuery[];
+  methodology?: Methodology;
+} & Omit<ComponentPropsWithRef<"button">, "children" | "title">;
+
+/** Opens the inspect sheet for one measure. Prefer a card's evidence slot
+ * when the surface already has a title, description, and visual. */
+export function MeasureExplanation({
+  measure,
+  title,
+  description,
+  visual,
+  queries,
+  methodology,
+  className,
+  ...props
+}: MeasureExplanationProps) {
+  return (
+    <AboutData
+      {...props}
+      shortcut={false}
+      iconOnly
+      variant="ghost"
+      title={title ?? measure.label}
+      description={description}
+      visual={visual}
+      measure={measure}
+      methodology={methodology}
+      queries={queries}
+      className={className ?? "altertable-measure-trigger"}
+      tooltip="Explore this measure"
+      aria-label={props["aria-label"] ?? `Explore ${measure.label}`}
+    >
+      <AppIcon name="inspect" size={15} />
+    </AboutData>
+  );
+}

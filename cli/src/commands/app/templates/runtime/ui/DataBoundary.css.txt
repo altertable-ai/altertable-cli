@@ -1,0 +1,59 @@
+.altertable-data-boundary {
+  min-width: 0;
+}
+.altertable-data-boundary-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-control, 8px);
+  color: var(--at-muted, #687078);
+  background: var(--at-subtle, #f6f7f7);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.altertable-data-boundary-notice[data-state="stale-error"] {
+  border-color: color-mix(in srgb, var(--at-danger, #b42318) 30%, var(--at-border, #e3e6e8));
+}
+.altertable-data-boundary-notice[data-state="stale-error"] > svg {
+  flex: none;
+  color: var(--at-danger, #b42318);
+}
+.altertable-data-boundary-message {
+  flex: 1 1 240px;
+}
+.altertable-data-boundary-action {
+  margin-left: auto;
+}
+.altertable-data-boundary-action button {
+  min-height: 32px;
+}
+.altertable-data-boundary-spinner {
+  flex: none;
+  animation: altertable-data-boundary-spin 1s linear infinite;
+}
+@keyframes altertable-data-boundary-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.altertable-data-boundary-content {
+  transition: opacity 180ms ease;
+}
+.altertable-data-boundary-content[data-updating="true"] {
+  opacity: 0.58;
+  transition: opacity 180ms ease 450ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-data-boundary-content,
+  .altertable-data-boundary-content[data-updating="true"] {
+    transition: none;
+  }
+  .altertable-data-boundary-spinner {
+    animation: none;
+  }
+}

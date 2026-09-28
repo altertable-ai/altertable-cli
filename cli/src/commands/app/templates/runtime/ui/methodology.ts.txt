@@ -1,0 +1,28 @@
+/**
+ * App-authored definition of one displayed measure. `queryNames` connects it to named
+ * `lakehouse.queryAll` calls; the runtime shows matching SQL only when disclosure is allowed.
+ */
+export type MeasureDefinition = {
+  label: string;
+  definition: string;
+  unit?: string;
+  sources?: string[];
+  population?: string;
+  queryNames?: string[];
+};
+
+/**
+ * Stable, app-authored explanation of how to read a view: source, population, grain,
+ * timezone, measures, and limitations. Current counts and conclusions belong in the
+ * operation result or app analysis, not here. The runtime only renders this shape.
+ */
+export type Methodology = {
+  subject: string;
+  summary: string;
+  sources: string[];
+  grain?: string;
+  population?: string;
+  timezone?: string;
+  measures?: Record<string, MeasureDefinition>;
+  limitations?: string[];
+};

@@ -1,0 +1,24 @@
+.altertable-skeleton {
+  display: block;
+  border-radius: var(--at-radius-control, 7px);
+  background: var(--at-subtle, #f6f7f7);
+  opacity: 0;
+  animation:
+    altertable-skeleton-in 200ms ease 200ms forwards,
+    altertable-skeleton-pulse 1.4s ease-in-out 400ms infinite alternate;
+}
+@keyframes altertable-skeleton-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes altertable-skeleton-pulse {
+  to {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-skeleton {
+    animation: altertable-skeleton-in 1ms 200ms forwards;
+  }
+}

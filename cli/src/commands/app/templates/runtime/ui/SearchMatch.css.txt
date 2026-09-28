@@ -1,0 +1,7 @@
+.altertable-search-match mark {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  padding: 0 1px;
+}

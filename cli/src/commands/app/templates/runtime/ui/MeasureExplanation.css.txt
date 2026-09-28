@@ -1,0 +1,48 @@
+.altertable-measure-trigger {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border: 0;
+  border-radius: var(--at-radius-control, 6px);
+  background: transparent;
+  color: var(--at-muted, #687078);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.altertable-measure-trigger:hover,
+.altertable-measure-trigger[data-open="true"] {
+  background: var(--at-subtle, #f6f7f7);
+  color: var(--at-text, #202124);
+}
+.altertable-measure-trigger:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(
+    .altertable-metric-card .altertable-metric-help,
+    .altertable-data-panel .altertable-data-panel-help
+  ) {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  :is(
+    .altertable-metric-card:hover .altertable-metric-help,
+    .altertable-metric-card:focus-within .altertable-metric-help,
+    .altertable-data-panel:hover .altertable-data-panel-help,
+    .altertable-data-panel:focus-within .altertable-data-panel-help,
+    .altertable-metric-help:has([data-open="true"]),
+    .altertable-data-panel-help:has([data-open="true"])
+  ) {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-measure-trigger,
+  .altertable-metric-help,
+  .altertable-data-panel-help {
+    transition: none;
+  }
+}

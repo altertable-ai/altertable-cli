@@ -1,0 +1,13 @@
+import {
+  defineAppVariables,
+  textVariable,
+  type AppVariableValues,
+} from "@altertable/data-app-runtime/ui";
+
+/** App-owned state. Add query-relevant variables here and project them into operation inputs. */
+export const variables = defineAppVariables({
+  tableSearch: textVariable({ key: "tableSearch" }),
+});
+
+/** This starter operation has no inputs; table search filters its bounded result locally. */
+export const tableInput = (_values: AppVariableValues<typeof variables>) => ({});

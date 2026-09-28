@@ -1,0 +1,52 @@
+import { defineOperation } from "@altertable/data-app-runtime/contract";
+
+function noInput(value: unknown) {
+  if (typeof value !== "object" || value === null || Object.keys(value).length !== 0) {
+    throw new Error("This operation takes no inputs.");
+  }
+  return {};
+}
+
+type Table = { catalog: string; schema: string; name: string };
+
+/**
+ * App-owned query and boundary schemas. The runtime calls `input` on unknown browser
+ * data and `output` on the result before sending it back. This small example uses
+ * parsers written here; larger apps can use Zod (`schema.parse(value)`) or another
+ * schema library without changing the runtime. Validate meaning as well as shape:
+ * a valid number does not establish that a count measures the intended population.
+ * Named queries let app-authored measure definitions point to executed SQL.
+ */
+export const operations = {
+  tables: defineOperation({
+    input: noInput,
+    output(value: unknown): Table[] {
+      if (
+        !Array.isArray(value) ||
+        !value.every(
+          (item) =>
+            typeof item.catalog === "string" &&
+            typeof item.schema === "string" &&
+            typeof item.name === "string",
+        )
+      )
+        throw new Error("Invalid table result.");
+      return value as Table[];
+    },
+    policy: { maxQueryRows: 20, maxDurationMs: 15_000, exposeSql: true },
+    async run({ lakehouse, signal }) {
+      const result = await lakehouse.queryAll(
+        `SELECT table_catalog, table_schema, table_name
+FROM information_schema.tables
+WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+ORDER BY table_catalog, table_schema, table_name LIMIT 20`,
+        { limit: 20, signal, name: "visible-tables" },
+      );
+      return result.rows.map((row) => ({
+        catalog: String(row[0]),
+        schema: String(row[1]),
+        name: String(row[2]),
+      }));
+    },
+  }),
+};

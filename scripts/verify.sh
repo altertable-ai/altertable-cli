@@ -50,6 +50,7 @@ run_step "typecheck" bun run typecheck
 run_step "top-level test typecheck" ./node_modules/.bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
+run_step "app template format:check" bun run format:templates:check
 run_step "generated artifact drift check" bun run generate:check
 run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip

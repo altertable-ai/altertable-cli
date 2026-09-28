@@ -1,0 +1,48 @@
+.altertable-refresh-control {
+  position: relative;
+  display: inline-flex;
+}
+.altertable-refresh-loading {
+  display: none;
+}
+.altertable-refresh-cancel {
+  display: none;
+}
+.altertable-refresh-control[data-refreshing] .altertable-refresh-idle {
+  display: none;
+}
+.altertable-refresh-control[data-refreshing] .altertable-refresh-loading {
+  display: block;
+  animation: altertable-refresh-spin 900ms linear infinite;
+}
+.altertable-refresh-control[data-refreshing]
+  .altertable-button:has(.altertable-refresh-cancel):hover
+  .altertable-refresh-loading {
+  display: none;
+}
+.altertable-refresh-control[data-refreshing] .altertable-button:hover .altertable-refresh-cancel {
+  display: block;
+}
+.altertable-refresh-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes altertable-refresh-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-refresh-control[data-refreshing] .altertable-refresh-loading {
+    animation: altertable-refresh-pulse 1.2s ease-in-out infinite alternate;
+  }
+}
+@keyframes altertable-refresh-pulse {
+  to {
+    opacity: 0.35;
+  }
+}

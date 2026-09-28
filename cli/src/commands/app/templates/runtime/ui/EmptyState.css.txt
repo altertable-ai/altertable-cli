@@ -1,0 +1,27 @@
+.altertable-empty-state {
+  display: flex;
+  min-height: 176px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 24px;
+  color: var(--at-muted, #687078);
+  text-align: center;
+}
+.altertable-empty-state strong {
+  color: var(--at-text, #202124);
+  font-size: 13px;
+  font-weight: 600;
+}
+.altertable-empty-state p {
+  max-width: 40ch;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+}
+.altertable-empty-state[data-variant="table"] {
+  min-height: 112px;
+  padding: 18px;
+}

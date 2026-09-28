@@ -409,6 +409,162 @@ altertable doctor --offline
 altertable --json doctor
 ```
 
+### `altertable app`
+
+Create, run, check, and build a data app.
+
+**Usage**
+
+```bash
+altertable app create|dev|build|check|upgrade
+```
+
+**Subcommands**
+
+- `create` — Create a minimal data app project.
+- `dev` — Run a data app with lakehouse access.
+- `build` — Typecheck and build a data app without Altertable credentials.
+- `check` — Validate a data app's format, lint, types, contract, build, and client credential boundary.
+- `upgrade` — Update an unmodified data app runtime to the CLI's current version.
+
+**Examples**
+
+```bash
+altertable app create my-app
+altertable app dev
+altertable app check
+altertable app build
+```
+
+#### `altertable app create`
+
+Create a minimal data app project.
+
+**Usage**
+
+```bash
+altertable app create [options] <NAME>
+```
+
+**Arguments**
+
+| Argument | Description |
+| --- | --- |
+| `<NAME>` | App name in kebab-case Required. |
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | Destination directory (default: ./<name>). |
+| `--from-profile` | Require organization and environment in the active profile. |
+| `--without-profile` | Create an offline scaffold with scope placeholders. |
+
+**Examples**
+
+```bash
+altertable app create product-pulse
+altertable app create product-pulse --dir ./apps/product-pulse
+altertable --profile production app create product-pulse
+```
+
+#### `altertable app dev`
+
+Run a data app with lakehouse access.
+
+**Usage**
+
+```bash
+altertable app dev [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+| `--port <PORT>` | Local dev server port (1–65535; default: app setting). |
+| `--watch-runtime` | Upgrade generated runtime on template changes and restart preview. |
+
+**Examples**
+
+```bash
+altertable app dev
+altertable app dev --port 3022
+altertable app dev --watch-runtime
+altertable --profile staging app dev --dir ./my-app
+```
+
+#### `altertable app build`
+
+Typecheck and build a data app without Altertable credentials.
+
+**Usage**
+
+```bash
+altertable app build [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+
+**Examples**
+
+```bash
+altertable app build
+altertable app build --dir ./my-app
+```
+
+#### `altertable app check`
+
+Validate a data app's format, lint, types, contract, build, and client credential boundary.
+
+**Usage**
+
+```bash
+altertable app check [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+| `--lakehouse` | Run each app.json operation against the selected lakehouse. |
+
+**Examples**
+
+```bash
+altertable app check
+altertable app check --lakehouse
+```
+
+#### `altertable app upgrade`
+
+Update an unmodified data app runtime to the CLI's current version.
+
+**Usage**
+
+```bash
+altertable app upgrade [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+
+**Examples**
+
+```bash
+altertable app upgrade
+altertable app upgrade --dir ./my-app
+```
+
 ### `altertable update`
 
 Update Altertable CLI to the latest release.

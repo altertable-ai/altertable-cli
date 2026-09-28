@@ -13,6 +13,7 @@ import { apiCommand } from "@/commands/api/index.ts";
 import { createCompletionCommand } from "@/commands/completion/index.ts";
 import { updateCommand } from "@/commands/update/index.ts";
 import { doctorCommand } from "@/commands/doctor/index.ts";
+import { appCommand } from "@/commands/app/index.ts";
 
 export function buildTopLevelCommands(getMainCommand: () => Command): Record<string, Command> {
   return {
@@ -28,6 +29,7 @@ export function buildTopLevelCommands(getMainCommand: () => Command): Record<str
     upsert: upsertCommand,
     api: apiCommand,
     doctor: doctorCommand,
+    app: appCommand,
     update: updateCommand,
     completion: createCompletionCommand(getMainCommand),
   };

@@ -26,6 +26,8 @@
     "lint:fix": "oxlint --type-aware --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "format:templates": "bun run scripts/format-app-templates.ts",
+    "format:templates:check": "bun run scripts/format-app-templates.ts --check",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "generate": "bun run scripts/generate-openapi-types.ts && bun run scripts/generate-openapi-index.ts && bun run scripts/generate-command-reference.ts",
