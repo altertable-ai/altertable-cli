@@ -33,6 +33,7 @@ export function DataViewToast<Data, Input>({
     return null;
   const failed = view.kind === "stale-error";
   const showingUpdate = view.kind === "updating" && showUpdating;
+  const detail = view.kind === "stale-error" || view.kind === "updating" ? view.message : undefined;
   const icon = failed ? "error" : showingUpdate ? "loading" : "live";
   const state = failed ? "stale-error" : showingUpdate ? "updating" : "notice";
   return (
@@ -47,13 +48,7 @@ export function DataViewToast<Data, Input>({
           size={16}
           className={showingUpdate ? "altertable-data-view-toast-spinner" : undefined}
         />
-        <span>
-          {failed
-            ? (message ?? "Couldn’t refresh data. Showing the last available result.")
-            : showingUpdate
-              ? (message ?? "Checking for updates. Showing the last result.")
-              : notice}
-        </span>
+        <span>{failed ? (message ?? detail) : showingUpdate ? (message ?? detail) : notice}</span>
         {failed && onRetry && <Button onClick={onRetry}>Try again</Button>}
       </div>
     </div>

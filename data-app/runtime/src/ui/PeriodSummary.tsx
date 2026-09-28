@@ -1,11 +1,9 @@
 import { classNames } from "./classNames.ts";
 import { AppIcon } from "./icons.ts";
+import type { ReportingPeriod } from "../contract.ts";
 import "./PeriodSummary.css";
 
-/** A rolling window has an exact endpoint; a calendar range names whole dates in a time zone. */
-export type ReportingPeriod =
-  | { kind: "rolling"; amount: number; unit: "hour" | "day"; end: string }
-  | { kind: "calendar"; start: string; end: string; timeZone: string };
+export type { ReportingPeriod } from "../contract.ts";
 
 export type PeriodComparison = { kind: "previous" } | { kind: "period"; period: ReportingPeriod };
 
@@ -32,7 +30,7 @@ function comparisonLabel(period: ReportingPeriod, comparison: PeriodComparison):
   return period.kind === "rolling" ? `Previous ${duration(period)}` : "Previous period";
 }
 
-function detail(period: ReportingPeriod): string {
+export function reportingPeriodText(period: ReportingPeriod): string {
   if (period.kind === "calendar") return `${label(period)} in ${period.timeZone}`;
   const end = new Date(period.end);
   if (Number.isNaN(end.getTime())) return label(period);
@@ -46,12 +44,12 @@ function detail(period: ReportingPeriod): string {
 export function PeriodSummary({ period, comparison, className }: PeriodSummaryProps) {
   const comparisonText = comparison ? comparisonLabel(period, comparison) : null;
   const comparisonDetail =
-    comparison?.kind === "period" ? detail(comparison.period) : comparisonText;
+    comparison?.kind === "period" ? reportingPeriodText(comparison.period) : comparisonText;
   return (
     <div
       className={classNames("altertable-period-summary", className)}
       role="group"
-      aria-label={`Reporting period: ${detail(period)}${comparisonDetail ? `, compared with ${comparisonDetail}` : ""}`}
+      aria-label={`Reporting period: ${reportingPeriodText(period)}${comparisonDetail ? `, compared with ${comparisonDetail}` : ""}`}
     >
       <AppIcon name={period.kind === "rolling" ? "clock" : "calendar"} size={16} />
       <span className="altertable-period-summary-current">{label(period)}</span>

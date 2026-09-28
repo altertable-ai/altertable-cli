@@ -19,7 +19,7 @@ Start with the [authoring router](AGENTS.md) for data and view changes, or the [
 
 ## Check and upgrade
 
-Run `altertable app check` to check the app locally. Use `altertable app check --lakehouse` to also execute its declared operations against the selected profile.
+Run `altertable app check` to check the app locally. Use `altertable app check --lakehouse` to execute each operation's declared `checks` against the selected profile.
 
 After updating the CLI, run `altertable app upgrade` and check again.
 

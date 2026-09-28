@@ -1,3 +1,5 @@
+import { parseDate, today } from "@internationalized/date";
+
 export type QueryResult = {
   columns: { name: string; type?: string }[];
   rows: unknown[][];
@@ -23,7 +25,60 @@ export function parseTrue(value: unknown): true {
 
 export type DateRangeInput = { start: string; end: string };
 
-/** Validate complete UTC calendar dates and a bounded inclusive range on the server. */
+export type ReportingPeriod =
+  | { kind: "rolling"; amount: number; unit: "hour" | "day"; end: string }
+  | { kind: "calendar"; start: string; end: string; timeZone: string };
+
+export type DateRangeContractOptions = {
+  minDate?: string;
+  maxDate?: string | (() => string);
+  maxRangeDays: number;
+  timeZone: string;
+  completeDays?: boolean;
+};
+
+/** One source policy for the server parser, URL variable, and displayed reporting period. */
+export function defineDateRangeContract(options: DateRangeContractOptions) {
+  if (!Number.isInteger(options.maxRangeDays) || options.maxRangeDays < 1)
+    throw new Error("Date range needs a positive maxRangeDays.");
+  if (options.minDate) parseDate(options.minDate);
+  if (typeof options.maxDate === "string") parseDate(options.maxDate);
+  today(options.timeZone);
+  function bounds() {
+    const latest = today(options.timeZone).subtract({
+      days: options.completeDays === false ? 0 : 1,
+    });
+    const sourceMax = typeof options.maxDate === "function" ? options.maxDate() : options.maxDate;
+    const maxDate =
+      sourceMax && parseDate(sourceMax).compare(latest) < 0
+        ? parseDate(sourceMax).toString()
+        : latest.toString();
+    return {
+      minDate: options.minDate,
+      maxDate,
+      maxRangeDays: options.maxRangeDays,
+      timeZone: options.timeZone,
+    };
+  }
+  const period = ({ start, end }: DateRangeInput): ReportingPeriod => ({
+    kind: "calendar",
+    start,
+    end,
+    timeZone: options.timeZone,
+  });
+  const describeInput = ({ start, end }: DateRangeInput) => `${start}–${end} ${options.timeZone}`;
+  return {
+    bounds,
+    parse: (value: unknown) => parseDateRangeInput(value, bounds()),
+    period,
+    describeInput,
+    view: { period, describeInput },
+  };
+}
+
+export type DateRangeContract = ReturnType<typeof defineDateRangeContract>;
+
+/** Validate calendar dates and a bounded inclusive range on the server. */
 export function parseDateRangeInput(
   value: unknown,
   { minDate, maxDate, maxRangeDays }: { minDate?: string; maxDate?: string; maxRangeDays: number },
@@ -95,6 +150,13 @@ export function rowsAsRecords(
 /** One named statement an operation ran. Returned only when SQL disclosure is allowed. */
 export type DisclosedQuery = { name: string; statement: string; queryId?: string };
 
+export function defineQueryNames<const Names extends Record<string, string>>(names: Names): Names {
+  const values = Object.values(names);
+  if (values.some((name) => !name.trim()) || new Set(values).size !== values.length)
+    throw new Error("Query names must be nonempty and unique.");
+  return names;
+}
+
 export class DataSourceError extends Error {
   queryName?: string;
 
@@ -130,6 +192,7 @@ export type DataOperation<Input, Output> = {
   input: (value: unknown) => Input;
   output: (value: unknown) => Output;
   run: (context: OperationContext, input: Input) => Promise<Output>;
+  checks: readonly Input[];
   policy: {
     maxQueryRows: number;
     maxDurationMs: number;
@@ -140,6 +203,8 @@ export type DataOperation<Input, Output> = {
 
 export function defineOperation<Input, Output>(operation: DataOperation<Input, Output>) {
   if (
+    !Array.isArray(operation.checks) ||
+    !operation.checks.length ||
     !Number.isInteger(operation.policy.maxQueryRows) ||
     operation.policy.maxQueryRows < 1 ||
     !Number.isInteger(operation.policy.maxDurationMs) ||
@@ -148,8 +213,9 @@ export function defineOperation<Input, Output>(operation: DataOperation<Input, O
       (!Number.isInteger(operation.policy.maxResponseBytes) ||
         operation.policy.maxResponseBytes < 1))
   ) {
-    throw new Error("Each data operation needs positive row and duration limits.");
+    throw new Error("Each data operation needs check inputs and positive row and duration limits.");
   }
+  for (const input of operation.checks) operation.input(input);
   return operation;
 }
 
@@ -158,6 +224,7 @@ export function connectionCheck(): DataOperation<Record<string, never>, true> {
   return defineOperation({
     input: parseEmptyInput,
     output: parseTrue,
+    checks: [{}],
     policy: { maxQueryRows: 1, maxDurationMs: 15_000, exposeSql: true },
     async run({ lakehouse, signal }): Promise<true> {
       await lakehouse.queryAll("SELECT 1 AS connection_check", {
@@ -176,6 +243,7 @@ export type DataOperations = Record<
     input: (value: unknown) => unknown;
     output: (value: unknown) => unknown;
     run: (context: OperationContext, input: never) => Promise<unknown>;
+    checks: readonly unknown[];
     policy: DataOperation<never, unknown>["policy"];
   }
 >;

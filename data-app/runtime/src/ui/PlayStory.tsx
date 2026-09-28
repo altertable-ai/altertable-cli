@@ -23,7 +23,7 @@ import "./PlayStory.css";
 
 export type StoryStep = {
   id: string;
-  empty: AboutEmpty;
+  empty?: AboutEmpty;
   headline: string;
   context?: string;
   glossaryIds?: string[];
@@ -36,6 +36,7 @@ export type StoryStep = {
 export type PlayStoryProps = {
   title: string;
   steps: StoryStep[];
+  empty: AboutEmpty;
   scope?: ReactNode;
   dataContext: DataContext;
   theme?: ThemeController;
@@ -62,6 +63,7 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
 export function PlayStory({
   title,
   steps,
+  empty,
   scope,
   dataContext,
   theme,
@@ -241,14 +243,14 @@ export function PlayStory({
                   shortcut={false}
                   key={step.id}
                   id={step.id}
-                  empty={step.empty}
+                  empty={step.empty ?? empty}
                   title={step.headline}
                   description={step.context}
                   visual={step.visual}
                   visualKind={step.visualKind}
                   dataContext={dataContext}
                   glossaryIds={step.glossaryIds}
-                  queries={step.queries}
+                  queries={step.queries ?? []}
                   queryNames={step.queryNames}
                   tooltip="Explore this step"
                   variant="outline"

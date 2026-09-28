@@ -25,12 +25,7 @@ async function check() {
     throw new Error("src/operations.ts must export operations.");
   }
   const names = Object.keys(operations);
-  if (
-    names.length !== Object.keys(manifest.operations).length ||
-    names.some((name) => !Object.hasOwn(manifest.operations, name))
-  ) {
-    throw new Error("app.json operations must match src/operations.ts.");
-  }
+  if (!names.length) throw new Error("src/operations.ts needs at least one operation.");
   for (const name of names) {
     const operation = operations[name];
     if (
@@ -39,6 +34,8 @@ async function check() {
       typeof operation.input !== "function" ||
       typeof operation.output !== "function" ||
       typeof operation.run !== "function" ||
+      !Array.isArray(operation.checks) ||
+      !operation.checks.length ||
       !Number.isInteger(operation.policy?.maxQueryRows) ||
       operation.policy.maxQueryRows < 1 ||
       !Number.isInteger(operation.policy.maxDurationMs) ||
@@ -47,12 +44,14 @@ async function check() {
         (!Number.isInteger(operation.policy.maxResponseBytes) ||
           operation.policy.maxResponseBytes < 1))
     ) {
-      throw new Error(`Operation "${name}" needs valid inputs, output, and limits.`);
+      throw new Error(`Operation "${name}" needs input and output parsers, check inputs, and limits.`);
     }
-    try {
-      operation.input(manifest.operations[name]);
-    } catch {
-      throw new Error(`app.json has invalid default inputs for "${name}".`);
+    for (const input of operation.checks) {
+      try {
+        operation.input(input);
+      } catch {
+        throw new Error(`Operation "${name}" has invalid check inputs.`);
+      }
     }
   }
 
@@ -63,16 +62,18 @@ async function check() {
     lakehouse: localLakehouse(process.env),
     canDiscloseSql: true,
   }));
-  for (const [name, input] of Object.entries(manifest.operations)) {
-    const response = await handle(
-      new Request(`http://localhost/api/data/${name}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(input),
-      }),
-    );
-    if (!response.ok)
-      throw new Error(`Live check failed for operation "${name}" (${response.status}).`);
+  for (const [name, operation] of Object.entries(operations)) {
+    for (const input of operation.checks) {
+      const response = await handle(
+        new Request(`http://localhost/api/data/${name}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        }),
+      );
+      if (!response.ok)
+        throw new Error(`Live check failed for operation "${name}" (${response.status}).`);
+    }
   }
 }
 

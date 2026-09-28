@@ -5,7 +5,7 @@ import "./DataBoundary.css";
 
 export type DataView<T, Input = unknown> =
   | { kind: "loading" }
-  | { kind: "empty" }
+  | { kind: "empty"; input: Input }
   | { kind: "error"; error: Error }
   | { kind: "ready"; data: T; input: Input }
   | { kind: "updating"; data: T; requestedInput: Input; displayedInput: Input; message: string }
@@ -65,7 +65,7 @@ export function resolveDataView<Data, Input>({
         : `Showing ${describe(shown.input)} while loading ${describe(requestedInput)}…`,
     };
   return isEmpty(shown.data)
-    ? { kind: "empty" }
+    ? { kind: "empty", input: shown.input }
     : { kind: "ready", data: shown.data, input: shown.input };
 }
 
@@ -77,7 +77,7 @@ export type DataBoundaryProps<T, Input = unknown> = {
   staleError?: (error: Error) => ReactNode;
   notice?: "inline" | "none";
   dimOnUpdate?: boolean;
-  children: (data: T) => ReactNode;
+  children: (data: T, displayedInput: Input) => ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /** Render one request state at a time. Prior content remains readable during an update.
@@ -127,7 +127,7 @@ export function DataBoundary<T, Input>({
         data-updating={(updating && dimOnUpdate) || undefined}
         data-stale-error={(hasStaleError && dimOnUpdate) || undefined}
       >
-        {children(view.data)}
+        {children(view.data, view.kind === "ready" ? view.input : view.displayedInput)}
       </div>
     </div>
   );

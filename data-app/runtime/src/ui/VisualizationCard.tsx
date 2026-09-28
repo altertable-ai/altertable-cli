@@ -2,12 +2,12 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import type { CardEvidence } from "./CardEvidence.ts";
 import { DataPanel, type DataPanelProps } from "./DataPanel.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
+import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import "./VisualizationCard.css";
 
-export type VisualizationCardProps = {
+type VisualizationCardBaseProps = {
   title: ReactNode;
   description?: ReactNode;
-  visual: ReactNode;
   insight?: ReactNode;
   action?: ReactNode;
   evidence?: CardEvidence;
@@ -17,10 +17,14 @@ export type VisualizationCardProps = {
   empty?: Pick<EmptyStateProps, "title" | "description">;
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
+export type VisualizationCardProps = VisualizationCardBaseProps &
+  ({ loading: true; visual?: never } | { loading?: false; visual: ReactNode });
+
 export function VisualizationCard({
   title,
   description,
   visual,
+  loading = false,
   insight,
   action,
   evidence,
@@ -28,6 +32,7 @@ export function VisualizationCard({
   empty,
   ...props
 }: VisualizationCardProps) {
+  if (loading) return <ContentSkeleton variant="panel" className={props.className} />;
   return (
     <DataPanel
       {...props}

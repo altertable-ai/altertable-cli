@@ -1,5 +1,20 @@
 type CommonOptions = { locale?: string; missing?: string };
 
+export type MetricFormat =
+  | { kind: "count"; compact?: boolean; locale?: string }
+  | { kind: "ratio"; maximumFractionDigits?: number; locale?: string }
+  | { kind: "currency"; currency: string; locale?: string };
+
+export function formatMetric(value: number, format: MetricFormat): string {
+  if (format.kind === "count") return formatCount(value, format);
+  if (format.kind === "ratio") return formatPercent(value, format);
+  return formatNumber(value, {
+    style: "currency",
+    currency: format.currency,
+    locale: format.locale,
+  });
+}
+
 /** Missing and non-finite values use the `missing` label; negative zero renders as zero. */
 export function formatNumber(
   value: number | null | undefined,

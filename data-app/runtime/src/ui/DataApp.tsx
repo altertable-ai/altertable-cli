@@ -13,50 +13,72 @@ import type { PlayStoryProps } from "./PlayStory.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
 import { DataViewToast } from "./DataViewToast.tsx";
+import { InspectionContext } from "./InspectionContext.tsx";
+import { DataSection } from "./DataSection.tsx";
+import type { EmptyStateProps } from "./EmptyState.tsx";
 
-export type DataAppProps = {
+type DataAppBaseProps = {
   config: DataAppConfig;
   dataContext: DataContext;
   aboutEmpty: AboutEmpty;
-  children: ReactNode;
   description?: ReactNode;
   /** Display names only; config.scope remains the connection identity. */
   scopeLabels?: { organization?: string; environment?: string };
-  /** One `useDataView` result supplies query evidence and refresh controls. */
-  request?: {
-    view: DataView<unknown, unknown>;
-    queries?: DisclosedQuery[];
-    refresh?: AppToolbarProps["refresh"];
-  };
-  queries?: DisclosedQuery[];
-  refresh?: AppToolbarProps["refresh"];
   variables?: ReactNode;
-  story?: Omit<PlayStoryProps, "title" | "dataContext"> &
-    Partial<Pick<PlayStoryProps, "title" | "dataContext">>;
+  story?: Omit<PlayStoryProps, "title" | "dataContext" | "empty"> &
+    Partial<Pick<PlayStoryProps, "title" | "dataContext" | "empty">>;
   toolbarActions?: ReactNode;
   footerActions?: ReactNode;
   layoutProps?: Omit<ComponentProps<typeof AppLayout>, "children" | "footerActions">;
 };
 
-/** Standard page identity, inspect sheet, controls, and viewer theme. Pass a
- * `useDataView` result as `request`, or supply queries and refresh separately. A story only
- * needs authored steps; title, scope, context, and theme default to this page. */
-export function DataApp({
-  config,
-  dataContext,
-  aboutEmpty,
-  children,
-  description,
-  scopeLabels,
-  request,
-  queries,
-  refresh,
-  variables,
-  story,
-  toolbarActions,
-  footerActions,
-  layoutProps,
-}: DataAppProps) {
+export type DataAppRequest<Data, Input> = {
+  view: DataView<Data, Input>;
+  refetch: () => unknown;
+  queries?: DisclosedQuery[];
+  refresh?: AppToolbarProps["refresh"];
+};
+
+export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
+  (
+    | {
+        request: DataAppRequest<Data, Input>;
+        children: (data: Data, displayedInput: Input) => ReactNode;
+        loading?: ReactNode;
+        empty: Pick<EmptyStateProps, "title" | "description">;
+        label?: string;
+        queries?: never;
+        refresh?: never;
+      }
+    | {
+        request?: never;
+        children: ReactNode;
+        queries?: DisclosedQuery[];
+        refresh?: AppToolbarProps["refresh"];
+        loading?: never;
+        empty?: never;
+        label?: never;
+      }
+  );
+
+/** The primary request owns the page's result, period, refresh status, and inspection context.
+ * Without a request, the shell accepts authored children for setup or static views. */
+export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
+  const {
+    config,
+    dataContext,
+    aboutEmpty,
+    description,
+    scopeLabels,
+    request,
+    queries,
+    refresh,
+    variables,
+    story,
+    toolbarActions,
+    footerActions,
+    layoutProps,
+  } = props;
   const [theme] = useState(() => createThemeController(config.appearance));
   const scope = (
     <AppScope
@@ -65,53 +87,60 @@ export function DataApp({
     />
   );
   return (
-    <AppLayout {...layoutProps} footerActions={footerActions ?? <ThemeToggle theme={theme} />}>
-      <AppHeader
-        scope={scope}
-        title={config.title}
-        description={description}
-        toolbar={
-          <AppToolbar
-            requestState={request?.view.kind}
-            refresh={refresh ?? request?.refresh}
-            story={
-              story && {
-                ...story,
-                title: story.title ?? config.title,
-                scope: story.scope ?? scope,
-                dataContext: story.dataContext ?? dataContext,
-                theme: story.theme ?? theme,
+    <InspectionContext
+      value={{ dataContext, empty: aboutEmpty, queries: queries ?? request?.queries }}
+    >
+      <AppLayout {...layoutProps} footerActions={footerActions ?? <ThemeToggle theme={theme} />}>
+        <AppHeader
+          scope={scope}
+          title={config.title}
+          description={description}
+          toolbar={
+            <AppToolbar
+              requestState={request?.view.kind}
+              refresh={refresh ?? request?.refresh}
+              story={
+                story && {
+                  ...story,
+                  title: story.title ?? config.title,
+                  scope: story.scope ?? scope,
+                  dataContext: story.dataContext ?? dataContext,
+                  empty: story.empty ?? aboutEmpty,
+                  theme: story.theme ?? theme,
+                }
               }
-            }
-            aboutData={
-              <AboutData
-                id="data"
-                shortcut
-                dataContext={dataContext}
-                empty={aboutEmpty}
-                queries={queries ?? request?.queries}
-                iconOnly
-                variant="elevated"
-              />
-            }
-          >
-            {toolbarActions}
-          </AppToolbar>
-        }
-      />
-      {variables && <VariableBar>{variables}</VariableBar>}
-      {children}
-      {request && (
-        <DataViewToast
-          view={request.view}
-          message={
-            request.view.kind === "updating" || request.view.kind === "stale-error"
-              ? request.view.message
-              : undefined
+              aboutData={
+                <AboutData
+                  id="data"
+                  shortcut
+                  dataContext={dataContext}
+                  empty={aboutEmpty}
+                  queries={queries ?? request?.queries}
+                  iconOnly
+                  variant="elevated"
+                />
+              }
+            >
+              {toolbarActions}
+            </AppToolbar>
           }
-          onRetry={request.refresh?.onRefresh}
         />
-      )}
-    </AppLayout>
+        {variables && <VariableBar>{variables}</VariableBar>}
+        {request ? (
+          <DataSection
+            result={request}
+            notice="none"
+            loading={props.loading}
+            empty={props.empty}
+            label={props.label}
+          >
+            {(data, displayedInput) => props.children(data, displayedInput)}
+          </DataSection>
+        ) : (
+          props.children
+        )}
+        {request && <DataViewToast view={request.view} onRetry={() => void request.refetch()} />}
+      </AppLayout>
+    </InspectionContext>
   );
 }

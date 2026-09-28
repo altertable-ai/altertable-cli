@@ -4,7 +4,6 @@ import { createDataClient } from "@altertable/data-app-runtime/client";
 import { connectionCheck } from "@altertable/data-app-runtime/contract";
 import {
   DataApp,
-  DataSection,
   ContentSkeleton,
   DateRangePicker,
   Grid,
@@ -39,7 +38,7 @@ function Fixture() {
     {},
     {
       isEmpty: () => false,
-      describeInput: () => "the connection check",
+      period: () => ({ kind: "calendar", start: "2026-09-01", end: "2026-09-30", timeZone: "UTC" }),
     },
   );
   return (
@@ -49,12 +48,22 @@ function Fixture() {
       dataContext={dataContext}
       aboutEmpty={empty}
       request={connection}
+      empty={{ title: "No orders in this period" }}
+      loading={
+        <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
+          <GridItem span={2}>
+            <ContentSkeleton variant="ranking" />
+          </GridItem>
+          <GridItem>
+            <ContentSkeleton variant="ranking" />
+          </GridItem>
+        </Grid>
+      }
       variables={<DateRangePicker value={null} onChange={() => {}} label="Date range" />}
       story={{
         steps: [
           {
             id: "orders",
-            empty,
             headline: "Orders increased",
             visual: <p>120 orders</p>,
             glossaryIds: ["orders"],
@@ -64,12 +73,11 @@ function Fixture() {
             headline: "More returning customers",
             visual: <p>80 customers</p>,
             glossaryIds: [],
-            empty,
           },
         ],
       }}
     >
-      <Stack data-testid="layout-stack">
+      {() => <Stack data-testid="layout-stack">
         <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
           <GridItem span={2} data-testid="primary-grid-item">
             <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
@@ -81,7 +89,7 @@ function Fixture() {
         <StorySection
           label="Order activity"
           data-testid="layout-story"
-          lead={<MetricCard label="Completed orders" value="120" />}
+          lead={<MetricCard label="Completed orders" value="120" evidence={{ id: "orders", glossaryIds: ["orders"] }} />}
           visual={<VisualizationCard title="Orders over time" visual={<p>Daily orders</p>} />}
           support={<VisualizationCard title="Returning customers" visual={<p>80 customers</p>} />}
         />
@@ -95,22 +103,8 @@ function Fixture() {
           <div>First narrow card</div>
           <div>Second narrow card</div>
         </Grid>
-        <DataSection
-          result={connection}
-          loading={
-            <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
-              <GridItem span={2}>
-                <ContentSkeleton variant="ranking" />
-              </GridItem>
-              <GridItem>
-                <ContentSkeleton variant="ranking" />
-              </GridItem>
-            </Grid>
-          }
-        >
-          {() => <p>Connection view ready</p>}
-        </DataSection>
-      </Stack>
+        <p>Connection view ready</p>
+      </Stack>}
     </DataApp>
   );
 }

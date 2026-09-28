@@ -1,7 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { parseDate, today } from "@internationalized/date";
+import { today } from "@internationalized/date";
 import { availableDatePresets, type DatePresetId, type DateRange } from "./DateRangePicker.tsx";
 import { subscribeSearch, writeSearch } from "./search.ts";
+import type { DateRangeContract } from "../contract.ts";
 
 type HistoryMode = "push" | "replace";
 
@@ -95,14 +96,7 @@ export type DateRangeVariableOptions = {
   startKey?: string;
   endKey?: string;
   defaultValue: DateRangeSelection;
-  /** Earliest queryable day, when the source has a known lower bound. */
-  minDate?: string;
-  /** Source availability; omit for data available through the latest calendar day. */
-  maxDate?: string | (() => string);
-  maxRangeDays: number;
-  timeZone: string;
-  /** Complete days end yesterday in the declared time zone. Defaults to true. */
-  completeDays?: boolean;
+  contract: DateRangeContract;
   history?: HistoryMode;
 };
 
@@ -131,27 +125,10 @@ export function dateRangeVariable({
   startKey = "start",
   endKey = "end",
   defaultValue,
-  minDate,
-  maxDate,
-  maxRangeDays,
-  timeZone,
-  completeDays = true,
+  contract,
   history = "push",
 }: DateRangeVariableOptions): DateRangeVariable {
-  if (!Number.isInteger(maxRangeDays) || maxRangeDays < 1)
-    throw new Error(`Date variable ${key} needs a positive maxRangeDays.`);
-  if (minDate) parseDate(minDate);
-  function bounds() {
-    const latestCalendarDay = completeDays
-      ? today(timeZone).subtract({ days: 1 })
-      : today(timeZone);
-    const sourceMax = typeof maxDate === "function" ? maxDate() : maxDate;
-    const latest =
-      sourceMax && parseDate(sourceMax).compare(latestCalendarDay) < 0
-        ? parseDate(sourceMax)
-        : latestCalendarDay;
-    return { minDate, maxDate: latest.toString(), maxRangeDays, timeZone };
-  }
+  const bounds = contract.bounds;
   function resolve(selection: DateRangeSelection): DateRange {
     const limits = bounds();
     if (selection.kind === "preset") {
@@ -159,19 +136,9 @@ export function dateRangeVariable({
       if (preset) return preset.range;
     } else {
       try {
-        const start = parseDate(selection.start);
-        const end = parseDate(selection.end);
-        const length =
-          (end.toDate("UTC").getTime() - start.toDate("UTC").getTime()) / 86_400_000 + 1;
-        if (
-          length >= 1 &&
-          length <= maxRangeDays &&
-          (!minDate || start.compare(parseDate(minDate)) >= 0) &&
-          end.compare(parseDate(limits.maxDate)) <= 0
-        )
-          return selection;
+        return contract.parse(selection);
       } catch {
-        /* An invalid URL value falls back to the app default. */
+        // Invalid URL values fall back to the app default.
       }
     }
     throw new Error(`Date variable ${key} is outside its available data range.`);
