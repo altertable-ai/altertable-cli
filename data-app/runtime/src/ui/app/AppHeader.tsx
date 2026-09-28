@@ -11,7 +11,6 @@ export type AppHeaderProps = {
   headingProps?: Omit<ComponentPropsWithRef<"div">, "children">;
 } & Omit<ComponentPropsWithRef<"header">, "children" | "title">;
 
-/** Compact page heading with its data scope beside the title and actions at the edge. */
 export function AppHeader({
   scope,
   title,

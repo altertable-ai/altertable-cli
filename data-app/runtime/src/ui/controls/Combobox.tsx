@@ -19,7 +19,6 @@ export type ComboboxProps = {
   loadingMessage?: string;
 };
 
-/** Controlled, searchable single-value picker. The caller owns the option set and selection. */
 export function Combobox({
   label,
   value,

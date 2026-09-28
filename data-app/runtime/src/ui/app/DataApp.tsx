@@ -16,7 +16,7 @@ export type DataAppProps = {
   dataContext: DataContext;
   children: ReactNode;
   description?: ReactNode;
-  /** One `useDataView` result supplies query evidence and refresh controls. */
+
   request?: { queries?: DisclosedQuery[]; refresh?: AppToolbarProps["refresh"] };
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
@@ -28,9 +28,10 @@ export type DataAppProps = {
   layoutProps?: Omit<ComponentProps<typeof AppLayout>, "children" | "footerActions">;
 };
 
-/** Standard page identity, inspect sheet, controls, and viewer theme. Pass a
- * `useDataView` result as `request`, or supply queries and refresh separately. A story only
- * needs authored steps; title, scope, context, and theme default to this page. */
+/**
+ * A `request` supplies query evidence and refresh controls; pass them explicitly for multiple
+ * operations. Story identity, context, and theme default to the page.
+ */
 export function DataApp({
   config,
   dataContext,

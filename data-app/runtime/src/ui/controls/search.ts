@@ -1,6 +1,5 @@
 const SEARCH_CHANGE = "altertable:searchchange";
 
-/** Current page search params. */
 export function searchParams(): URLSearchParams {
   return new URLSearchParams(window.location.search);
 }
@@ -32,7 +31,6 @@ export function writeSearch(
   window.dispatchEvent(new Event(SEARCH_CHANGE));
 }
 
-/** Stable token for a sheet or tab. */
 export function slug(value: string): string {
   return (
     value

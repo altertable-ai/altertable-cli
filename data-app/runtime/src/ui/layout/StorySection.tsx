@@ -3,17 +3,15 @@ import { classNames } from "../primitives/classNames.ts";
 import "./StorySection.css";
 
 export type StorySectionProps = {
-  /** Accessible name for this finding and its evidence. */
   label: string;
-  /** The one fact readers should notice first, usually a MetricCard. */
+
   lead: ReactNode;
-  /** Primary chart or other visual evidence for the lead fact. */
+
   visual: ReactNode;
-  /** Optional context that helps interpret the primary visual. */
+
   support?: ReactNode;
 } & Omit<ComponentPropsWithRef<"section">, "children" | "aria-label">;
 
-/** Places a lead fact above primary evidence and a smaller supporting visual. */
 export function StorySection({
   label,
   lead,

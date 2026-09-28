@@ -9,7 +9,6 @@ export type UpdatedAtProps = {
   children?: ReactNode;
 } & Omit<DateTimeTooltipProps, "date" | "children">;
 
-/** Relative observation time with an interactive exact-time popover. */
 export function UpdatedAt({
   timestamp,
   locale,

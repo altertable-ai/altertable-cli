@@ -7,7 +7,6 @@ export type ContentSkeletonProps = {
   variant: "metric" | "panel";
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** A metric or panel shaped loading slot. Compose several in the same grid as real content. */
 export function ContentSkeleton({ variant, className, ...props }: ContentSkeletonProps) {
   return (
     <div

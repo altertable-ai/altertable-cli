@@ -28,9 +28,10 @@ export type SheetProps = {
   returnFocus?: RefObject<HTMLElement | null>;
 } & SheetDialogProps;
 
-/** A modal disclosure anchored to the right edge, entering from below at full-screen widths. The browser manages its focus trap and top
- * layer, and the page behind it stops scrolling while it is open. Escape, the close button, or
- * a click on the backdrop dismisses it. App content goes in children; native dialog props extend the sheet surface. */
+/**
+ * Uses the native dialog top layer and focus trap. Closing keeps the modal mounted until its
+ * exit transition completes.
+ */
 export function Sheet({
   open,
   onOpenChange,

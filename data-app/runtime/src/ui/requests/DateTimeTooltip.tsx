@@ -3,9 +3,8 @@ import { HelpPopover, type HelpPopoverProps } from "../primitives/HelpPopover.ts
 import "./DateTimeTooltip.css";
 
 export type DateTimeTooltipProps = {
-  /** The instant to explain. */
   date: Date;
-  /** Optional viewer time zone, such as "Europe/Paris". */
+
   timeZone?: string;
   children?: ReactNode;
 } & Omit<HelpPopoverProps, "trigger" | "triggerLabel" | "label" | "children">;
@@ -32,8 +31,7 @@ function relativeDate(date: Date, now: number): string {
   return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(value, unit);
 }
 
-/** Reveal an interactive date popover on hover or click with local, UTC, relative,
- * and Unix time. Pass the viewer's account timeZone when known. */
+/** Pass the viewer's account time zone when known; the popover also exposes UTC and Unix time. */
 export function DateTimeTooltip({
   date,
   timeZone,

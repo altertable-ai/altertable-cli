@@ -13,8 +13,7 @@ import type { DataClient, InputOf, OutputOf } from "./client.ts";
 import { dataAppTitle, type DataAppConfig } from "./config.ts";
 import { resolveDataView } from "./ui/requests/DataBoundary.tsx";
 
-/** Browser entry point: set document identity and mount the app with its request provider.
- * Call once from `src/main.tsx`; import app-specific styles there if needed. */
+/** Mount once per document; installs document identity and the shared request provider. */
 export function mountDataApp({
   config,
   component: Component,
@@ -34,7 +33,6 @@ export function mountDataApp({
   );
 }
 
-/** Owns React Query request state for one rendered data app. */
 export function DataAppProvider({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
@@ -47,10 +45,10 @@ export function DataAppProvider({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-/** Infer operation names, inputs, and results from the app's operation registry.
- * `placeholderData` can belong to an earlier input: compare the response's scope with
- * the requested input before presenting it as current. `isFetching` alone cannot
- * distinguish an initial load, a refresh, or a changed-input request. */
+/**
+ * `placeholderData` may belong to an earlier input. Use `useDataView` to distinguish initial
+ * loading, refreshes, and changed-input requests.
+ */
 export function createDataHooks<Operations extends DataOperations>(client: DataClient<Operations>) {
   type QueryOptions = {
     enabled?: boolean;

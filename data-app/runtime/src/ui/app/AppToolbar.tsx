@@ -34,11 +34,10 @@ export type AppToolbarProps = PeriodSlot & {
   story?: ComponentProps<typeof PlayStory>;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Period slot on the left accepts a controlled calendar or read-only period summary.
- * Observation time, or an initial loading status, sits before Refresh. Children prepend app controls in the right
- * cluster; end follows the built-in actions. Live sits beside Refresh when supplied. Refresh also
- * answers Alt/Option+R and uses the button to cancel a running request when onCancel is provided;
- * refresh.tooltip overrides its static label. All built-in controls are optional. */
+/**
+ * `children` precedes built-in actions; `end` follows them. Refresh uses Alt/Option+R and
+ * becomes Cancel while fetching when `onCancel` is provided.
+ */
 export function AppToolbar({
   children,
   period,

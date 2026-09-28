@@ -21,7 +21,6 @@ import { Tooltip } from "../primitives/Tooltip.tsx";
 import { ThemeToggle } from "../app/ThemeSelector.tsx";
 import "./PlayStory.css";
 
-/** One app-authored presentation step over an already loaded data snapshot. */
 export type StoryStep = {
   id: string;
   headline: string;
@@ -55,13 +54,9 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
 };
 
 /**
- * Play ordered steps over the already-loaded data snapshot, full screen. The runtime
- * owns the dialog, ⌘/Ctrl+Enter launch, arrow-key and step-link navigation, the shareable
- * `?present=1&step=` URL, and the inspect sheet for the current step (`?about=`); the app owns the
- * wording, visual, interpretation, and supporting query selection. Native button props
- * configure the launch action; launcherProps and dialogProps target the other two surfaces.
- * headerActions and footer extend the story. Pass `scope`, `dataContext`, and `theme`
- * so the header matches the page and offers a theme switch inside the modal.
+ * Uses an already loaded snapshot. Navigation is stored in `?present=1&step=`, and step
+ * inspection uses `?about=`. `launcherProps` targets the outer span; `dialogProps` targets the
+ * modal.
  */
 export function PlayStory({
   title,

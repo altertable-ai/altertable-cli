@@ -18,7 +18,6 @@ export type MetricCardProps = {
   visual?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
 
-/** A labeled value with optional comparison, visual, and inspect evidence. */
 export function MetricCard({
   label,
   value,

@@ -12,7 +12,7 @@ export type DataPanelAbout = Omit<AboutSubject, "title" | "description">;
 
 export type DataPanelProps = {
   title: ReactNode;
-  /** Count shown beside the title with subdued styling. Zero is shown. */
+
   count?: number;
   description?: ReactNode;
   about?: DataPanelAbout;
@@ -21,14 +21,15 @@ export type DataPanelProps = {
   footer?: ReactNode;
   /** Valid result with no data to visualize. Supersedes children, including in the inspect sheet. */
   empty?: Pick<EmptyStateProps, "title" | "description">;
-  /** Use "flush" for content that intentionally extends to the panel edge. */
+
   bodyPadding?: "inset" | "flush";
   children: ReactNode;
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
-/** A titled surface for a chart, table, or ranked list. `about` opens the inspect sheet
- * for this panel. `action` is a custom header control. Help stays visible on touch and
- * appears on hover or focus on fine pointers. Use `empty` for a valid empty result. */
+/**
+ * `about` opens inspection for this panel. Help stays visible on touch and appears on hover or
+ * focus with fine pointers.
+ */
 export function DataPanel({
   title,
   count,

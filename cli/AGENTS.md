@@ -51,7 +51,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 ## Conventions
 
-- For generated app authoring, edit [the starter app guide](../data-app/starter/AGENTS.md). Keep instructions there short and about decisions; put component behavior, valid combinations, and exact props in runtime types and JSDoc.
+- For generated app authoring, edit [the starter app guide](../data-app/starter/AGENTS.md). Keep it a task router into focused authoring guides and the runtime API map. Types describe props; reserve JSDoc for constraints, ownership, security boundaries, and surprising behavior.
 - When changing a runtime primitive, preserve semantic ownership: layout spacing belongs to `AppLayout`, `Stack`, and `TabPanels`; filters and date bounds belong to their variable and control contracts; request states belong to `DataSection`. Add a prop or slot when app authors repeatedly need the same custom wrapper.
 - Add recurring icons to `../data-app/runtime/src/ui/primitives/icons.ts` with a semantic name and fixed optical size. Keep toolbar and presentation button variants explicit in their owning components. Verify the generated app in both themes and at desktop and phone widths.
 

@@ -29,7 +29,7 @@ import {
   type LucideProps,
 } from "lucide-react";
 
-/** Semantic icon names keep a single meaning and optical size across an app. */
+/** Use semantic names to keep icon meaning and optical size consistent across controls. */
 const brandedIcons = {
   cancel: X,
   calendar: CalendarDays,

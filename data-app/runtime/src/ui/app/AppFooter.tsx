@@ -5,7 +5,7 @@ import "./AppFooter.css";
 
 export type AppFooterProps = ComponentPropsWithRef<"footer"> & { attribution?: ReactNode };
 
-/** Quiet app footer. Children fill its action slot; attribution replaces the default link. */
+/** `children` fills the action slot; `attribution` replaces the default link. */
 export function AppFooter({ children, attribution, className, ...props }: AppFooterProps) {
   return (
     <footer {...props} className={classNames("altertable-app-footer", className)}>

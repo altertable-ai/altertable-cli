@@ -7,7 +7,6 @@ export type ComparisonVisualProps = MetricComparison & {
   emphasis?: "standard" | "story";
 };
 
-/** Compare two periods with their exact values, proportional bars, and a stated change. */
 export function ComparisonVisual({
   label,
   current,

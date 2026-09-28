@@ -42,8 +42,10 @@ function detail(period: ReportingPeriod): string {
   return `${label(period)}, ${start.toISOString()} to ${end.toISOString()}`;
 }
 
-/** Read-only period context for the toolbar. Apps with selectable dates use DateRangePicker
- * in the same slot. The accessible name includes exact rolling bounds and time zone. */
+/**
+ * Use `DateRangePicker` in the same toolbar slot when readers can change dates. The accessible
+ * name includes exact rolling bounds and time zone.
+ */
 export function PeriodSummary({ period, comparison, className }: PeriodSummaryProps) {
   const comparisonText = comparison ? comparisonLabel(period, comparison) : null;
   const comparisonDetail =

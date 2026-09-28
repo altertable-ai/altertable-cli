@@ -2,7 +2,6 @@ import type { SVGProps } from "react";
 
 export type AltertableLogoProps = SVGProps<SVGSVGElement>;
 
-/** Altertable full logo from altertable/frontend/public/assets/logos. */
 export function AltertableLogo(props: AltertableLogoProps) {
   return (
     <svg viewBox="0 0 294 44" fill="none" role="img" aria-label="Altertable" {...props}>

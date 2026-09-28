@@ -13,9 +13,10 @@ export type AppLayoutProps = {
   tooltipProviderProps?: Omit<TooltipProviderProps, "children">;
 } & Omit<ComponentPropsWithRef<"main">, "children">;
 
-/** Shared content width, footer, and tooltip timing. Native props target main;
- * layoutProps target the outer div. tooltipProviderProps configures hover timing.
- * footerActions fills the default footer; footer replaces it for a custom layout. */
+/**
+ * Native props target `<main>`. `layoutProps` targets the outer wrapper; `footer` replaces the
+ * default footer, while `footerActions` fills it.
+ */
 export function AppLayout({
   children,
   footerActions,

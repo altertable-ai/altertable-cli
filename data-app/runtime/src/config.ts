@@ -1,4 +1,3 @@
-/** App identity shared by the browser shell and local development server. */
 export type DataAppConfig = {
   title: string;
   scope: { organization: string; environment: string };

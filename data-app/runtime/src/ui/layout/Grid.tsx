@@ -9,7 +9,6 @@ export type GridProps = {
   align?: "stretch" | "start";
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Responsive layout for peer cards and panels; the parent owns their spacing. */
 export function Grid({
   children,
   columns = 1,

@@ -29,10 +29,10 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | Show a key number | [MetricCard](src/ui/cards/MetricCard.tsx) | ComparisonVisual |
 | Show charts and collections | [VisualizationCard](src/ui/cards/VisualizationCard.tsx), [TableCard](src/ui/cards/TableCard.tsx) | DataTable, Ranking, Breakdown, CardEvidence |
 | Handle a request's loading, error, and stale data | [DataSection](src/ui/requests/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
-| Show freshness and refresh | [UpdatedAt](src/ui/requests/UpdatedAt.tsx), [RefreshControl](src/ui/controls/RefreshControl.tsx) | RefreshRegion, LiveControl |
+| Show freshness and refresh | [UpdatedAt](src/ui/requests/UpdatedAt.tsx), [AppToolbar](src/ui/app/AppToolbar.tsx) | RefreshRegion, LiveControl |
 | Bind filters to the URL | [variables](src/ui/controls/variables.ts), [DateRangePicker](src/ui/controls/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/ui/controls/searchItems.ts), [SearchMatch](src/ui/controls/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/ui/inspect/AboutData.tsx), [DataContext](src/ui/inspect/data-context.ts) | GlossaryExplanation, QueryList |
+| Explain context, glossary, and queries | [AboutData](src/ui/inspect/AboutData.tsx), [DataContext](src/ui/inspect/data-context.ts) | GlossaryExplanation |
 | Present loaded findings | [PlayStory](src/ui/presentation/PlayStory.tsx) | StoryStep |
 | Build custom controls and overlays | [Button](src/ui/primitives/Button.tsx), [Sheet](src/ui/primitives/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 

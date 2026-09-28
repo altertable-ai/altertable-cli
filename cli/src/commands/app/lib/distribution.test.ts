@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import {
   createAppFiles,
   dataAppDirectory,
@@ -62,4 +62,25 @@ test("distribution rejects paths outside its source and symlinks", async () => {
   await writeFile(join(directory, "package.json"), JSON.stringify({ files: ["src"] }));
   await symlink(join(directory, "package.json"), join(directory, "src/link.ts"));
   expect(readRuntimeSource(directory)).rejects.toThrow("Symlink");
+});
+
+test("generated authoring routes and runtime API links resolve inside the shipped project", async () => {
+  const payload = await readDataAppPayload();
+  const files = createAppFiles(payload, {
+    name: "documentation-test",
+    title: "Documentation test",
+    scope: { organization: "Test", environment: "test" },
+  });
+  expect(files["docs/data.md"]).toBeDefined();
+  expect(files["docs/views.md"]).toBeDefined();
+  expect(files[".altertable/runtime/README.md"]).toBeDefined();
+  for (const [name, content] of Object.entries(files)) {
+    if (!name.endsWith(".md")) continue;
+    for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+      const target = match[1]!.split("#")[0]!;
+      if (!target || /^[a-z]+:\/\//i.test(target)) continue;
+      const path = posix.normalize(posix.join(posix.dirname(name), target));
+      expect(files[path], `${name} links to missing ${path}`).toBeDefined();
+    }
+  }
 });
