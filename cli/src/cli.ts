@@ -162,6 +162,9 @@ async function bootstrap(): Promise<number> {
 
     validateEnvironment();
     const selection = await executeCommand(main, rawArgs);
+    if (selection.command !== main && !selection.command.run && selection.command.subcommands) {
+      await showAltertableUsage(selection.command, selection.parent, main);
+    }
     await maybeShowUpdateNotice({
       context: getCliContext(),
       commandName: selection.commandPath.at(0),
