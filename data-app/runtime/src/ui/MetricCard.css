@@ -4,7 +4,8 @@
   min-width: 0;
   padding: var(--at-space-md, 16px);
   border: 1px solid var(--at-border, #e3e6e8);
-  border-radius: var(--at-radius-surface, 12px);
+  border-radius: calc(var(--at-radius-surface, 12px) * 1.5);
+  corner-shape: squircle;
   background: var(--at-surface, #fff);
   box-shadow: var(--at-shadow-surface, none);
 }
