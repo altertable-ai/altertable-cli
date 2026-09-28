@@ -483,7 +483,7 @@ altertable app dev [options]
 | --- | --- |
 | `--dir <DIR>` | App directory (default: current directory). |
 | `--port <PORT>` | Local dev server port (1–65535; default: app setting). |
-| `--watch-runtime` | Upgrade generated runtime on template changes and restart preview. |
+| `--watch-runtime` | Upgrade generated runtime on source changes and restart preview. |
 
 **Examples**
 

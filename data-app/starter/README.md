@@ -1,4 +1,4 @@
-# {{APP_TITLE}}
+# Getting started
 
 This starter runs a lightweight SQL query to check the lakehouse connection. “Connected” appears only after that query succeeds; having a configured profile alone is not enough. The check does not establish access to specific datasets.
 
@@ -11,7 +11,7 @@ altertable app dev
 ```
 
 The CLI prints the local URL. Use `altertable app dev --port 3022` to choose a port. Run `altertable app check --lakehouse` to validate the app and execute its declared operation against the selected profile.
-CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when source templates change. The watcher stops if a generated runtime file was edited.
+CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when runtime source change. The watcher stops if a generated runtime file was edited.
 
 ## Build the first view
 

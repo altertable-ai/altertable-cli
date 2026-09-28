@@ -1,0 +1,29 @@
+import starter from "../starter/src/index.html";
+import components from "../starter/fixtures/index.html";
+import { createDataHandler } from "../runtime/src/server.ts";
+import { DataSourceError } from "../runtime/src/contract.ts";
+import { operations } from "../starter/src/operations.ts";
+let fail = false;
+const handler = createDataHandler(operations, async () => ({
+  canDiscloseSql: true,
+  lakehouse: {
+    async queryAll(statement, options) {
+      if (statement !== "SELECT 1 AS connection_check" || options.limit !== 1)
+        throw new Error("Unexpected connection query");
+      if (fail) throw new DataSourceError("unavailable");
+      return { columns: [{ name: "connection_check" }], rows: [[1]], queryId: "test-query" };
+    },
+  },
+}));
+Bun.serve({
+  hostname: "127.0.0.1",
+  port: 26418,
+  routes: { "/": starter, "/components": components },
+  async fetch(request) {
+    if (new URL(request.url).pathname === "/__test/state") {
+      fail = (await request.text()) === "failure";
+      return new Response("ok");
+    }
+    return handler(request);
+  },
+});

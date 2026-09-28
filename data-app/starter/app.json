@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "{{APP_TITLE}}",
-  "scope": { "organization": {{APP_ORG_JSON}}, "environment": {{APP_ENV_JSON}} },
+  "title": "Getting started",
+  "scope": { "organization": "Your organization", "environment": "your environment" },
   "appearance": {
     "mode": "light",
     "baseColor": "neutral",

@@ -2,7 +2,7 @@ import { watch } from "node:fs";
 import { defineCommand } from "@/lib/command.ts";
 import { CliError, ConfigurationError, EXIT_GENERIC } from "@/lib/errors.ts";
 import { startAppDevProxy } from "@/commands/app/lib/dev-proxy.ts";
-import { readRuntimeTemplates, runtimeTemplateDirectory } from "@/commands/app/lib/runtime.ts";
+import { readRuntimeSource, runtimeSourceDirectory } from "@/commands/app/lib/runtime.ts";
 import { upgradeApp } from "@/commands/app/upgrade.ts";
 import {
   appDirectory,
@@ -27,7 +27,7 @@ export const appDevCommand = defineCommand({
     port: { type: "string", description: "Local dev server port (1–65535; default: app setting)." },
     "watch-runtime": {
       type: "boolean",
-      description: "Upgrade generated runtime on template changes and restart preview.",
+      description: "Upgrade generated runtime on source changes and restart preview.",
     },
   },
   async run({ args, execution, runtime, sink }) {
@@ -37,9 +37,9 @@ export const appDevCommand = defineCommand({
     requireAppScripts(directory, ["dev"]);
     if (args["watch-runtime"]) {
       try {
-        await upgradeApp(directory, { runtimeFiles: await readRuntimeTemplates() });
+        await upgradeApp(directory, { runtimeFiles: await readRuntimeSource() });
       } catch (error) {
-        throw new ConfigurationError(`Runtime template watch stopped: ${errorMessage(error)}`);
+        throw new ConfigurationError(`Runtime source watch stopped: ${errorMessage(error)}`);
       }
     }
     const installExitCode = await runAppCommand("install", directory);
@@ -72,9 +72,13 @@ async function runWithRuntimeWatch(
   let changed = false;
   let wake: (() => void) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let watchedRoots = new Set(
+    Object.keys(await readRuntimeSource()).map((name) => name.split("/")[0]),
+  );
   let watcher: ReturnType<typeof watch>;
   try {
-    watcher = watch(runtimeTemplateDirectory, { recursive: true }, () => {
+    watcher = watch(runtimeSourceDirectory, { recursive: true }, (_, filename) => {
+      if (filename && !watchedRoots.has(filename.replaceAll("\\", "/").split("/")[0])) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         changed = true;
@@ -83,7 +87,7 @@ async function runWithRuntimeWatch(
     });
   } catch (error) {
     throw new ConfigurationError(
-      `Cannot watch runtime templates at ${runtimeTemplateDirectory}: ${errorMessage(error)}`,
+      `Cannot watch runtime source at ${runtimeSourceDirectory}: ${errorMessage(error)}`,
     );
   }
   function waitForChange(): Promise<void> {
@@ -100,7 +104,7 @@ async function runWithRuntimeWatch(
     });
   }
   try {
-    announce(`Watching runtime templates at ${runtimeTemplateDirectory}.`);
+    announce(`Watching runtime source at ${runtimeSourceDirectory}.`);
     while (true) {
       const controller = new AbortController();
       const preview = runAppCommand("dev", directory, environment, controller.signal);
@@ -112,9 +116,9 @@ async function runWithRuntimeWatch(
       controller.abort();
       await preview;
       try {
-        const upgraded = await upgradeApp(directory, {
-          runtimeFiles: await readRuntimeTemplates(),
-        });
+        const files = await readRuntimeSource();
+        watchedRoots = new Set(Object.keys(files).map((name) => name.split("/")[0]));
+        const upgraded = await upgradeApp(directory, { runtimeFiles: files });
         if (upgraded) {
           const installExitCode = await runAppCommand("install", directory);
           if (installExitCode !== 0) return installExitCode;
@@ -122,10 +126,10 @@ async function runWithRuntimeWatch(
         announce(
           upgraded
             ? "Runtime upgraded; restarting preview."
-            : "Runtime templates unchanged; restarting preview.",
+            : "Runtime source unchanged; restarting preview.",
         );
       } catch (error) {
-        throw new ConfigurationError(`Runtime template watch stopped: ${errorMessage(error)}`);
+        throw new ConfigurationError(`Runtime source watch stopped: ${errorMessage(error)}`);
       }
     }
   } finally {

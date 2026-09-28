@@ -2,13 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { upgradeApp } from "@/commands/app/upgrade.ts";
 import {
   currentRuntimeIntegrity,
   installedRuntimeIntegrity,
-  readRuntimeTemplates,
+  readRuntimeSource,
 } from "@/commands/app/lib/runtime.ts";
 import { configSet, ensureProfileExists, setActiveProfile } from "@/lib/profile-store.ts";
 
@@ -62,200 +61,17 @@ describe("app create", () => {
         dev: "bun --hot src/server.ts",
       },
     });
-    expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
-    expect(readFileSync(join(directory, "bunfig.toml"), "utf8")).toContain("exact = true");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("title={app.title}");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain('"Connected"');
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
-      '"Connection not verified"',
-    );
-    expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain("defineOperation");
-    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("description:");
-    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("glossary:");
-    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain(
-      "runs a lightweight query",
-    );
-    expect(existsSync(join(directory, "src/methodology.ts"))).toBe(false);
-    expect(existsSync(join(directory, "src/analysis.ts"))).toBe(false);
-    const appGuide = readFileSync(join(directory, "AGENTS.md"), "utf8");
-    expect(appGuide).toContain("Working on Product Pulse");
-    expect(appGuide).toContain("## Start with evidence");
-    expect(appGuide).toContain("## Files and data flow");
-    expect(appGuide).toContain("## Compose the view");
-    expect(appGuide).toContain("## Verify and maintain");
-    expect(appGuide).toContain("Make the description specific to the operation's SQL");
-    expect(appGuide).toContain("dynamic, source-bounded date range");
-    expect(appGuide).toContain("measured zero in the ready state");
-    expect(appGuide).toContain("altertable app check --lakehouse");
-    expect(appGuide).toContain("Edit `src/`, not generated runtime files");
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/AppToolbar.tsx"), "utf8"),
-    ).toContain("altertable-app-toolbar-actions");
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/Tooltip.tsx"), "utf8")).toContain(
-      'variant?: "hint" | "chart"',
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/Tooltip.tsx"), "utf8")).toContain(
-      "followCursor",
-    );
-    expect(appGuide).not.toContain("StoryEvidence");
-    expect(appGuide).toContain("altertable.ai/docs/query-data/mcp");
-    expect(appGuide).toContain("altertable login --org");
-    expect(appGuide).toContain("altertable profile switch");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
-      "Turn this starter into a useful app",
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/PlayStory.tsx"), "utf8")).toContain(
-      "portalRoot={dialog}",
-    );
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("AppHeader");
-    expect(readFileSync(join(directory, "src/main.tsx"), "utf8")).toContain("DataAppProvider");
-    expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).not.toContain("evidence:");
-    expect(readFileSync(join(directory, ".altertable/runtime/local.ts"), "utf8")).toContain(
-      "ALTERTABLE_LAKEHOUSE_PASSWORD",
-    );
-    expect(existsSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"))).toBe(true);
-    expect(existsSync(join(directory, ".altertable/runtime/ui/Sheet.tsx"))).toBe(true);
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      "<Tooltip content=",
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      'id="queries"',
-    );
-    expect(existsSync(join(directory, ".altertable/runtime/ui/GlossaryExplanation.tsx"))).toBe(
-      true,
-    );
-    expect(existsSync(join(directory, ".altertable/runtime/ui/AltertableLogo.tsx"))).toBe(true);
-    expect(existsSync(join(directory, ".altertable/runtime/ui/ThemeSelector.tsx"))).toBe(true);
-    for (const name of [
-      "AppLayout",
-      "Grid",
-      "MetricCard",
-      "VisualizationCard",
-      "TableCard",
-      "DataSection",
-      "Breakdown",
-      "Ranking",
-      "DataPanel",
-      "StatusPanel",
-      "Skeleton",
-    ]) {
-      expect(existsSync(join(directory, `.altertable/runtime/ui/${name}.tsx`))).toBe(true);
-    }
-    expect(existsSync(join(directory, ".altertable/runtime/ui/AppToolbar.tsx"))).toBe(true);
-    for (const name of [
-      "Button",
-      "GlossaryExplanation",
-      "AboutData",
-      "PlayStory",
-      "Tabs",
-      "DateRangePicker",
-      "DateTimeTooltip",
-      "SearchField",
-      "Combobox",
-      "HelpPopover",
-      "UpdatedAt",
-      "RefreshRegion",
-      "RefreshControl",
-      "AppHeader",
-      "Tooltip",
-      "DataBoundary",
-      "ContentSkeleton",
-    ]) {
-      expect(existsSync(join(directory, `.altertable/runtime/ui/${name}.tsx`))).toBe(true);
-    }
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("AppToolbar");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("data-state={state}");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("<TableCard");
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/DataSection.tsx"), "utf8"),
-    ).toContain("ContentSkeleton");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain(
-      "Loading available tables",
-    );
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("story={{");
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      "AboutSubject",
-    );
-    expect(readFileSync(join(directory, "src/index.html"), "utf8")).toContain(
-      "Product Pulse • Your organization/your environment • Altertable app",
-    );
-    expect(readFileSync(join(directory, "src/main.tsx"), "utf8")).toContain("• Altertable app");
-    expect(existsSync(join(directory, ".oxfmtrc.json"))).toBe(true);
-    expect(existsSync(join(directory, ".altertable/runtime/ui/search.ts"))).toBe(true);
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      "writeSearch({ about:",
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      '<Tab id="glossary">Glossary</Tab>',
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      "dataContext?.description",
-    );
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8"),
-    ).not.toContain('<Tab id="overview">Overview</Tab>');
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/data-context.ts"), "utf8"),
-    ).not.toContain("StoryEvidence");
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/MetricCard.tsx"), "utf8"),
-    ).toContain("Explore this metric");
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/QueryList.tsx"), "utf8")).toContain(
-      "formatSql",
-    );
-    expect(readFileSync(join(directory, "src/index.html"), "utf8")).toContain(
-      'href="./favicon.svg"',
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AppLayout.css"), "utf8")).toContain(
-      ".altertable-sr-only",
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AppLayout.css"), "utf8")).toContain(
-      "min-height: 100dvh",
-    );
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/AppToolbar.tsx"), "utf8"),
-    ).toContain('<AppIcon name="refresh"');
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/AppToolbar.tsx"), "utf8"),
-    ).not.toContain("altertable-app-toolbar-rule");
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/IconButton.tsx"), "utf8"),
-    ).toContain("aria-keyshortcuts");
-    expect(readFileSync(join(directory, "src/favicon.svg"), "utf8")).toContain(
-      'viewBox="0 0 51 44"',
-    );
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/DateRangePicker.tsx"), "utf8"),
-    ).not.toContain("I18nProvider");
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/DateRangePicker.tsx"), "utf8"),
-    ).toContain("onPresetChange");
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/variables.ts"), "utf8")).toContain(
-      "useAppVariables",
-    );
-    expect(readFileSync(join(directory, "src/variables.ts"), "utf8")).toContain(
-      "defineAppVariables",
-    );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/Sheet.css"), "utf8")).toContain(
-      "min(960px, 100vw)",
-    );
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/ui/ThemeSelector.tsx"), "utf8"),
-    ).not.toContain('label: "System"');
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain(
-      "ALTERTABLE_LAKEHOUSE_PASSWORD",
-    );
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
-      'useDataQuery("connection", connectionInput(appVariables.values))',
-    );
     expect(JSON.parse(readFileSync(join(directory, "app.json"), "utf8"))).toMatchObject({
-      schemaVersion: 1,
+      title: "Product Pulse",
+      scope: { organization: "Your organization", environment: "your environment" },
       operations: { connection: {} },
     });
-    expect(
-      JSON.parse(readFileSync(join(directory, ".altertable/runtime/integrity.json"), "utf8")),
-    ).toMatchObject({ version: currentRuntimeIntegrity().version });
-    expect(existsSync(join(directory, ".gitignore"))).toBe(true);
+    expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
+    expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());
+    const paths = JSON.parse(result.stdout[0]!).files as string[];
+    expect(paths).toContain(".altertable/runtime/src/ui/PlayStory.tsx");
+    expect(paths).toContain("src/App.tsx");
+    expect(paths.some((path) => /tests|fixtures|node_modules|\.txt$/.test(path))).toBe(false);
   });
 
   test("requires an organization and environment before creating a default app", async () => {
@@ -295,7 +111,7 @@ describe("app create", () => {
       scope: { organization: "Altertable", environment: "production" },
     });
     expect(readFileSync(join(directory, "src/index.html"), "utf8")).toContain(
-      "Profiled App • Altertable/production • Altertable app",
+      "<title>Altertable app</title>",
     );
   });
 
@@ -383,7 +199,7 @@ describe("app create", () => {
       'Acme "North" & Co',
     );
     expect(readFileSync(join(directory, "src/index.html"), "utf8")).toContain(
-      "Acme &quot;North&quot; &amp; Co/production",
+      "<title>Altertable app</title>",
     );
   });
 
@@ -418,7 +234,7 @@ describe("app create", () => {
     });
   });
 
-  test("checks a newly created app before dependencies were installed", async () => {
+  test("installs the generated app with its frozen lockfile and checks the project", async () => {
     const directory = join(home, "first-check");
     await runCommandWithTestRuntime([
       "app",
@@ -428,186 +244,12 @@ describe("app create", () => {
       directory,
       "--without-profile",
     ]);
-    writeFileSync(
-      join(directory, "src/composition.tsx"),
-      `import {
-  AboutData,
-  AppFooter,
-  AppHeader,
-  AppLayout,
-  AppScope,
-  AppToolbar,
-  Button,
-  VisualizationCard,
-  DateRangePicker,
-  dateRangeControl,
-  dateRangeVariable,
-  defineAppVariables,
-  HelpPopover,
-  GlossaryExplanation,
-  MetricCard,
-  PeriodSummary,
-  PlayStory,
-  RefreshRegion,
-  Sheet,
-  Skeleton,
-  Stack,
-  StatusPanel,
-  ThemeSelector,
-  Tooltip,
-  TooltipProvider,
-  UpdatedAt,
-  useAppVariables,
-} from "@altertable/data-app-runtime/ui";
-import type { AppToolbarProps, PlayStoryProps } from "@altertable/data-app-runtime/ui";
-
-const toolbarProps = {
-  refresh: { refreshing: false, onRefresh: () => {} },
-} satisfies AppToolbarProps;
-const storyProps = { title: "Story", steps: [], dataContext: null! } satisfies PlayStoryProps;
-const variables = defineAppVariables({
-  period: dateRangeVariable({
-    key: "period",
-    minDate: "2020-01-01",
-    maxDate: "2020-01-07",
-    maxRangeDays: 7,
-    timeZone: "UTC",
-    defaultValue: { kind: "preset", id: "last-3" },
-  }),
-});
-
-export function CompositionCheck() {
-  const appVariables = useAppVariables(variables);
-  const range = variables.period.resolve(appVariables.values.period);
-  const dateRange = dateRangeControl(variables.period, appVariables.values.period, (value) =>
-    appVariables.set("period", value),
-  );
-  void range;
-  return (
-    <AppLayout
-      className="main"
-      layoutProps={{ className: "layout", id: "app" }}
-      footerProps={{ className: "footer" }}
-      tooltipProviderProps={{ delay: 400 }}
-    >
-      <DateRangePicker {...dateRange} />
-      <AppHeader
-        title="Example"
-        scope={<AppScope organization="Altertable" environment="production" />}
-        toolbar={<AppToolbar {...toolbarProps} />}
-        headingProps={{ className: "heading" }}
-      >
-        Subtitle
-      </AppHeader>
-      <AppFooter className="footer" data-testid="footer">
-        <Button className="action" aria-label="Action" />
-      </AppFooter>
-      <AppScope
-        organization="Altertable"
-        environment="production"
-        className="scope"
-        title="Scope"
-      />
-      <AppToolbar
-        className="toolbar"
-        data-testid="toolbar"
-        dateRange={{
-          value: null,
-          onChange: () => {},
-          className: "dates",
-          calendarFooter: "Choose dates",
-        }}
-        refresh={{
-          refreshing: false,
-          onRefresh: () => {},
-          buttonProps: { className: "reload" },
-        }}
-        controlsProps={{ className: "controls" }}
-        end={<Button>End</Button>}
-      >
-        <Button>Extra</Button>
-      </AppToolbar>
-      <AppToolbar
-        period={
-          <PeriodSummary
-            period={{ kind: "rolling", amount: 24, unit: "hour", end: new Date().toISOString() }}
-            comparison={{ kind: "previous" }}
-          />
-        }
-        updatedAt={<UpdatedAt timestamp={0} />}
-      />
-      <VisualizationCard title="Panel" visual="Content" className="panel" data-testid="panel" />
-      <MetricCard
-        label="Metric"
-        value={1}
-        insight={<Button>Explain</Button>}
-        className="metric"
-        data-testid="metric"
-      />
-      <Stack gap="md" role="group" aria-label="Request states">
-        <StatusPanel status="empty" title="Empty" onMouseEnter={() => {}}>
-          More detail
-        </StatusPanel>
-        <StatusPanel
-          status="error"
-          title="Unavailable"
-          action={
-            <Button size="icon" aria-label="Retry">
-              ↻
-            </Button>
-          }
-        />
-      </Stack>
-      <Skeleton className="skeleton" style={{ width: 40 }} data-testid="skeleton" />
-      <RefreshRegion refreshing={false} className="region" contentProps={{ className: "content" }}>
-        Content
-      </RefreshRegion>
-      <ThemeSelector theme={null!} className="theme" title="Theme" />
-      <DateRangePicker value={null} onChange={() => {}} isDisabled className="dates" />
-      <HelpPopover
-        trigger="Help"
-        triggerLabel="Help"
-        label="Help"
-        triggerProps={{ className: "trigger", id: "help" }}
-        panelProps={{ className: "panel" }}
-      >
-        Details
-      </HelpPopover>
-      <UpdatedAt timestamp={0} triggerClassName="updated" panelProps={{ className: "exact" }} />
-      <GlossaryExplanation entry={null!} className="glossary" title="Signups" />
-      <AboutData
-        dataContext={null!}
-        className="context"
-        tooltip="About the data"
-        footer="More context"
-        sheetProps={{ className: "details" }}
-      >
-        Context
-      </AboutData>
-      <Sheet open={false} onOpenChange={() => {}} title="Details" className="sheet">
-        Body
-      </Sheet>
-      <PlayStory
-        {...storyProps}
-        className="play"
-        headerActions={<Button>Save</Button>}
-        footer="Notes"
-        launcherProps={{ className: "launcher" }}
-        dialogProps={{ className: "slides" }}
-      />
-      <Tooltip content="A tip" tooltipProps={{ className: "tip" }}>
-        <Button>Help</Button>
-      </Tooltip>
-      <TooltipProvider delay={400}>
-        <Tooltip content="Another tip">
-          <Button>More</Button>
-        </Tooltip>
-      </TooltipProvider>
-    </AppLayout>
-  );
-}
-`,
-    );
+    const install = Bun.spawnSync([process.execPath, "install", "--frozen-lockfile"], {
+      cwd: directory,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(install.exitCode).toBe(0);
     const result = await runCommandWithTestRuntime(["app", "check", "--dir", directory], {
       debug: false,
       json: false,
@@ -615,117 +257,6 @@ export function CompositionCheck() {
     });
     expect(result.exitCode).toBe(0);
     expect(result.stdout.join("\n")).toContain("client bundle clean");
-    writeFileSync(
-      join(directory, "search-contract.test.tsx"),
-      `import { expect, test } from "bun:test";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { searchItems } from "./.altertable/runtime/ui/searchItems.ts";
-import { SearchMatch } from "./.altertable/runtime/ui/SearchMatch.tsx";
-import { ariaKeyShortcuts, shortcutLabel } from "./.altertable/runtime/ui/shortcuts.ts";
-import { TableCard } from "./.altertable/runtime/ui/TableCard.tsx";
-import { dateRangeControl, dateRangeVariable, defineAppVariables, selectVariable, textVariable } from "./.altertable/runtime/ui/variables.ts";
-import { createDataClient, DataAppError } from "./.altertable/runtime/client.ts";
-import { createDataHandler } from "./.altertable/runtime/server.ts";
-
-test("local search preserves table order and highlights original text", () => {
-  const rows = [
-    { id: "first", name: "Café <table>", catalog: "prod" },
-    { id: "second", name: "Cafe", catalog: "stage" },
-  ];
-  const attributes = [
-    { name: "name", getter: (row: typeof rows[number]) => row.name },
-    { name: "catalog", getter: (row: typeof rows[number]) => row.catalog },
-  ] as const;
-  const hits = searchItems(rows, "cafe prod", { attributes });
-  expect(hits).toEqual([{ item: rows[0], score: 0, matches: {
-    name: { text: rows[0]!.name, ranges: [{ start: 0, end: 4 }] },
-    catalog: { text: "prod", ranges: [{ start: 0, end: 4 }] },
-  } }]);
-  expect(searchItems(rows, "", { attributes }).map(hit => hit.item.id)).toEqual(["first", "second"]);
-  expect(searchItems(rows, "cafe", { attributes, mode: "fuzzy" })).toHaveLength(2);
-  expect(renderToStaticMarkup(createElement(SearchMatch, {
-    match: hits[0]!.matches.name,
-  }))).toContain("<mark>Café</mark> &lt;table&gt;");
-  const table = renderToStaticMarkup(createElement(TableCard, {
-    title: "Results",
-    count: hits.length,
-    columns: [
-      { id: "name", header: "Name", cell: (hit: typeof hits[number]) => createElement(SearchMatch, { match: hit.matches.name }) },
-      { id: "count", header: "Count", type: "number", cell: () => "12" },
-    ],
-    rows: hits,
-    rowKey: (hit: typeof hits[number]) => hit.item.id,
-  }));
-  expect(table).toContain("<mark>Café</mark> &lt;table&gt;");
-  expect(table).toContain('class="altertable-data-panel-count">1</span>');
-  expect(table).toMatch(/<th[^>]*data-type="number"[^>]*>Count<\\/th>/);
-  expect(table).toMatch(/<td[^>]*data-type="number"[^>]*>12<\\/td>/);
-});
-
-test("shortcut labels and accessible keys include optional Shift", () => {
-  const shortcut = { modifier: "alt", shift: true, code: "KeyK", key: "K" } as const;
-  expect(["⌥⇧K", "Alt+Shift+K"]).toContain(shortcutLabel(shortcut));
-  expect(ariaKeyShortcuts(shortcut)).toBe("Alt+Shift+K");
-});
-
-test("app variables validate URLs and keep date presets relative", () => {
-  const definitions = defineAppVariables({
-    search: textVariable({ key: "q" }),
-    member: selectVariable({ key: "member", defaultValue: "all", values: ["all", "alice"] }),
-  });
-  expect(definitions.search.read(new URLSearchParams("q=build"))).toBe("build");
-  expect(definitions.search.write("")).toEqual({ q: null });
-  expect(definitions.member.read(new URLSearchParams("member=unknown"))).toBe("all");
-  expect(() => defineAppVariables({ first: textVariable({ key: "q" }), second: textVariable({ key: "q" }) })).toThrow("duplicate URL key");
-
-  let sourceEnd = "2020-01-07";
-  const period = dateRangeVariable({
-    key: "period", minDate: "2020-01-01", maxDate: () => sourceEnd,
-    maxRangeDays: 7, timeZone: "UTC", defaultValue: { kind: "preset", id: "last-3" },
-  });
-  const selection = period.read(new URLSearchParams("period=last-3"));
-  expect(period.resolve(selection)).toEqual({ start: "2020-01-05", end: "2020-01-07" });
-  expect(period.write(selection)).toEqual({ period: null, start: null, end: null });
-  sourceEnd = "2020-01-08";
-  expect(period.resolve(selection)).toEqual({ start: "2020-01-06", end: "2020-01-08" });
-  expect(period.read(new URLSearchParams("start=2020-01-06&end=2020-01-08"))).toEqual({
-    kind: "dates", start: "2020-01-06", end: "2020-01-08",
-  });
-  expect(period.read(new URLSearchParams("period=last-90"))).toEqual(period.defaultValue);
-  expect(dateRangeControl(period, selection, () => {}).value).toEqual({ start: "2020-01-06", end: "2020-01-08" });
-});
-
-test("operation routes decode one path segment and client errors remain useful", async () => {
-  const operation = {
-    input: (value: unknown) => value,
-    output: (value: unknown) => value,
-    run: async () => ({ count: 1 }),
-    policy: { maxQueryRows: 1, maxDurationMs: 1000 },
-  };
-  const handler = createDataHandler({ "usage / team": operation }, async () => ({
-    lakehouse: { queryAll: async () => ({ columns: [], rows: [] }) },
-    canDiscloseSql: false,
-  }));
-  const response = await handler(new Request("http://localhost/api/data/usage%20%2F%20team", {
-    method: "POST", headers: { "content-type": "application/json" }, body: "{}",
-  }));
-  expect(response.status).toBe(200);
-  expect((await response.json()).data).toEqual({ count: 1 });
-  const client = createDataClient({ fetch: (async () => new Response("<html>bad gateway</html>", { status: 502 })) as typeof fetch });
-  await expect(client.query("usage", {})).rejects.toMatchObject({
-    name: "DataAppError", code: "request_failed", message: "Could not load data.",
-  });
-  expect(DataAppError.name).toBe("DataAppError");
-});
-`,
-    );
-    const searchTest = Bun.spawnSync(["bun", "test", "search-contract.test.tsx"], {
-      cwd: directory,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    if (searchTest.exitCode !== 0) throw new Error(searchTest.stderr.toString());
   });
 
   test("never overwrites an existing directory", async () => {
@@ -802,7 +333,7 @@ test("operation routes decode one path segment and client errors remain useful",
     expect(current.stdout.join("\n")).toContain("already current");
     expect(readFileSync(operations, "utf8")).toContain("App-specific change");
 
-    const runtime = join(directory, ".altertable/runtime/server.ts");
+    const runtime = join(directory, ".altertable/runtime/src/server.ts");
     writeFileSync(runtime, `${readFileSync(runtime, "utf8")}\n// Local edit.\n`);
     expect(runCommandWithTestRuntime(["app", "upgrade", "--dir", directory])).rejects.toThrow(
       "was modified",
@@ -810,7 +341,7 @@ test("operation routes decode one path segment and client errors remain useful",
     expect(readFileSync(runtime, "utf8")).toContain("Local edit");
   });
 
-  test("template watch upgrade updates integrity and stops on generated edits", async () => {
+  test("source watch upgrade updates integrity and stops on generated edits", async () => {
     const directory = join(home, "watched-app");
     await runCommandWithTestRuntime([
       "app",
@@ -820,19 +351,19 @@ test("operation routes decode one path segment and client errors remain useful",
       directory,
       "--without-profile",
     ]);
-    const files = await readRuntimeTemplates();
-    files["format.ts"] += "\n// Changed template.\n";
+    const files = await readRuntimeSource();
+    files["src/format.ts"] += "\n// Changed source.\n";
     expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
-    expect(readFileSync(join(directory, ".altertable/runtime/format.ts"), "utf8")).toContain(
-      "Changed template",
+    expect(readFileSync(join(directory, ".altertable/runtime/src/format.ts"), "utf8")).toContain(
+      "Changed source",
     );
     expect((await installedRuntimeIntegrity(directory)).sha256).toEqual(
       currentRuntimeIntegrity(files).sha256,
     );
 
-    const generated = join(directory, ".altertable/runtime/format.ts");
+    const generated = join(directory, ".altertable/runtime/src/format.ts");
     writeFileSync(generated, `${readFileSync(generated, "utf8")}\n// App edit.\n`);
-    expect(upgradeApp(directory, { runtimeFiles: await readRuntimeTemplates() })).rejects.toThrow(
+    expect(upgradeApp(directory, { runtimeFiles: await readRuntimeSource() })).rejects.toThrow(
       "format.ts was modified",
     );
   });
@@ -851,7 +382,7 @@ test("operation routes decode one path segment and client errors remain useful",
     const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
     integrity.version = "0.1.0";
     writeFileSync(integrityPath, `${JSON.stringify(integrity, null, 2)}\n`);
-    const runtimePath = join(directory, ".altertable/runtime/server.ts");
+    const runtimePath = join(directory, ".altertable/runtime/src/server.ts");
     const beforeRuntime = readFileSync(runtimePath, "utf8");
     const beforeIntegrity = readFileSync(integrityPath, "utf8");
     const lockPath = join(directory, "bun.lock");
@@ -895,30 +426,5 @@ test("operation routes decode one path segment and client errors remain useful",
     ).rejects.toThrow("Injected write failure");
     expect(paths.map((path) => readFileSync(path, "utf8"))).toEqual(before);
     expect(await upgradeApp(directory)).toBe(true);
-  });
-
-  test("generated number formatting distinguishes counts and ratios", async () => {
-    const directory = join(home, "format-app");
-    await runCommandWithTestRuntime([
-      "app",
-      "create",
-      "format-app",
-      "--dir",
-      directory,
-      "--without-profile",
-    ]);
-    const { formatNumber, formatCount, formatPercent } = await import(
-      pathToFileURL(join(directory, ".altertable/runtime/format.ts")).href
-    );
-
-    expect(formatNumber(12.345, { maximumFractionDigits: 2 })).toBe("12.35");
-    expect(formatNumber(-0)).toBe("0");
-    expect(formatCount(12_345)).toBe("12,345");
-    expect(formatCount(12_345, { compact: true })).toBe("12.3K");
-    expect(formatCount(12.5)).toBe("—");
-    expect(formatPercent(0.116)).toBe("11.6%");
-    expect(formatPercent(0.0012)).toBe("0.12%");
-    expect(formatPercent(0.00002)).toBe("<0.01%");
-    expect(formatPercent(null)).toBe("—");
   });
 });

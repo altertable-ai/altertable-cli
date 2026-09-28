@@ -901,7 +901,7 @@
                   "name": "watch-runtime",
                   "aliases": [],
                   "type": "boolean",
-                  "description": "Upgrade generated runtime on template changes and restart preview.",
+                  "description": "Upgrade generated runtime on source changes and restart preview.",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",

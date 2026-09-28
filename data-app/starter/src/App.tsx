@@ -9,7 +9,7 @@ import {
   AppScope,
   AppToolbar,
   Button,
-  ThemeSelector,
+  ThemeToggle,
   useAppVariables,
 } from "@altertable/data-app-runtime/ui";
 import type { operations } from "./operations.ts";
@@ -31,7 +31,7 @@ export function App() {
       : "connected";
 
   return (
-    <AppLayout footerActions={<ThemeSelector theme={theme} />}>
+    <AppLayout footerActions={<ThemeToggle theme={theme} />}>
       <AppHeader
         scope={
           <AppScope organization={app.scope.organization} environment={app.scope.environment} />

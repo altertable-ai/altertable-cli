@@ -7,7 +7,7 @@ const appFile = (path) => pathToFileURL(join(process.cwd(), path)).href;
 async function check() {
   const manifest = JSON.parse(await readFile("app.json", "utf8"));
   try {
-    const { parseAppearance } = await import(appFile(".altertable/runtime/appearance.ts"));
+    const { parseAppearance } = await import(appFile(".altertable/runtime/src/appearance.ts"));
     parseAppearance(manifest.appearance);
   } catch {
     throw new Error("app.json has invalid appearance settings.");

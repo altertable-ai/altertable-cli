@@ -1,5 +1,5 @@
 {
-  "name": "{{APP_NAME}}",
+  "name": "data-app-starter",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,12 +12,7 @@
   },
   "dependencies": {
     "@altertable/data-app-runtime": "file:.altertable/runtime",
-    "@floating-ui/react": "0.27.20",
-    "@internationalized/date": "3.12.4",
-    "@tanstack/react-query": "5.104.0",
-    "lucide-react": "1.48.0",
     "react": "19.3.0",
-    "react-aria-components": "1.21.1",
     "react-dom": "19.3.0"
   },
   "devDependencies": {

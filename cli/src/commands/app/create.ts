@@ -4,26 +4,8 @@ import { defineCommand } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
 import { configGet } from "@/lib/profile-store.ts";
-import packageJson from "@/commands/app/templates/package.json.txt";
-import tsconfig from "@/commands/app/templates/tsconfig.json.txt";
-import assets from "@/commands/app/templates/assets.d.ts.txt";
-import html from "@/commands/app/templates/index.html.txt";
-import favicon from "@/commands/app/templates/favicon.svg.txt";
-import main from "@/commands/app/templates/main.tsx.txt";
-import appView from "@/commands/app/templates/App.tsx.txt";
-import variables from "@/commands/app/templates/variables.ts.txt";
-import styles from "@/commands/app/templates/styles.css.txt";
-import server from "@/commands/app/templates/server.ts.txt";
-import operations from "@/commands/app/templates/operations.ts.txt";
-import dataContext from "@/commands/app/templates/data-context.ts.txt";
-import readme from "@/commands/app/templates/README.md.txt";
-import agentGuide from "@/commands/app/templates/AGENTS.md.txt";
-import gitignore from "@/commands/app/templates/gitignore.txt";
-import bunLock from "@/commands/app/templates/bun.lock.txt";
-import bunfig from "@/commands/app/templates/bunfig.toml.txt";
-import appManifest from "@/commands/app/templates/app.json.txt";
-import oxfmtConfig from "@/commands/app/templates/oxfmtrc.json.txt";
-import { currentRuntimeIntegrity, runtimeFiles } from "@/commands/app/lib/runtime.ts";
+import { createAppFiles } from "@/commands/app/lib/distribution.ts";
+import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 
 export const appCreateCommand = defineCommand({
   metadata: {
@@ -79,42 +61,7 @@ export const appCreateCommand = defineCommand({
       organization: profileName ? organizationName || organizationSlug : "Your organization",
       environment: profileName ? environment : "your environment",
     };
-    const templateValues: Record<string, string> = {
-      APP_NAME: name,
-      APP_TITLE: title,
-      APP_ORG_JSON: JSON.stringify(scope.organization),
-      APP_ENV_JSON: JSON.stringify(scope.environment),
-      APP_ORG_HTML: escapeHtml(scope.organization),
-      APP_ENV_HTML: escapeHtml(scope.environment),
-    };
-    const files = [
-      ["package.json", packageJson],
-      ["bun.lock", bunLock],
-      ["bunfig.toml", bunfig],
-      ["tsconfig.json", tsconfig],
-      ["src/assets.d.ts", assets],
-      ["src/index.html", html],
-      ["src/favicon.svg", favicon],
-      ["src/main.tsx", main],
-      ["src/App.tsx", appView],
-      ["src/variables.ts", variables],
-      ["src/styles.css", styles],
-      ["src/server.ts", server],
-      ["src/operations.ts", operations],
-      ["src/data-context.ts", dataContext],
-      ["README.md", readme],
-      ["AGENTS.md", agentGuide],
-      [".gitignore", gitignore],
-      [".oxfmtrc.json", oxfmtConfig],
-      ["app.json", appManifest],
-      ...Object.entries(runtimeFiles).map(
-        ([path, content]) => [`.altertable/runtime/${path}`, content] as const,
-      ),
-      [
-        ".altertable/runtime/integrity.json",
-        `${JSON.stringify(currentRuntimeIntegrity(), null, 2)}\n`,
-      ],
-    ] as const;
+    const files = Object.entries(createAppFiles(dataAppPayload, { name, title, scope }));
 
     await mkdir(dirname(directory), { recursive: true });
     try {
@@ -127,15 +74,8 @@ export const appCreateCommand = defineCommand({
     }
 
     try {
-      await mkdir(join(directory, "src"));
-      await mkdir(join(directory, ".altertable/runtime"), { recursive: true });
-      await mkdir(join(directory, ".altertable/runtime/ui"));
-      for (const [path, template] of files) {
-        const content = template.replace(/{{([A-Z][A-Z0-9_]*)}}/g, (_, key: string) => {
-          const value = templateValues[key];
-          if (value === undefined) throw new Error(`Unknown template value ${key} in ${path}.`);
-          return value;
-        });
+      for (const [path, content] of files) {
+        await mkdir(dirname(join(directory, path)), { recursive: true });
         await writeFile(join(directory, path), content, { flag: "wx" });
       }
     } catch (error) {
@@ -161,17 +101,3 @@ export const appCreateCommand = defineCommand({
       );
   },
 });
-
-function escapeHtml(value: string): string {
-  return value.replace(
-    /[&<>"']/g,
-    (character) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      })[character]!,
-  );
-}

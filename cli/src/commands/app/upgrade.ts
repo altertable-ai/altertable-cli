@@ -2,6 +2,8 @@ import { access, cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "nod
 import { dirname, join } from "node:path";
 import { defineCommand } from "@/lib/command.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
+import { dataAppPayload } from "@/commands/app/lib/payload.ts";
+import { copyProcessEnv } from "@/lib/env.ts";
 import { appDirectory } from "@/commands/app/lib/run.ts";
 import {
   currentRuntimeIntegrity,
@@ -30,6 +32,7 @@ export const appUpgradeCommand = defineCommand({
 type UpgradeOptions = {
   afterApply?: (path: string) => void | Promise<void>;
   runtimeFiles?: Record<string, string>;
+  resolveLock?: (directory: string) => Promise<void>;
 };
 type Applied = { destination: string; backup: string | null };
 
@@ -98,7 +101,7 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-function readLock(lock: string, directory: string): void {
+function readLock(lock: string, directory: string): Record<string, unknown> {
   let value: unknown;
   try {
     value = parseJsonc(lock);
@@ -116,6 +119,7 @@ function readLock(lock: string, directory: string): void {
   ) {
     throw new ConfigurationError("bun.lock does not reference the generated runtime.");
   }
+  return value.packages;
 }
 
 /** Upgrade from validated inputs. Staged replacements are swapped into place and rolled back on failure. */
@@ -126,11 +130,10 @@ export async function upgradeApp(
   const files: Record<string, string> = options.runtimeFiles ?? runtimeFiles;
   const installed = await installedRuntimeIntegrity(directory);
   const current = currentRuntimeIntegrity(files);
-  if (
+  const runtimeUnchanged =
     installed.version === current.version &&
-    Object.entries(current.sha256).every(([name, checksum]) => installed.sha256[name] === checksum)
-  )
-    return false;
+    Object.keys(installed.sha256).length === Object.keys(current.sha256).length &&
+    Object.entries(current.sha256).every(([name, checksum]) => installed.sha256[name] === checksum);
 
   const lockPath = join(directory, "bun.lock");
   let lock: string;
@@ -139,7 +142,50 @@ export async function upgradeApp(
   } catch {
     throw new ConfigurationError(`Cannot read a valid bun.lock in ${directory}.`);
   }
-  readLock(lock, directory);
+  const lockedPackages = readLock(lock, directory);
+  const packagePath = join(directory, "package.json");
+  const packageSource = await readFile(packagePath, "utf8");
+  const appPackage = JSON.parse(packageSource) as PackageManifest;
+  if (appPackage.dependencies?.["@altertable/data-app-runtime"] !== `file:${runtimePath}`) {
+    throw new ConfigurationError("package.json does not reference the generated runtime.");
+  }
+  const previousPackage = JSON.parse(
+    await readFile(join(directory, runtimePath, "package.json"), "utf8"),
+  ) as PackageManifest;
+  const nextPackage = JSON.parse(files["package.json"]!) as PackageManifest;
+  const defaults = JSON.parse(dataAppPayload.starter["package.json"]!) as PackageManifest;
+  let packageChanged = false;
+  for (const [name, range] of Object.entries(nextPackage.peerDependencies ?? {})) {
+    const existing = appPackage.dependencies?.[name] ?? appPackage.devDependencies?.[name];
+    const locked = lockedPackages[name];
+    const locator = Array.isArray(locked) && typeof locked[0] === "string" ? locked[0] : "";
+    const resolvedVersion = locator.startsWith(`${name}@`) ? locator.slice(name.length + 1) : "";
+    // A lockfile version proves compatibility for user-authored ranges such as ^19.
+    if (
+      existing &&
+      (satisfies(existing, range) ||
+        (satisfies(resolvedVersion, existing) && satisfies(resolvedVersion, range)))
+    )
+      continue;
+    if (existing)
+      throw new ConfigurationError(
+        `Runtime needs ${name}@${range}; app declares ${existing}. Update package.json before upgrading.`,
+      );
+    const version = defaults.dependencies?.[name];
+    if (!version || !satisfies(version, range))
+      throw new ConfigurationError(
+        `Runtime needs ${name}@${range}. Add a compatible dependency to package.json before upgrading.`,
+      );
+    appPackage.dependencies ??= {};
+    appPackage.dependencies[name] = version;
+    packageChanged = true;
+  }
+  if (runtimeUnchanged && !packageChanged) return false;
+  const resolveDependencies =
+    packageChanged ||
+    JSON.stringify(previousPackage.dependencies) !== JSON.stringify(nextPackage.dependencies) ||
+    JSON.stringify(previousPackage.peerDependencies) !==
+      JSON.stringify(nextPackage.peerDependencies);
   const transaction = await mkdtemp(join(directory, ".altertable", ".upgrade-"));
   const applied: Applied[] = [];
   let preserveBackup = false;
@@ -157,16 +203,35 @@ export async function upgradeApp(
       if (!(name in files)) await rm(join(stagedRuntime, name));
     }
     await writeFile(join(stagedRuntime, "integrity.json"), `${JSON.stringify(current, null, 2)}\n`);
-    {
-      const backup = join(transaction, "backup", "runtime");
-      const hadOriginal = await exists(target);
+    async function apply(staged: string, destination: string, name: string): Promise<void> {
+      const backup = join(transaction, "backup", name);
+      const hadOriginal = await exists(destination);
       if (hadOriginal) {
         await mkdir(dirname(backup), { recursive: true });
-        await rename(target, backup);
+        await rename(destination, backup);
       }
-      applied.push({ destination: target, backup: hadOriginal ? backup : null });
-      await rename(stagedRuntime, target);
-      await options.afterApply?.(target);
+      applied.push({ destination, backup: hadOriginal ? backup : null });
+      await rename(staged, destination);
+      await options.afterApply?.(destination);
+    }
+    await apply(stagedRuntime, target, "runtime");
+    if (resolveDependencies) {
+      const stagedPackage = join(transaction, "package.json");
+      await writeFile(
+        stagedPackage,
+        packageChanged ? `${JSON.stringify(appPackage, null, 2)}\n` : packageSource,
+      );
+      await apply(stagedPackage, packagePath, "package.json");
+      const stagedLock = join(transaction, "bun.lock");
+      await writeFile(stagedLock, lock);
+      await apply(stagedLock, lockPath, "bun.lock");
+      await (options.resolveLock ?? resolveLockfile)(directory);
+      readLock(await readFile(lockPath, "utf8"), directory);
+      // Bun update may rewrite the root manifest; preserve all app-owned fields and formatting.
+      await writeFile(
+        packagePath,
+        packageChanged ? `${JSON.stringify(appPackage, null, 2)}\n` : packageSource,
+      );
     }
   } catch (error) {
     const rollbackFailures: string[] = [];
@@ -189,4 +254,47 @@ export async function upgradeApp(
     if (!preserveBackup) await rm(transaction, { recursive: true, force: true });
   }
   return true;
+}
+
+type PackageManifest = {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+};
+
+function satisfies(version: string, range: string): boolean {
+  try {
+    return Bun.semver.satisfies(version, range);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveLockfile(directory: string): Promise<void> {
+  const env = copyProcessEnv();
+  for (const key of Object.keys(env)) if (key.startsWith("ALTERTABLE_")) delete env[key];
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "update",
+      "@altertable/data-app-runtime",
+      "--lockfile-only",
+      "--ignore-scripts",
+    ],
+    {
+      cwd: directory,
+      env: { ...env, BUN_BE_BUN: "1" },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  if (code !== 0)
+    throw new ConfigurationError(
+      `Could not resolve runtime dependencies; upgrade rolled back.\n${stderr || stdout}`,
+    );
 }

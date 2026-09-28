@@ -1,4 +1,4 @@
-# Working on {{APP_TITLE}}
+# Working on this data app
 
 Build from observed lakehouse data. The app owns its question, operations, data context, and view; `.altertable/runtime/` owns transport and shared UI. Edit `src/`, not generated runtime files. Read component JSDoc for exact props and slots.
 

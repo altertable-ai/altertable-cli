@@ -1,3 +1,4 @@
+import app from "../app.json";
 import page from "./index.html";
 import { createDataHandler } from "@altertable/data-app-runtime/server";
 import { localLakehouse } from "@altertable/data-app-runtime/local";
@@ -17,4 +18,4 @@ const server = Bun.serve({
   fetch: data,
 });
 
-console.log(`{{APP_TITLE}} running at ${server.url}`);
+console.log(`${app.title} running at ${server.url}`);

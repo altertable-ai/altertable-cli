@@ -6,3 +6,6 @@ dist/
 /plans/
 docs/superpowers/
 .superpowers/
+/data-app/starter/.altertable/
+/data-app/tests/test-results/
+/data-app/tests/playwright-report/

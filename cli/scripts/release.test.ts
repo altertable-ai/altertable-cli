@@ -666,7 +666,7 @@ describe("release infrastructure wiring", () => {
     expect(
       runtimeJob.steps?.find(({ name }) => name === "Smoke test npm bundle on minimum runtime")
         ?.run,
-    ).toBe("bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0");
+    ).toBe("bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only");
   });
 
   test("routes branch CI through the same canonical verification workflow", async () => {
