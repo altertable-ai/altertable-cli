@@ -57,6 +57,24 @@ test("About the data keeps exploration context and Glossary without Overview", a
   await expect(page.getByText(/runs a lightweight query/)).toBeVisible();
 });
 
+test("source identifiers retain exact table and column identity in About the data", async ({
+  page,
+}) => {
+  await page.goto("/components");
+  await page.getByRole("button", { name: "Explore data" }).click();
+  const about = page.getByRole("dialog", { name: "About the data" });
+  await expect(about.locator('[data-identifier-id="tables.orders"]')).toHaveText(
+    "commerce.sales.orders",
+  );
+  await expect(about.locator('[data-identifier-id="columns.orders.customerId"]')).toHaveText(
+    "customer_id",
+  );
+  await expect(about.locator('[data-identifier-id="columns.orders.customerId"]')).toHaveAttribute(
+    "title",
+    "commerce.sales.orders.customer_id",
+  );
+});
+
 test("Present mode retains navigation, deep links, inspection, and theme switching", async ({
   page,
 }) => {

@@ -1,0 +1,9 @@
+.altertable-data-identifier {
+  padding: 0.08em 0.24em;
+  border-radius: 4px;
+  background: var(--at-code-surface, #f4f6f9);
+  color: var(--at-code-text, #273242);
+  font-size: 0.9em;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}

@@ -32,7 +32,7 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | Show freshness and refresh | [UpdatedAt](src/ui/UpdatedAt.tsx), [AppToolbar](src/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
 | Bind filters to the URL | [variables](src/ui/variables.ts), [DateRangePicker](src/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/ui/searchItems.ts), [SearchMatch](src/ui/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | GlossaryExplanation |
+| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | GlossaryExplanation, [defineDataIdentifiers](src/ui/data-identifiers.tsx) |
 | Present loaded findings | [PlayStory](src/ui/PlayStory.tsx) | StoryStep |
 | Build custom controls and overlays | [Button](src/ui/Button.tsx), [Sheet](src/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 

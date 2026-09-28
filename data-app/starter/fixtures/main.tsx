@@ -5,6 +5,7 @@ import { connectionCheck } from "@altertable/data-app-runtime/contract";
 import {
   DataApp,
   DataSection,
+  defineDataIdentifiers,
   ContentSkeleton,
   DateRangePicker,
   Grid,
@@ -24,9 +25,32 @@ const config = {
   scope: { organization: "Acme", environment: "production" },
   appearance: { mode: "light" },
 };
+const identifiers = defineDataIdentifiers({
+  tables: {
+    orders: { catalog: "commerce", schema: "sales", name: "orders" },
+  },
+  columns: {
+    customerId: { table: "orders", name: "customer_id" },
+  },
+});
+const { DataIdentifier } = identifiers;
 const dataContext = {
-  description: "A fixture exploring completed orders.",
-  glossary: { orders: { term: "Orders", definition: "Completed customer orders." } },
+  identifiers: identifiers.definitions,
+  description: (
+    <>
+      A fixture exploring completed orders in <DataIdentifier id="tables.orders" />.
+    </>
+  ),
+  glossary: {
+    orders: {
+      term: "Orders",
+      definition: (
+        <>
+          Completed orders grouped by <DataIdentifier id="columns.orders.customerId" />.
+        </>
+      ),
+    },
+  },
 };
 const empty = {
   glossary: { title: "No terms for this view" },
