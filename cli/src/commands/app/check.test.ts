@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("data app contract", () => {
-  test("rejects unbounded operations in the app process", async () => {
+  test("rejects unbounded or unchecked operations in the app process", async () => {
     mkdirSync(join(directory, "src"));
     mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
     writeFileSync(
@@ -22,7 +22,6 @@ describe("data app contract", () => {
       JSON.stringify({
         schemaVersion: 1,
         title: "Test app",
-        operations: { totals: {} },
       }),
     );
     writeFileSync(
@@ -31,13 +30,18 @@ describe("data app contract", () => {
     );
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { totals: { input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 0, maxDurationMs: 0 } } };",
+      "export const operations = { totals: { checks: [{}], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 0, maxDurationMs: 0 } } };",
     );
     const failure = await checkAppProject(directory).catch((error: unknown) => error);
     expect(failure).toMatchObject({ message: "Data app validation failed." });
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { totals: { input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+      "export const operations = { totals: { checks: [], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+    );
+    expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
+    writeFileSync(
+      join(directory, "src/operations.ts"),
+      "export const operations = { totals: { checks: [{}], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
     );
     await checkAppProject(directory);
   });

@@ -14,7 +14,7 @@
 }
 .altertable-glossary-definition-trigger:hover,
 .altertable-glossary-definition-trigger[data-open="true"] {
-  text-decoration-color: var(--at-accent, #405d47);
+  text-decoration-color: var(--at-text, #202124);
 }
 .altertable-glossary-definition-trigger:focus-visible {
   border-radius: 2px;

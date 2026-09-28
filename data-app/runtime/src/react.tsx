@@ -12,6 +12,7 @@ import type { DataOperations } from "./contract.ts";
 import type { DataClient, InputOf, OutputOf } from "./client.ts";
 import { dataAppTitle, type DataAppConfig } from "./config.ts";
 import { resolveDataView } from "./ui/DataBoundary.tsx";
+import { reportingPeriodText, type ReportingPeriod } from "./ui/PeriodSummary.tsx";
 
 /** Mount once per document; installs document identity and the shared request provider. */
 export function mountDataApp({
@@ -83,7 +84,7 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   }
 
   /** Join a typed request with its displayed-data state. Pass the result to
-   * `<DataSection result={view}>` and `<DataApp request={view}>`.
+   * Pass the result to `DataApp.request` or `DataSection.result`.
    * `isEmpty` is app-owned so a measured zero remains valid. Previous-input data
    * stays labeled through refreshes and errors. Input equality uses React Query's
    * stable key hash by default; override `sameInput` for a custom equivalence rule. */
@@ -92,7 +93,8 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     input: InputOf<Operations[Name]>,
     options: QueryOptions & {
       isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
-      describeInput: (input: InputOf<Operations[Name]>) => string;
+      describeInput?: (input: InputOf<Operations[Name]>) => string;
+      period?: (input: InputOf<Operations[Name]>) => ReportingPeriod;
       sameInput?: (left: InputOf<Operations[Name]>, right: InputOf<Operations[Name]>) => boolean;
     },
   ) {
@@ -119,7 +121,9 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
       pending: query.isFetching,
       error: query.error instanceof Error ? query.error : undefined,
       sameInput,
-      describe: options.describeInput,
+      describe:
+        options.describeInput ??
+        ((input) => (options.period ? reportingPeriodText(options.period(input)) : "this view")),
       isEmpty: options.isEmpty,
     });
     return {

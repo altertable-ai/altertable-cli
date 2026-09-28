@@ -43,6 +43,7 @@ test("runtime validates input, bounds rows, and hides query failures", async () 
     await proxied.queryAll("SELECT 1", { limit: 1, signal: new AbortController().signal }),
   ).toMatchObject({ rows: [[1]], queryId: "q1" });
   const operation = contract.defineOperation({
+    checks: [1],
     input(value: unknown) {
       if (value !== 1) throw new Error("Bad input");
       return 1;

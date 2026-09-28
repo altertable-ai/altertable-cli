@@ -1,6 +1,7 @@
 import type { ComponentPropsWithRef, CSSProperties, ReactNode } from "react";
 import { formatCount, formatPercent } from "../format.ts";
 import { classNames } from "./classNames.ts";
+import { chartColor } from "./chartColor.ts";
 import "./Breakdown.css";
 
 export type BreakdownItem = { id: string; label: ReactNode; value: number };
@@ -37,21 +38,21 @@ export function Breakdown({
         <strong>{formatValue(total)} total</strong>
       </div>
       <div className="altertable-breakdown-bar" aria-hidden="true">
-        {items.map((item, index) => (
+        {items.map((item) => (
           <span
             key={item.id}
             style={{
               width: `${total ? (item.value / total) * 100 : 0}%`,
-              backgroundColor: `var(--at-chart-${(index % 8) + 1}, var(--at-accent, #4779dc))`,
+              backgroundColor: chartColor(item.id),
             }}
           />
         ))}
       </div>
       <dl className="altertable-breakdown-list">
-        {items.map((item, index) => {
+        {items.map((item) => {
           const share = total ? item.value / total : 0;
           const color = {
-            "--altertable-breakdown-color": `var(--at-chart-${(index % 8) + 1}, var(--at-accent, #4779dc))`,
+            "--altertable-breakdown-color": chartColor(item.id),
           } as CSSProperties;
           return (
             <div

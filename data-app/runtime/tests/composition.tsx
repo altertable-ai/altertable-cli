@@ -27,21 +27,48 @@ import {
   TooltipProvider,
   UpdatedAt,
   useAppVariables,
+  defineDataContext,
+  evidenceFor,
 } from "../src/ui/index.ts";
 import type { AppToolbarProps, PlayStoryProps } from "../src/ui/index.ts";
+import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
 
 const toolbarProps = {
   refresh: { refreshing: false, onRefresh: () => {} },
 } satisfies AppToolbarProps;
-const storyProps = { title: "Story", steps: [], dataContext: null! } satisfies PlayStoryProps;
 const empty = { glossary: { title: "No terms" }, queries: { title: "No queries" } };
+const storyProps = {
+  title: "Story",
+  steps: [],
+  dataContext: null!,
+  empty,
+} satisfies PlayStoryProps;
+const dataContext = defineDataContext({
+  description: "Orders",
+  glossary: { orders: { term: "Orders", definition: "Completed orders." } },
+});
+const queryNames = defineQueryNames({ totals: "order-totals" });
+const evidence = evidenceFor(
+  dataContext,
+  queryNames,
+)({
+  id: "orders",
+  glossaryIds: ["orders"],
+  queryNames: [queryNames.totals],
+});
+// @ts-expect-error A card cannot refer to a glossary entry absent from this context.
+evidenceFor(dataContext)({ id: "missing", glossaryIds: ["unknown"] });
+// @ts-expect-error A card cannot refer to a query absent from the named query registry.
+evidenceFor(dataContext, queryNames)({ id: "missing-query", queryNames: ["other-query"] });
 const variables = defineAppVariables({
   period: dateRangeVariable({
     key: "period",
-    minDate: "2020-01-01",
-    maxDate: "2020-01-07",
-    maxRangeDays: 7,
-    timeZone: "UTC",
+    contract: defineDateRangeContract({
+      minDate: "2020-01-01",
+      maxDate: "2020-01-07",
+      maxRangeDays: 7,
+      timeZone: "UTC",
+    }),
     defaultValue: { kind: "preset", id: "last-3" },
   }),
 });
@@ -110,6 +137,7 @@ export function CompositionCheck() {
       <MetricCard
         label="Metric"
         value={1}
+        evidence={evidence}
         insight={<Button>Explain</Button>}
         className="metric"
         data-testid="metric"

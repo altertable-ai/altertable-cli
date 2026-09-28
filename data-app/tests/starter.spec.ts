@@ -82,7 +82,13 @@ test("glossary definitions open in place on hover and keyboard activation", asyn
   await page.goto("/components");
   const term = page.getByRole("button", { name: "Explain Orders" });
   expect(await term.evaluate((element) => getComputedStyle(element).cursor)).toBe("help");
+  const restingUnderline = await term.evaluate(
+    (element) => getComputedStyle(element).textDecorationColor,
+  );
   await term.hover();
+  expect(await term.evaluate((element) => getComputedStyle(element).textDecorationColor)).not.toBe(
+    restingUnderline,
+  );
   const definition = page.getByRole("dialog", { name: "Orders" });
   await expect(definition).toContainText("Completed orders grouped by customer_id.");
   await page.mouse.move(0, 0);
@@ -126,6 +132,7 @@ test("data view keeps the last result visible when refresh fails", async ({ page
   await request.post("/__test/state", { data: "success" });
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByText("Connection view ready")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Reporting period" })).toHaveCount(0);
   await expect(page).toHaveTitle("Orders exploration • Acme/production • Altertable app");
   await request.post("/__test/state", { data: "failure" });
   await page.getByRole("button", { name: "Refresh data" }).click();
@@ -135,6 +142,15 @@ test("data view keeps the last result visible when refresh fails", async ({ page
     "data-stale-error",
     "true",
   );
+});
+
+test("card inspection inherits the page glossary and empty states", async ({ page }) => {
+  await page.goto("/components");
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  await page.getByRole("button", { name: "Explore Completed orders" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Completed orders grouped by customer_id.");
+  await page.getByRole("tab", { name: "Queries" }).click();
+  await expect(page.getByRole("dialog")).toContainText("connection-check.sql");
 });
 
 test("request progress appears before Refresh", async ({ page }) => {

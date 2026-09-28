@@ -4,12 +4,13 @@ import type { CardEvidence } from "./CardEvidence.ts";
 import { AppIcon } from "./icons.ts";
 import { comparisonChange, type MetricComparison } from "./comparison.ts";
 import { classNames } from "./classNames.ts";
+import { formatMetric, type MetricFormat } from "../format.ts";
+import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import "./Inspect.css";
 import "./MetricCard.css";
 
-export type MetricCardProps = {
+type MetricCardBaseProps = {
   label: string;
-  value: ReactNode;
   description?: ReactNode;
   comparison?: MetricComparison;
   evidence?: CardEvidence;
@@ -18,9 +19,20 @@ export type MetricCardProps = {
   visual?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
 
+export type MetricCardProps = MetricCardBaseProps &
+  (
+    | { loading: true; value?: never; format?: never }
+    | ({ loading?: false } & (
+        | { value: number; format: MetricFormat }
+        | { value: ReactNode; format?: never }
+      ))
+  );
+
 export function MetricCard({
   label,
   value,
+  format,
+  loading = false,
   description,
   comparison,
   evidence,
@@ -30,6 +42,8 @@ export function MetricCard({
   className,
   ...props
 }: MetricCardProps) {
+  if (loading) return <ContentSkeleton variant="metric" className={className} />;
+  const shownValue = format ? formatMetric(value as number, format) : value;
   const change = comparison ? comparisonChange(comparison) : null;
   const shownTrend =
     change?.percent != null ? (
@@ -53,7 +67,7 @@ export function MetricCard({
       visual={
         <div className="altertable-metric-evidence">
           <div className="altertable-metric-reading">
-            <strong className="altertable-metric-value">{value}</strong>
+            <strong className="altertable-metric-value">{shownValue}</strong>
             {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
           </div>
           {visual}
@@ -76,7 +90,7 @@ export function MetricCard({
         )}
       </div>
       <div className="altertable-metric-reading">
-        <strong className="altertable-metric-value">{value}</strong>
+        <strong className="altertable-metric-value">{shownValue}</strong>
         {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
       </div>
       {description && <small className="altertable-metric-description">{description}</small>}

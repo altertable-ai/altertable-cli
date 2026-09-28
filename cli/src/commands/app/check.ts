@@ -19,7 +19,6 @@ type AppManifest = {
   schemaVersion: 1;
   title: string;
   appearance?: unknown;
-  operations: Record<string, unknown>;
 };
 
 export const appCheckCommand = defineCommand({
@@ -73,7 +72,7 @@ export const appCheckCommand = defineCommand({
       });
     }
     sink.writeHuman(
-      `Checked ${manifest.title}: ${Object.keys(manifest.operations).length} operations, client bundle clean${args.lakehouse ? ", lakehouse operations passed" : ""}.`,
+      `Checked ${manifest.title}: operation contracts and client bundle clean${args.lakehouse ? ", lakehouse operation checks passed" : ""}.`,
     );
   },
 });
@@ -92,16 +91,9 @@ export async function readManifest(directory: string): Promise<AppManifest> {
     value.schemaVersion !== 1 ||
     !("title" in value) ||
     typeof value.title !== "string" ||
-    !value.title.trim() ||
-    !("operations" in value) ||
-    typeof value.operations !== "object" ||
-    value.operations === null ||
-    Array.isArray(value.operations) ||
-    !Object.keys(value.operations).length
+    !value.title.trim()
   ) {
-    throw new ConfigurationError(
-      "app.json needs schemaVersion 1, a title, and operation default inputs.",
-    );
+    throw new ConfigurationError("app.json needs schemaVersion 1 and a title.");
   }
   return value as AppManifest;
 }

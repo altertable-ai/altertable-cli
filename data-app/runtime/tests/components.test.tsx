@@ -14,6 +14,9 @@ import {
 } from "../src/ui/variables.ts";
 import { createDataClient, DataAppError } from "../src/client.ts";
 import { createDataHandler } from "../src/server.ts";
+import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
+import { chartColor } from "../src/ui/chartColor.ts";
+import { formatMetric } from "../src/format.ts";
 
 test("local search preserves table order and highlights original text", () => {
   const rows = [
@@ -62,12 +65,50 @@ test("local search preserves table order and highlights original text", () => {
       ],
       rows: hits,
       rowKey: (hit: (typeof hits)[number]) => hit.item.id,
+      empty: { title: "No matching rows" },
     }),
   );
   expect(table).toContain("<mark>Café</mark> &lt;table&gt;");
   expect(table).toContain('class="altertable-data-panel-count">1</span>');
   expect(table).toMatch(/<th[^>]*data-type="number"[^>]*>Count<\/th>/);
   expect(table).toMatch(/<td[^>]*data-type="number"[^>]*>12<\/td>/);
+});
+
+test("table search finds a later matching row before applying the display limit", () => {
+  const rows = [
+    { id: "first", name: "Alpha" },
+    { id: "last", name: "Café" },
+  ];
+  const table = renderToStaticMarkup(
+    createElement(TableCard<(typeof rows)[number]>, {
+      title: "Customers",
+      columns: [{ id: "name", header: "Name", cell: (row) => row.name }],
+      rows,
+      rowKey: (row) => row.id,
+      limit: 1,
+      search: {
+        value: "cafe",
+        onChange: () => {},
+        label: "Search customers",
+        attributes: [{ name: "name", getter: (row) => row.name }],
+      },
+      empty: { title: "No matching customers" },
+    }),
+  );
+  expect(table).toContain("Café");
+  expect(table).not.toContain("Alpha");
+});
+
+test("category color follows identity and numeric metric formats use their units", () => {
+  expect(chartColor("insights")).toBe(chartColor("insights"));
+  expect(formatMetric(0.125, { kind: "ratio" })).toBe("12.5%");
+  expect(formatMetric(12, { kind: "count" })).toBe("12");
+  expect(formatMetric(12, { kind: "currency", currency: "USD" })).toBe("$12.00");
+});
+
+test("named query registry rejects ambiguous evidence names", () => {
+  expect(defineQueryNames({ totals: "order-totals" }).totals).toBe("order-totals");
+  expect(() => defineQueryNames({ first: "same", second: "same" })).toThrow("unique");
 });
 
 test("shortcut labels and accessible keys include optional Shift", () => {
@@ -89,16 +130,26 @@ test("app variables validate URLs and keep date presets relative", () => {
   ).toThrow("duplicate URL key");
 
   let sourceEnd = "2020-01-07";
-  const period = dateRangeVariable({
-    key: "period",
+  const contract = defineDateRangeContract({
     minDate: "2020-01-01",
     maxDate: () => sourceEnd,
     maxRangeDays: 7,
     timeZone: "UTC",
+  });
+  const period = dateRangeVariable({
+    key: "period",
+    contract,
     defaultValue: { kind: "preset", id: "last-3" },
   });
   const selection = period.read(new URLSearchParams("period=last-3"));
   expect(period.resolve(selection)).toEqual({ start: "2020-01-05", end: "2020-01-07" });
+  expect(contract.parse(period.resolve(selection))).toEqual(period.resolve(selection));
+  expect(contract.period(period.resolve(selection))).toEqual({
+    kind: "calendar",
+    start: "2020-01-05",
+    end: "2020-01-07",
+    timeZone: "UTC",
+  });
   expect(period.write(selection)).toEqual({ period: null, start: null, end: null });
   sourceEnd = "2020-01-08";
   expect(period.resolve(selection)).toEqual({ start: "2020-01-06", end: "2020-01-08" });
@@ -116,6 +167,7 @@ test("app variables validate URLs and keep date presets relative", () => {
 
 test("operation routes decode one path segment and client errors remain useful", async () => {
   const operation = {
+    checks: [{}],
     input: (value: unknown) => value,
     output: (value: unknown) => value,
     run: async () => ({ count: 1 }),

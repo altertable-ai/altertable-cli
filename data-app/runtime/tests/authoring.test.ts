@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   connectionCheck,
+  defineDateRangeContract,
   parseCount,
   parseDateRangeInput,
   parseEmptyInput,
@@ -104,4 +105,42 @@ test("request state labels data from an older input and preserves it on failure"
     kind: "stale-error",
     data: { count: 12 },
   });
+});
+
+test("a changing date range keeps the displayed period with its result", () => {
+  const range = defineDateRangeContract({
+    minDate: "2026-01-01",
+    maxDate: "2026-01-31",
+    maxRangeDays: 7,
+    timeZone: "UTC",
+  });
+  const displayed = { start: "2026-01-01", end: "2026-01-03" };
+  const requested = { start: "2026-01-04", end: "2026-01-06" };
+  const view = resolveDataView({
+    requestedInput: requested,
+    previous: { input: displayed, data: { count: 4 } },
+    pending: true,
+    sameInput: (left, right) => left.start === right.start && left.end === right.end,
+    describe: range.describeInput,
+    isEmpty: () => false,
+  });
+  expect(view.kind).toBe("updating");
+  if (view.kind === "updating") {
+    expect(range.period(view.displayedInput)).toEqual({
+      ...displayed,
+      kind: "calendar",
+      timeZone: "UTC",
+    });
+    expect(view.message).toContain(range.describeInput(requested));
+  }
+  expect(
+    resolveDataView({
+      requestedInput: requested,
+      current: { input: requested, data: { count: 0 } },
+      pending: false,
+      sameInput: (left, right) => left.start === right.start && left.end === right.end,
+      describe: range.describeInput,
+      isEmpty: (data) => data.count === 0,
+    }),
+  ).toEqual({ kind: "empty", input: requested });
 });

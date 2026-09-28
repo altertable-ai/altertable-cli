@@ -10,8 +10,5 @@
     "cornerRadius": "medium",
     "elevation": "subtle",
     "typography": { "body": "system", "heading": "system" }
-  },
-  "operations": {
-    "connection": {}
   }
 }

@@ -19,6 +19,7 @@ import { Sheet, type SheetDialogProps } from "./Sheet.tsx";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "./Tabs.tsx";
 import { ariaKeyShortcuts, shortcuts, useShortcut } from "./shortcuts.ts";
 import { Tooltip } from "./Tooltip.tsx";
+import { useInspectionDefaults } from "./InspectionContext.tsx";
 import "./AboutData.css";
 
 export type AboutTab = "glossary" | "queries";
@@ -28,7 +29,7 @@ export type AboutEmpty = {
 };
 
 export type AboutSubject = {
-  empty: AboutEmpty;
+  empty?: AboutEmpty;
   id?: string;
   title?: ReactNode;
   description?: ReactNode;
@@ -66,9 +67,11 @@ function namedGlossaryEntries(
   dataContext: DataContext | undefined,
   ids: string[],
 ): GlossaryEntry[] {
-  return ids
-    .map((id) => dataContext?.glossary[id])
-    .filter((entry): entry is GlossaryEntry => !!entry);
+  return ids.map((id) => {
+    const entry = dataContext?.glossary[id];
+    if (!entry) throw new Error(`Unknown glossary entry: ${id}.`);
+    return entry;
+  });
 }
 
 function listedGlossaryEntries({
@@ -141,22 +144,33 @@ export function AboutData({
   ref,
   ...props
 }: AboutDataProps) {
+  const defaults = useInspectionDefaults();
+  const resolvedContext = dataContext ?? defaults?.dataContext;
+  const resolvedQueries = queries ?? defaults?.queries;
+  const resolvedEmpty = empty ?? defaults?.empty;
+  if (!resolvedEmpty) throw new Error("AboutData needs glossary and query empty states.");
   const subject = {
     id,
     title,
     description,
     visual,
-    dataContext,
+    dataContext: resolvedContext,
     glossaryEntry,
     glossaryEntries,
     glossaryIds,
-    queries,
+    queries: resolvedQueries,
     queryNames,
-    empty,
+    empty: resolvedEmpty,
   };
   const listed = listedGlossaryEntries(subject);
   const names = glossaryQueries(subject);
-  const hasQueries = (queries ?? []).some((query) => !names || names.includes(query.name));
+  if (names && resolvedQueries?.length) {
+    for (const name of names) {
+      if (!resolvedQueries.some((query) => query.name === name))
+        throw new Error(`Unknown query name: ${name}.`);
+    }
+  }
+  const hasQueries = (resolvedQueries ?? []).some((query) => !names || names.includes(query.name));
   const sheetId = subjectId(subject);
   const initialTab = resolveTab(tab ?? searchParams().get("tab"));
   const [uncontrolledOpen, setUncontrolledOpen] = useState(
@@ -167,7 +181,8 @@ export function AboutData({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const mergedTrigger = useMergeRefs([triggerRef, ref]);
   const heading = title ?? "About the data";
-  const summary = description ?? dataContext?.description ?? "Glossary and queries for this view.";
+  const summary =
+    description ?? resolvedContext?.description ?? "Glossary and queries for this view.";
   const shortcutEnabled = trigger && shortcut && !props.disabled;
   const hint =
     tooltip ??
@@ -285,14 +300,14 @@ export function AboutData({
                     ))}
                   </div>
                 ) : (
-                  <EmptyState {...empty.glossary} />
+                  <EmptyState {...resolvedEmpty.glossary} />
                 )}
               </TabPanel>
               <TabPanel id="queries">
                 {hasQueries ? (
-                  <QueryList queries={queries} names={names} expanded />
+                  <QueryList queries={resolvedQueries} names={names} expanded />
                 ) : (
-                  <EmptyState {...empty.queries} />
+                  <EmptyState {...resolvedEmpty.queries} />
                 )}
               </TabPanel>
             </TabPanels>

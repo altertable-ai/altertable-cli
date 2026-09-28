@@ -64,7 +64,6 @@ describe("app create", () => {
     expect(JSON.parse(readFileSync(join(directory, "app.json"), "utf8"))).toMatchObject({
       title: "Product Pulse",
       scope: { organization: "Your organization", environment: "your environment" },
-      operations: { connection: {} },
     });
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());

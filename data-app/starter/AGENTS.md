@@ -1,8 +1,8 @@
-# Data app authoring router
+# Build this data app
 
-The app owns its question, SQL, validation, exploration context, and view. Read the route for the task before editing. Use the runtime's public package exports; inspect its source for types and behavior.
+Confirm `app.json` scope against the connected profile before querying. Inspect the source and execute bounded queries in that scope. For a broad question, explore more than one useful angle before choosing the view; a connection check does not establish coverage.
 
-## Choose a route
+Write the question, SQL, and validation in `src/operations.ts`; put each operation's fixed live-check inputs in its `checks`. Explain the exploration and define terms in `src/data-context.ts` or `.tsx`. Build conclusions from observed results, without presenting association as cause.
 
 | Task | App-owned files | Read next |
 | --- | --- | --- |
@@ -13,8 +13,6 @@ The app owns its question, SQL, validation, exploration context, and view. Read 
 | Find a component, hook, or parser | Read `.altertable/runtime/` | [Runtime API map](.altertable/runtime/README.md) |
 | Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server.ts) |
 
-## Shared boundaries
+Use public imports from `@altertable/data-app-runtime`. Keep credentials and SQL execution on the server. Edit app-owned files in `src/`; upgrade the managed runtime through the CLI.
 
-Build from observed data and keep credentials and SQL execution on the server. Edit app-owned files; runtime customizations belong upstream. See [version control](README.md#version-control) for managed runtime ownership.
-
-Run the [local checks](README.md#check-and-upgrade) after changes. The data and view guides specify the additional checks for their surfaces.
+Run `altertable app check --lakehouse` with the matching profile, then inspect the rendered app at phone and desktop widths, including loading, empty, error, and stale results.

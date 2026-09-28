@@ -9,13 +9,13 @@ export type DataSectionProps<Data, Input = unknown> = (
   | { view: DataView<Data, Input>; result?: never }
   | { result: { view: DataView<Data, Input>; refetch: () => unknown }; view?: never }
 ) & {
-  children: (data: Data) => ReactNode;
+  children: (data: Data, displayedInput: Input) => ReactNode;
   empty?: Pick<EmptyStateProps, "title" | "description">;
   /** Placeholder layout for an initial request; use the ready view's grid without copied values. */
   loading?: ReactNode;
   error?: { title: ReactNode; description?: ReactNode; onRetry?: () => void };
   label?: string;
-  /** Use inline when there is no page-level DataViewToast for this request. */
+  /** DataApp suppresses this local notice in favor of its page-level toast. */
   notice?: "inline" | "none";
   dimOnUpdate?: boolean;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
@@ -30,7 +30,7 @@ export function DataSection<Data, Input>({
   loading,
   error,
   label,
-  notice = "none",
+  notice = result ? "inline" : "none",
   dimOnUpdate = !!result,
   ...props
 }: DataSectionProps<Data, Input>) {

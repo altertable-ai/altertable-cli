@@ -1,6 +1,6 @@
 // App shell and getting started
 export { DataApp } from "./DataApp.tsx";
-export type { DataAppProps } from "./DataApp.tsx";
+export type { DataAppProps, DataAppRequest } from "./DataApp.tsx";
 export { GettingStarted } from "./GettingStarted.tsx";
 export { AppLayout } from "./AppLayout.tsx";
 export type { AppLayoutProps } from "./AppLayout.tsx";
@@ -32,7 +32,8 @@ export type { CardEvidence } from "./CardEvidence.ts";
 export { VisualizationCard } from "./VisualizationCard.tsx";
 export type { VisualizationCardProps } from "./VisualizationCard.tsx";
 export { TableCard } from "./TableCard.tsx";
-export type { TableCardColumn, TableCardProps } from "./TableCard.tsx";
+export type { TableCardColumn, TableCardProps, TableCardSearch } from "./TableCard.tsx";
+export { chartColor } from "./chartColor.ts";
 export { Breakdown } from "./Breakdown.tsx";
 export type { BreakdownItem, BreakdownProps } from "./Breakdown.tsx";
 export { Ranking } from "./Ranking.tsx";
@@ -117,6 +118,7 @@ export { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
 export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./Tabs.tsx";
 
 // Data context and query inspection
+export { defineDataContext, evidenceFor } from "./data-context.ts";
 export type { DataContext, GlossaryEntry } from "./data-context.ts";
 export { defineDataIdentifiers } from "./data-identifiers.tsx";
 export type {

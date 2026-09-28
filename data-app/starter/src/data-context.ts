@@ -1,7 +1,7 @@
-import type { DataContext } from "@altertable/data-app-runtime/ui";
+import { defineDataContext } from "@altertable/data-app-runtime/ui";
 
 /** Replace this setup context with the question and definitions for your first view. */
-export const dataContext = {
+export const dataContext = defineDataContext({
   description:
     "This starter runs a lightweight query to verify that the selected lakehouse profile can execute SQL. It does not check access to individual datasets. Replace the check with a query that answers a real question before sharing the app.",
   glossary: {
@@ -11,4 +11,4 @@ export const dataContext = {
       queryNames: ["connection-check"],
     },
   },
-} satisfies DataContext;
+});
