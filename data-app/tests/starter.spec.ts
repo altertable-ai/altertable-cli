@@ -218,18 +218,28 @@ test("grid uses one gap and keeps shorter panels at content height", async ({ pa
 test("grid spans respond to their container at phone, tablet, and desktop widths", async ({
   page,
 }) => {
-  for (const width of [390, 800, 1280]) {
+  for (const width of [390, 550, 800, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/components");
     const primary = await page.getByTestId("primary-grid-item").boundingBox();
     const support = await page.getByTestId("support-grid-item").boundingBox();
+    const peers = await page.getByTestId("peer-grid").locator(":scope > div").all();
+    const firstPeer = await peers[0]!.boundingBox();
+    const lastPeer = await peers[2]!.boundingBox();
     expect(primary).not.toBeNull();
     expect(support).not.toBeNull();
-    if (width === 390) {
+    expect(firstPeer).not.toBeNull();
+    expect(lastPeer).not.toBeNull();
+    if (width <= 550) {
       expect(support!.y).toBeGreaterThanOrEqual(primary!.y + primary!.height);
+      expect(Math.round(support!.x)).toBe(Math.round(primary!.x));
+      expect(Math.round(support!.width)).toBe(Math.round(primary!.width));
+      expect(lastPeer!.y).toBeGreaterThanOrEqual(firstPeer!.y + firstPeer!.height);
+      expect(Math.round(lastPeer!.width)).toBe(Math.round(primary!.width));
     } else {
       expect(Math.round(primary!.y)).toBe(Math.round(support!.y));
       expect(primary!.width).toBeGreaterThan(support!.width * 1.8);
+      expect(Math.round(firstPeer!.y)).toBe(Math.round(lastPeer!.y));
     }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),

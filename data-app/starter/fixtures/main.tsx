@@ -94,6 +94,11 @@ function Fixture() {
       }}
     >
       <Stack data-testid="layout-stack">
+        <Grid columns={3} minItemWidth="compact" data-testid="peer-grid">
+          <MetricCard label="Actions" value="120" />
+          <MetricCard label="Identities" value="40" />
+          <MetricCard label="Organizations" value="26" />
+        </Grid>
         <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
           <GridItem span={2} data-testid="primary-grid-item">
             <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
