@@ -13,7 +13,7 @@ Start with the task below, then read the linked types. Import through `@altertab
 | Run locally through the CLI proxy | `/local` | [serveLocalApp, localLakehouse](src/local.ts) |
 | Author a hosted server | `/server` | [createDataHandler, RequestAccess](src/server.ts) |
 | Set brand tokens and viewer theme | `/appearance` | [parseAppearance, createThemeController](src/appearance.ts) |
-| Format counts, ratios, and labels | `/format` | [Formatting functions](src/format.ts) |
+| Format numbers, ratios, and plural forms | `/format` | [Formatting functions](src/format.ts) |
 | Compose a view | `/ui` | [All public components and types](src/ui/index.ts) |
 | Select a semantic icon | `/icons` | [AppIcon and icon names](src/ui/icons.ts) |
 
