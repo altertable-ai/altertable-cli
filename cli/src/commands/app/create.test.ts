@@ -140,7 +140,7 @@ describe("app create", () => {
       organization: "Cousteau",
       environment: "production",
     });
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("title={app.title}");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("config={app}");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("{{APP_TITLE}}");
   });
 

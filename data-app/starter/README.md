@@ -11,10 +11,10 @@ altertable app dev
 ```
 
 The CLI prints the local URL. Use `altertable app dev --port 3022` to choose a port. Run `altertable app check --lakehouse` to validate the app and execute its declared operation against the selected profile.
-CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when runtime source change. The watcher stops if a generated runtime file was edited.
+CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when runtime source changes. The watcher stops if a generated runtime file was edited.
 
 ## Build the first view
 
-Choose a question, inspect the relevant data, and replace the `connection` operation in `src/operations.ts` with a bounded query that answers it. Render the result in `src/App.tsx`, add any reader-controlled inputs in `src/variables.ts`, and describe the exploration in `src/data-context.ts`. “About the data” shows the context, glossary, and disclosed queries; SQL appears only when the server permits disclosure.
+Choose a question, inspect the relevant data, and replace `connectionCheck()` in `src/operations.ts` with a bounded query that answers it. Replace `<GettingStarted />` in `src/App.tsx` with an authored view inside `<DataApp />`. Add `src/variables.ts` only when readers need filters, and describe the exploration in `src/data-context.ts`. Pass the result of `useDataView` to `<DataSection result={view}>`; the app decides what counts as empty. “About the data” shows the context, glossary, and disclosed queries; SQL appears only when the server permits disclosure.
 
-The versioned `.altertable/runtime/` supplies the data transport and shared UI, including optional Present mode for an authored story. The JSDoc beside the example and runtime exports explains each boundary where it is used.
+The versioned `.altertable/runtime/` supplies transport and shared UI, including optional Present mode. Its `DataApp` page shell, connection starter, query hooks, local entry helpers, and contract parsers keep common setup out of `src/`. The JSDoc beside each export describes its boundary.

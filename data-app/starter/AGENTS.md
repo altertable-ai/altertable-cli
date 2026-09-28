@@ -15,19 +15,19 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `app.json`            | Title, verified scope, appearance, and fixed sample inputs for operation checks. These fixtures are not live defaults. |
 | `src/operations.ts`   | Bounded server-side queries and validation. Credentials stay on the server.                                            |
-| `src/variables.ts`    | Reader-controlled defaults, URL state, and projection into operation inputs.                                           |
+| `src/variables.ts`    | Add when filters are needed: reader-controlled defaults, URL state, and operation inputs.                              |
 | `src/data-context.ts` | Exploration description and glossary.                                                                                  |
 | `src/App.tsx`         | Questions, filters, result states, cards, and optional story.                                                          |
 
 - Prefer a dynamic, source-bounded date range for ongoing questions. Declare it with `dateRangeVariable`, including timezone, complete-day policy, bounds, maximum range, and a relative default. Resolve the selected range into the operation input so `useDataQuery` keys each request correctly. Use a fixed period only for a deliberate historical snapshot or rolling sub-day question; explain that choice in the data context.
 - Define other filters with `selectVariable` or `textVariable`. `useAppVariables` owns URL parsing, reset, and Back/Forward. Bind controls to those values; keep local search out of operation inputs. Use `useViewTab` for top-level `?view=` navigation.
-- Give each data view one `resolveDataView` and `DataSection` boundary. Fill its loading, empty, and error slots; keep a measured zero in the ready state. Match skeleton geometry to the ready layout. Give independent operations independent retry boundaries. The starter's connection check is a setup state, not a data view.
+- Use `createDataHooks(createDataClient<typeof operations>())` and its `useDataView` for each fetched view. Supply `isEmpty` and `describeInput`, then pass the returned result to `<DataSection result={view}>`. It handles loading, empty, error, retry, and stale results while preserving the input that produced visible data. Keep a measured zero in the ready state. Independent operations need independent retry boundaries. The starter's connection check is a setup state.
 
 ## Compose the view
 
 | Need                     | Runtime primitive                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------- |
-| Page and hierarchy       | `AppLayout`, `AppHeader`, `AppScope`, `AppToolbar`, `StorySection`, `Grid`, `Stack` |
+| Page and hierarchy       | `DataApp` for the standard shell; `StorySection`, `Grid`, `Stack` for content |
 | Key number               | `MetricCard` with semantic `label`, `value`, and optional context slots             |
 | Chart, ranking, or rows  | `VisualizationCard`, `Ranking`, `TableCard`, `Breakdown`                            |
 | Filters and search       | `DateRangePicker`, `Combobox`, `SearchField`, `searchItems`, `SearchMatch`          |
@@ -37,6 +37,8 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 - Use `Breakdown` for parts of one total and `Ranking` for values compared with the largest visible item. Give numeric table columns their numeric type. Search the complete local collection before limiting rows, and render visible matches with `SearchMatch`.
 - Use chart color by meaning: accent plus neutral for one series, stable distinct hues for categories, a lightness scale for ordered magnitude, and two ordered hues around a meaningful midpoint for signed change. Keep category colors consistent across views and themes. Mark notable values from data, not DOM position. Provide text labels and `Tooltip variant="chart"` on marks; touch must reveal the same information.
 - Put stable glossary and query references in each card's `evidence`. Write the page as question, evidence, interpretation, and next question. Use `PlayStory` only for distinct observations a room can read from a distance; link relevant glossary terms and queries to each step. Conclude only when the data supports it.
+- Pass `app.json`, `dataContext`, and a `useDataView` result as `request` to `DataApp`. Add optional filters and Present steps when the view needs them. For multiple operations, pass combined query evidence and refresh behavior explicitly. `DataApp` owns the page identity, theme control, About the data, and default toolbar. Keep the authored question and interpretation in its children. The generated `main.tsx` and `server.ts` already use `mountDataApp` and `serveLocalApp`; hosted servers must use `createDataHandler` with viewer authorization.
+- Use the React-free parsers in `@altertable/data-app-runtime/contract` for empty input, bounded dates, counts, labels, and named query rows when they match the data contract. Define app-specific input and output validation in the operation. Never move source-specific SQL, populations, or metric definitions into shared runtime helpers.
 - Set `app.json` title, scope, and appearance for the organization's brand. Keep the document title as `{app title} • {org}/{env} • Altertable app`. Use accessible controls and semantic icons. Essential actions must work without hover. The page must not overflow horizontally.
 
 ## Verify and maintain

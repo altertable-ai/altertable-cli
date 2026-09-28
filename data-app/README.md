@@ -2,6 +2,8 @@
 
 `runtime/` is the private `@altertable/data-app-runtime` package. `starter/` is the actual getting-started application. `tests/` runs browser scenarios against the starter and its separate component fixtures.
 
+The runtime owns the standard `DataApp` page shell, `GettingStarted` connection screen, `useDataView` request state, browser and local server entry helpers, and reusable contract parsers. Generated apps keep their question, SQL, validation, exploration context, and view in `src/`.
+
 ## Develop
 
 From the repository root, using Fish:

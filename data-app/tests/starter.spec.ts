@@ -78,3 +78,17 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("data view keeps the last result visible when refresh fails", async ({ page, request }) => {
+  await request.post("/__test/state", { data: "failure" });
+  await page.goto("/components");
+  await expect(page.getByText("Couldn’t load data")).toBeVisible();
+  await request.post("/__test/state", { data: "success" });
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  await expect(page).toHaveTitle("Orders exploration • Acme/production • Altertable app");
+  await request.post("/__test/state", { data: "failure" });
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  await expect(page.getByText(/Couldn’t refresh. Showing the last result/)).toBeVisible();
+});

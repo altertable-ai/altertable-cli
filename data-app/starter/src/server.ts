@@ -1,21 +1,6 @@
-import app from "../app.json";
 import page from "./index.html";
-import { createDataHandler } from "@altertable/data-app-runtime/server";
-import { localLakehouse } from "@altertable/data-app-runtime/local";
+import { serveLocalApp } from "@altertable/data-app-runtime/local";
 import { operations } from "./operations.ts";
+import app from "../app.json";
 
-/** Local development adapter; hosted servers must authorize each viewer themselves. */
-const data = createDataHandler(operations, async () => ({
-  lakehouse: localLakehouse(),
-  canDiscloseSql: true,
-}));
-const server = Bun.serve({
-  hostname: "127.0.0.1",
-  port: Number(process.env.PORT ?? 25837),
-  development: process.env.NODE_ENV !== "production",
-  idleTimeout: 60,
-  routes: { "/": page },
-  fetch: data,
-});
-
-console.log(`${app.title} running at ${server.url}`);
+serveLocalApp({ page, operations, title: app.title });
