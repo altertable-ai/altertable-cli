@@ -73,6 +73,9 @@ test("source identifiers retain exact table and column identity in About the dat
     "title",
     "commerce.sales.orders.customer_id",
   );
+  expect(await about.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+    true,
+  );
 });
 
 test("Present mode retains navigation, deep links, inspection, and theme switching", async ({

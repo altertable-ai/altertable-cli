@@ -58,9 +58,28 @@ export function defineDataIdentifiers<
     if (!definition) throw new Error(`Unknown data identifier ${id}.`);
     const qualified = qualifiedName(definition);
     const shown = display ?? (definition.kind === "table" ? "qualified" : "short");
+    const table = definition.kind === "table" ? definition : definition.table;
+    const prefix =
+      definition.kind === "table"
+        ? [table.catalog, table.schema]
+        : [table.catalog, table.schema, table.name];
     return (
-      <code className="altertable-data-identifier" title={qualified} data-identifier-id={id}>
-        {shown === "qualified" ? qualified : definition.name}
+      <code
+        className="altertable-data-identifier"
+        data-kind={definition.kind}
+        title={qualified}
+        data-identifier-id={id}
+      >
+        {shown === "qualified" && (
+          <span className="altertable-data-identifier-path">
+            {prefix.map((segment, index) => (
+              <span key={index}>
+                {segment}.<wbr />
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="altertable-data-identifier-name">{definition.name}</span>
       </code>
     );
   }

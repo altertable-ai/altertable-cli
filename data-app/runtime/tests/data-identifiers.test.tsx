@@ -19,8 +19,11 @@ test("data identifiers render exact source names from compact IDs", () => {
       .
     </p>,
   );
-  expect(html).toContain("product_analytics.analytics.events</code>");
-  expect(html).toContain("identity_uuid</code>");
+  expect(html.replace(/<[^>]*>/g, "")).toContain(
+    "product_analytics.analytics.events uses identity_uuid.",
+  );
+  expect(html).toContain('data-kind="table"');
+  expect(html).toContain('data-kind="column"');
   expect(html).toContain('title="product_analytics.analytics.events.identity_uuid"');
   expect(identifiers.definitions["columns.events.identityUuid"]).toEqual({
     kind: "column",
