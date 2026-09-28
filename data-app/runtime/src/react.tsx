@@ -11,7 +11,7 @@ import {
 import type { DataOperations } from "./contract.ts";
 import type { DataClient, InputOf, OutputOf } from "./client.ts";
 import { dataAppTitle, type DataAppConfig } from "./config.ts";
-import { resolveDataView } from "./ui/requests/DataBoundary.tsx";
+import { resolveDataView } from "./ui/DataBoundary.tsx";
 
 /** Mount once per document; installs document identity and the shared request provider. */
 export function mountDataApp({

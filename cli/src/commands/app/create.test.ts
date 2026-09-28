@@ -69,7 +69,7 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());
     const paths = JSON.parse(result.stdout[0]!).files as string[];
-    expect(paths).toContain(".altertable/runtime/src/ui/presentation/PlayStory.tsx");
+    expect(paths).toContain(".altertable/runtime/src/ui/PlayStory.tsx");
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain("docs/data.md");
     expect(paths).toContain(".altertable/runtime/README.md");

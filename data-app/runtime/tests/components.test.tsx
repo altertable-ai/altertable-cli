@@ -1,17 +1,17 @@
 import { expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { searchItems } from "../src/ui/controls/searchItems.ts";
-import { SearchMatch } from "../src/ui/controls/SearchMatch.tsx";
-import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/controls/shortcuts.ts";
-import { TableCard } from "../src/ui/cards/TableCard.tsx";
+import { searchItems } from "../src/ui/searchItems.ts";
+import { SearchMatch } from "../src/ui/SearchMatch.tsx";
+import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/shortcuts.ts";
+import { TableCard } from "../src/ui/TableCard.tsx";
 import {
   dateRangeControl,
   dateRangeVariable,
   defineAppVariables,
   selectVariable,
   textVariable,
-} from "../src/ui/controls/variables.ts";
+} from "../src/ui/variables.ts";
 import { createDataClient, DataAppError } from "../src/client.ts";
 import { createDataHandler } from "../src/server.ts";
 

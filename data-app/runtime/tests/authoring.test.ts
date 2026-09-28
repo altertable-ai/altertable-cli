@@ -9,7 +9,7 @@ import {
   rowsAsRecords,
 } from "../src/contract.ts";
 import { dataAppTitle } from "../src/config.ts";
-import { resolveDataView } from "../src/ui/requests/DataBoundary.tsx";
+import { resolveDataView } from "../src/ui/DataBoundary.tsx";
 
 test("starter connection requires a successful bounded query", async () => {
   const query = connectionCheck();

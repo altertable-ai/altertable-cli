@@ -15,7 +15,7 @@ Start with the task below, then read the linked types. Import through `@altertab
 | Set brand tokens and viewer theme | `/appearance` | [parseAppearance, createThemeController](src/appearance.ts) |
 | Format counts, ratios, and labels | `/format` | [Formatting functions](src/format.ts) |
 | Compose a view | `/ui` | [All public components and types](src/ui/index.ts) |
-| Select a semantic icon | `/icons` | [AppIcon and icon names](src/ui/primitives/icons.ts) |
+| Select a semantic icon | `/icons` | [AppIcon and icon names](src/ui/icons.ts) |
 
 ## Find UI by task
 
@@ -23,18 +23,18 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 
 | Task | Start here | Related APIs |
 | --- | --- | --- |
-| Standard page shell | [DataApp](src/ui/app/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
-| Initial connection check | [GettingStarted](src/ui/app/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
-| Arrange content | [Grid](src/ui/layout/Grid.tsx), [Stack](src/ui/layout/Stack.tsx) | StorySection |
-| Show a key number | [MetricCard](src/ui/cards/MetricCard.tsx) | ComparisonVisual |
-| Show charts and collections | [VisualizationCard](src/ui/cards/VisualizationCard.tsx), [TableCard](src/ui/cards/TableCard.tsx) | DataTable, Ranking, Breakdown, CardEvidence |
-| Handle a request's loading, error, and stale data | [DataSection](src/ui/requests/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
-| Show freshness and refresh | [UpdatedAt](src/ui/requests/UpdatedAt.tsx), [AppToolbar](src/ui/app/AppToolbar.tsx) | RefreshRegion, LiveControl |
-| Bind filters to the URL | [variables](src/ui/controls/variables.ts), [DateRangePicker](src/ui/controls/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
-| Search a loaded collection | [searchItems](src/ui/controls/searchItems.ts), [SearchMatch](src/ui/controls/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/ui/inspect/AboutData.tsx), [DataContext](src/ui/inspect/data-context.ts) | GlossaryExplanation |
-| Present loaded findings | [PlayStory](src/ui/presentation/PlayStory.tsx) | StoryStep |
-| Build custom controls and overlays | [Button](src/ui/primitives/Button.tsx), [Sheet](src/ui/primitives/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
+| Standard page shell | [DataApp](src/ui/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
+| Initial connection check | [GettingStarted](src/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
+| Arrange content | [Grid](src/ui/Grid.tsx), [Stack](src/ui/Stack.tsx) | StorySection |
+| Show a key number | [MetricCard](src/ui/MetricCard.tsx) | ComparisonVisual |
+| Show charts and collections | [VisualizationCard](src/ui/VisualizationCard.tsx), [TableCard](src/ui/TableCard.tsx) | DataTable, Ranking, Breakdown, CardEvidence |
+| Handle a request's loading, error, and stale data | [DataSection](src/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
+| Show freshness and refresh | [UpdatedAt](src/ui/UpdatedAt.tsx), [AppToolbar](src/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
+| Bind filters to the URL | [variables](src/ui/variables.ts), [DateRangePicker](src/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
+| Search a loaded collection | [searchItems](src/ui/searchItems.ts), [SearchMatch](src/ui/SearchMatch.tsx) | SearchField |
+| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | GlossaryExplanation |
+| Present loaded findings | [PlayStory](src/ui/PlayStory.tsx) | StoryStep |
+| Build custom controls and overlays | [Button](src/ui/Button.tsx), [Sheet](src/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
 ## Boundaries to preserve
 

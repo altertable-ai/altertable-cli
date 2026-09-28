@@ -13,7 +13,7 @@
     "./appearance": "./src/appearance.ts",
     "./react": "./src/react.tsx",
     "./ui": "./src/ui/index.ts",
-    "./icons": "./src/ui/primitives/icons.ts"
+    "./icons": "./src/ui/icons.ts"
   },
   "dependencies": {
     "@floating-ui/react": "0.27.20",

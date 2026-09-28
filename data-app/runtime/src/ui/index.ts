@@ -1,88 +1,83 @@
 // App shell and getting started
-export { DataApp } from "./app/DataApp.tsx";
-export type { DataAppProps } from "./app/DataApp.tsx";
-export { GettingStarted } from "./app/GettingStarted.tsx";
-export { AppLayout } from "./app/AppLayout.tsx";
-export type { AppLayoutProps } from "./app/AppLayout.tsx";
-export { AppHeader } from "./app/AppHeader.tsx";
-export type { AppHeaderProps } from "./app/AppHeader.tsx";
-export { AppScope } from "./app/AppScope.tsx";
-export type { AppScopeProps } from "./app/AppScope.tsx";
-export { AppToolbar } from "./app/AppToolbar.tsx";
-export type { AppToolbarProps } from "./app/AppToolbar.tsx";
-export { AppFooter } from "./app/AppFooter.tsx";
-export type { AppFooterProps } from "./app/AppFooter.tsx";
-export { ThemeSelector, ThemeToggle } from "./app/ThemeSelector.tsx";
-export type { ThemeSelectorProps } from "./app/ThemeSelector.tsx";
+export { DataApp } from "./DataApp.tsx";
+export type { DataAppProps } from "./DataApp.tsx";
+export { GettingStarted } from "./GettingStarted.tsx";
+export { AppLayout } from "./AppLayout.tsx";
+export type { AppLayoutProps } from "./AppLayout.tsx";
+export { AppHeader } from "./AppHeader.tsx";
+export type { AppHeaderProps } from "./AppHeader.tsx";
+export { AppScope } from "./AppScope.tsx";
+export type { AppScopeProps } from "./AppScope.tsx";
+export { AppToolbar } from "./AppToolbar.tsx";
+export type { AppToolbarProps } from "./AppToolbar.tsx";
+export { AppFooter } from "./AppFooter.tsx";
+export type { AppFooterProps } from "./AppFooter.tsx";
+export { ThemeSelector, ThemeToggle } from "./ThemeSelector.tsx";
+export type { ThemeSelectorProps } from "./ThemeSelector.tsx";
 
 // Layout
-export { Stack } from "./layout/Stack.tsx";
-export type { StackProps } from "./layout/Stack.tsx";
-export { Grid } from "./layout/Grid.tsx";
-export type { GridProps } from "./layout/Grid.tsx";
-export { StorySection } from "./layout/StorySection.tsx";
-export type { StorySectionProps } from "./layout/StorySection.tsx";
+export { Stack } from "./Stack.tsx";
+export type { StackProps } from "./Stack.tsx";
+export { Grid } from "./Grid.tsx";
+export type { GridProps } from "./Grid.tsx";
+export { StorySection } from "./StorySection.tsx";
+export type { StorySectionProps } from "./StorySection.tsx";
 
 // Cards and visualizations
-export type { CardEvidence } from "./cards/CardEvidence.ts";
-export { VisualizationCard } from "./cards/VisualizationCard.tsx";
-export type { VisualizationCardProps } from "./cards/VisualizationCard.tsx";
-export { TableCard } from "./cards/TableCard.tsx";
-export type { TableCardColumn, TableCardProps } from "./cards/TableCard.tsx";
-export { Breakdown } from "./cards/Breakdown.tsx";
-export type { BreakdownItem, BreakdownProps } from "./cards/Breakdown.tsx";
-export { Ranking } from "./cards/Ranking.tsx";
-export type { RankingItem, RankingProps } from "./cards/Ranking.tsx";
-export { CardDisclosure } from "./cards/CardDisclosure.tsx";
-export type { CardDisclosureProps } from "./cards/CardDisclosure.tsx";
-export { CardViewTabs } from "./cards/CardViewTabs.tsx";
-export type { CardView, CardViewTabsProps } from "./cards/CardViewTabs.tsx";
-export { ComparisonVisual } from "./cards/ComparisonVisual.tsx";
-export type { ComparisonVisualProps } from "./cards/ComparisonVisual.tsx";
-export type { MetricComparison } from "./cards/comparison.ts";
-export {
-  DataTable,
-  DataTableEmptyRow,
-  DataTableTimestamp,
-  DataTableShare,
-} from "./cards/DataTable.tsx";
+export type { CardEvidence } from "./CardEvidence.ts";
+export { VisualizationCard } from "./VisualizationCard.tsx";
+export type { VisualizationCardProps } from "./VisualizationCard.tsx";
+export { TableCard } from "./TableCard.tsx";
+export type { TableCardColumn, TableCardProps } from "./TableCard.tsx";
+export { Breakdown } from "./Breakdown.tsx";
+export type { BreakdownItem, BreakdownProps } from "./Breakdown.tsx";
+export { Ranking } from "./Ranking.tsx";
+export type { RankingItem, RankingProps } from "./Ranking.tsx";
+export { CardDisclosure } from "./CardDisclosure.tsx";
+export type { CardDisclosureProps } from "./CardDisclosure.tsx";
+export { CardViewTabs } from "./CardViewTabs.tsx";
+export type { CardView, CardViewTabsProps } from "./CardViewTabs.tsx";
+export { ComparisonVisual } from "./ComparisonVisual.tsx";
+export type { ComparisonVisualProps } from "./ComparisonVisual.tsx";
+export type { MetricComparison } from "./comparison.ts";
+export { DataTable, DataTableEmptyRow, DataTableTimestamp, DataTableShare } from "./DataTable.tsx";
 export type {
   DataTableProps,
   DataTableSearch,
   DataTableEmptyRowProps,
   DataTableTimestampProps,
-} from "./cards/DataTable.tsx";
-export { MetricCard } from "./cards/MetricCard.tsx";
-export type { MetricCardProps } from "./cards/MetricCard.tsx";
+} from "./DataTable.tsx";
+export { MetricCard } from "./MetricCard.tsx";
+export type { MetricCardProps } from "./MetricCard.tsx";
 
 // Request states and freshness
-export { EmptyState } from "./requests/EmptyState.tsx";
-export type { EmptyStateProps } from "./requests/EmptyState.tsx";
-export { Skeleton } from "./requests/Skeleton.tsx";
-export type { SkeletonProps } from "./requests/Skeleton.tsx";
-export { DataBoundary } from "./requests/DataBoundary.tsx";
-export { resolveDataView } from "./requests/DataBoundary.tsx";
-export type { DataBoundaryProps, DataView, DataSnapshot } from "./requests/DataBoundary.tsx";
-export { RefreshRegion } from "./requests/RefreshRegion.tsx";
-export type { RefreshRegionProps } from "./requests/RefreshRegion.tsx";
-export { DataSection } from "./requests/DataSection.tsx";
-export type { DataSectionProps } from "./requests/DataSection.tsx";
-export { StatusPanel } from "./requests/StatusPanel.tsx";
-export type { StatusPanelProps } from "./requests/StatusPanel.tsx";
-export { ContentSkeleton } from "./requests/ContentSkeleton.tsx";
-export type { ContentSkeletonProps } from "./requests/ContentSkeleton.tsx";
-export { DataViewToast } from "./requests/DataViewToast.tsx";
-export type { DataViewToastProps } from "./requests/DataViewToast.tsx";
-export { UpdatedAt } from "./requests/UpdatedAt.tsx";
-export type { UpdatedAtProps } from "./requests/UpdatedAt.tsx";
-export { DateTimeTooltip } from "./requests/DateTimeTooltip.tsx";
-export type { DateTimeTooltipProps } from "./requests/DateTimeTooltip.tsx";
+export { EmptyState } from "./EmptyState.tsx";
+export type { EmptyStateProps } from "./EmptyState.tsx";
+export { Skeleton } from "./Skeleton.tsx";
+export type { SkeletonProps } from "./Skeleton.tsx";
+export { DataBoundary } from "./DataBoundary.tsx";
+export { resolveDataView } from "./DataBoundary.tsx";
+export type { DataBoundaryProps, DataView, DataSnapshot } from "./DataBoundary.tsx";
+export { RefreshRegion } from "./RefreshRegion.tsx";
+export type { RefreshRegionProps } from "./RefreshRegion.tsx";
+export { DataSection } from "./DataSection.tsx";
+export type { DataSectionProps } from "./DataSection.tsx";
+export { StatusPanel } from "./StatusPanel.tsx";
+export type { StatusPanelProps } from "./StatusPanel.tsx";
+export { ContentSkeleton } from "./ContentSkeleton.tsx";
+export type { ContentSkeletonProps } from "./ContentSkeleton.tsx";
+export { DataViewToast } from "./DataViewToast.tsx";
+export type { DataViewToastProps } from "./DataViewToast.tsx";
+export { UpdatedAt } from "./UpdatedAt.tsx";
+export type { UpdatedAtProps } from "./UpdatedAt.tsx";
+export { DateTimeTooltip } from "./DateTimeTooltip.tsx";
+export type { DateTimeTooltipProps } from "./DateTimeTooltip.tsx";
 
 // Filters, URL state, and controls
-export { LiveControl } from "./controls/LiveControl.tsx";
-export type { LiveControlProps, LiveIntervalSeconds } from "./controls/LiveControl.tsx";
-export { DateRangePicker } from "./controls/DateRangePicker.tsx";
-export type { DatePresetId, DateRange, DateRangePickerProps } from "./controls/DateRangePicker.tsx";
+export { LiveControl } from "./LiveControl.tsx";
+export type { LiveControlProps, LiveIntervalSeconds } from "./LiveControl.tsx";
+export { DateRangePicker } from "./DateRangePicker.tsx";
+export type { DatePresetId, DateRange, DateRangePickerProps } from "./DateRangePicker.tsx";
 export {
   defineAppVariables,
   textVariable,
@@ -90,65 +85,61 @@ export {
   dateRangeVariable,
   dateRangeControl,
   useAppVariables,
-} from "./controls/variables.ts";
+} from "./variables.ts";
 export type {
   AppVariable,
   AppVariableValues,
   DateRangeSelection,
   DateRangeVariable,
   DateRangeVariableOptions,
-} from "./controls/variables.ts";
-export { PeriodSummary } from "./controls/PeriodSummary.tsx";
-export type {
-  ReportingPeriod,
-  PeriodComparison,
-  PeriodSummaryProps,
-} from "./controls/PeriodSummary.tsx";
-export { SearchField } from "./controls/SearchField.tsx";
-export type { SearchFieldProps } from "./controls/SearchField.tsx";
-export { searchItems } from "./controls/searchItems.ts";
+} from "./variables.ts";
+export { PeriodSummary } from "./PeriodSummary.tsx";
+export type { ReportingPeriod, PeriodComparison, PeriodSummaryProps } from "./PeriodSummary.tsx";
+export { SearchField } from "./SearchField.tsx";
+export type { SearchFieldProps } from "./SearchField.tsx";
+export { searchItems } from "./searchItems.ts";
 export type {
   SearchAttribute,
   SearchHit,
   SearchItemsOptions,
   SearchMatchValue,
   SearchRange,
-} from "./controls/searchItems.ts";
-export { SearchMatch } from "./controls/SearchMatch.tsx";
-export type { SearchMatchProps } from "./controls/SearchMatch.tsx";
-export { Combobox } from "./controls/Combobox.tsx";
-export type { ComboboxOption, ComboboxProps } from "./controls/Combobox.tsx";
-export { searchParams, slug, subscribeSearch, writeSearch } from "./controls/search.ts";
-export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./controls/Tabs.tsx";
+} from "./searchItems.ts";
+export { SearchMatch } from "./SearchMatch.tsx";
+export type { SearchMatchProps } from "./SearchMatch.tsx";
+export { Combobox } from "./Combobox.tsx";
+export type { ComboboxOption, ComboboxProps } from "./Combobox.tsx";
+export { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
+export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./Tabs.tsx";
 
 // Data context and query inspection
-export type { DataContext, GlossaryEntry } from "./inspect/data-context.ts";
+export type { DataContext, GlossaryEntry } from "./data-context.ts";
 export type { DisclosedQuery } from "../contract.ts";
-export { GlossaryExplanation } from "./inspect/GlossaryExplanation.tsx";
-export type { GlossaryExplanationProps } from "./inspect/GlossaryExplanation.tsx";
-export { AboutData } from "./inspect/AboutData.tsx";
-export type { AboutDataProps, AboutSubject, AboutTab } from "./inspect/AboutData.tsx";
+export { GlossaryExplanation } from "./GlossaryExplanation.tsx";
+export type { GlossaryExplanationProps } from "./GlossaryExplanation.tsx";
+export { AboutData } from "./AboutData.tsx";
+export type { AboutDataProps, AboutSubject, AboutTab } from "./AboutData.tsx";
 
 // Present mode
-export { PlayStory } from "./presentation/PlayStory.tsx";
-export type { PlayStoryProps, StoryStep } from "./presentation/PlayStory.tsx";
+export { PlayStory } from "./PlayStory.tsx";
+export type { PlayStoryProps, StoryStep } from "./PlayStory.tsx";
 
 // Buttons, overlays, and icons
-export { AppIcon } from "./primitives/icons.ts";
-export type { AppIconName, AppIconProps } from "./primitives/icons.ts";
-export { IconButton } from "./primitives/IconButton.tsx";
-export type { IconButtonProps } from "./primitives/IconButton.tsx";
-export { Kbd } from "./primitives/Kbd.tsx";
-export type { KbdProps } from "./primitives/Kbd.tsx";
-export { Sheet } from "./primitives/Sheet.tsx";
-export type { SheetDialogProps, SheetProps } from "./primitives/Sheet.tsx";
-export { Tooltip, TooltipProvider } from "./primitives/Tooltip.tsx";
-export type { TooltipProps, TooltipProviderProps } from "./primitives/Tooltip.tsx";
-export { Button } from "./primitives/Button.tsx";
-export type { ButtonProps } from "./primitives/Button.tsx";
-export { HelpPopover } from "./primitives/HelpPopover.tsx";
+export { AppIcon } from "./icons.ts";
+export type { AppIconName, AppIconProps } from "./icons.ts";
+export { IconButton } from "./IconButton.tsx";
+export type { IconButtonProps } from "./IconButton.tsx";
+export { Kbd } from "./Kbd.tsx";
+export type { KbdProps } from "./Kbd.tsx";
+export { Sheet } from "./Sheet.tsx";
+export type { SheetDialogProps, SheetProps } from "./Sheet.tsx";
+export { Tooltip, TooltipProvider } from "./Tooltip.tsx";
+export type { TooltipProps, TooltipProviderProps } from "./Tooltip.tsx";
+export { Button } from "./Button.tsx";
+export type { ButtonProps } from "./Button.tsx";
+export { HelpPopover } from "./HelpPopover.tsx";
 export type {
   HelpPopoverPanelProps,
   HelpPopoverProps,
   HelpPopoverTriggerProps,
-} from "./primitives/HelpPopover.tsx";
+} from "./HelpPopover.tsx";
