@@ -10,8 +10,7 @@ export type RefreshControlProps = {
   status?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Show refresh progress in place after a short delay, with a visually hidden
- * status announcement. Fast refreshes show nothing. */
+/** Show refresh progress just before its action after a short delay. */
 export function RefreshControl({
   refreshing,
   children,
@@ -38,7 +37,6 @@ export function RefreshControl({
       className={classNames("altertable-refresh-control", className)}
       data-refreshing={slow && refreshing ? "" : undefined}
     >
-      {children}
       <div
         {...statusProps}
         className={classNames("altertable-refresh-status", statusProps?.className)}
@@ -46,6 +44,7 @@ export function RefreshControl({
       >
         {slow && refreshing ? (status ?? label) : null}
       </div>
+      {children}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { createThemeController } from "../appearance.ts";
 import type { DisclosedQuery } from "../contract.ts";
 import type { DataAppConfig } from "../config.ts";
+import type { DataView } from "./DataBoundary.tsx";
 import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import { AppHeader } from "./AppHeader.tsx";
 import { AppLayout } from "./AppLayout.tsx";
@@ -18,7 +19,11 @@ export type DataAppProps = {
   children: ReactNode;
   description?: ReactNode;
   /** One `useDataView` result supplies query evidence and refresh controls. */
-  request?: { queries?: DisclosedQuery[]; refresh?: AppToolbarProps["refresh"] };
+  request?: {
+    view: DataView<unknown, unknown>;
+    queries?: DisclosedQuery[];
+    refresh?: AppToolbarProps["refresh"];
+  };
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
   filters?: ReactNode;
@@ -60,6 +65,7 @@ export function DataApp({
         toolbar={
           <AppToolbar
             filters={filters}
+            requestState={request?.view.kind}
             refresh={refresh ?? request?.refresh}
             story={
               story && {

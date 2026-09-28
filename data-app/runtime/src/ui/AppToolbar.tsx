@@ -1,5 +1,6 @@
 import type { ComponentProps, ComponentPropsWithRef, ReactNode } from "react";
 import { DateRangePicker } from "./DateRangePicker.tsx";
+import type { DataView } from "./DataBoundary.tsx";
 import { LiveControl, type LiveControlProps } from "./LiveControl.tsx";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
@@ -20,6 +21,7 @@ export type AppToolbarProps = PeriodSlot & {
   controlsProps?: Omit<ComponentPropsWithRef<"div">, "children">;
   updatedAt?: ReactNode;
   initialLoading?: boolean;
+  requestState?: DataView<unknown, unknown>["kind"];
   refresh?: {
     refreshing: boolean;
     onRefresh: () => void;
@@ -46,6 +48,7 @@ export function AppToolbar({
   filters,
   updatedAt,
   initialLoading = false,
+  requestState,
   refresh,
   live,
   aboutData,
@@ -96,7 +99,13 @@ export function AppToolbar({
         {refresh && (
           <RefreshControl
             refreshing={refresh.refreshing}
-            label={refresh.label}
+            label={
+              requestState === "loading"
+                ? "Loading data"
+                : requestState === "updating"
+                  ? "Updating data"
+                  : refresh.label
+            }
             statusProps={refresh.statusProps}
           >
             <IconButton

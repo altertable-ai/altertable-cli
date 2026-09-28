@@ -1,6 +1,8 @@
 .altertable-refresh-control {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: var(--at-space-sm, 8px);
 }
 .altertable-refresh-loading {
   display: none;
@@ -24,12 +26,12 @@
   display: block;
 }
 .altertable-refresh-status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+  color: var(--at-muted, #687078);
+  font-size: 11px;
   white-space: nowrap;
+}
+.altertable-refresh-status:empty {
+  display: none;
 }
 @keyframes altertable-refresh-spin {
   to {

@@ -96,6 +96,28 @@ test("data view keeps the last result visible when refresh fails", async ({ page
   await expect(page.getByText(/Couldn’t refresh. Showing the last result/)).toBeVisible();
 });
 
+test("request progress appears before Refresh", async ({ page }) => {
+  await page.goto("/components");
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/data/connection", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  const status = page.locator(".altertable-refresh-status");
+  await expect(status).toHaveText("Updating data");
+  await expect(status).toBeVisible();
+  const label = await status.boundingBox();
+  const action = await page.getByRole("button", { name: "Cancel refresh" }).boundingBox();
+  expect(label!.x + label!.width).toBeLessThan(action!.x);
+  release();
+  await expect(status).toBeEmpty();
+});
+
 test("grid uses one gap and keeps shorter panels at content height", async ({ page }, testInfo) => {
   await page.goto("/components");
   const grid = page.getByTestId("layout-grid");
