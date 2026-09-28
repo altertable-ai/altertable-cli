@@ -1,6 +1,6 @@
 .altertable-ranking {
   display: grid;
-  gap: 0;
+  gap: var(--at-space-md, 16px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -10,11 +10,6 @@
   display: grid;
   gap: 7px;
   min-width: 0;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--at-border, #e3e6e8);
-}
-.altertable-ranking li:last-child {
-  border-bottom: 0;
 }
 .altertable-ranking-reading {
   display: flex;
