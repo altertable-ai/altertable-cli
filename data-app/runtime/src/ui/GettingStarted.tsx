@@ -32,6 +32,13 @@ export function GettingStarted({
     <DataApp
       config={config}
       dataContext={dataContext}
+      aboutEmpty={{
+        glossary: {
+          title: "No glossary terms yet",
+          description: "Add terms in src/data-context.ts.",
+        },
+        queries: { title: "No queries yet", description: "Build a view to show its queries here." },
+      }}
       description="Check your lakehouse connection, then build a view around a real question."
       queries={connection.data?.queries}
       refresh={{

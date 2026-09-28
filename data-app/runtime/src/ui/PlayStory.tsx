@@ -10,7 +10,7 @@ import {
 import { useMergeRefs } from "@floating-ui/react";
 import type { DisclosedQuery } from "../contract.ts";
 import type { ThemeController } from "../appearance.ts";
-import { AboutData } from "./AboutData.tsx";
+import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import type { DataContext } from "./data-context.ts";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
@@ -24,6 +24,7 @@ import "./PlayStory.css";
 /** One app-authored presentation step over an already loaded data snapshot. */
 export type StoryStep = {
   id: string;
+  empty: AboutEmpty;
   headline: string;
   context?: string;
   glossaryIds?: string[];
@@ -245,6 +246,7 @@ export function PlayStory({
                   shortcut={false}
                   key={step.id}
                   id={step.id}
+                  empty={step.empty}
                   title={step.headline}
                   description={step.context}
                   visual={step.visual}

@@ -17,6 +17,7 @@ const dataContext = {
   description: "A fixture exploring completed orders.",
   glossary: { orders: { term: "Orders", definition: "Completed customer orders." } },
 };
+const empty = { glossary: { title: "No terms for this view" }, queries: { title: "No SQL for this view" } };
 
 function Fixture() {
   const connection = useDataView("connection", {}, {
@@ -27,16 +28,18 @@ function Fixture() {
     <DataApp
       config={config}
       dataContext={dataContext}
+      aboutEmpty={empty}
       request={connection}
       story={{
         steps: [
           {
             id: "orders",
+            empty,
             headline: "Orders increased",
             visual: <p>120 orders</p>,
             glossaryIds: ["orders"],
           },
-          { id: "customers", headline: "More returning customers", visual: <p>80 customers</p> },
+          { id: "customers", headline: "More returning customers", visual: <p>80 customers</p>, glossaryIds: [], empty },
         ],
       }}
     >

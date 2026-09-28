@@ -11,6 +11,7 @@ import { AppIcon } from "./icons.ts";
 import type { DisclosedQuery } from "../contract.ts";
 import type { DataContext, GlossaryEntry } from "./data-context.ts";
 import { Button, type ButtonProps } from "./Button.tsx";
+import { EmptyState } from "./EmptyState.tsx";
 import { Kbd } from "./Kbd.tsx";
 import { QueryList } from "./QueryList.tsx";
 import { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
@@ -21,9 +22,14 @@ import { Tooltip } from "./Tooltip.tsx";
 import "./AboutData.css";
 
 export type AboutTab = "glossary" | "queries";
+export type AboutEmpty = {
+  glossary: { title: string; description?: string };
+  queries: { title: string; description?: string };
+};
 
 /** What a surface, story step, or the toolbar can show in the inspect sheet. */
 export type AboutSubject = {
+  empty: AboutEmpty;
   id?: string;
   title?: ReactNode;
   description?: ReactNode;
@@ -116,6 +122,7 @@ export function AboutData({
   glossaryIds,
   queries,
   queryNames,
+  empty,
   iconOnly = false,
   shortcut = true,
   tooltip,
@@ -143,8 +150,11 @@ export function AboutData({
     glossaryIds,
     queries,
     queryNames,
+    empty,
   };
   const listed = listedGlossaryEntries(subject);
+  const names = glossaryQueries(subject);
+  const hasQueries = (queries ?? []).some((query) => !names || names.includes(query.name));
   const sheetId = subjectId(subject);
   const initialTab = resolveTab(tab ?? searchParams().get("tab"));
   const [uncontrolledOpen, setUncontrolledOpen] = useState(
@@ -266,14 +276,22 @@ export function AboutData({
             </div>
             <TabPanels>
               <TabPanel id="glossary">
-                <div className="altertable-about-glossary-list">
-                  {listed.map((entry) => (
-                    <GlossaryDetail key={entry.term} entry={entry} />
-                  ))}
-                </div>
+                {listed.length ? (
+                  <div className="altertable-about-glossary-list">
+                    {listed.map((entry) => (
+                      <GlossaryDetail key={entry.term} entry={entry} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState {...empty.glossary} />
+                )}
               </TabPanel>
               <TabPanel id="queries">
-                <QueryList queries={queries} names={glossaryQueries(subject)} expanded />
+                {hasQueries ? (
+                  <QueryList queries={queries} names={names} expanded />
+                ) : (
+                  <EmptyState {...empty.queries} />
+                )}
               </TabPanel>
             </TabPanels>
           </Tabs>

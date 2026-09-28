@@ -122,7 +122,7 @@ export type { DisclosedQuery } from "../contract.ts";
 export { GlossaryExplanation } from "./GlossaryExplanation.tsx";
 export type { GlossaryExplanationProps } from "./GlossaryExplanation.tsx";
 export { AboutData } from "./AboutData.tsx";
-export type { AboutDataProps, AboutSubject, AboutTab } from "./AboutData.tsx";
+export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./AboutData.tsx";
 export { PlayStory } from "./PlayStory.tsx";
 export type { PlayStoryProps, StoryStep } from "./PlayStory.tsx";
 

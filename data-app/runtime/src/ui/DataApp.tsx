@@ -2,7 +2,7 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { createThemeController } from "../appearance.ts";
 import type { DisclosedQuery } from "../contract.ts";
 import type { DataAppConfig } from "../config.ts";
-import { AboutData } from "./AboutData.tsx";
+import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import { AppHeader } from "./AppHeader.tsx";
 import { AppLayout } from "./AppLayout.tsx";
 import { AppScope } from "./AppScope.tsx";
@@ -14,6 +14,7 @@ import { ThemeToggle } from "./ThemeSelector.tsx";
 export type DataAppProps = {
   config: DataAppConfig;
   dataContext: DataContext;
+  aboutEmpty: AboutEmpty;
   children: ReactNode;
   description?: ReactNode;
   /** One `useDataView` result supplies query evidence and refresh controls. */
@@ -34,6 +35,7 @@ export type DataAppProps = {
 export function DataApp({
   config,
   dataContext,
+  aboutEmpty,
   children,
   description,
   request,
@@ -73,6 +75,7 @@ export function DataApp({
                 id="data"
                 shortcut
                 dataContext={dataContext}
+                empty={aboutEmpty}
                 queries={queries ?? request?.queries}
                 iconOnly
                 variant="elevated"

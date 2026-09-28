@@ -2,11 +2,12 @@ import { AppIcon } from "./icons.ts";
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import type { DisclosedQuery } from "../contract.ts";
 import type { DataContext, GlossaryEntry } from "./data-context.ts";
-import { AboutData } from "./AboutData.tsx";
+import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import "./Inspect.css";
 
 export type GlossaryExplanationProps = {
   entry: GlossaryEntry;
+  empty: AboutEmpty;
   title?: ReactNode;
   description?: ReactNode;
   visual?: ReactNode;
@@ -18,6 +19,7 @@ export type GlossaryExplanationProps = {
  * when the surface already has a title, description, and visual. */
 export function GlossaryExplanation({
   entry,
+  empty,
   title,
   description,
   visual,
@@ -36,6 +38,7 @@ export function GlossaryExplanation({
       description={description}
       visual={visual}
       glossaryEntry={entry}
+      empty={empty}
       dataContext={dataContext}
       queries={queries}
       className={className ?? "altertable-inspect-trigger"}

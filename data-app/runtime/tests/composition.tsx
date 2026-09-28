@@ -33,6 +33,7 @@ const toolbarProps = {
   refresh: { refreshing: false, onRefresh: () => {} },
 } satisfies AppToolbarProps;
 const storyProps = { title: "Story", steps: [], dataContext: null! } satisfies PlayStoryProps;
+const empty = { glossary: { title: "No terms" }, queries: { title: "No queries" } };
 const variables = defineAppVariables({
   period: dateRangeVariable({
     key: "period",
@@ -142,8 +143,9 @@ export function CompositionCheck() {
         Details
       </HelpPopover>
       <UpdatedAt timestamp={0} triggerClassName="updated" panelProps={{ className: "exact" }} />
-      <GlossaryExplanation entry={null!} className="glossary" title="Signups" />
+      <GlossaryExplanation entry={null!} empty={empty} className="glossary" title="Signups" />
       <AboutData
+        empty={empty}
         dataContext={null!}
         className="context"
         tooltip="About the data"

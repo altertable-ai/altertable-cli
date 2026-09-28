@@ -73,6 +73,9 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   await expect(dialog.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
   await dialog.getByRole("button", { name: "Explore", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
+  await expect(page.getByText("No terms for this view")).toBeVisible();
+  await page.getByRole("tab", { name: "Queries" }).click();
+  await expect(page.getByText("No SQL for this view")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Close panel" })).toHaveCount(0);
   await page.keyboard.press("Escape");
