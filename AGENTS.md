@@ -12,6 +12,9 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 | ---------------------- | --------------------------------------------------------- |
 | `cli/src/`             | CLI commands, HTTP clients, formatting, config            |
 | `cli/src/**/*.test.ts` | Colocated Bun unit tests for CLI logic                    |
+| `data-app/runtime/`    | Shared data app package, contracts, components, unit tests |
+| `data-app/starter/`    | Runnable getting-started app copied by `app create`       |
+| `data-app/tests/`      | Browser tests and fixtures for the starter and runtime    |
 | `tests/`               | Black-box end-user CLI tests run through `bin/altertable` |
 | `specs/`               | Client API specs (submodule — read-only from this repo)   |
 | `bin/altertable`       | Dev launcher — do not edit                                |
@@ -25,11 +28,24 @@ git submodule update --init --recursive   # first checkout only
 ./scripts/verify.sh --integration         # lakehouse HTTP paths (mock at :15000)
 ```
 
-Use `--quick` while iterating on TypeScript. Run default `./scripts/verify.sh` before opening a PR.
+For data app changes, run the focused checks first from the repository root:
+
+```fish
+bun run --cwd data-app/runtime typecheck
+bun run --cwd data-app/runtime test
+bun run --cwd data-app/starter build
+bun run --cwd cli data-app:test:browser
+```
+
+The starter build requires its local runtime; see [data-app/README.md](data-app/README.md)
+for setup and browser prerequisites. Run `bun run --cwd cli data-app:check` to check all
+three data app projects together. Use `./scripts/verify.sh --quick` after focused checks,
+then default `./scripts/verify.sh` before opening a PR.
 
 ## Deep guides
 
 - [cli/AGENTS.md](cli/AGENTS.md) — CLI implementation, architecture cookbook, verification details
+- [data-app/README.md](data-app/README.md) — data app source, distribution, setup, upgrades, and tests
 - [specs/AGENTS.md](specs/AGENTS.md) — spec submodule contribution rules (different concern)
 - [DEVELOPMENT.md](DEVELOPMENT.md) — build, compile, release, spec conformance
 - [CONTRIBUTING.md](CONTRIBUTING.md) — PR workflow
