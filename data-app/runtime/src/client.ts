@@ -1,7 +1,7 @@
 import type { DataOperations, DisclosedQuery } from "./contract.ts";
 
 export type InputOf<T> = T extends { input: (value: unknown) => infer Input } ? Input : never;
-type OutputOf<T> = T extends { output: (value: unknown) => infer Output } ? Output : never;
+export type OutputOf<T> = T extends { output: (value: unknown) => infer Output } ? Output : never;
 
 /** Parsed operation data and query evidence. `queries` is present only when SQL disclosure is allowed. */
 export type DataResponse<Output, Input = unknown> = {

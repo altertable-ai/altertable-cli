@@ -1,4 +1,7 @@
 // Page structure
+export { DataApp } from "./DataApp.tsx";
+export type { DataAppProps } from "./DataApp.tsx";
+export { GettingStarted } from "./GettingStarted.tsx";
 export { AppLayout } from "./AppLayout.tsx";
 export type { AppLayoutProps } from "./AppLayout.tsx";
 export { Stack } from "./Stack.tsx";
