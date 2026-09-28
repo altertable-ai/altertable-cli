@@ -16,18 +16,35 @@ import {
   searchItems,
   useAppVariables,
 } from "@altertable/data-app-runtime/ui";
+import type { StoryStep } from "@altertable/data-app-runtime/ui";
 import type { operations } from "./operations.ts";
-import { methodology } from "./methodology.ts";
-import { analyzeTables } from "./analysis.ts";
+import { dataContext } from "./data-context.ts";
 import { variables, tableInput } from "./variables.ts";
 import app from "../app.json";
 
 const { useDataQuery } = createDataHooks(createDataClient<typeof operations>());
 const theme = createThemeController(app.appearance);
 
+type Table = Awaited<ReturnType<typeof operations.tables.run>>[number];
+
+function tableList(rows: Table[]) {
+  return (
+    <ul className="table-list story-list">
+      {rows.slice(0, 10).map((table) => (
+        <li key={`${table.catalog}.${table.schema}.${table.name}`}>
+          <strong>{table.name}</strong>
+          <span>
+            {table.catalog}.{table.schema}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
- * Assemble one app-owned view from a typed operation, derived claims, and stable
- * methodology. Runtime components handle request state, layout, explanation, and
+ * Assemble one app-owned view from a typed operation, presentation steps, and data context.
+ * Runtime components handle request state, layout, explanation, and
  * presentation; this app chooses the content and when those controls appear.
  */
 export function App() {
@@ -43,34 +60,40 @@ export function App() {
     describe: () => "visible tables",
     isEmpty: () => false,
   });
-  const claims = tables.data
-    ? analyzeTables(tables.data.data, new Date(tables.dataUpdatedAt).toISOString())
+  const rows = tables.data?.data ?? [];
+  const storyEvidence: StoryStep["evidence"] = {
+    sources: ["information_schema.tables"],
+    period: `Observed ${new Date(tables.dataUpdatedAt).toISOString()}`,
+    glossaryIds: ["tablesShown"],
+    limitation: "These steps describe only the first 20 visible tables, not the full catalog.",
+  };
+  const steps: StoryStep[] = tables.data
+    ? [
+        {
+          id: "visible",
+          headline: `${formatCount(rows.length)} tables in this view`,
+          context: "These are the first visible tables ordered by catalog, schema, and name.",
+          evidence: storyEvidence,
+          queries: tables.data.queries,
+          queryNames: ["visible-tables"],
+          visual: tableList(rows),
+        },
+        ...(rows.length
+          ? [
+              {
+                id: "catalog",
+                headline: `${formatCount(rows.filter((table) => table.catalog === rows[0]!.catalog).length)} shown from ${rows[0]!.catalog}`,
+                context:
+                  "This count describes only the returned rows. Explore the full catalog before drawing broader conclusions.",
+                evidence: storyEvidence,
+                queries: tables.data.queries,
+                queryNames: ["visible-tables"],
+                visual: tableList(rows.filter((table) => table.catalog === rows[0]!.catalog)),
+              },
+            ]
+          : []),
+      ]
     : [];
-  const steps = claims.map((claim) => ({
-    id: claim.id,
-    headline: claim.headline,
-    context: claim.context,
-    evidence: claim.evidence,
-    queries: tables.data?.queries,
-    queryNames: ["visible-tables"],
-    visual: (
-      <ul className="table-list story-list">
-        {tables.data?.data
-          .filter(
-            (table) => claim.id === "visible" || table.catalog === tables.data?.data[0]?.catalog,
-          )
-          .slice(0, 10)
-          .map((table) => (
-            <li key={`${table.catalog}.${table.schema}.${table.name}`}>
-              <strong>{table.name}</strong>
-              <span>
-                {table.catalog}.{table.schema}
-              </span>
-            </li>
-          ))}
-      </ul>
-    ),
-  }));
 
   return (
     <AppLayout footerActions={<ThemeSelector theme={theme} />}>
@@ -90,14 +113,14 @@ export function App() {
                   environment={app.scope.environment}
                 />
               ),
-              methodology,
+              dataContext,
               steps,
             }}
             aboutData={
               <AboutData
                 id="data"
                 shortcut
-                methodology={methodology}
+                dataContext={dataContext}
                 queries={tables.data?.queries}
                 iconOnly
                 variant="elevated"
@@ -151,8 +174,8 @@ export function App() {
               }}
               evidence={{
                 id: "tables",
-                measure: methodology.measures.tablesShown,
-                methodology,
+                glossaryEntry: dataContext.glossary.tablesShown,
+                dataContext,
                 queries: tables.data?.queries,
               }}
               empty={

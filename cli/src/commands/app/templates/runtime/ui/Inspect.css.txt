@@ -1,4 +1,4 @@
-.altertable-measure-trigger {
+.altertable-inspect-trigger {
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -11,12 +11,12 @@
     background-color 120ms ease,
     color 120ms ease;
 }
-.altertable-measure-trigger:hover,
-.altertable-measure-trigger[data-open="true"] {
+.altertable-inspect-trigger:hover,
+.altertable-inspect-trigger[data-open="true"] {
   background: var(--at-subtle, #f6f7f7);
   color: var(--at-text, #202124);
 }
-.altertable-measure-trigger:focus-visible {
+.altertable-inspect-trigger:focus-visible {
   outline: 2px solid var(--at-accent, #4779dc);
   outline-offset: 2px;
 }
@@ -40,7 +40,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .altertable-measure-trigger,
+  .altertable-inspect-trigger,
   .altertable-metric-help,
   .altertable-data-panel-help {
     transition: none;

@@ -82,21 +82,21 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
-.altertable-about-measure-list {
+.altertable-about-glossary-list {
   display: grid;
   gap: 16px;
 }
-.altertable-about-measure {
+.altertable-about-glossary-entry {
   display: grid;
   gap: 3px;
 }
-.altertable-about-measure > h3 {
+.altertable-about-glossary-entry > h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
-.altertable-about-measure > p {
+.altertable-about-glossary-entry > p {
   margin: 0;
   line-height: 1.55;
 }

@@ -1,0 +1,23 @@
+import type { DataContext } from "@altertable/data-app-runtime/ui";
+
+/** Describe this exploration and the data that can support it. */
+export const dataContext = {
+  description:
+    "Explore the catalogs and schemas this lakehouse profile can access. This view lists the first 20 visible tables to help you find a starting point for querying. It does not count every table in the lakehouse.",
+  scope: {
+    sources: ["information_schema.tables"],
+    grain: "One row per table",
+    population: "Tables visible to the selected lakehouse profile, excluding system schemas",
+  },
+  limitations: [
+    "Only the first 20 visible tables are returned, ordered by catalog, schema, and name.",
+  ],
+  glossary: {
+    tablesShown: {
+      term: "Tables shown",
+      definition: "Number of table rows returned by this query, capped at 20.",
+      sources: ["information_schema.tables"],
+      queryNames: ["visible-tables"],
+    },
+  },
+} satisfies DataContext;

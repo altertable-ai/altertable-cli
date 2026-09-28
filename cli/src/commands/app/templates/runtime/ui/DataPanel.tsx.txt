@@ -4,7 +4,7 @@ import { AboutData, type AboutSubject } from "./AboutData.tsx";
 import { Button } from "./Button.tsx";
 import { classNames } from "./classNames.ts";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
-import "./MeasureExplanation.css";
+import "./Inspect.css";
 import "./DataPanel.css";
 
 export type DataPanelAbout = Omit<AboutSubject, "title" | "description">;
@@ -45,7 +45,7 @@ export function DataPanel({
     <AboutData
       iconOnly
       variant="ghost"
-      className="altertable-measure-trigger"
+      className="altertable-inspect-trigger"
       tooltip="Explore this view"
       {...about}
       shortcut={false}

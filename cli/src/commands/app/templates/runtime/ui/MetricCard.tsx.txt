@@ -4,7 +4,7 @@ import type { CardEvidence } from "./CardEvidence.ts";
 import { AppIcon } from "./icons.ts";
 import { comparisonChange, type MetricComparison } from "./comparison.ts";
 import { classNames } from "./classNames.ts";
-import "./MeasureExplanation.css";
+import "./Inspect.css";
 import "./MetricCard.css";
 
 export type MetricCardProps = {
@@ -44,7 +44,7 @@ export function MetricCard({
     <AboutData
       iconOnly
       variant="ghost"
-      className="altertable-measure-trigger"
+      className="altertable-inspect-trigger"
       tooltip="Explore this metric"
       {...evidence}
       shortcut={false}

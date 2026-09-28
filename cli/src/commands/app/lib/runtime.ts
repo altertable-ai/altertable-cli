@@ -15,13 +15,13 @@ import runtimeUiIndex from "@/commands/app/templates/runtime/ui/index.ts.txt";
 import runtimeClassNames from "@/commands/app/templates/runtime/ui/classNames.ts.txt";
 import runtimeShortcuts from "@/commands/app/templates/runtime/ui/shortcuts.ts.txt";
 import runtimeSearch from "@/commands/app/templates/runtime/ui/search.ts.txt";
-import runtimeMethodology from "@/commands/app/templates/runtime/ui/methodology.ts.txt";
+import runtimeDataContext from "@/commands/app/templates/runtime/ui/data-context.ts.txt";
 import runtimeAboutData from "@/commands/app/templates/runtime/ui/AboutData.tsx.txt";
 import runtimeAboutDataStyles from "@/commands/app/templates/runtime/ui/AboutData.css.txt";
 import runtimeSheet from "@/commands/app/templates/runtime/ui/Sheet.tsx.txt";
 import runtimeSheetStyles from "@/commands/app/templates/runtime/ui/Sheet.css.txt";
-import runtimeMeasureExplanation from "@/commands/app/templates/runtime/ui/MeasureExplanation.tsx.txt";
-import runtimeMeasureStyles from "@/commands/app/templates/runtime/ui/MeasureExplanation.css.txt";
+import runtimeGlossaryExplanation from "@/commands/app/templates/runtime/ui/GlossaryExplanation.tsx.txt";
+import runtimeInspectStyles from "@/commands/app/templates/runtime/ui/Inspect.css.txt";
 import runtimeHelpPopover from "@/commands/app/templates/runtime/ui/HelpPopover.tsx.txt";
 import runtimeHelpPopoverStyles from "@/commands/app/templates/runtime/ui/HelpPopover.css.txt";
 import runtimeTooltip from "@/commands/app/templates/runtime/ui/Tooltip.tsx.txt";
@@ -105,7 +105,6 @@ import runtimeStatusPanel from "@/commands/app/templates/runtime/ui/StatusPanel.
 import runtimeStatusPanelStyles from "@/commands/app/templates/runtime/ui/StatusPanel.css.txt";
 import runtimeSkeleton from "@/commands/app/templates/runtime/ui/Skeleton.tsx.txt";
 import runtimeSkeletonStyles from "@/commands/app/templates/runtime/ui/Skeleton.css.txt";
-import runtimeClaimProvenance from "@/commands/app/templates/runtime/ui/ClaimProvenance.tsx.txt";
 import runtimePlayStory from "@/commands/app/templates/runtime/ui/PlayStory.tsx.txt";
 import runtimePlayStoryStyles from "@/commands/app/templates/runtime/ui/PlayStory.css.txt";
 import runtimeTabs from "@/commands/app/templates/runtime/ui/Tabs.tsx.txt";
@@ -127,7 +126,7 @@ export const runtimeFiles = {
   "react.tsx": runtimeReact,
   "ui/index.ts": runtimeUiIndex,
   "ui/classNames.ts": runtimeClassNames,
-  "ui/methodology.ts": runtimeMethodology,
+  "ui/data-context.ts": runtimeDataContext,
   "ui/icons.ts": runtimeIcons,
   "ui/ThemeSelector.tsx": runtimeThemeSelector,
   "ui/ThemeSelector.css": runtimeThemeStyles,
@@ -190,7 +189,6 @@ export const runtimeFiles = {
   "ui/DataBoundary.css": runtimeDataBoundaryStyles,
   "ui/DataViewToast.tsx": runtimeDataViewToast,
   "ui/DataViewToast.css": runtimeDataViewToastStyles,
-  "ui/ClaimProvenance.tsx": runtimeClaimProvenance,
   "ui/PlayStory.tsx": runtimePlayStory,
   "ui/PlayStory.css": runtimePlayStoryStyles,
   "ui/Tabs.tsx": runtimeTabs,
@@ -204,8 +202,8 @@ export const runtimeFiles = {
   "ui/AboutData.css": runtimeAboutDataStyles,
   "ui/Sheet.tsx": runtimeSheet,
   "ui/Sheet.css": runtimeSheetStyles,
-  "ui/MeasureExplanation.tsx": runtimeMeasureExplanation,
-  "ui/MeasureExplanation.css": runtimeMeasureStyles,
+  "ui/GlossaryExplanation.tsx": runtimeGlossaryExplanation,
+  "ui/Inspect.css": runtimeInspectStyles,
   "ui/HelpPopover.tsx": runtimeHelpPopover,
   "ui/HelpPopover.css": runtimeHelpPopoverStyles,
   "ui/Tooltip.tsx": runtimeTooltip,

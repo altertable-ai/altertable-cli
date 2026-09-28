@@ -113,14 +113,13 @@ export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./Tabs.tsx"
 export { ThemeSelector, ThemeToggle } from "./ThemeSelector.tsx";
 export type { ThemeSelectorProps } from "./ThemeSelector.tsx";
 
-// Explanation and claims
-export type { MeasureDefinition, Methodology } from "./methodology.ts";
+// Data context and presentation
+export type { DataContext, GlossaryEntry, StoryEvidence } from "./data-context.ts";
 export type { DisclosedQuery } from "../contract.ts";
-export { MeasureExplanation } from "./MeasureExplanation.tsx";
-export type { MeasureExplanationProps } from "./MeasureExplanation.tsx";
+export { GlossaryExplanation } from "./GlossaryExplanation.tsx";
+export type { GlossaryExplanationProps } from "./GlossaryExplanation.tsx";
 export { AboutData } from "./AboutData.tsx";
 export type { AboutDataProps, AboutSubject, AboutTab } from "./AboutData.tsx";
-export type { Claim, ClaimEvidence } from "./ClaimProvenance.tsx";
 export { PlayStory } from "./PlayStory.tsx";
 export type { PlayStoryProps, StoryStep } from "./PlayStory.tsx";
 

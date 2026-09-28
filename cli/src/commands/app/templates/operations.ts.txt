@@ -15,7 +15,7 @@ type Table = { catalog: string; schema: string; name: string };
  * parsers written here; larger apps can use Zod (`schema.parse(value)`) or another
  * schema library without changing the runtime. Validate meaning as well as shape:
  * a valid number does not establish that a count measures the intended population.
- * Named queries let app-authored measure definitions point to executed SQL.
+ * Named queries let app-authored glossary entries point to executed SQL.
  */
 export const operations = {
   tables: defineOperation({

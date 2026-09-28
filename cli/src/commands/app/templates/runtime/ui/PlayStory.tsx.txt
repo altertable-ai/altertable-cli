@@ -11,8 +11,7 @@ import { useMergeRefs } from "@floating-ui/react";
 import type { DisclosedQuery } from "../contract.ts";
 import type { ThemeController } from "../appearance.ts";
 import { AboutData } from "./AboutData.tsx";
-import type { Claim } from "./ClaimProvenance.tsx";
-import type { Methodology } from "./methodology.ts";
+import type { DataContext, StoryEvidence } from "./data-context.ts";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
 import { classNames } from "./classNames.ts";
@@ -22,8 +21,13 @@ import { Tooltip } from "./Tooltip.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import "./PlayStory.css";
 
-/** One claim in PlayStory, with the visual for that step. */
-export type StoryStep = Claim & {
+/** One app-authored presentation step over an already loaded data snapshot. */
+export type StoryStep = {
+  id: string;
+  headline: string;
+  context?: string;
+  evidence: StoryEvidence;
+  queryNames?: string[];
   visual: ReactNode;
   visualKind?: "metric" | "chart";
   queries?: DisclosedQuery[];
@@ -33,7 +37,7 @@ export type PlayStoryProps = {
   title: string;
   steps: StoryStep[];
   scope?: ReactNode;
-  methodology?: Methodology;
+  dataContext: DataContext;
   theme?: ThemeController;
   launcherProps?: Omit<ComponentPropsWithRef<"span">, "children">;
   dialogProps?: Omit<ComponentPropsWithRef<"dialog">, "children" | "aria-labelledby" | "open">;
@@ -51,19 +55,19 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
 };
 
 /**
- * Play ordered claims over the already-loaded data snapshot, full screen. The runtime
+ * Play ordered steps over the already-loaded data snapshot, full screen. The runtime
  * owns the dialog, ⌘/Ctrl+Enter launch, arrow-key and step-link navigation, the shareable
  * `?present=1&step=` URL, and the inspect sheet for the current step (`?about=`); the app owns the
  * wording, visual, interpretation, and supporting query selection. Native button props
  * configure the launch action; launcherProps and dialogProps target the other two surfaces.
- * headerActions and footer extend the story. Pass `scope`, `methodology`, and `theme`
+ * headerActions and footer extend the story. Pass `scope`, `dataContext`, and `theme`
  * so the header matches the page and offers a theme switch inside the modal.
  */
 export function PlayStory({
   title,
   steps,
   scope,
-  methodology,
+  dataContext,
   theme,
   launcherProps,
   dialogProps,
@@ -245,7 +249,7 @@ export function PlayStory({
                   description={step.context}
                   visual={step.visual}
                   visualKind={step.visualKind}
-                  methodology={methodology}
+                  dataContext={dataContext}
                   evidence={step.evidence}
                   queries={step.queries}
                   queryNames={step.queryNames}

@@ -15,8 +15,7 @@ import variables from "@/commands/app/templates/variables.ts.txt";
 import styles from "@/commands/app/templates/styles.css.txt";
 import server from "@/commands/app/templates/server.ts.txt";
 import operations from "@/commands/app/templates/operations.ts.txt";
-import methodology from "@/commands/app/templates/methodology.ts.txt";
-import analysis from "@/commands/app/templates/analysis.ts.txt";
+import dataContext from "@/commands/app/templates/data-context.ts.txt";
 import readme from "@/commands/app/templates/README.md.txt";
 import agentGuide from "@/commands/app/templates/AGENTS.md.txt";
 import gitignore from "@/commands/app/templates/gitignore.txt";
@@ -113,8 +112,7 @@ export const appCreateCommand = defineCommand({
       ["src/styles.css", styles],
       ["src/server.ts", server],
       ["src/operations.ts", operations],
-      ["src/methodology.ts", methodology],
-      ["src/analysis.ts", analysis],
+      ["src/data-context.ts", dataContext],
       ["README.md", readme],
       ["AGENTS.md", agentGuide],
       [".gitignore", gitignore],

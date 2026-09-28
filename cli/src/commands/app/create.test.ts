@@ -66,15 +66,20 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("title={app.title}");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("evidence={{");
     expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain("defineOperation");
-    expect(readFileSync(join(directory, "src/methodology.ts"), "utf8")).toContain("subject:");
-    expect(readFileSync(join(directory, "src/analysis.ts"), "utf8")).toContain("analyzeTables");
+    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("description:");
+    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("glossary:");
+    expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain(
+      "Explore the catalogs and schemas",
+    );
+    expect(existsSync(join(directory, "src/methodology.ts"))).toBe(false);
+    expect(existsSync(join(directory, "src/analysis.ts"))).toBe(false);
     const appGuide = readFileSync(join(directory, "AGENTS.md"), "utf8");
     expect(appGuide).toContain("Working on Product Pulse");
     expect(appGuide).toContain("## Start with evidence");
     expect(appGuide).toContain("## Files and data flow");
     expect(appGuide).toContain("## Compose the view");
     expect(appGuide).toContain("## Verify and maintain");
-    expect(appGuide).toContain("source tables, row grain, population, timezone");
+    expect(appGuide).toContain("sources, row grain, population, timezone");
     expect(appGuide).toContain("dynamic, source-bounded date range");
     expect(appGuide).toContain("measured zero in the ready state");
     expect(appGuide).toContain("altertable app check --lakehouse");
@@ -88,11 +93,11 @@ describe("app create", () => {
     expect(readFileSync(join(directory, ".altertable/runtime/ui/Tooltip.tsx"), "utf8")).toContain(
       "followCursor",
     );
-    expect(appGuide).toContain("ClaimEvidence");
+    expect(appGuide).toContain("StoryEvidence");
     expect(appGuide).toContain("altertable.ai/docs/query-data/mcp");
     expect(appGuide).toContain("altertable login --org");
     expect(appGuide).toContain("altertable profile switch");
-    expect(readFileSync(join(directory, "src/analysis.ts"), "utf8")).toContain("ClaimEvidence");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("storyEvidence");
     expect(readFileSync(join(directory, ".altertable/runtime/ui/PlayStory.tsx"), "utf8")).toContain(
       "portalRoot={dialog}",
     );
@@ -110,7 +115,9 @@ describe("app create", () => {
     expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
       'id="queries"',
     );
-    expect(existsSync(join(directory, ".altertable/runtime/ui/MeasureExplanation.tsx"))).toBe(true);
+    expect(existsSync(join(directory, ".altertable/runtime/ui/GlossaryExplanation.tsx"))).toBe(
+      true,
+    );
     expect(existsSync(join(directory, ".altertable/runtime/ui/AltertableLogo.tsx"))).toBe(true);
     expect(existsSync(join(directory, ".altertable/runtime/ui/ThemeSelector.tsx"))).toBe(true);
     for (const name of [
@@ -131,7 +138,7 @@ describe("app create", () => {
     expect(existsSync(join(directory, ".altertable/runtime/ui/AppToolbar.tsx"))).toBe(true);
     for (const name of [
       "Button",
-      "ClaimProvenance",
+      "GlossaryExplanation",
       "AboutData",
       "PlayStory",
       "Tabs",
@@ -173,7 +180,10 @@ describe("app create", () => {
       "writeSearch({ about:",
     );
     expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      '<Tab id="measures">Measures</Tab>',
+      '<Tab id="glossary">Glossary</Tab>',
+    );
+    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
+      "dataContext?.description",
     );
     expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
       '<Tab id="overview">Overview</Tab>',
@@ -417,7 +427,7 @@ describe("app create", () => {
   dateRangeVariable,
   defineAppVariables,
   HelpPopover,
-  MeasureExplanation,
+  GlossaryExplanation,
   MetricCard,
   PeriodSummary,
   PlayStory,
@@ -437,7 +447,7 @@ import type { AppToolbarProps, PlayStoryProps } from "@altertable/data-app-runti
 const toolbarProps = {
   refresh: { refreshing: false, onRefresh: () => {} },
 } satisfies AppToolbarProps;
-const storyProps = { title: "Story", steps: [] } satisfies PlayStoryProps;
+const storyProps = { title: "Story", steps: [], dataContext: null! } satisfies PlayStoryProps;
 const variables = defineAppVariables({
   period: dateRangeVariable({
     key: "period",
@@ -547,15 +557,15 @@ export function CompositionCheck() {
         Details
       </HelpPopover>
       <UpdatedAt timestamp={0} triggerClassName="updated" panelProps={{ className: "exact" }} />
-      <MeasureExplanation measure={null!} className="measure" title="Signups" />
+      <GlossaryExplanation entry={null!} className="glossary" title="Signups" />
       <AboutData
-        methodology={null!}
-        className="method"
+        dataContext={null!}
+        className="context"
         tooltip="About the data"
         footer="More context"
         sheetProps={{ className: "details" }}
       >
-        Method
+        Context
       </AboutData>
       <Sheet open={false} onOpenChange={() => {}} title="Details" className="sheet">
         Body

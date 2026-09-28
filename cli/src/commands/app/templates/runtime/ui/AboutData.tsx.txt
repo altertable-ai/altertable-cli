@@ -9,8 +9,7 @@ import {
 import { useMergeRefs } from "@floating-ui/react";
 import { AppIcon } from "./icons.ts";
 import type { DisclosedQuery } from "../contract.ts";
-import type { ClaimEvidence } from "./ClaimProvenance.tsx";
-import type { MeasureDefinition, Methodology } from "./methodology.ts";
+import type { DataContext, GlossaryEntry, StoryEvidence } from "./data-context.ts";
 import { Button, type ButtonProps } from "./Button.tsx";
 import { Kbd } from "./Kbd.tsx";
 import { QueryList } from "./QueryList.tsx";
@@ -21,7 +20,7 @@ import { ariaKeyShortcuts, shortcuts, useShortcut } from "./shortcuts.ts";
 import { Tooltip } from "./Tooltip.tsx";
 import "./AboutData.css";
 
-export type AboutTab = "overview" | "measures" | "queries";
+export type AboutTab = "overview" | "glossary" | "queries";
 
 /** What a surface, story step, or the toolbar can show in the inspect sheet. */
 export type AboutSubject = {
@@ -30,10 +29,10 @@ export type AboutSubject = {
   description?: ReactNode;
   visual?: ReactNode;
   visualKind?: "metric" | "chart";
-  methodology?: Methodology;
-  measure?: MeasureDefinition;
-  measures?: MeasureDefinition[];
-  evidence?: ClaimEvidence;
+  dataContext?: DataContext;
+  glossaryEntry?: GlossaryEntry;
+  glossaryEntries?: GlossaryEntry[];
+  evidence?: StoryEvidence;
   queries?: DisclosedQuery[];
   queryNames?: string[];
 };
@@ -55,28 +54,34 @@ export type AboutDataProps = AboutSubject & {
   trigger?: boolean;
 } & Omit<ComponentPropsWithRef<"button">, "children" | "title">;
 
-function namedMeasures(methodology: Methodology | undefined, names: string[]): MeasureDefinition[] {
-  const catalog = methodology?.measures ?? {};
-  return names.map(
-    (name) =>
-      catalog[name] ??
-      Object.values(catalog).find((item) => item.label === name) ?? { label: name, definition: "" },
-  );
+function namedGlossaryEntries(
+  dataContext: DataContext | undefined,
+  ids: string[],
+): GlossaryEntry[] {
+  return ids
+    .map((id) => dataContext?.glossary[id])
+    .filter((entry): entry is GlossaryEntry => !!entry);
 }
 
-function listedMeasures({ measure, measures, methodology, evidence }: AboutSubject): {
-  measures: MeasureDefinition[];
+function listedGlossaryEntries({
+  glossaryEntry,
+  glossaryEntries,
+  dataContext,
+  evidence,
+}: AboutSubject): {
+  entries: GlossaryEntry[];
   scoped: boolean;
 } {
-  if (measures?.length) return { measures, scoped: true };
-  if (measure) return { measures: [measure], scoped: true };
-  if (evidence) return { measures: namedMeasures(methodology, evidence.measures), scoped: true };
-  return { measures: Object.values(methodology?.measures ?? {}), scoped: false };
+  if (glossaryEntries?.length) return { entries: glossaryEntries, scoped: true };
+  if (glossaryEntry) return { entries: [glossaryEntry], scoped: true };
+  if (evidence)
+    return { entries: namedGlossaryEntries(dataContext, evidence.glossaryIds), scoped: true };
+  return { entries: Object.values(dataContext?.glossary ?? {}), scoped: false };
 }
 
-function measureQueries(subject: AboutSubject): string[] | undefined {
+function glossaryQueries(subject: AboutSubject): string[] | undefined {
   if (subject.queryNames?.length) return subject.queryNames;
-  const names = listedMeasures(subject).measures.flatMap((item) => item.queryNames ?? []);
+  const names = listedGlossaryEntries(subject).entries.flatMap((item) => item.queryNames ?? []);
   return names.length ? names : undefined;
 }
 
@@ -103,21 +108,21 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
-function MeasureDetail({ measure, compact }: { measure: MeasureDefinition; compact: boolean }) {
+function GlossaryDetail({ entry, compact }: { entry: GlossaryEntry; compact: boolean }) {
   return (
-    <article className="altertable-about-measure">
-      <h3>{measure.label}</h3>
-      {measure.definition ? <p>{measure.definition}</p> : null}
+    <article className="altertable-about-glossary-entry">
+      <h3>{entry.term}</h3>
+      {entry.definition ? <p>{entry.definition}</p> : null}
       {compact ? null : (
         <Facts
           rows={factRows([
-            ["Counted as", measure.unit],
-            ["Population", measure.population],
+            ["Counted as", entry.unit],
+            ["Population", entry.population],
             [
               "Sources",
-              measure.sources?.length ? (
+              entry.sources?.length ? (
                 <ul className="altertable-about-sources">
-                  {measure.sources.map((source) => (
+                  {entry.sources.map((source) => (
                     <li key={source}>{source}</li>
                   ))}
                 </ul>
@@ -132,12 +137,12 @@ function MeasureDetail({ measure, compact }: { measure: MeasureDefinition; compa
 
 function AboutOverview({
   evidence,
-  methodology,
-  scoped,
+  dataContext,
+  showDescription,
 }: {
-  evidence?: ClaimEvidence;
-  methodology?: Methodology;
-  scoped: boolean;
+  evidence?: StoryEvidence;
+  dataContext?: DataContext;
+  showDescription: boolean;
 }) {
   return (
     <>
@@ -163,9 +168,9 @@ function AboutOverview({
           ) : null}
         </section>
       )}
-      {!scoped && methodology && (
+      {dataContext && (
         <>
-          <p className="altertable-about-summary">{methodology.summary}</p>
+          {showDescription && <p className="altertable-about-summary">{dataContext.description}</p>}
           <section>
             <h3>Scope</h3>
             <Facts
@@ -173,24 +178,24 @@ function AboutOverview({
                 [
                   "Sources",
                   <ul className="altertable-about-sources">
-                    {methodology.sources.map((source) => (
+                    {dataContext.scope.sources.map((source) => (
                       <li key={source}>{source}</li>
                     ))}
                   </ul>,
                 ],
-                ["Grain", methodology.grain],
-                ["Population", methodology.population],
-                ["Timezone", methodology.timezone],
+                ["Grain", dataContext.scope.grain],
+                ["Population", dataContext.scope.population],
+                ["Timezone", dataContext.scope.timezone],
               ])}
             />
           </section>
         </>
       )}
-      {!scoped && methodology?.limitations?.length ? (
+      {dataContext?.limitations.length ? (
         <section>
           <h3>Limitations</h3>
           <ul>
-            {methodology.limitations.map((limitation) => (
+            {dataContext.limitations.map((limitation) => (
               <li key={limitation}>{limitation}</li>
             ))}
           </ul>
@@ -201,12 +206,12 @@ function AboutOverview({
 }
 
 function resolveTab(tab: string | null | undefined, hasOverview: boolean): AboutTab {
-  return tab === "queries" || tab === "measures" ? tab : hasOverview ? "overview" : "measures";
+  return tab === "queries" || tab === "glossary" ? tab : hasOverview ? "overview" : "glossary";
 }
 
 /** Inspect sheet for a card, panel, story step, or the whole app. The header is the
- * subject; the body is the visual, then Overview, Measures, and Queries. The toolbar sheet stays
- * high-level: a measure catalog, not one tab per metric. Open state is `?about=` and
+ * subject; the body is the visual, then Overview, Glossary, and Queries. The toolbar sheet stays
+ * high-level. Open state is `?about=` and
  * the selected tab is `?tab=`. Alt/Option+I opens the toolbar sheet. */
 export function AboutData({
   id,
@@ -215,9 +220,9 @@ export function AboutData({
   visual,
   visualKind,
   variant,
-  methodology,
-  measure,
-  measures,
+  dataContext,
+  glossaryEntry,
+  glossaryEntries,
   evidence,
   queries,
   queryNames,
@@ -242,15 +247,15 @@ export function AboutData({
     title,
     description,
     visual,
-    methodology,
-    measure,
-    measures,
+    dataContext,
+    glossaryEntry,
+    glossaryEntries,
     evidence,
     queries,
     queryNames,
   };
-  const listed = listedMeasures(subject);
-  const hasOverview = Boolean(evidence || (!listed.scoped && methodology));
+  const listed = listedGlossaryEntries(subject);
+  const hasOverview = Boolean(evidence || dataContext);
   const sheetId = subjectId(subject);
   const initialTab = resolveTab(tab ?? searchParams().get("tab"), hasOverview);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(
@@ -262,7 +267,9 @@ export function AboutData({
   const mergedTrigger = useMergeRefs([triggerRef, ref]);
   const heading = title ?? "About the data";
   const summary =
-    description ?? methodology?.subject ?? "Sources, definitions, and queries behind this view.";
+    description ??
+    dataContext?.description ??
+    "Context, scope, limitations, and glossary for this exploration.";
   const shortcutEnabled = trigger && shortcut && !props.disabled;
   const hint =
     tooltip ??
@@ -368,7 +375,7 @@ export function AboutData({
             <div className="altertable-about-tabbar">
               <TabList aria-label={typeof heading === "string" ? heading : "About the data"}>
                 {hasOverview && <Tab id="overview">Overview</Tab>}
-                <Tab id="measures">Measures</Tab>
+                <Tab id="glossary">Glossary</Tab>
                 <Tab id="queries">Queries</Tab>
               </TabList>
             </div>
@@ -377,20 +384,20 @@ export function AboutData({
                 <TabPanel id="overview">
                   <AboutOverview
                     evidence={evidence}
-                    methodology={methodology}
-                    scoped={listed.scoped}
+                    dataContext={dataContext}
+                    showDescription={description !== undefined}
                   />
                 </TabPanel>
               )}
-              <TabPanel id="measures">
-                <div className="altertable-about-measure-list">
-                  {listed.measures.map((item) => (
-                    <MeasureDetail key={item.label} measure={item} compact={!listed.scoped} />
+              <TabPanel id="glossary">
+                <div className="altertable-about-glossary-list">
+                  {listed.entries.map((entry) => (
+                    <GlossaryDetail key={entry.term} entry={entry} compact={!listed.scoped} />
                   ))}
                 </div>
               </TabPanel>
               <TabPanel id="queries">
-                <QueryList queries={queries} names={measureQueries(subject)} expanded />
+                <QueryList queries={queries} names={glossaryQueries(subject)} expanded />
               </TabPanel>
             </TabPanels>
           </Tabs>
