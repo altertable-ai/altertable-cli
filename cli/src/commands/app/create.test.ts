@@ -65,13 +65,15 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(readFileSync(join(directory, "bunfig.toml"), "utf8")).toContain("exact = true");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("title={app.title}");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("count={rows.length}");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("evidence={{");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain('"Connected"');
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
+      '"Connection not verified"',
+    );
     expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain("defineOperation");
     expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("description:");
     expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("glossary:");
     expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain(
-      "Explore the catalogs and schemas",
+      "runs a lightweight query",
     );
     expect(existsSync(join(directory, "src/methodology.ts"))).toBe(false);
     expect(existsSync(join(directory, "src/analysis.ts"))).toBe(false);
@@ -100,7 +102,7 @@ describe("app create", () => {
     expect(appGuide).toContain("altertable login --org");
     expect(appGuide).toContain("altertable profile switch");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
-      'glossaryIds: ["tablesShown"]',
+      "Turn this starter into a useful app",
     );
     expect(readFileSync(join(directory, ".altertable/runtime/ui/PlayStory.tsx"), "utf8")).toContain(
       "portalRoot={dialog}",
@@ -162,15 +164,15 @@ describe("app create", () => {
       expect(existsSync(join(directory, `.altertable/runtime/ui/${name}.tsx`))).toBe(true);
     }
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("AppToolbar");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("<DataSection");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("<TableCard");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("data-state={state}");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("<TableCard");
     expect(
       readFileSync(join(directory, ".altertable/runtime/ui/DataSection.tsx"), "utf8"),
     ).toContain("ContentSkeleton");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain(
       "Loading available tables",
     );
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("story={{");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("story={{");
     expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
       "AboutSubject",
     );
@@ -244,11 +246,11 @@ describe("app create", () => {
       "ALTERTABLE_LAKEHOUSE_PASSWORD",
     );
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
-      'useDataQuery("tables", tableInput(appVariables.values))',
+      'useDataQuery("connection", connectionInput(appVariables.values))',
     );
     expect(JSON.parse(readFileSync(join(directory, "app.json"), "utf8"))).toMatchObject({
       schemaVersion: 1,
-      operations: { tables: {} },
+      operations: { connection: {} },
     });
     expect(
       JSON.parse(readFileSync(join(directory, ".altertable/runtime/integrity.json"), "utf8")),

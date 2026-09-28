@@ -12,6 +12,6 @@
     "typography": { "body": "system", "heading": "system" }
   },
   "operations": {
-    "tables": {}
+    "connection": {}
   }
 }

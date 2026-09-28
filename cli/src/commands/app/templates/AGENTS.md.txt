@@ -21,7 +21,7 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 
 - Prefer a dynamic, source-bounded date range for ongoing questions. Declare it with `dateRangeVariable`, including timezone, complete-day policy, bounds, maximum range, and a relative default. Resolve the selected range into the operation input so `useDataQuery` keys each request correctly. Use a fixed period only for a deliberate historical snapshot or rolling sub-day question; explain that choice in the data context.
 - Define other filters with `selectVariable` or `textVariable`. `useAppVariables` owns URL parsing, reset, and Back/Forward. Bind controls to those values; keep local search out of operation inputs. Use `useViewTab` for top-level `?view=` navigation.
-- Give each operation one `resolveDataView` and `DataSection` boundary. Fill its loading, empty, and error slots; keep a measured zero in the ready state. Match skeleton geometry to the ready layout. Give independent operations independent retry boundaries.
+- Give each data view one `resolveDataView` and `DataSection` boundary. Fill its loading, empty, and error slots; keep a measured zero in the ready state. Match skeleton geometry to the ready layout. Give independent operations independent retry boundaries. The starter's connection check is a setup state, not a data view.
 
 ## Compose the view
 

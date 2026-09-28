@@ -1,93 +1,34 @@
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import { createThemeController } from "@altertable/data-app-runtime/appearance";
-import { formatCount } from "@altertable/data-app-runtime/format";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
 import {
   AboutData,
   AppHeader,
+  AppIcon,
   AppLayout,
   AppScope,
   AppToolbar,
-  DataSection,
-  SearchMatch,
-  TableCard,
+  Button,
   ThemeSelector,
-  resolveDataView,
-  searchItems,
   useAppVariables,
 } from "@altertable/data-app-runtime/ui";
-import type { StoryStep } from "@altertable/data-app-runtime/ui";
 import type { operations } from "./operations.ts";
 import { dataContext } from "./data-context.ts";
-import { variables, tableInput } from "./variables.ts";
+import { connectionInput, variables } from "./variables.ts";
 import app from "../app.json";
 
 const { useDataQuery } = createDataHooks(createDataClient<typeof operations>());
 const theme = createThemeController(app.appearance);
 
-type Table = Awaited<ReturnType<typeof operations.tables.run>>[number];
-
-function tableList(rows: Table[]) {
-  return (
-    <ul className="table-list story-list">
-      {rows.slice(0, 10).map((table) => (
-        <li key={`${table.catalog}.${table.schema}.${table.name}`}>
-          <strong>{table.name}</strong>
-          <span>
-            {table.catalog}.{table.schema}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/**
- * Assemble one app-owned view from a typed operation, presentation steps, and data context.
- * Runtime components handle request state, layout, explanation, and
- * presentation; this app chooses the content and when those controls appear.
- */
+/** Replace this setup screen with the first useful view once its query is ready. */
 export function App() {
   const appVariables = useAppVariables(variables);
-  const tables = useDataQuery("tables", tableInput(appVariables.values));
-  const { tableSearch } = appVariables.values;
-  const tableView = resolveDataView({
-    requestedInput: "tables",
-    current: tables.data ? { data: tables.data.data, input: "tables" } : undefined,
-    pending: tables.isFetching,
-    error: tables.error ?? undefined,
-    sameInput: (left, right) => left === right,
-    describe: () => "visible tables",
-    isEmpty: () => false,
-  });
-  const rows = tables.data?.data ?? [];
-  const steps: StoryStep[] = tables.data
-    ? [
-        {
-          id: "visible",
-          headline: `${formatCount(rows.length)} tables in this view`,
-          context: "These are the first visible tables ordered by catalog, schema, and name.",
-          glossaryIds: ["tablesShown"],
-          queries: tables.data.queries,
-          queryNames: ["visible-tables"],
-          visual: tableList(rows),
-        },
-        ...(rows.length
-          ? [
-              {
-                id: "catalog",
-                headline: `${formatCount(rows.filter((table) => table.catalog === rows[0]!.catalog).length)} shown from ${rows[0]!.catalog}`,
-                context:
-                  "This count describes only the returned rows. Explore the full catalog before drawing broader conclusions.",
-                glossaryIds: ["tablesShown"],
-                queries: tables.data.queries,
-                queryNames: ["visible-tables"],
-                visual: tableList(rows.filter((table) => table.catalog === rows[0]!.catalog)),
-              },
-            ]
-          : []),
-      ]
-    : [];
+  const connection = useDataQuery("connection", connectionInput(appVariables.values));
+  const state = connection.error
+    ? "error"
+    : connection.isFetching || !connection.data
+      ? "checking"
+      : "connected";
 
   return (
     <AppLayout footerActions={<ThemeSelector theme={theme} />}>
@@ -96,102 +37,89 @@ export function App() {
           <AppScope organization={app.scope.organization} environment={app.scope.environment} />
         }
         title={app.title}
-        description="Explore the tables available in this lakehouse."
+        description="Check your lakehouse connection, then build a view around a real question."
         toolbar={
           <AppToolbar
-            story={{
-              title: app.title,
-              scope: (
-                <AppScope
-                  organization={app.scope.organization}
-                  environment={app.scope.environment}
-                />
-              ),
-              dataContext,
-              steps,
-            }}
             aboutData={
               <AboutData
                 id="data"
                 shortcut
                 dataContext={dataContext}
-                queries={tables.data?.queries}
+                queries={connection.data?.queries}
                 iconOnly
                 variant="elevated"
               />
             }
-            refresh={{ refreshing: tables.isFetching, onRefresh: () => void tables.refetch() }}
+            refresh={{
+              refreshing: connection.isFetching,
+              onRefresh: () => void connection.refetch(),
+              tooltip: "Check connection",
+              buttonProps: { "aria-label": "Check connection" },
+            }}
           />
         }
       />
 
-      <DataSection
-        view={tableView}
-        label="Available tables"
-        error={{ title: "Couldn’t load tables", onRetry: () => void tables.refetch() }}
+      <section
+        className="starter-connection"
+        data-state={state}
+        role={state === "error" ? "alert" : "status"}
       >
-        {(rows) => {
-          const hits = searchItems(rows, tableSearch, {
-            mode: "fuzzy",
-            attributes: [
-              { name: "name", getter: (table) => table.name, weight: 2 },
-              { name: "schema", getter: (table) => table.schema },
-              { name: "catalog", getter: (table) => table.catalog },
-            ],
-          });
-          return (
-            <TableCard
-              title="Available tables"
-              count={rows.length}
-              description="Tables visible to the selected Altertable profile"
-              columns={[
-                {
-                  id: "name",
-                  header: "Table",
-                  cell: (hit) => <SearchMatch match={hit.matches.name} />,
-                },
-                {
-                  id: "schema",
-                  header: "Schema",
-                  cell: (hit) => <SearchMatch match={hit.matches.schema} />,
-                },
-                {
-                  id: "catalog",
-                  header: "Catalog",
-                  cell: (hit) => <SearchMatch match={hit.matches.catalog} />,
-                },
-              ]}
-              search={{
-                itemCount: rows.length,
-                label: "Search tables",
-                value: tableSearch,
-                onChange: (value) => appVariables.set("tableSearch", value),
-              }}
-              evidence={{
-                id: "tables",
-                glossaryEntry: dataContext.glossary.tablesShown,
-                dataContext,
-                queries: tables.data?.queries,
-              }}
-              empty={
-                hits.length
-                  ? undefined
-                  : rows.length
-                    ? {
-                        title: "No matching tables",
-                        description: "Try another search term.",
-                      }
-                    : {
-                        title: "No visible tables",
-                        description: "This profile has no lakehouse tables to explore yet.",
-                      }
-              }
-              rows={hits}
-              rowKey={({ item: table }) => `${table.catalog}.${table.schema}.${table.name}`}
-            />
-          );
-        }}
-      </DataSection>
+        <div className="starter-connection-icon">
+          <AppIcon
+            name={state === "connected" ? "check" : state === "error" ? "error" : "loading"}
+            size={24}
+          />
+        </div>
+        <div className="starter-connection-copy">
+          <span className="starter-eyebrow">Lakehouse connection</span>
+          <h2>
+            {state === "connected"
+              ? "Connected"
+              : state === "error"
+                ? "Connection not verified"
+                : "Checking connection…"}
+          </h2>
+          <p>
+            {state === "connected"
+              ? "A query completed successfully using this app’s current profile. You’re ready to build your first view."
+              : state === "error"
+                ? connection.data
+                  ? "An earlier query succeeded, but the latest check failed. Check the profile and try again."
+                  : "The query could not complete. Check the profile and lakehouse access, then try again."
+                : "Running a lightweight query with this app’s current profile."}
+          </p>
+          {state === "connected" && (
+            <small>This check does not verify access to every dataset.</small>
+          )}
+        </div>
+        {state === "error" && <Button onClick={() => void connection.refetch()}>Try again</Button>}
+      </section>
+
+      <section className="starter-next" aria-labelledby="starter-next-title">
+        <div className="starter-next-heading">
+          <span className="starter-eyebrow">Next steps</span>
+          <h2 id="starter-next-title">Turn this starter into a useful app</h2>
+          <p>Start with one question your readers need answered.</p>
+        </div>
+        <ol className="starter-steps">
+          <li>
+            <strong>Choose a question</strong>
+            <p>Decide what someone should learn or do after opening this app.</p>
+          </li>
+          <li>
+            <strong>Find the right data</strong>
+            <p>Inspect the relevant catalogs, tables, and columns before writing the query.</p>
+          </li>
+          <li>
+            <strong>Build the first view</strong>
+            <p>
+              Replace the connection check in <code>src/operations.ts</code>, then render its result
+              in <code>src/App.tsx</code>.
+            </p>
+          </li>
+        </ol>
+      </section>
     </AppLayout>
   );
 }

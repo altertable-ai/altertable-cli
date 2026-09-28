@@ -1,13 +1,7 @@
-import {
-  defineAppVariables,
-  textVariable,
-  type AppVariableValues,
-} from "@altertable/data-app-runtime/ui";
+import { defineAppVariables, type AppVariableValues } from "@altertable/data-app-runtime/ui";
 
-/** App-owned state. Add query-relevant variables here and project them into operation inputs. */
-export const variables = defineAppVariables({
-  tableSearch: textVariable({ key: "tableSearch" }),
-});
+/** Add reader-controlled filters here when the first data view needs them. */
+export const variables = defineAppVariables({});
 
-/** This starter operation has no inputs; table search filters its bounded result locally. */
-export const tableInput = (_values: AppVariableValues<typeof variables>) => ({});
+/** The connection check has no inputs. Project new variables into data operations here. */
+export const connectionInput = (_values: AppVariableValues<typeof variables>) => ({});

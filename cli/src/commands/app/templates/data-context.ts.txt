@@ -1,14 +1,14 @@
 import type { DataContext } from "@altertable/data-app-runtime/ui";
 
-/** Describe this exploration and the data that can support it. */
+/** Replace this setup context with the question and definitions for your first view. */
 export const dataContext = {
   description:
-    "Explore the catalogs and schemas this lakehouse profile can access. This view lists the first 20 visible tables to help you find a starting point for querying. It does not count every table in the lakehouse.",
+    "This starter runs a lightweight query to verify that the selected lakehouse profile can execute SQL. It does not check access to individual datasets. Replace the check with a query that answers a real question before sharing the app.",
   glossary: {
-    tablesShown: {
-      term: "Tables shown",
-      definition: "Number of table rows returned by this query, capped at 20.",
-      queryNames: ["visible-tables"],
+    connectionVerified: {
+      term: "Connected",
+      definition: "The latest connection-check query completed successfully.",
+      queryNames: ["connection-check"],
     },
   },
 } satisfies DataContext;
