@@ -1,11 +1,9 @@
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { defineCommand } from "@/lib/command.ts";
 import { getLakehouseCredentialPair } from "@/lib/auth.ts";
 import { resolveApiBase } from "@/lib/config.ts";
-import { CliError, ConfigurationError, EXIT_GENERIC } from "@/lib/errors.ts";
+import { ConfigurationError, EXIT_GENERIC } from "@/lib/errors.ts";
 import { copyProcessEnv } from "@/lib/env.ts";
 import { configureVerify } from "@/lib/profile-status.ts";
 import {
@@ -14,23 +12,14 @@ import {
   requireAppScripts,
   runAppCommand,
 } from "@/commands/app/lib/run.ts";
-import {
-  currentRuntimeIntegrity,
-  installedRuntimeIntegrity,
-  runtimePath,
-} from "@/commands/app/lib/runtime.ts";
+import { currentRuntimeIntegrity, installedRuntimeIntegrity } from "@/commands/app/lib/runtime.ts";
+import projectCheckScript from "@/commands/app/lib/project-check.js.txt";
 
 type AppManifest = {
   schemaVersion: 1;
   title: string;
   appearance?: unknown;
   operations: Record<string, unknown>;
-};
-type Operation = {
-  input: (value: unknown) => unknown;
-  output: (value: unknown) => unknown;
-  run: (...args: unknown[]) => Promise<unknown>;
-  policy: { maxQueryRows: number; maxDurationMs: number; maxResponseBytes?: number };
 };
 
 export const appCheckCommand = defineCommand({
@@ -62,20 +51,11 @@ export const appCheckCommand = defineCommand({
         `Data app runtime ${installed.version} is outdated. Run altertable app upgrade.`,
       );
     }
-    try {
-      const { parseAppearance } = (await import(
-        pathToFileURL(join(directory, runtimePath, "appearance.ts")).href
-      )) as { parseAppearance: (value: unknown) => unknown };
-      parseAppearance(manifest.appearance);
-    } catch {
-      throw new ConfigurationError("app.json has invalid appearance settings.");
-    }
     if ((await runAppCommand("install", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("format:check", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("lint", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("typecheck", directory)) !== 0) return { exitCode: EXIT_GENERIC };
-    const operations = await readOperations(directory);
-    validateOperations(manifest, operations);
+    await checkAppProject(directory);
     if ((await runAppCommand("build", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     await checkClientBundle(directory);
     if (args.lakehouse) {
@@ -86,45 +66,14 @@ export const appCheckCommand = defineCommand({
         );
       const credentials = getLakehouseCredentialPair(execution.profile);
       await checkClientBundle(directory, [credentials.password]);
-      const runtimeModule = (await import(
-        pathToFileURL(join(directory, ".altertable/runtime/server.ts")).href
-      )) as {
-        createDataHandler: (
-          operations: Record<string, Operation>,
-          authorize: (
-            request: Request,
-            operation: string,
-          ) => Promise<{ lakehouse: unknown; canDiscloseSql: boolean }>,
-        ) => (request: Request) => Promise<Response>;
-      };
-      const localModule = (await import(
-        pathToFileURL(join(directory, ".altertable/runtime/local.ts")).href
-      )) as {
-        localLakehouse: (environment: Record<string, string>) => unknown;
-      };
-      const lakehouse = localModule.localLakehouse({
+      await checkAppProject(directory, {
         ALTERTABLE_API_BASE: resolveApiBase(execution.profile),
         ALTERTABLE_LAKEHOUSE_USERNAME: credentials.user,
         ALTERTABLE_LAKEHOUSE_PASSWORD: credentials.password,
       });
-      const handle = runtimeModule.createDataHandler(operations, async () => ({
-        lakehouse,
-        canDiscloseSql: true,
-      }));
-      for (const [name, input] of Object.entries(manifest.operations)) {
-        const response = await handle(
-          new Request(`http://localhost/api/data/${name}`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(input),
-          }),
-        );
-        if (!response.ok)
-          throw new CliError(`Live check failed for operation "${name}" (${response.status}).`);
-      }
     }
     sink.writeHuman(
-      `Checked ${manifest.title}: ${Object.keys(operations).length} operations, client bundle clean${args.lakehouse ? ", lakehouse operations passed" : ""}.`,
+      `Checked ${manifest.title}: ${Object.keys(manifest.operations).length} operations, client bundle clean${args.lakehouse ? ", lakehouse operations passed" : ""}.`,
     );
   },
 });
@@ -157,87 +106,28 @@ export async function readManifest(directory: string): Promise<AppManifest> {
   return value as AppManifest;
 }
 
-async function readOperations(directory: string): Promise<Record<string, Operation>> {
-  try {
-    const path = join(directory, "src/operations.ts");
-    let module: {
-      operations?: Record<string, Operation>;
-    };
-    try {
-      module = await import(pathToFileURL(path).href);
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("Cannot find package")) throw error;
-      // Bun can retain a missing-package lookup from before the preceding install.
-      // A fresh Bun process resolves the now-installed local runtime correctly.
-      const temporary = await mkdtemp(join(tmpdir(), "altertable-app-operations-"));
-      try {
-        const output = join(temporary, "operations.js");
-        const child = Bun.spawn(
-          [
-            process.execPath,
-            "build",
-            "--target=bun",
-            "--packages=bundle",
-            `--outfile=${output}`,
-            path,
-          ],
-          {
-            cwd: directory,
-            env: { ...copyProcessEnv(), BUN_BE_BUN: "1" },
-            stdout: "ignore",
-            stderr: "ignore",
-          },
-        );
-        if ((await child.exited) !== 0) throw error;
-        const source = await readFile(output);
-        module = await import(`data:text/javascript;base64,${source.toString("base64")}`);
-      } finally {
-        await rm(temporary, { recursive: true, force: true });
-      }
-    }
-    if (module.operations && typeof module.operations === "object") return module.operations;
-  } catch (error) {
-    throw new ConfigurationError(
-      `Cannot load src/operations.ts: ${error instanceof Error ? error.message : "unknown error"}`,
-    );
+/** Validate app-owned modules in Bun, outside the compiled CLI's module graph. */
+export async function checkAppProject(
+  directory: string,
+  lakehouseEnvironment?: Record<string, string>,
+): Promise<void> {
+  const env = copyProcessEnv();
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("ALTERTABLE_")) delete env[key];
   }
-  throw new ConfigurationError("src/operations.ts must export operations.");
-}
-
-export function validateOperations(
-  manifest: AppManifest,
-  operations: Record<string, Operation>,
-): void {
-  const names = Object.keys(operations);
-  if (
-    names.length !== Object.keys(manifest.operations).length ||
-    names.some((name) => !Object.hasOwn(manifest.operations, name))
-  ) {
-    throw new ConfigurationError("app.json operations must match src/operations.ts.");
-  }
-  for (const name of names) {
-    const operation = operations[name];
-    if (
-      !/^[a-z][a-z0-9-]*$/.test(name) ||
-      !operation ||
-      typeof operation.input !== "function" ||
-      typeof operation.output !== "function" ||
-      typeof operation.run !== "function" ||
-      !Number.isInteger(operation.policy?.maxQueryRows) ||
-      operation.policy.maxQueryRows < 1 ||
-      !Number.isInteger(operation.policy.maxDurationMs) ||
-      operation.policy.maxDurationMs < 1 ||
-      (operation.policy.maxResponseBytes !== undefined &&
-        (!Number.isInteger(operation.policy.maxResponseBytes) ||
-          operation.policy.maxResponseBytes < 1))
-    ) {
-      throw new ConfigurationError(`Operation "${name}" needs valid inputs, output, and limits.`);
-    }
-    try {
-      operation.input(manifest.operations[name]);
-    } catch {
-      throw new ConfigurationError(`app.json has invalid default inputs for "${name}".`);
-    }
+  Object.assign(env, lakehouseEnvironment);
+  env.BUN_BE_BUN = "1";
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "-e",
+      projectCheckScript,
+      lakehouseEnvironment ? "--lakehouse" : "--contract",
+    ],
+    { cwd: directory, env, stdin: "ignore", stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await child.exited) !== 0) {
+    throw new ConfigurationError("Data app validation failed.");
   }
 }
 

@@ -1,0 +1,84 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const appFile = (path) => pathToFileURL(join(process.cwd(), path)).href;
+
+async function check() {
+  const manifest = JSON.parse(await readFile("app.json", "utf8"));
+  try {
+    const { parseAppearance } = await import(appFile(".altertable/runtime/appearance.ts"));
+    parseAppearance(manifest.appearance);
+  } catch {
+    throw new Error("app.json has invalid appearance settings.");
+  }
+
+  let operations;
+  try {
+    ({ operations } = await import(appFile("src/operations.ts")));
+  } catch (error) {
+    throw new Error(
+      `Cannot load src/operations.ts: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+  }
+  if (!operations || typeof operations !== "object" || Array.isArray(operations)) {
+    throw new Error("src/operations.ts must export operations.");
+  }
+  const names = Object.keys(operations);
+  if (
+    names.length !== Object.keys(manifest.operations).length ||
+    names.some((name) => !Object.hasOwn(manifest.operations, name))
+  ) {
+    throw new Error("app.json operations must match src/operations.ts.");
+  }
+  for (const name of names) {
+    const operation = operations[name];
+    if (
+      !/^[a-z][a-z0-9-]*$/.test(name) ||
+      !operation ||
+      typeof operation.input !== "function" ||
+      typeof operation.output !== "function" ||
+      typeof operation.run !== "function" ||
+      !Number.isInteger(operation.policy?.maxQueryRows) ||
+      operation.policy.maxQueryRows < 1 ||
+      !Number.isInteger(operation.policy.maxDurationMs) ||
+      operation.policy.maxDurationMs < 1 ||
+      (operation.policy.maxResponseBytes !== undefined &&
+        (!Number.isInteger(operation.policy.maxResponseBytes) ||
+          operation.policy.maxResponseBytes < 1))
+    ) {
+      throw new Error(`Operation "${name}" needs valid inputs, output, and limits.`);
+    }
+    try {
+      operation.input(manifest.operations[name]);
+    } catch {
+      throw new Error(`app.json has invalid default inputs for "${name}".`);
+    }
+  }
+
+  if (process.argv[1] !== "--lakehouse") return;
+  const { createDataHandler } = await import(appFile(".altertable/runtime/server.ts"));
+  const { localLakehouse } = await import(appFile(".altertable/runtime/local.ts"));
+  const handle = createDataHandler(operations, async () => ({
+    lakehouse: localLakehouse(process.env),
+    canDiscloseSql: true,
+  }));
+  for (const [name, input] of Object.entries(manifest.operations)) {
+    const response = await handle(
+      new Request(`http://localhost/api/data/${name}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    );
+    if (!response.ok)
+      throw new Error(`Live check failed for operation "${name}" (${response.status}).`);
+  }
+}
+
+try {
+  await check();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : "Data app validation failed.");
+  process.exitCode = 1;
+}

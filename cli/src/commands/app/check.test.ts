@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { checkClientBundle, readManifest, validateOperations } from "@/commands/app/check.ts";
+import { checkAppProject, checkClientBundle } from "@/commands/app/check.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 
 let directory: string;
@@ -16,7 +16,9 @@ afterEach(() => {
 });
 
 describe("data app contract", () => {
-  test("rejects unbounded operations", async () => {
+  test("rejects unbounded operations in the app process", async () => {
+    mkdirSync(join(directory, "src"));
+    mkdirSync(join(directory, ".altertable/runtime"), { recursive: true });
     writeFileSync(
       join(directory, "app.json"),
       JSON.stringify({
@@ -25,16 +27,21 @@ describe("data app contract", () => {
         operations: { totals: {} },
       }),
     );
-    const manifest = await readManifest(directory);
-    const operation = {
-      input: () => ({}),
-      output: (value: unknown) => value,
-      run: async () => ({}),
-      policy: { maxQueryRows: 0, maxDurationMs: 0 },
-    };
-    expect(() => validateOperations(manifest, { totals: operation })).toThrow(
-      "inputs, output, and limits",
+    writeFileSync(
+      join(directory, ".altertable/runtime/appearance.ts"),
+      "export function parseAppearance() {}",
     );
+    writeFileSync(
+      join(directory, "src/operations.ts"),
+      "export const operations = { totals: { input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 0, maxDurationMs: 0 } } };",
+    );
+    const failure = await checkAppProject(directory).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ message: "Data app validation failed." });
+    writeFileSync(
+      join(directory, "src/operations.ts"),
+      "export const operations = { totals: { input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+    );
+    await checkAppProject(directory);
   });
 
   test("rejects credential references in the built client", async () => {
