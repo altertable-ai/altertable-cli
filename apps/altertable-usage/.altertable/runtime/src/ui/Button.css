@@ -1,0 +1,60 @@
+.altertable-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-control, 7px);
+  background: var(--at-surface, #fff);
+  color: var(--at-text, #202124);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.altertable-button:hover:not(:disabled) {
+  background: var(--at-subtle, #f6f7f7);
+}
+.altertable-button[data-size="icon"] {
+  flex: none;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.altertable-button[data-variant="outline"] {
+  box-shadow: none;
+}
+.altertable-button[data-variant="elevated"] {
+  box-shadow: var(--at-shadow-surface, 0 3px 16px rgb(20 28 40 / 5%));
+}
+.altertable-button[data-variant="ghost"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.altertable-button[data-variant="ghost"]:hover:not(:disabled),
+.altertable-button[data-variant="ghost"][data-open="true"] {
+  background: var(--at-subtle, #f6f7f7);
+}
+.altertable-button:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+}
+.altertable-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-button {
+    transition: none;
+  }
+}

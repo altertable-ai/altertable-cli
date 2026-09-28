@@ -1,0 +1,13 @@
+.altertable-refresh-content {
+  transition: opacity 120ms ease;
+}
+.altertable-refresh-content[data-refreshing="true"] {
+  opacity: 0.55;
+  transition: opacity 240ms ease 300ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-refresh-content,
+  .altertable-refresh-content[data-refreshing="true"] {
+    transition: none;
+  }
+}

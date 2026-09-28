@@ -1,0 +1,45 @@
+.altertable-app-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--at-space-sm, 8px);
+  width: 100%;
+}
+.altertable-app-toolbar-period {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--at-space-sm, 8px);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.altertable-app-toolbar-updated {
+  margin-right: 6px;
+  color: color-mix(in srgb, var(--at-muted, #687078) 78%, var(--at-background, #fff));
+  font-size: 11px;
+  white-space: nowrap;
+}
+.altertable-app-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--at-space-xs, 4px);
+  margin-inline-start: auto;
+}
+.altertable-app-toolbar {
+  flex-shrink: 0;
+}
+@media (max-width: 980px) {
+  .altertable-app-toolbar {
+    flex-wrap: wrap;
+  }
+  .altertable-app-toolbar-actions {
+    order: 0;
+    flex: 1 1 100%;
+  }
+  .altertable-app-toolbar-period {
+    order: 1;
+    flex: 1 1 100%;
+  }
+}

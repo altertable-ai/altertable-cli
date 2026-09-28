@@ -1,0 +1,14 @@
+.altertable-stack {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+.altertable-stack[data-gap="sm"] {
+  gap: var(--at-space-sm, 8px);
+}
+.altertable-stack[data-gap="md"] {
+  gap: var(--at-space-md, 16px);
+}
+.altertable-stack[data-gap="lg"] {
+  gap: var(--at-space-lg, 24px);
+}

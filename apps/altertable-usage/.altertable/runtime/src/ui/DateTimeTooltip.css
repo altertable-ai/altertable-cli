@@ -1,0 +1,22 @@
+.altertable-date-time-tooltip {
+  width: max-content;
+  max-width: min(480px, calc(100vw - 24px));
+  padding: 10px 12px;
+}
+.altertable-date-time-rows {
+  display: grid;
+  gap: 6px;
+}
+.altertable-date-time-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto;
+  gap: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.altertable-date-time-row time {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.altertable-date-time-label {
+  color: var(--at-muted, #626b73);
+}
