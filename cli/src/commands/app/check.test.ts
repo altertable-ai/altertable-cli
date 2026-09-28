@@ -38,7 +38,8 @@ describe("data app contract", () => {
       join(directory, "src/operations.ts"),
       "export const operations = { totals: { checks: [], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
     );
-    await expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
+    const missingChecksFailure = await checkAppProject(directory).catch((error: unknown) => error);
+    expect(missingChecksFailure).toMatchObject({ message: "Data app validation failed." });
     writeFileSync(
       join(directory, "src/operations.ts"),
       "export const operations = { totals: { checks: [{}], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
