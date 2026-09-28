@@ -51,6 +51,10 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 ## Conventions
 
+- For generated app authoring, edit [the app guide template](src/commands/app/templates/AGENTS.md.txt). Keep instructions there short and about decisions; put component behavior, valid combinations, and exact props in runtime types and JSDoc.
+- When changing a runtime primitive, preserve semantic ownership: layout spacing belongs to `AppLayout`, `Stack`, and `TabPanels`; filters and date bounds belong to their variable and control contracts; request states belong to `DataSection`. Add a prop or slot when app authors repeatedly need the same custom wrapper.
+- Add recurring icons to `src/commands/app/templates/runtime/ui/icons.ts.txt` with a semantic name and fixed optical size. Keep toolbar and presentation button variants explicit in their owning components. Verify the generated app in both themes and at desktop and phone widths.
+
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.
 - Import command types and `defineArgs` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
 - Derive related argument schemas from shared fragments instead of repeating flag definitions.
@@ -123,6 +127,8 @@ Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 ```
 altertable
 ├── login, logout
+├── app
+│   └── create, dev, build, check, upgrade
 ├── profile
 │   └── configure, show, list, status, switch, current, env, rename, delete
 ├── catalogs

@@ -8,13 +8,13 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 
 ## Where to work
 
-| Path | When to edit |
-|------|--------------|
-| `cli/src/` | CLI commands, HTTP clients, formatting, config |
-| `cli/src/**/*.test.ts` | Colocated Bun unit tests for CLI logic |
-| `tests/` | Black-box end-user CLI tests run through `bin/altertable` |
-| `specs/` | Client API specs (submodule — read-only from this repo) |
-| `bin/altertable` | Dev launcher — do not edit |
+| Path                   | When to edit                                              |
+| ---------------------- | --------------------------------------------------------- |
+| `cli/src/`             | CLI commands, HTTP clients, formatting, config            |
+| `cli/src/**/*.test.ts` | Colocated Bun unit tests for CLI logic                    |
+| `tests/`               | Black-box end-user CLI tests run through `bin/altertable` |
+| `specs/`               | Client API specs (submodule — read-only from this repo)   |
+| `bin/altertable`       | Dev launcher — do not edit                                |
 
 ## Start here
 
