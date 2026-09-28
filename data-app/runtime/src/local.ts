@@ -1,4 +1,34 @@
 import { DataSourceError, type Lakehouse, type QueryResult } from "./contract.ts";
+import type { DataOperations } from "./contract.ts";
+import { createDataHandler } from "./server.ts";
+
+/** Serve one app on localhost through the CLI's lakehouse proxy during development.
+ * Hosted servers must authorize every viewer and must use `createDataHandler` directly. */
+export function serveLocalApp({
+  page,
+  operations,
+  title,
+  port = Number(process.env.PORT ?? 25837),
+}: {
+  page: Bun.HTMLBundle;
+  operations: DataOperations;
+  title: string;
+  port?: number;
+}) {
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port,
+    development: process.env.NODE_ENV !== "production",
+    idleTimeout: 60,
+    routes: { "/": page },
+    fetch: createDataHandler(operations, async () => ({
+      lakehouse: localLakehouse(),
+      canDiscloseSql: true,
+    })),
+  });
+  console.log(`${title} running at ${server.url}`);
+  return server;
+}
 
 /** Server-only lakehouse adapter. Local development uses the selected CLI profile's proxy. */
 export function localLakehouse(

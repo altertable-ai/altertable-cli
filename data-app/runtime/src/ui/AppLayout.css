@@ -39,3 +39,19 @@ body,
     width: min(100% - 32px, var(--at-content-width, 1200px));
   }
 }
+:root {
+  --at-content-width: 960px;
+  font-family: var(--at-font, ui-sans-serif, system-ui, sans-serif);
+  color: var(--at-text, #202124);
+  background: var(--at-background, #fff);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+* {
+  box-sizing: border-box;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}

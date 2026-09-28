@@ -5,8 +5,10 @@ import { DataBoundary, type DataView } from "./DataBoundary.tsx";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
 import { StatusPanel } from "./StatusPanel.tsx";
 
-export type DataSectionProps<Data, Input = unknown> = {
-  view: DataView<Data, Input>;
+export type DataSectionProps<Data, Input = unknown> = (
+  | { view: DataView<Data, Input>; result?: never }
+  | { result: { view: DataView<Data, Input>; refetch: () => unknown }; view?: never }
+) & {
   children: (data: Data) => ReactNode;
   empty?: Pick<EmptyStateProps, "title" | "description">;
   loading?: ReactNode;
@@ -16,22 +18,27 @@ export type DataSectionProps<Data, Input = unknown> = {
   notice?: "inline" | "none";
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** One request boundary for any number of ready-data cards. A measured zero remains ready. */
+/** One request boundary for any number of cards. Pass `useDataView` as `result` for
+ * automatic retry and stale-data notices, or a manually resolved `view`. */
 export function DataSection<Data, Input>({
   view,
+  result,
   children,
   empty,
   loading,
   error,
   label,
-  notice = "none",
+  notice = result ? "inline" : "none",
   ...props
 }: DataSectionProps<Data, Input>) {
-  const retry = error?.onRetry && <Button onClick={error.onRetry}>Try again</Button>;
+  const dataView = result?.view ?? view;
+  if (!dataView) throw new Error("DataSection needs a data view.");
+  const retryAction = error?.onRetry ?? (result ? () => void result.refetch() : undefined);
+  const retry = retryAction && <Button onClick={retryAction}>Try again</Button>;
   return (
     <DataBoundary
       {...props}
-      view={view}
+      view={dataView}
       role={label ? "region" : undefined}
       aria-label={label}
       notice={notice}
