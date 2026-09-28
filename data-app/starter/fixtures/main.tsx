@@ -2,7 +2,16 @@ import { mountDataApp } from "@altertable/data-app-runtime/react";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import { connectionCheck } from "@altertable/data-app-runtime/contract";
-import { DataApp, DataSection, Grid, Stack } from "@altertable/data-app-runtime/ui";
+import {
+  DataApp,
+  DataSection,
+  DateRangePicker,
+  Grid,
+  MetricCard,
+  Stack,
+  StorySection,
+  VisualizationCard,
+} from "@altertable/data-app-runtime/ui";
 
 const { useDataView } = createDataHooks<{ connection: ReturnType<typeof connectionCheck> }>(
   createDataClient(),
@@ -37,6 +46,7 @@ function Fixture() {
       dataContext={dataContext}
       aboutEmpty={empty}
       request={connection}
+      variables={<DateRangePicker value={null} onChange={() => {}} label="Date range" />}
       story={{
         steps: [
           {
@@ -57,6 +67,13 @@ function Fixture() {
       }}
     >
       <Stack data-testid="layout-stack">
+        <StorySection
+          label="Order activity"
+          data-testid="layout-story"
+          lead={<MetricCard label="Completed orders" value="120" />}
+          visual={<VisualizationCard title="Orders over time" visual={<p>Daily orders</p>} />}
+          support={<VisualizationCard title="Returning customers" visual={<p>80 customers</p>} />}
+        />
         <Grid columns={2} data-testid="layout-grid">
           <div>Short panel</div>
           <div>

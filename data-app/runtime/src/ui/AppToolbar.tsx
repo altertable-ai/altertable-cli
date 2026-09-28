@@ -1,5 +1,4 @@
 import type { ComponentProps, ComponentPropsWithRef, ReactNode } from "react";
-import { DateRangePicker } from "./DateRangePicker.tsx";
 import type { DataView } from "./DataBoundary.tsx";
 import { LiveControl, type LiveControlProps } from "./LiveControl.tsx";
 import { AppIcon } from "./icons.ts";
@@ -10,12 +9,7 @@ import { classNames } from "./classNames.ts";
 import { shortcuts, useShortcut } from "./shortcuts.ts";
 import "./AppToolbar.css";
 
-type PeriodSlot =
-  | { period?: ReactNode; dateRange?: never }
-  | { dateRange?: ComponentProps<typeof DateRangePicker>; period?: never };
-
-export type AppToolbarProps = PeriodSlot & {
-  filters?: ReactNode;
+export type AppToolbarProps = {
   children?: ReactNode;
   end?: ReactNode;
   controlsProps?: Omit<ComponentPropsWithRef<"div">, "children">;
@@ -36,16 +30,13 @@ export type AppToolbarProps = PeriodSlot & {
   story?: ComponentProps<typeof PlayStory>;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
-/** Period slot on the left accepts a controlled calendar or read-only period summary.
+/** Header actions only. Put reader-controlled inputs in DataApp.variables below the header.
  * Observation time, or an initial loading status, sits before Refresh. Children prepend app controls in the right
  * cluster; end follows the built-in actions. Live sits beside Refresh when supplied. Refresh also
  * answers Alt/Option+R and uses the button to cancel a running request when onCancel is provided;
  * refresh.tooltip overrides its static label. All built-in controls are optional. */
 export function AppToolbar({
   children,
-  period,
-  dateRange,
-  filters,
   updatedAt,
   initialLoading = false,
   requestState,
@@ -57,7 +48,7 @@ export function AppToolbar({
   controlsProps,
   className,
   role = "group",
-  "aria-label": ariaLabel = "View controls",
+  "aria-label": ariaLabel = "Page actions",
   ...props
 }: AppToolbarProps) {
   const refreshLabel =
@@ -80,12 +71,6 @@ export function AppToolbar({
       role={role}
       aria-label={ariaLabel}
     >
-      {(period || dateRange || filters) && (
-        <div className="altertable-app-toolbar-period">
-          {period ?? (dateRange && <DateRangePicker {...dateRange} />)}
-          {filters}
-        </div>
-      )}
       <div
         {...controlsProps}
         className={classNames("altertable-app-toolbar-actions", controlsProps?.className)}

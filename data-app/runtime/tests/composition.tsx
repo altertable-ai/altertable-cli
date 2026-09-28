@@ -5,6 +5,7 @@ import {
   AppLayout,
   AppScope,
   AppToolbar,
+  VariableBar,
   Button,
   VisualizationCard,
   DateRangePicker,
@@ -80,12 +81,6 @@ export function CompositionCheck() {
       <AppToolbar
         className="toolbar"
         data-testid="toolbar"
-        dateRange={{
-          value: null,
-          onChange: () => {},
-          className: "dates",
-          calendarFooter: "Choose dates",
-        }}
         refresh={{
           refreshing: false,
           onRefresh: () => {},
@@ -96,15 +91,21 @@ export function CompositionCheck() {
       >
         <Button>Extra</Button>
       </AppToolbar>
-      <AppToolbar
-        period={
-          <PeriodSummary
-            period={{ kind: "rolling", amount: 24, unit: "hour", end: new Date().toISOString() }}
-            comparison={{ kind: "previous" }}
-          />
-        }
-        updatedAt={<UpdatedAt timestamp={0} />}
-      />
+      <VariableBar data-testid="variables">
+        <DateRangePicker
+          value={null}
+          onChange={() => {}}
+          className="dates"
+          calendarFooter="Choose dates"
+        />
+      </VariableBar>
+      <AppToolbar updatedAt={<UpdatedAt timestamp={0} />} />
+      <VariableBar>
+        <PeriodSummary
+          period={{ kind: "rolling", amount: 24, unit: "hour", end: new Date().toISOString() }}
+          comparison={{ kind: "previous" }}
+        />
+      </VariableBar>
       <VisualizationCard title="Panel" visual="Content" className="panel" data-testid="panel" />
       <MetricCard
         label="Metric"

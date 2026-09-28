@@ -118,6 +118,24 @@ test("request progress appears before Refresh", async ({ page }) => {
   await expect(status).toBeEmpty();
 });
 
+test("variables sit below the header divider while actions stay in the header", async ({
+  page,
+}) => {
+  await page.goto("/components");
+  const header = page.locator(".altertable-app-header");
+  const bar = page.getByRole("group", { name: "View variables" });
+  const actions = header.getByRole("group", { name: "Page actions" });
+  await expect(bar.getByLabel("Date range")).toBeVisible();
+  await expect(actions.getByRole("button", { name: "Refresh data" })).toBeVisible();
+  expect(await bar.evaluate((element) => element.previousElementSibling?.tagName)).toBe("HEADER");
+  const headerBox = await header.boundingBox();
+  const barBox = await bar.boundingBox();
+  expect(barBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 test("grid uses one gap and keeps shorter panels at content height", async ({ page }, testInfo) => {
   await page.goto("/components");
   const grid = page.getByTestId("layout-grid");
@@ -145,4 +163,24 @@ test("grid uses one gap and keeps shorter panels at content height", async ({ pa
     .locator(".altertable-app-header")
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(border).toBe("1px");
+});
+
+test("story gives its main visual more room and stacks evidence on phones", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/components");
+  const story = page.getByTestId("layout-story");
+  const lead = await story.locator(".altertable-story-section-lead").boundingBox();
+  const visual = await story.locator(".altertable-story-section-visual").boundingBox();
+  const support = await story.locator(".altertable-story-section-support").boundingBox();
+  expect(lead).not.toBeNull();
+  expect(visual).not.toBeNull();
+  expect(support).not.toBeNull();
+  expect(visual!.y).toBeGreaterThan(lead!.y);
+  if (testInfo.project.name === "desktop") {
+    expect(visual!.width).toBeGreaterThan(support!.width);
+    expect(Math.round(visual!.y)).toBe(Math.round(support!.y));
+  } else {
+    expect(support!.y).toBeGreaterThanOrEqual(visual!.y + visual!.height);
+  }
 });

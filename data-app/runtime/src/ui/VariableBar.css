@@ -1,0 +1,11 @@
+.altertable-variable-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--at-space-sm, 8px);
+  min-width: 0;
+}
+.altertable-variable-bar > * {
+  max-width: 100%;
+  min-width: 0;
+}

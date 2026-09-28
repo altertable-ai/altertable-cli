@@ -16,6 +16,8 @@ export { AppScope } from "./AppScope.tsx";
 export type { AppScopeProps } from "./AppScope.tsx";
 export { AppToolbar } from "./AppToolbar.tsx";
 export type { AppToolbarProps } from "./AppToolbar.tsx";
+export { VariableBar } from "./VariableBar.tsx";
+export type { VariableBarProps } from "./VariableBar.tsx";
 export { AppFooter } from "./AppFooter.tsx";
 export type { AppFooterProps } from "./AppFooter.tsx";
 

@@ -7,7 +7,8 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 1. Read `app.json` and confirm its organization and environment against the connected source and `altertable profile show --json`. A starter created with `--without-profile` has placeholders; resolve them before querying. If the scopes differ, stop and show both. Offer `altertable profile switch <name>` for a matching profile or `altertable login --org <org> --env <env>` to connect the intended one.
 2. Use the [Altertable MCP](https://altertable.ai/docs/query-data/mcp) to inspect catalogs, tables, columns, and existing definitions. If it is disconnected, ask to connect it; use `altertable catalogs` and `altertable query` if connection fails or the user declines. The app never calls MCP at runtime.
 3. Write a description of what the reader is exploring and why, and define a glossary of terms in `src/data-context.ts`. Make the description specific to the operation's SQL and its coverage. Validate one bounded query in the intended environment, then implement it with input and output parsers in `src/operations.ts`.
-4. Show the first useful result and its interpretation in `src/App.tsx` before adding more questions. Build optional Present steps from the loaded result. Never invent data or treat an observed association as a proven cause.
+4. For a broad request such as “how people use the product,” inspect the event taxonomy and available identity, organization, and time fields before settling on a view. Explore distinct angles (for example activity over time, feature reach, and usage by organization), then choose the strongest supported story and enough complementary views to answer the request. A first query proves the path; it does not establish the exploration's coverage.
+5. Show the first useful result and its interpretation in `src/App.tsx`, then add the other supported questions. Build optional Present steps from the loaded result. Never invent data or treat an observed association as a proven cause.
 
 ## Files and data flow
 
@@ -26,6 +27,17 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 
 ## Compose the view
 
+Choose the layout by the relationship between results: one lead finding with a main visual and smaller context uses `StorySection`; equally important cards use `Grid`; consecutive sections use `Stack`. Do not put the lead, its evidence, and its context in three equal grid cells. For example, inside a loaded result view:
+
+```tsx
+<StorySection
+  label="Feature activity"
+  lead={<MetricCard label="Most used feature" value={result.topFeature.label} />}
+  visual={<VisualizationCard title="Actions by feature" visual={<Ranking items={result.featureActions} />} />}
+  support={<VisualizationCard title="Identities by feature" visual={<Ranking items={result.featureReach} />} />}
+/>
+```
+
 | Need                     | Runtime primitive                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Page and hierarchy       | `DataApp` for the standard shell; `StorySection`, `Grid`, `Stack` for content |
@@ -40,7 +52,7 @@ Build from observed lakehouse data. The app owns its question, operations, data 
 - Use chart color by meaning: accent plus neutral for one series, stable distinct hues for categories, a lightness scale for ordered magnitude, and two ordered hues around a meaningful midpoint for signed change. Keep category colors consistent across views and themes. Mark notable values from data, not DOM position. Provide text labels and `Tooltip variant="chart"` on marks; touch must reveal the same information.
 - Put stable glossary and query references in each card's `evidence`. Write the page as question, evidence, interpretation, and next question. Use `PlayStory` only for distinct observations a room can read from a distance; link relevant glossary terms and queries to each step. Conclude only when the data supports it.
 - Give `DataApp` an `aboutEmpty` value and each inspectable card or story step an `empty` value. Both Glossary and Queries need a concise, relevant fallback when their content is absent. Keep necessary caveats in About the data; make on-page copy specific to the current result.
-- Pass `app.json`, `dataContext`, and a `useDataView` result as `request` to `DataApp`. Add optional filters and Present steps when the view needs them. For multiple operations, pass combined query evidence and refresh behavior explicitly. `DataApp` owns the page identity, theme control, About the data, and default toolbar. Keep the authored question and interpretation in its children. The generated `main.tsx` and `server.ts` already use `mountDataApp` and `serveLocalApp`; hosted servers must use `createDataHandler` with viewer authorization.
+- Pass `app.json`, `dataContext`, and a `useDataView` result as `request` to `DataApp`. Put reader-controlled date ranges and filters in `variables`; `DataApp` renders them in a separate bar below the header divider. Use `toolbarActions` only for page actions alongside Refresh and About the data. A display-only `scopeLabels` override can capitalize the organization without changing the authentication scope in `app.json`. For multiple operations, pass combined query evidence and refresh behavior explicitly. `DataApp` owns the page identity, theme control, About the data, and default toolbar. Keep the authored question and interpretation in its children. The generated `main.tsx` and `server.ts` already use `mountDataApp` and `serveLocalApp`; hosted servers must use `createDataHandler` with viewer authorization.
 - The `request` also drives the toolbar's loading and updating label beside Refresh. Do not repeat a date range in the page heading when the date control already shows it; `DataSection` labels previously loaded ranges during updates.
 - Use the React-free parsers in `@altertable/data-app-runtime/contract` for empty input, bounded dates, counts, labels, and named query rows when they match the data contract. Define app-specific input and output validation in the operation. Never move source-specific SQL, populations, or metric definitions into shared runtime helpers.
 - Set `app.json` title, scope, and appearance for the organization's brand. Keep the document title as `{app title} • {org}/{env} • Altertable app`. Use accessible controls and semantic icons. Essential actions must work without hover. The page must not overflow horizontally.

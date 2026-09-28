@@ -23,7 +23,7 @@
 .altertable-date-range .react-aria-Group[data-hovered] {
   border-color: color-mix(in srgb, var(--at-muted, #687078) 45%, var(--at-border, #e3e6e8));
 }
-.altertable-app-toolbar-period .altertable-date-range .react-aria-Group {
+.altertable-variable-bar .altertable-date-range .react-aria-Group {
   box-shadow: var(--at-shadow-surface, none);
 }
 .altertable-date-range .react-aria-Group[data-focus-within] {

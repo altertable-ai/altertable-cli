@@ -50,28 +50,7 @@
 .altertable-app-header-toolbar {
   flex: none;
 }
-@media (min-width: 981px) {
-  .altertable-app-header-heading {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 12px;
-  }
-  .altertable-app-header-toolbar,
-  .altertable-app-header-toolbar .altertable-app-toolbar {
-    display: contents;
-  }
-  .altertable-app-header-toolbar .altertable-app-toolbar-period {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: start;
-  }
-  .altertable-app-header-toolbar .altertable-app-toolbar-actions {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-  }
-}
-@media (max-width: 980px) {
+@media (max-width: 700px) {
   .altertable-app-header-heading {
     flex-wrap: wrap;
   }

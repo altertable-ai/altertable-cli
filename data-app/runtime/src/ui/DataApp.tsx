@@ -11,6 +11,7 @@ import { AppToolbar, type AppToolbarProps } from "./AppToolbar.tsx";
 import type { DataContext } from "./data-context.ts";
 import type { PlayStoryProps } from "./PlayStory.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
+import { VariableBar } from "./VariableBar.tsx";
 
 export type DataAppProps = {
   config: DataAppConfig;
@@ -18,6 +19,8 @@ export type DataAppProps = {
   aboutEmpty: AboutEmpty;
   children: ReactNode;
   description?: ReactNode;
+  /** Display names only; config.scope remains the connection identity. */
+  scopeLabels?: { organization?: string; environment?: string };
   /** One `useDataView` result supplies query evidence and refresh controls. */
   request?: {
     view: DataView<unknown, unknown>;
@@ -26,7 +29,7 @@ export type DataAppProps = {
   };
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
-  filters?: ReactNode;
+  variables?: ReactNode;
   story?: Omit<PlayStoryProps, "title" | "dataContext"> &
     Partial<Pick<PlayStoryProps, "title" | "dataContext">>;
   toolbarActions?: ReactNode;
@@ -43,10 +46,11 @@ export function DataApp({
   aboutEmpty,
   children,
   description,
+  scopeLabels,
   request,
   queries,
   refresh,
-  filters,
+  variables,
   story,
   toolbarActions,
   footerActions,
@@ -54,7 +58,10 @@ export function DataApp({
 }: DataAppProps) {
   const [theme] = useState(() => createThemeController(config.appearance));
   const scope = (
-    <AppScope organization={config.scope.organization} environment={config.scope.environment} />
+    <AppScope
+      organization={scopeLabels?.organization ?? config.scope.organization}
+      environment={scopeLabels?.environment ?? config.scope.environment}
+    />
   );
   return (
     <AppLayout {...layoutProps} footerActions={footerActions ?? <ThemeToggle theme={theme} />}>
@@ -64,7 +71,6 @@ export function DataApp({
         description={description}
         toolbar={
           <AppToolbar
-            filters={filters}
             requestState={request?.view.kind}
             refresh={refresh ?? request?.refresh}
             story={
@@ -92,6 +98,7 @@ export function DataApp({
           </AppToolbar>
         }
       />
+      {variables && <VariableBar>{variables}</VariableBar>}
       {children}
     </AppLayout>
   );
