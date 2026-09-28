@@ -111,7 +111,11 @@ async function sendWithAuthRecovery<T>(
     }
     // The server can invalidate a provisioned credential (revocation, restart)
     // before the locally stored expiry: mint a fresh one and retry once.
-    const authHeader = await provisionLakehouseCredential(context);
+    const latest = optionalAuth(() => getLakehouseAuthHeader(context.profile));
+    const authHeader =
+      latest && latest !== options.authHeader
+        ? latest
+        : await provisionLakehouseCredential(context);
     return send({ ...options, authHeader });
   }
 }

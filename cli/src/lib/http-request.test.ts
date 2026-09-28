@@ -6,6 +6,7 @@ import { basicAuthToken } from "@/lib/auth.ts";
 import { configGet, configSet } from "@/lib/config.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
+import { provisionLakehouseCredential } from "@/lib/lakehouse-provision.ts";
 import { FROM_ENV_PSEUDOPROFILE_NAME } from "@/lib/profile-store.ts";
 import { createCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
 import { secretGet, secretSet } from "@/lib/secrets.ts";
@@ -97,5 +98,119 @@ describe("lakehouse credential provisioning", () => {
       basicAuthToken("prov-user", "prov-pass"),
     );
     expect(Number(configGet("lakehouse_credential_expiry", "default"))).toBe(Date.parse(expiresAt));
+  });
+
+  test("renews a credential before expiry and retries a revoked credential once", async () => {
+    configSet("api_key_env", "production", "default");
+    secretSet("api-key", "atm_stored", "default");
+    secretSet("lakehouse/basic-token", basicAuthToken("old-user", "old-pass"), "default");
+    configSet("lakehouse_credential_expiry", String(Date.now() + 4 * 60_000), "default");
+    const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
+    const mockFile = join(testHome, "renewal-mocks.json");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          body: JSON.stringify({ principal: { id: "user-1", type: "User" } }),
+        },
+        {
+          urlPattern: "/users/user-1/environments/production/credentials",
+          method: "POST",
+          body: JSON.stringify({
+            credential: { username: "new-user", expires_at: expiresAt },
+            password: "new-pass",
+          }),
+        },
+        {
+          urlPattern: "/query",
+          method: "POST",
+          authPattern: basicAuthToken("new-user", "new-pass"),
+          body: '{"ok":true}',
+        },
+      ]),
+    );
+    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+    const { runtime, context } = createTestExecution("default");
+    const result = await runWithCliRuntime(runtime, () =>
+      sendHttp(lakehouseQueryRequest(), context),
+    );
+    expect(result).toBe('{"ok":true}');
+    expect(secretGet("lakehouse/basic-token", "default")).toBe(
+      basicAuthToken("new-user", "new-pass"),
+    );
+
+    secretSet("lakehouse/basic-token", basicAuthToken("revoked-user", "revoked-pass"), "default");
+    configSet("lakehouse_credential_expiry", String(Date.now() + 3_600_000), "default");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/query",
+          method: "POST",
+          authPattern: basicAuthToken("revoked-user", "revoked-pass"),
+          status: 401,
+          body: "rejected",
+        },
+        {
+          urlPattern: "/query",
+          method: "POST",
+          authPattern: basicAuthToken("new-user", "new-pass"),
+          body: '{"ok":true}',
+        },
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          body: JSON.stringify({ principal: { id: "user-1", type: "User" } }),
+        },
+        {
+          urlPattern: "/users/user-1/environments/production/credentials",
+          method: "POST",
+          body: JSON.stringify({
+            credential: { username: "new-user", expires_at: expiresAt },
+            password: "new-pass",
+          }),
+        },
+      ]),
+    );
+    expect(await runWithCliRuntime(runtime, () => sendHttp(lakehouseQueryRequest(), context))).toBe(
+      '{"ok":true}',
+    );
+  });
+
+  test("shares an in-flight credential renewal for the same profile", async () => {
+    configSet("api_key_env", "production", "default");
+    secretSet("api-key", "atm_stored", "default");
+    const mockFile = join(testHome, "concurrent-mocks.json");
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        {
+          urlPattern: "/whoami",
+          method: "GET",
+          body: JSON.stringify({ principal: { id: "user-1", type: "User" } }),
+        },
+        {
+          urlPattern: "/users/user-1/environments/production/credentials",
+          method: "POST",
+          body: JSON.stringify({
+            credential: {
+              username: "new-user",
+              expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+            },
+            password: "new-pass",
+          }),
+        },
+      ]),
+    );
+    process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
+    const { runtime, context } = createTestExecution("default");
+    await runWithCliRuntime(runtime, async () => {
+      const first = provisionLakehouseCredential(context);
+      const second = provisionLakehouseCredential(context);
+      expect(second).toBe(first);
+      expect(await first).toContain("Basic");
+    });
   });
 });

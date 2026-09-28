@@ -77,7 +77,19 @@ async function sendManagementRequest(
   return parseApiJson(response);
 }
 
-export async function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
+const pendingCredentials = new Map<string, Promise<string>>();
+
+export function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
+  const pending = pendingCredentials.get(context.profile);
+  if (pending) return pending;
+  const renewal = createLakehouseCredential(context).finally(() => {
+    pendingCredentials.delete(context.profile);
+  });
+  pendingCredentials.set(context.profile, renewal);
+  return renewal;
+}
+
+async function createLakehouseCredential(context: ExecutionContext): Promise<string> {
   if (isFromEnvProfile(context.profile)) {
     throw new ConfigurationError(
       "Lakehouse credentials are not auto-provisioned while environment configuration is active. Set ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD.",
