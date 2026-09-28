@@ -15,6 +15,6 @@ CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade
 
 ## Reading the view
 
-“Tables shown” counts rows returned by this query. It is not the number of tables in the lakehouse. The catalog step counts only rows in that same limited result. “About the data” explains the exploration, scope, limitations, and glossary; SQL appears only when the server permits disclosure.
+“Tables shown” counts rows returned by this query. It is not the number of tables in the lakehouse. The catalog step counts only rows in that same limited result. “About the data” describes the exploration and provides a glossary and disclosed queries; SQL appears only when the server permits disclosure.
 
 The app's query, data context, and presentation steps live in `src/`. The versioned `.altertable/runtime/` supplies the data transport and shared UI. The JSDoc beside the example and runtime exports explains each boundary where it is used.

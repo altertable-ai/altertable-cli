@@ -114,7 +114,7 @@ export { ThemeSelector, ThemeToggle } from "./ThemeSelector.tsx";
 export type { ThemeSelectorProps } from "./ThemeSelector.tsx";
 
 // Data context and presentation
-export type { DataContext, GlossaryEntry, StoryEvidence } from "./data-context.ts";
+export type { DataContext, GlossaryEntry } from "./data-context.ts";
 export type { DisclosedQuery } from "../contract.ts";
 export { GlossaryExplanation } from "./GlossaryExplanation.tsx";
 export type { GlossaryExplanationProps } from "./GlossaryExplanation.tsx";

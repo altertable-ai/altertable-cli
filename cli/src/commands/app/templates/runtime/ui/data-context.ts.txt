@@ -2,29 +2,11 @@
 export type GlossaryEntry = {
   term: string;
   definition: string;
-  unit?: string;
-  sources?: string[];
-  population?: string;
   queryNames?: string[];
 };
 
 /** App-owned context for the exploration, shared by the page and Present mode. */
 export type DataContext = {
   description: string;
-  scope: {
-    sources: string[];
-    grain?: string;
-    population?: string;
-    timezone?: string;
-  };
-  limitations: string[];
   glossary: Record<string, GlossaryEntry>;
-};
-
-/** The observed window and provenance for one presentation step. */
-export type StoryEvidence = {
-  sources: string[];
-  period: string;
-  glossaryIds: string[];
-  limitation?: string;
 };

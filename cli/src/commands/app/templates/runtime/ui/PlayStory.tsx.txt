@@ -11,7 +11,7 @@ import { useMergeRefs } from "@floating-ui/react";
 import type { DisclosedQuery } from "../contract.ts";
 import type { ThemeController } from "../appearance.ts";
 import { AboutData } from "./AboutData.tsx";
-import type { DataContext, StoryEvidence } from "./data-context.ts";
+import type { DataContext } from "./data-context.ts";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
 import { classNames } from "./classNames.ts";
@@ -26,7 +26,7 @@ export type StoryStep = {
   id: string;
   headline: string;
   context?: string;
-  evidence: StoryEvidence;
+  glossaryIds?: string[];
   queryNames?: string[];
   visual: ReactNode;
   visualKind?: "metric" | "chart";
@@ -250,7 +250,7 @@ export function PlayStory({
                   visual={step.visual}
                   visualKind={step.visualKind}
                   dataContext={dataContext}
-                  evidence={step.evidence}
+                  glossaryIds={step.glossaryIds}
                   queries={step.queries}
                   queryNames={step.queryNames}
                   tooltip="Explore this step"

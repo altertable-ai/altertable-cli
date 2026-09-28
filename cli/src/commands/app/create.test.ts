@@ -80,7 +80,7 @@ describe("app create", () => {
     expect(appGuide).toContain("## Files and data flow");
     expect(appGuide).toContain("## Compose the view");
     expect(appGuide).toContain("## Verify and maintain");
-    expect(appGuide).toContain("sources, row grain, population, timezone");
+    expect(appGuide).toContain("Make the description specific to the operation's SQL");
     expect(appGuide).toContain("dynamic, source-bounded date range");
     expect(appGuide).toContain("measured zero in the ready state");
     expect(appGuide).toContain("altertable app check --lakehouse");
@@ -94,11 +94,13 @@ describe("app create", () => {
     expect(readFileSync(join(directory, ".altertable/runtime/ui/Tooltip.tsx"), "utf8")).toContain(
       "followCursor",
     );
-    expect(appGuide).toContain("StoryEvidence");
+    expect(appGuide).not.toContain("StoryEvidence");
     expect(appGuide).toContain("altertable.ai/docs/query-data/mcp");
     expect(appGuide).toContain("altertable login --org");
     expect(appGuide).toContain("altertable profile switch");
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("storyEvidence");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
+      'glossaryIds: ["tablesShown"]',
+    );
     expect(readFileSync(join(directory, ".altertable/runtime/ui/PlayStory.tsx"), "utf8")).toContain(
       "portalRoot={dialog}",
     );
@@ -186,9 +188,12 @@ describe("app create", () => {
     expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
       "dataContext?.description",
     );
-    expect(readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8")).toContain(
-      '<Tab id="overview">Overview</Tab>',
-    );
+    expect(
+      readFileSync(join(directory, ".altertable/runtime/ui/AboutData.tsx"), "utf8"),
+    ).not.toContain('<Tab id="overview">Overview</Tab>');
+    expect(
+      readFileSync(join(directory, ".altertable/runtime/ui/data-context.ts"), "utf8"),
+    ).not.toContain("StoryEvidence");
     expect(
       readFileSync(join(directory, ".altertable/runtime/ui/MetricCard.tsx"), "utf8"),
     ).toContain("Explore this metric");

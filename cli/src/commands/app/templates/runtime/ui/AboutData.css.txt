@@ -47,41 +47,6 @@
   gap: 28px;
   min-width: 0;
 }
-.altertable-about-summary {
-  margin: 0;
-  color: var(--at-text, #202124);
-}
-.altertable-about-body > section > h3 {
-  margin: 0 0 12px;
-  color: var(--at-muted, #687078);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.altertable-about-facts {
-  display: grid;
-  gap: 18px;
-  margin: 0;
-}
-.altertable-about-facts > div {
-  display: grid;
-  gap: 4px;
-}
-.altertable-about-facts dt {
-  color: var(--at-muted, #687078);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.altertable-about-facts dd {
-  min-width: 0;
-  margin: 0;
-  color: var(--at-text, #202124);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
 .altertable-about-glossary-list {
   display: grid;
   gap: 16px;
@@ -99,26 +64,6 @@
 .altertable-about-glossary-entry > p {
   margin: 0;
   line-height: 1.55;
-}
-.altertable-about-body section > ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding-left: 18px;
-  color: var(--at-text, #202124);
-}
-.altertable-about-sources {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font: 12px/1.55 var(--at-mono-font, ui-monospace, SFMono-Regular, Consolas, monospace);
-}
-.altertable-about-limitation {
-  margin: 16px 0 0;
-  color: var(--at-muted, #687078);
-  overflow-wrap: anywhere;
 }
 .altertable-about-tabs {
   display: grid;

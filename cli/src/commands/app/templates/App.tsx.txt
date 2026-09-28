@@ -61,19 +61,13 @@ export function App() {
     isEmpty: () => false,
   });
   const rows = tables.data?.data ?? [];
-  const storyEvidence: StoryStep["evidence"] = {
-    sources: ["information_schema.tables"],
-    period: `Observed ${new Date(tables.dataUpdatedAt).toISOString()}`,
-    glossaryIds: ["tablesShown"],
-    limitation: "These steps describe only the first 20 visible tables, not the full catalog.",
-  };
   const steps: StoryStep[] = tables.data
     ? [
         {
           id: "visible",
           headline: `${formatCount(rows.length)} tables in this view`,
           context: "These are the first visible tables ordered by catalog, schema, and name.",
-          evidence: storyEvidence,
+          glossaryIds: ["tablesShown"],
           queries: tables.data.queries,
           queryNames: ["visible-tables"],
           visual: tableList(rows),
@@ -85,7 +79,7 @@ export function App() {
                 headline: `${formatCount(rows.filter((table) => table.catalog === rows[0]!.catalog).length)} shown from ${rows[0]!.catalog}`,
                 context:
                   "This count describes only the returned rows. Explore the full catalog before drawing broader conclusions.",
-                evidence: storyEvidence,
+                glossaryIds: ["tablesShown"],
                 queries: tables.data.queries,
                 queryNames: ["visible-tables"],
                 visual: tableList(rows.filter((table) => table.catalog === rows[0]!.catalog)),

@@ -9,7 +9,7 @@ import {
 import { useMergeRefs } from "@floating-ui/react";
 import { AppIcon } from "./icons.ts";
 import type { DisclosedQuery } from "../contract.ts";
-import type { DataContext, GlossaryEntry, StoryEvidence } from "./data-context.ts";
+import type { DataContext, GlossaryEntry } from "./data-context.ts";
 import { Button, type ButtonProps } from "./Button.tsx";
 import { Kbd } from "./Kbd.tsx";
 import { QueryList } from "./QueryList.tsx";
@@ -20,7 +20,7 @@ import { ariaKeyShortcuts, shortcuts, useShortcut } from "./shortcuts.ts";
 import { Tooltip } from "./Tooltip.tsx";
 import "./AboutData.css";
 
-export type AboutTab = "overview" | "glossary" | "queries";
+export type AboutTab = "glossary" | "queries";
 
 /** What a surface, story step, or the toolbar can show in the inspect sheet. */
 export type AboutSubject = {
@@ -32,7 +32,7 @@ export type AboutSubject = {
   dataContext?: DataContext;
   glossaryEntry?: GlossaryEntry;
   glossaryEntries?: GlossaryEntry[];
-  evidence?: StoryEvidence;
+  glossaryIds?: string[];
   queries?: DisclosedQuery[];
   queryNames?: string[];
 };
@@ -67,21 +67,17 @@ function listedGlossaryEntries({
   glossaryEntry,
   glossaryEntries,
   dataContext,
-  evidence,
-}: AboutSubject): {
-  entries: GlossaryEntry[];
-  scoped: boolean;
-} {
-  if (glossaryEntries?.length) return { entries: glossaryEntries, scoped: true };
-  if (glossaryEntry) return { entries: [glossaryEntry], scoped: true };
-  if (evidence)
-    return { entries: namedGlossaryEntries(dataContext, evidence.glossaryIds), scoped: true };
-  return { entries: Object.values(dataContext?.glossary ?? {}), scoped: false };
+  glossaryIds,
+}: AboutSubject): GlossaryEntry[] {
+  if (glossaryEntries?.length) return glossaryEntries;
+  if (glossaryEntry) return [glossaryEntry];
+  if (glossaryIds) return namedGlossaryEntries(dataContext, glossaryIds);
+  return Object.values(dataContext?.glossary ?? {});
 }
 
 function glossaryQueries(subject: AboutSubject): string[] | undefined {
   if (subject.queryNames?.length) return subject.queryNames;
-  const names = listedGlossaryEntries(subject).entries.flatMap((item) => item.queryNames ?? []);
+  const names = listedGlossaryEntries(subject).flatMap((item) => item.queryNames ?? []);
   return names.length ? names : undefined;
 }
 
@@ -90,127 +86,21 @@ function subjectId({ id, title }: AboutSubject): string {
   return typeof title === "string" ? slug(title) : "data";
 }
 
-function factRows(rows: [string, ReactNode | undefined][]) {
-  return rows.filter((row): row is [string, ReactNode] => row[1] != null && row[1] !== "");
-}
-
-function Facts({ rows }: { rows: [string, ReactNode][] }) {
-  if (!rows.length) return null;
-  return (
-    <dl className="altertable-about-facts">
-      {rows.map(([term, value]) => (
-        <div key={term}>
-          <dt>{term}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function GlossaryDetail({ entry, compact }: { entry: GlossaryEntry; compact: boolean }) {
+function GlossaryDetail({ entry }: { entry: GlossaryEntry }) {
   return (
     <article className="altertable-about-glossary-entry">
       <h3>{entry.term}</h3>
       {entry.definition ? <p>{entry.definition}</p> : null}
-      {compact ? null : (
-        <Facts
-          rows={factRows([
-            ["Counted as", entry.unit],
-            ["Population", entry.population],
-            [
-              "Sources",
-              entry.sources?.length ? (
-                <ul className="altertable-about-sources">
-                  {entry.sources.map((source) => (
-                    <li key={source}>{source}</li>
-                  ))}
-                </ul>
-              ) : undefined,
-            ],
-          ])}
-        />
-      )}
     </article>
   );
 }
 
-function AboutOverview({
-  evidence,
-  dataContext,
-  showDescription,
-}: {
-  evidence?: StoryEvidence;
-  dataContext?: DataContext;
-  showDescription: boolean;
-}) {
-  return (
-    <>
-      {evidence && (
-        <section>
-          <Facts
-            rows={factRows([
-              ["Window", evidence.period],
-              [
-                "Sources",
-                evidence.sources.length ? (
-                  <ul className="altertable-about-sources">
-                    {evidence.sources.map((source) => (
-                      <li key={source}>{source}</li>
-                    ))}
-                  </ul>
-                ) : undefined,
-              ],
-            ])}
-          />
-          {evidence.limitation ? (
-            <p className="altertable-about-limitation">{evidence.limitation}</p>
-          ) : null}
-        </section>
-      )}
-      {dataContext && (
-        <>
-          {showDescription && <p className="altertable-about-summary">{dataContext.description}</p>}
-          <section>
-            <h3>Scope</h3>
-            <Facts
-              rows={factRows([
-                [
-                  "Sources",
-                  <ul className="altertable-about-sources">
-                    {dataContext.scope.sources.map((source) => (
-                      <li key={source}>{source}</li>
-                    ))}
-                  </ul>,
-                ],
-                ["Grain", dataContext.scope.grain],
-                ["Population", dataContext.scope.population],
-                ["Timezone", dataContext.scope.timezone],
-              ])}
-            />
-          </section>
-        </>
-      )}
-      {dataContext?.limitations.length ? (
-        <section>
-          <h3>Limitations</h3>
-          <ul>
-            {dataContext.limitations.map((limitation) => (
-              <li key={limitation}>{limitation}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </>
-  );
-}
-
-function resolveTab(tab: string | null | undefined, hasOverview: boolean): AboutTab {
-  return tab === "queries" || tab === "glossary" ? tab : hasOverview ? "overview" : "glossary";
+function resolveTab(tab: string | null | undefined): AboutTab {
+  return tab === "queries" ? "queries" : "glossary";
 }
 
 /** Inspect sheet for a card, panel, story step, or the whole app. The header is the
- * subject; the body is the visual, then Overview, Glossary, and Queries. The toolbar sheet stays
+ * subject; the body is the visual, then Glossary and Queries. The toolbar sheet stays
  * high-level. Open state is `?about=` and
  * the selected tab is `?tab=`. Alt/Option+I opens the toolbar sheet. */
 export function AboutData({
@@ -223,7 +113,7 @@ export function AboutData({
   dataContext,
   glossaryEntry,
   glossaryEntries,
-  evidence,
+  glossaryIds,
   queries,
   queryNames,
   iconOnly = false,
@@ -250,14 +140,13 @@ export function AboutData({
     dataContext,
     glossaryEntry,
     glossaryEntries,
-    evidence,
+    glossaryIds,
     queries,
     queryNames,
   };
   const listed = listedGlossaryEntries(subject);
-  const hasOverview = Boolean(evidence || dataContext);
   const sheetId = subjectId(subject);
-  const initialTab = resolveTab(tab ?? searchParams().get("tab"), hasOverview);
+  const initialTab = resolveTab(tab ?? searchParams().get("tab"));
   const [uncontrolledOpen, setUncontrolledOpen] = useState(
     () => searchParams().get("about") === sheetId,
   );
@@ -266,10 +155,7 @@ export function AboutData({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const mergedTrigger = useMergeRefs([triggerRef, ref]);
   const heading = title ?? "About the data";
-  const summary =
-    description ??
-    dataContext?.description ??
-    "Context, scope, limitations, and glossary for this exploration.";
+  const summary = description ?? dataContext?.description ?? "Glossary and queries for this view.";
   const shortcutEnabled = trigger && shortcut && !props.disabled;
   const hint =
     tooltip ??
@@ -291,7 +177,7 @@ export function AboutData({
     else if (searchParams().get("about") === sheetId) writeSearch({ about: null, tab: null });
   }
   function selectTab(next: string | number) {
-    const id = resolveTab(String(next), hasOverview);
+    const id = resolveTab(String(next));
     setSelectedTab(id);
     if (open) writeSearch({ about: sheetId, tab: id });
   }
@@ -301,14 +187,14 @@ export function AboutData({
       const urlTab = searchParams().get("tab");
       if (about === sheetId) {
         if (openProp === undefined) setUncontrolledOpen(true);
-        if (urlTab) setSelectedTab(resolveTab(urlTab, hasOverview));
+        if (urlTab) setSelectedTab(resolveTab(urlTab));
         onOpenChange?.(true);
       } else if (openProp === undefined) {
         setUncontrolledOpen(false);
       }
     }
     return subscribeSearch(sync);
-  }, [sheetId, openProp, onOpenChange, hasOverview]);
+  }, [sheetId, openProp, onOpenChange]);
   useShortcut(shortcuts.aboutData, () => setOpen(true), shortcutEnabled);
   const triggerButton = (
     <Button
@@ -374,25 +260,15 @@ export function AboutData({
           >
             <div className="altertable-about-tabbar">
               <TabList aria-label={typeof heading === "string" ? heading : "About the data"}>
-                {hasOverview && <Tab id="overview">Overview</Tab>}
                 <Tab id="glossary">Glossary</Tab>
                 <Tab id="queries">Queries</Tab>
               </TabList>
             </div>
             <TabPanels>
-              {hasOverview && (
-                <TabPanel id="overview">
-                  <AboutOverview
-                    evidence={evidence}
-                    dataContext={dataContext}
-                    showDescription={description !== undefined}
-                  />
-                </TabPanel>
-              )}
               <TabPanel id="glossary">
                 <div className="altertable-about-glossary-list">
-                  {listed.entries.map((entry) => (
-                    <GlossaryDetail key={entry.term} entry={entry} compact={!listed.scoped} />
+                  {listed.map((entry) => (
+                    <GlossaryDetail key={entry.term} entry={entry} />
                   ))}
                 </div>
               </TabPanel>
