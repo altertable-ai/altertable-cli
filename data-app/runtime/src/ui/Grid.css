@@ -70,3 +70,47 @@
     grid-column: span 2;
   }
 }
+
+/* Two-track layouts stack spans and let an unpaired card fill the row. */
+@container altertable-grid (max-width: 639px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="compact"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > .altertable-grid-item {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="compact"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@container altertable-grid (max-width: 783px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="regular"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > .altertable-grid-item {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="regular"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@container altertable-grid (max-width: 1023px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="wide"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > .altertable-grid-item {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="wide"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
