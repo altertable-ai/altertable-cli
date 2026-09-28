@@ -2,7 +2,6 @@
 
 Find implementations and types through the [UI API map](../.altertable/runtime/README.md#find-ui-by-task).
 
-
 | Need                     | Runtime primitive                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | Page and hierarchy       | `DataApp` for the standard shell; `StorySection`, `Grid`, `Stack` for content |
@@ -16,5 +15,10 @@ Find implementations and types through the [UI API map](../.altertable/runtime/R
 - Use chart color by meaning: accent plus neutral for one series, stable distinct hues for categories, a lightness scale for ordered magnitude, and two ordered hues around a meaningful midpoint for signed change. Keep category colors consistent across views and themes. Mark notable values from data, not DOM position. Provide text labels and `Tooltip variant="chart"` on marks; touch must reveal the same information.
 - Put stable glossary and query references in each card's `evidence`. Write the page as question, evidence, interpretation, and next question. Use `PlayStory` only for distinct observations a room can read from a distance; link relevant glossary terms and queries to each step. Conclude only when the data supports it.
 - Pass `app.json`, `dataContext`, and a `useDataView` result as `request` to `DataApp`. Add optional filters and Present steps when the view needs them. For multiple operations, pass combined query evidence and refresh behavior explicitly. `DataApp` owns the page identity, theme control, About the data, and default toolbar. Keep the authored question and interpretation in its children. The generated `main.tsx` and `server.ts` already use `mountDataApp` and `serveLocalApp`; hosted servers must use `createDataHandler` with viewer authorization.
-- Use the React-free parsers in `@altertable/data-app-runtime/contract` for empty input, bounded dates, counts, labels, and named query rows when they match the data contract. Define app-specific input and output validation in the operation. Never move source-specific SQL, populations, or metric definitions into shared runtime helpers.
 - Set `app.json` title, scope, and appearance for the organization's brand. Keep the document title as `{app title} • {org}/{env} • Altertable app`. Use accessible controls and semantic icons. Essential actions must work without hover. The page must not overflow horizontally.
+
+## Request states and verification
+
+- Use `createDataHooks(createDataClient<typeof operations>())` and its `useDataView` for each fetched view. Supply `isEmpty` and `describeInput`, then pass the returned result to `<DataSection result={view}>`. It handles loading, empty, error, retry, and stale results while preserving the input that produced visible data. Keep a measured zero in the ready state. Independent operations need independent retry boundaries.
+
+Inspect changed views at desktop and phone widths in both themes, including loading, empty, zero, error, and stale results.

@@ -10,14 +10,18 @@ Configure a profile with lakehouse access, then run from this directory:
 altertable app dev
 ```
 
-The CLI prints the local URL. Use `altertable app dev --port 3022` to choose a port. Run `altertable app check --lakehouse` to validate the app and execute its declared operation against the selected profile.
+The CLI prints the local URL. Use `altertable app dev --port 3022` to choose a port.
 CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when runtime source changes. The watcher stops if a generated runtime file was edited.
 
-## Build the first view
+## Author the app
 
-Choose a question, inspect the relevant data, and replace `connectionCheck()` in `src/operations.ts` with a bounded query that answers it. Replace `<GettingStarted />` in `src/App.tsx` with an authored view inside `<DataApp />`. Add `src/variables.ts` only when readers need filters, and describe the exploration in `src/data-context.ts`. Pass the result of `useDataView` to `<DataSection result={view}>`; the app decides what counts as empty. “About the data” shows the context, glossary, and disclosed queries; SQL appears only when the server permits disclosure.
+Start with the [authoring router](AGENTS.md) for data and view changes, or the [runtime API map](.altertable/runtime/README.md) to find components, hooks, and contracts.
 
-The versioned `.altertable/runtime/` supplies transport and shared UI, including optional Present mode. Its `DataApp` page shell, connection starter, query hooks, local entry helpers, and contract parsers keep common setup out of `src/`. Start with the [runtime API map](.altertable/runtime/README.md) and the [authoring router](AGENTS.md) to find the relevant types and guides.
+## Check and upgrade
+
+Run `altertable app check` to check the app locally. Use `altertable app check --lakehouse` to also execute its declared operations against the selected profile.
+
+After updating the CLI, run `altertable app upgrade` and check again.
 
 ## Version control
 
