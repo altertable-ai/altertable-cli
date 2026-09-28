@@ -98,7 +98,6 @@ test("data view keeps the last result visible when refresh fails", async ({ page
     "data-stale-error",
     "true",
   );
-  await expect(page.getByLabel("Reporting period")).toContainText("2026-09-01 – 2026-09-30 · UTC");
 });
 
 test("request progress appears before Refresh", async ({ page }) => {

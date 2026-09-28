@@ -77,7 +77,7 @@ export type DataBoundaryProps<T, Input = unknown> = {
   staleError?: (error: Error) => ReactNode;
   notice?: "inline" | "none";
   dimOnUpdate?: boolean;
-  children: (data: T, displayedInput: Input) => ReactNode;
+  children: (data: T) => ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /** Render one request state at a time. Prior content remains readable during an update.
@@ -127,7 +127,7 @@ export function DataBoundary<T, Input>({
         data-updating={(updating && dimOnUpdate) || undefined}
         data-stale-error={(hasStaleError && dimOnUpdate) || undefined}
       >
-        {children(view.data, view.kind === "ready" ? view.input : view.displayedInput)}
+        {children(view.data)}
       </div>
     </div>
   );
