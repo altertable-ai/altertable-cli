@@ -15,6 +15,7 @@ export type TableCardColumn<Row> = {
 
 export type TableCardProps<Row> = {
   title: ReactNode;
+  count?: number;
   description?: ReactNode;
   columns: readonly [TableCardColumn<Row>, ...TableCardColumn<Row>[]];
   rows: readonly Row[];
@@ -31,6 +32,7 @@ export type TableCardProps<Row> = {
 /** Column definitions own both header and body semantics; the first column is the row header. */
 export function TableCard<Row>({
   title,
+  count,
   description,
   columns,
   rows,
@@ -80,6 +82,7 @@ export function TableCard<Row>({
     <DataPanel
       {...props}
       title={title}
+      count={count}
       description={description}
       action={action}
       about={evidence && { ...evidence, visual: table }}

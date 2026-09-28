@@ -64,6 +64,7 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(readFileSync(join(directory, "bunfig.toml"), "utf8")).toContain("exact = true");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("title={app.title}");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("count={rows.length}");
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("evidence={{");
     expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain("defineOperation");
     expect(readFileSync(join(directory, "src/data-context.ts"), "utf8")).toContain("description:");
@@ -632,6 +633,7 @@ test("local search preserves table order and highlights original text", () => {
   }))).toContain("<mark>Café</mark> &lt;table&gt;");
   const table = renderToStaticMarkup(createElement(TableCard, {
     title: "Results",
+    count: hits.length,
     columns: [
       { id: "name", header: "Name", cell: (hit: typeof hits[number]) => createElement(SearchMatch, { match: hit.matches.name }) },
       { id: "count", header: "Count", type: "number", cell: () => "12" },
@@ -640,6 +642,7 @@ test("local search preserves table order and highlights original text", () => {
     rowKey: (hit: typeof hits[number]) => hit.item.id,
   }));
   expect(table).toContain("<mark>Café</mark> &lt;table&gt;");
+  expect(table).toContain('class="altertable-data-panel-count">1</span>');
   expect(table).toMatch(/<th[^>]*data-type="number"[^>]*>Count<\\/th>/);
   expect(table).toMatch(/<td[^>]*data-type="number"[^>]*>12<\\/td>/);
 });

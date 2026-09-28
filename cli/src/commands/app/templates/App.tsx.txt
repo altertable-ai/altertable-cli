@@ -147,7 +147,8 @@ export function App() {
           });
           return (
             <TableCard
-              title={`Available tables (${formatCount(rows.length)})`}
+              title="Available tables"
+              count={rows.length}
               description="Tables visible to the selected Altertable profile"
               columns={[
                 {

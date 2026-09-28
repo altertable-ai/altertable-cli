@@ -30,6 +30,14 @@
   line-height: 1.3;
   letter-spacing: -0.02em;
 }
+.altertable-data-panel-count {
+  margin-left: 8px;
+  color: var(--at-muted, #687078);
+  font-size: 0.8em;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
 .altertable-data-panel-header p {
   margin: 4px 0 0;
   color: var(--at-muted, #687078);

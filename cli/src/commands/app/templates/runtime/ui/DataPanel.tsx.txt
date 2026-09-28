@@ -1,4 +1,5 @@
 import { useId, type ComponentPropsWithRef, type ReactNode } from "react";
+import { formatCount } from "../format.ts";
 import { AppIcon } from "./icons.ts";
 import { AboutData, type AboutSubject } from "./AboutData.tsx";
 import { Button } from "./Button.tsx";
@@ -11,6 +12,8 @@ export type DataPanelAbout = Omit<AboutSubject, "title" | "description">;
 
 export type DataPanelProps = {
   title: ReactNode;
+  /** Count shown beside the title with subdued styling. Zero is shown. */
+  count?: number;
   description?: ReactNode;
   about?: DataPanelAbout;
   action?: ReactNode;
@@ -28,6 +31,7 @@ export type DataPanelProps = {
  * appears on hover or focus on fine pointers. Use `empty` for a valid empty result. */
 export function DataPanel({
   title,
+  count,
   description,
   about,
   action,
@@ -65,7 +69,12 @@ export function DataPanel({
     >
       <header className="altertable-data-panel-header">
         <div>
-          <h2 id={titleId}>{title}</h2>
+          <h2 id={titleId}>
+            {title}
+            {count !== undefined && (
+              <span className="altertable-data-panel-count">{formatCount(count)}</span>
+            )}
+          </h2>
           {description && <p>{description}</p>}
           {status && (
             <div
