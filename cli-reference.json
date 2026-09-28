@@ -850,20 +850,10 @@
                   "values": []
                 },
                 {
-                  "name": "from-profile",
-                  "aliases": [],
-                  "type": "boolean",
-                  "description": "Require organization and environment in the active profile.",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
                   "name": "without-profile",
                   "aliases": [],
                   "type": "boolean",
-                  "description": "Create an offline scaffold with scope placeholders.",
+                  "description": "Create an offline scaffold with organization and environment placeholders.",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",

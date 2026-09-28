@@ -38,13 +38,9 @@ export const appCreateCommand = defineCommand({
   args: {
     name: { type: "positional", description: "App name in kebab-case", required: true },
     dir: { type: "string", description: "Destination directory (default: ./<name>)." },
-    "from-profile": {
-      type: "boolean",
-      description: "Require organization and environment in the active profile.",
-    },
     "without-profile": {
       type: "boolean",
-      description: "Create an offline scaffold with scope placeholders.",
+      description: "Create an offline scaffold with organization and environment placeholders.",
     },
   },
   async run({ args, runtime, execution, sink }) {
@@ -63,29 +59,22 @@ export const appCreateCommand = defineCommand({
       .split("-")
       .map((word) => word[0]!.toUpperCase() + word.slice(1))
       .join(" ");
-    const selectedProfile =
-      args["from-profile"] === true ||
-      runtime.context.profile !== undefined ||
-      readEnv("ALTERTABLE_PROFILE") !== undefined;
+    const explicitProfile =
+      runtime.context.profile !== undefined || readEnv("ALTERTABLE_PROFILE") !== undefined;
     const withoutProfile = args["without-profile"] === true;
-    if (withoutProfile && selectedProfile) {
-      throw new CliError("--without-profile cannot be combined with --from-profile or --profile.");
+    if (withoutProfile && explicitProfile) {
+      throw new CliError("--without-profile cannot be combined with --profile.");
     }
     const candidateProfile = execution.profile;
     const organizationSlug = configGet("organization_slug", candidateProfile).trim();
     const organizationName = configGet("organization_name", candidateProfile).trim();
     const environment = configGet("api_key_env", candidateProfile).trim();
-    if (
-      !withoutProfile &&
-      (selectedProfile || organizationSlug || organizationName || environment) &&
-      (!organizationSlug || !environment)
-    ) {
+    if (!withoutProfile && (!organizationSlug || !environment)) {
       throw new CliError(
-        `Profile "${candidateProfile}" needs an organization and environment before it can seed a data app. Run altertable profile show ${candidateProfile} and configure the missing scope, or use --without-profile for an offline scaffold.`,
+        `Profile "${candidateProfile}" needs an organization and environment before it can seed a data app. Run altertable login --org <org> --env <env> to connect, or use --without-profile for an offline scaffold.`,
       );
     }
-    const profileName =
-      !withoutProfile && organizationSlug && environment ? candidateProfile : undefined;
+    const profileName = withoutProfile ? undefined : candidateProfile;
     const scope = {
       organization: profileName ? organizationName || organizationSlug : "Your organization",
       environment: profileName ? environment : "your environment",
@@ -168,7 +157,7 @@ export const appCreateCommand = defineCommand({
     if (sink.json) sink.writeJson(result);
     else
       sink.writeHuman(
-        `Created ${title} in ${directory}.\nScope: ${scope.organization} / ${scope.environment}${profileName ? ` (profile ${profileName})` : " (set this before sharing)"}.\nFrom that directory, run ${result.nextSteps[0]}.`,
+        `Created ${title} in ${directory}.\nOrganization/environment: ${scope.organization} / ${scope.environment}${profileName ? ` (profile ${profileName})` : " (offline placeholders)"}.\nFrom that directory, run ${result.nextSteps[0]}.`,
       );
   },
 });

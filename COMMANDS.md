@@ -457,8 +457,7 @@ altertable app create [options] <NAME>
 | Option | Description |
 | --- | --- |
 | `--dir <DIR>` | Destination directory (default: ./<name>). |
-| `--from-profile` | Require organization and environment in the active profile. |
-| `--without-profile` | Create an offline scaffold with scope placeholders. |
+| `--without-profile` | Create an offline scaffold with organization and environment placeholders. |
 
 **Examples**
 

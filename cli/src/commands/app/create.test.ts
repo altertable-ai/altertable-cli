@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe("app create", () => {
-  test("creates a self-contained project without a configured profile", async () => {
+  test("creates a self-contained offline project when explicitly requested", async () => {
     const directory = join(home, "product-pulse");
     const result = await runCommandWithTestRuntime([
       "app",
@@ -41,6 +41,7 @@ describe("app create", () => {
       "product-pulse",
       "--dir",
       directory,
+      "--without-profile",
     ]);
 
     expect(result.exitCode).toBe(0);
@@ -255,6 +256,15 @@ describe("app create", () => {
     expect(existsSync(join(directory, ".gitignore"))).toBe(true);
   });
 
+  test("requires an organization and environment before creating a default app", async () => {
+    const directory = join(home, "unconfigured-app");
+
+    expect(
+      runCommandWithTestRuntime(["app", "create", "unconfigured-app", "--dir", directory]),
+    ).rejects.toThrow('Profile "default" needs an organization and environment');
+    expect(existsSync(directory)).toBe(false);
+  });
+
   test("selected profile seeds the manifest and reports its scope to agents", async () => {
     ensureProfileExists("altertable_production");
     configSet("organization_slug", "altertable", "altertable_production");
@@ -375,21 +385,14 @@ describe("app create", () => {
     );
   });
 
-  test("from-profile uses the active profile and stops before writing if scope is incomplete", async () => {
+  test("an incomplete active profile stops before writing", async () => {
     ensureProfileExists("current");
     setActiveProfile("current");
     const directory = join(home, "incomplete-app");
 
     let failure: unknown;
     try {
-      await runCommandWithTestRuntime([
-        "app",
-        "create",
-        "incomplete-app",
-        "--dir",
-        directory,
-        "--from-profile",
-      ]);
+      await runCommandWithTestRuntime(["app", "create", "incomplete-app", "--dir", directory]);
     } catch (error) {
       failure = error;
     }
@@ -405,7 +408,6 @@ describe("app create", () => {
       "incomplete-app",
       "--dir",
       directory,
-      "--from-profile",
     ]);
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout[0]!)).toMatchObject({
@@ -416,7 +418,14 @@ describe("app create", () => {
 
   test("checks a newly created app before dependencies were installed", async () => {
     const directory = join(home, "first-check");
-    await runCommandWithTestRuntime(["app", "create", "first-check", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "first-check",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     writeFileSync(
       join(directory, "src/composition.tsx"),
       `import {
@@ -720,11 +729,25 @@ test("operation routes decode one path segment and client errors remain useful",
   test("never overwrites an existing directory", async () => {
     const directory = join(home, "existing");
     const marker = join(directory, "keep.txt");
-    await runCommandWithTestRuntime(["app", "create", "existing", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "existing",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     writeFileSync(marker, "keep");
 
     expect(
-      runCommandWithTestRuntime(["app", "create", "existing", "--dir", directory]),
+      runCommandWithTestRuntime([
+        "app",
+        "create",
+        "existing",
+        "--dir",
+        directory,
+        "--without-profile",
+      ]),
     ).rejects.toThrow("Directory already exists");
     expect(readFileSync(marker, "utf8")).toBe("keep");
   });
@@ -741,16 +764,17 @@ test("operation routes decode one path segment and client errors remain useful",
   test("writes a concise human completion message", async () => {
     const directory = join(home, "first-app");
     const result = await runCommandWithTestRuntime(
-      ["app", "create", "first-app", "--dir", directory],
+      ["app", "create", "first-app", "--dir", directory, "--without-profile"],
       { debug: false, json: false, agent: false },
     );
+    expect(result.stdout.join("\n")).toContain("Organization/environment:");
     expect(result.stdout.join("\n")).toContain("From that directory, run altertable app dev.");
   });
 
   test("returns the created directory in agent output", async () => {
     const directory = join(home, "agent-app");
     const result = await runCommandWithTestRuntime(
-      ["app", "create", "agent-app", "--dir", directory],
+      ["app", "create", "agent-app", "--dir", directory, "--without-profile"],
       { debug: false, json: false, agent: true },
     );
     expect(JSON.parse(result.stdout[0]!)).toMatchObject({ name: "agent-app", directory });
@@ -758,7 +782,14 @@ test("operation routes decode one path segment and client errors remain useful",
 
   test("upgrade preserves app-owned changes and refuses a modified runtime", async () => {
     const directory = join(home, "upgrade-app");
-    await runCommandWithTestRuntime(["app", "create", "upgrade-app", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "upgrade-app",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     const operations = join(directory, "src/operations.ts");
     writeFileSync(operations, `${readFileSync(operations, "utf8")}\n// App-specific change.\n`);
     const current = await runCommandWithTestRuntime(["app", "upgrade", "--dir", directory], {
@@ -779,7 +810,14 @@ test("operation routes decode one path segment and client errors remain useful",
 
   test("template watch upgrade updates integrity and stops on generated edits", async () => {
     const directory = join(home, "watched-app");
-    await runCommandWithTestRuntime(["app", "create", "watched-app", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "watched-app",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     const files = await readRuntimeTemplates();
     files["format.ts"] += "\n// Changed template.\n";
     expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
@@ -799,7 +837,14 @@ test("operation routes decode one path segment and client errors remain useful",
 
   test("invalid lockfile leaves the installed runtime unchanged", async () => {
     const directory = join(home, "invalid-lock-app");
-    await runCommandWithTestRuntime(["app", "create", "invalid-lock-app", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "invalid-lock-app",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     const integrityPath = join(directory, ".altertable/runtime/integrity.json");
     const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
     integrity.version = "0.1.0";
@@ -823,7 +868,14 @@ test("operation routes decode one path segment and client errors remain useful",
 
   test("upgrade rolls back a failure after applying runtime files", async () => {
     const directory = join(home, "rollback-app");
-    await runCommandWithTestRuntime(["app", "create", "rollback-app", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "rollback-app",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     const integrityPath = join(directory, ".altertable/runtime/integrity.json");
     const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
     integrity.version = "0.1.0";
@@ -845,7 +897,14 @@ test("operation routes decode one path segment and client errors remain useful",
 
   test("generated number formatting distinguishes counts and ratios", async () => {
     const directory = join(home, "format-app");
-    await runCommandWithTestRuntime(["app", "create", "format-app", "--dir", directory]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "format-app",
+      "--dir",
+      directory,
+      "--without-profile",
+    ]);
     const { formatNumber, formatCount, formatPercent } = await import(
       pathToFileURL(join(directory, ".altertable/runtime/format.ts")).href
     );

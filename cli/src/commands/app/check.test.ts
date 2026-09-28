@@ -81,7 +81,14 @@ describe("data app contract", () => {
 
   test("generated runtime validates input, bounds rows, and hides query failures", async () => {
     const app = join(directory, "sample-app");
-    await runCommandWithTestRuntime(["app", "create", "sample-app", "--dir", app]);
+    await runCommandWithTestRuntime([
+      "app",
+      "create",
+      "sample-app",
+      "--dir",
+      app,
+      "--without-profile",
+    ]);
     const runtime = await import(pathToFileURL(join(app, ".altertable/runtime/server.ts")).href);
     const contract = await import(pathToFileURL(join(app, ".altertable/runtime/contract.ts")).href);
     const local = await import(pathToFileURL(join(app, ".altertable/runtime/local.ts")).href);
