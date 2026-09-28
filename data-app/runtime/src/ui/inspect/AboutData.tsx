@@ -1,0 +1,284 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { useMergeRefs } from "@floating-ui/react";
+import { AppIcon } from "../primitives/icons.ts";
+import type { DisclosedQuery } from "../../contract.ts";
+import type { DataContext, GlossaryEntry } from "./data-context.ts";
+import { Button, type ButtonProps } from "../primitives/Button.tsx";
+import { Kbd } from "../primitives/Kbd.tsx";
+import { QueryList } from "./QueryList.tsx";
+import { searchParams, slug, subscribeSearch, writeSearch } from "../controls/search.ts";
+import { Sheet, type SheetDialogProps } from "../primitives/Sheet.tsx";
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from "../controls/Tabs.tsx";
+import { ariaKeyShortcuts, shortcuts, useShortcut } from "../controls/shortcuts.ts";
+import { Tooltip } from "../primitives/Tooltip.tsx";
+import "./AboutData.css";
+
+export type AboutTab = "glossary" | "queries";
+
+/** What a surface, story step, or the toolbar can show in the inspect sheet. */
+export type AboutSubject = {
+  id?: string;
+  title?: ReactNode;
+  description?: ReactNode;
+  visual?: ReactNode;
+  visualKind?: "metric" | "chart";
+  dataContext?: DataContext;
+  glossaryEntry?: GlossaryEntry;
+  glossaryEntries?: GlossaryEntry[];
+  glossaryIds?: string[];
+  queries?: DisclosedQuery[];
+  queryNames?: string[];
+};
+
+export type AboutDataProps = AboutSubject & {
+  variant?: ButtonProps["variant"];
+  iconOnly?: boolean;
+  /** Register the global inspect shortcut. Defaults on for existing toolbar triggers; local triggers set false. */
+  shortcut?: boolean;
+  tooltip?: ReactNode;
+  children?: ReactNode;
+  footer?: ReactNode;
+  portalRoot?: RefObject<HTMLElement | null>;
+  sheetProps?: SheetDialogProps;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Initial inspect tab. While open, the URL's `tab` parameter tracks selection. */
+  tab?: AboutTab;
+  trigger?: boolean;
+} & Omit<ComponentPropsWithRef<"button">, "children" | "title">;
+
+function namedGlossaryEntries(
+  dataContext: DataContext | undefined,
+  ids: string[],
+): GlossaryEntry[] {
+  return ids
+    .map((id) => dataContext?.glossary[id])
+    .filter((entry): entry is GlossaryEntry => !!entry);
+}
+
+function listedGlossaryEntries({
+  glossaryEntry,
+  glossaryEntries,
+  dataContext,
+  glossaryIds,
+}: AboutSubject): GlossaryEntry[] {
+  if (glossaryEntries?.length) return glossaryEntries;
+  if (glossaryEntry) return [glossaryEntry];
+  if (glossaryIds) return namedGlossaryEntries(dataContext, glossaryIds);
+  return Object.values(dataContext?.glossary ?? {});
+}
+
+function glossaryQueries(subject: AboutSubject): string[] | undefined {
+  if (subject.queryNames?.length) return subject.queryNames;
+  const names = listedGlossaryEntries(subject).flatMap((item) => item.queryNames ?? []);
+  return names.length ? names : undefined;
+}
+
+function subjectId({ id, title }: AboutSubject): string {
+  if (id) return id;
+  return typeof title === "string" ? slug(title) : "data";
+}
+
+function GlossaryDetail({ entry }: { entry: GlossaryEntry }) {
+  return (
+    <article className="altertable-about-glossary-entry">
+      <h3>{entry.term}</h3>
+      {entry.definition ? <p>{entry.definition}</p> : null}
+    </article>
+  );
+}
+
+function resolveTab(tab: string | null | undefined): AboutTab {
+  return tab === "queries" ? "queries" : "glossary";
+}
+
+/** Inspect sheet for a card, panel, story step, or the whole app. The header is the
+ * subject; the body is the visual, then Glossary and Queries. The toolbar sheet stays
+ * high-level. Open state is `?about=` and
+ * the selected tab is `?tab=`. Alt/Option+I opens the toolbar sheet. */
+export function AboutData({
+  id,
+  title,
+  description,
+  visual,
+  visualKind,
+  variant,
+  dataContext,
+  glossaryEntry,
+  glossaryEntries,
+  glossaryIds,
+  queries,
+  queryNames,
+  iconOnly = false,
+  shortcut = true,
+  tooltip,
+  children,
+  footer,
+  portalRoot,
+  sheetProps,
+  open: openProp,
+  onOpenChange,
+  tab,
+  trigger = true,
+  className,
+  onClick,
+  ref,
+  ...props
+}: AboutDataProps) {
+  const subject = {
+    id,
+    title,
+    description,
+    visual,
+    dataContext,
+    glossaryEntry,
+    glossaryEntries,
+    glossaryIds,
+    queries,
+    queryNames,
+  };
+  const listed = listedGlossaryEntries(subject);
+  const sheetId = subjectId(subject);
+  const initialTab = resolveTab(tab ?? searchParams().get("tab"));
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(
+    () => searchParams().get("about") === sheetId,
+  );
+  const [selectedTab, setSelectedTab] = useState(initialTab);
+  const open = openProp ?? uncontrolledOpen;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const mergedTrigger = useMergeRefs([triggerRef, ref]);
+  const heading = title ?? "About the data";
+  const summary = description ?? dataContext?.description ?? "Glossary and queries for this view.";
+  const shortcutEnabled = trigger && shortcut && !props.disabled;
+  const hint =
+    tooltip ??
+    (iconOnly && shortcutEnabled ? (
+      <>
+        Explore data <Kbd shortcut={shortcuts.aboutData} />
+      </>
+    ) : (
+      "Explore data"
+    ));
+  function setOpen(next: boolean) {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+    if (next)
+      writeSearch(
+        { about: sheetId, tab: selectedTab },
+        searchParams().get("about") === sheetId ? "replace" : "push",
+      );
+    else if (searchParams().get("about") === sheetId) writeSearch({ about: null, tab: null });
+  }
+  function selectTab(next: string | number) {
+    const id = resolveTab(String(next));
+    setSelectedTab(id);
+    if (open) writeSearch({ about: sheetId, tab: id });
+  }
+  useEffect(() => {
+    function sync() {
+      const about = searchParams().get("about");
+      const urlTab = searchParams().get("tab");
+      if (about === sheetId) {
+        if (openProp === undefined) setUncontrolledOpen(true);
+        if (urlTab) setSelectedTab(resolveTab(urlTab));
+        onOpenChange?.(true);
+      } else if (openProp === undefined) {
+        setUncontrolledOpen(false);
+      }
+    }
+    return subscribeSearch(sync);
+  }, [sheetId, openProp, onOpenChange]);
+  useShortcut(shortcuts.aboutData, () => setOpen(true), shortcutEnabled);
+  const triggerButton = (
+    <Button
+      {...props}
+      ref={mergedTrigger}
+      variant={variant}
+      size={iconOnly ? "icon" : "default"}
+      className={className}
+      data-open={open || undefined}
+      aria-label={
+        props["aria-label"] ??
+        (iconOnly
+          ? title && typeof title === "string"
+            ? `Explore ${title}`
+            : "Explore data"
+          : undefined)
+      }
+      aria-keyshortcuts={
+        props["aria-keyshortcuts"] ??
+        (shortcutEnabled ? ariaKeyShortcuts(shortcuts.aboutData) : undefined)
+      }
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) setOpen(true);
+      }}
+    >
+      {children ?? (
+        <>
+          <AppIcon name="info" />
+          {!iconOnly && "Explore details"}
+        </>
+      )}
+    </Button>
+  );
+
+  return (
+    <>
+      {trigger ? (
+        <Tooltip content={hint} portalRoot={portalRoot}>
+          {triggerButton}
+        </Tooltip>
+      ) : null}
+      <Sheet
+        {...sheetProps}
+        open={open}
+        onOpenChange={setOpen}
+        title={heading}
+        description={summary}
+        wide={!!visual && visualKind !== "metric"}
+        returnFocus={triggerRef}
+        footer={footer}
+      >
+        {visual && (
+          <div className="altertable-about-visual" data-kind={visualKind}>
+            {visual}
+          </div>
+        )}
+        <div className="altertable-about-body">
+          <Tabs
+            selectedKey={selectedTab}
+            onSelectionChange={selectTab}
+            className="altertable-about-tabs"
+          >
+            <div className="altertable-about-tabbar">
+              <TabList aria-label={typeof heading === "string" ? heading : "About the data"}>
+                <Tab id="glossary">Glossary</Tab>
+                <Tab id="queries">Queries</Tab>
+              </TabList>
+            </div>
+            <TabPanels>
+              <TabPanel id="glossary">
+                <div className="altertable-about-glossary-list">
+                  {listed.map((entry) => (
+                    <GlossaryDetail key={entry.term} entry={entry} />
+                  ))}
+                </div>
+              </TabPanel>
+              <TabPanel id="queries">
+                <QueryList queries={queries} names={glossaryQueries(subject)} expanded />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </div>
+      </Sheet>
+    </>
+  );
+}

@@ -11,7 +11,7 @@ import {
 import type { DataOperations } from "./contract.ts";
 import type { DataClient, InputOf, OutputOf } from "./client.ts";
 import { dataAppTitle, type DataAppConfig } from "./config.ts";
-import { resolveDataView } from "./ui/DataBoundary.tsx";
+import { resolveDataView } from "./ui/requests/DataBoundary.tsx";
 
 /** Browser entry point: set document identity and mount the app with its request provider.
  * Call once from `src/main.tsx`; import app-specific styles there if needed. */

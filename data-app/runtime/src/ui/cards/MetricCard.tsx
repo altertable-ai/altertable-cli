@@ -1,0 +1,88 @@
+import type { ComponentPropsWithRef, ReactNode } from "react";
+import { AboutData } from "../inspect/AboutData.tsx";
+import type { CardEvidence } from "./CardEvidence.ts";
+import { AppIcon } from "../primitives/icons.ts";
+import { comparisonChange, type MetricComparison } from "./comparison.ts";
+import { classNames } from "../primitives/classNames.ts";
+import "../inspect/Inspect.css";
+import "./MetricCard.css";
+
+export type MetricCardProps = {
+  label: string;
+  value: ReactNode;
+  description?: ReactNode;
+  comparison?: MetricComparison;
+  evidence?: CardEvidence;
+  action?: ReactNode;
+  insight?: ReactNode;
+  visual?: ReactNode;
+} & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
+
+/** A labeled value with optional comparison, visual, and inspect evidence. */
+export function MetricCard({
+  label,
+  value,
+  description,
+  comparison,
+  evidence,
+  action,
+  insight,
+  visual,
+  className,
+  ...props
+}: MetricCardProps) {
+  const change = comparison ? comparisonChange(comparison) : null;
+  const shownTrend =
+    change?.percent != null ? (
+      <span className="altertable-metric-change" data-tone={change.tone}>
+        <AppIcon name={change.icon} size={14} />
+        {Math.abs(change.percent).toFixed(1)}% vs{" "}
+        {comparison?.previous?.period?.toLowerCase() ?? "previous period"}
+      </span>
+    ) : null;
+  const help = evidence ? (
+    <AboutData
+      iconOnly
+      variant="ghost"
+      className="altertable-inspect-trigger"
+      tooltip="Explore this metric"
+      {...evidence}
+      shortcut={false}
+      id={evidence.id}
+      title={label}
+      description={description}
+      visual={
+        <div className="altertable-metric-evidence">
+          <div className="altertable-metric-reading">
+            <strong className="altertable-metric-value">{value}</strong>
+            {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
+          </div>
+          {visual}
+        </div>
+      }
+      visualKind="metric"
+    >
+      <AppIcon name="openDetails" />
+    </AboutData>
+  ) : null;
+  return (
+    <div {...props} className={classNames("altertable-metric-card", className)}>
+      <div className="altertable-metric-label">
+        <span>{label}</span>
+        {(action || help) && (
+          <div className="altertable-metric-help">
+            {action}
+            {help}
+          </div>
+        )}
+      </div>
+      <div className="altertable-metric-reading">
+        <strong className="altertable-metric-value">{value}</strong>
+        {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
+      </div>
+      {description && <small className="altertable-metric-description">{description}</small>}
+      {visual && <div className="altertable-metric-visual">{visual}</div>}
+      {insight && <div className="altertable-metric-insight">{insight}</div>}
+    </div>
+  );
+}
