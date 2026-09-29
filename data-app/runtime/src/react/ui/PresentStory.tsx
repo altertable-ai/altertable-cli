@@ -200,7 +200,6 @@ export function PresentStory({
           <div className="altertable-present-shell">
             <header className="altertable-present-header">
               <div className="altertable-present-title">
-                <span className="altertable-present-brand">Story</span>
                 <strong>{title}</strong>
                 {scope && (
                   <>
@@ -241,30 +240,30 @@ export function PresentStory({
                   {step.headline}
                 </h2>
                 {step.context && <p id={contextId}>{step.context}</p>}
+                <div className="altertable-present-explore">
+                  <AboutData
+                    shortcut={false}
+                    key={step.id}
+                    id={step.id}
+                    empty={step.empty ?? empty}
+                    title={step.headline}
+                    description={step.context}
+                    visual={step.visual}
+                    visualKind={step.visualKind}
+                    dataContext={dataContext}
+                    glossaryIds={step.glossaryIds}
+                    queries={step.queries ?? []}
+                    queryNames={step.queryNames}
+                    tooltip="Explore this finding"
+                    variant="outline"
+                    portalRoot={dialog}
+                  >
+                    <AppIcon name="explore" /> Explore sources
+                  </AboutData>
+                </div>
               </div>
               <div className="altertable-present-visual" data-kind={step.visualKind}>
                 {step.visual}
-              </div>
-              <div className="altertable-present-explore">
-                <AboutData
-                  shortcut={false}
-                  key={step.id}
-                  id={step.id}
-                  empty={step.empty ?? empty}
-                  title={step.headline}
-                  description={step.context}
-                  visual={step.visual}
-                  visualKind={step.visualKind}
-                  dataContext={dataContext}
-                  glossaryIds={step.glossaryIds}
-                  queries={step.queries ?? []}
-                  queryNames={step.queryNames}
-                  tooltip="Explore this step"
-                  variant="outline"
-                  portalRoot={dialog}
-                >
-                  <AppIcon name="explore" /> Explore
-                </AboutData>
               </div>
             </div>
             <nav className="altertable-present-nav" aria-label="Story findings">

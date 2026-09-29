@@ -72,19 +72,12 @@
   line-height: 24px;
 }
 .altertable-present-title strong {
-  font-size: 18px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 650;
   line-height: 24px;
-}
-.altertable-present-brand {
-  color: var(--at-accent, #4779dc);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 .altertable-present-connector {
   color: var(--at-muted, #687078);
@@ -152,8 +145,7 @@
   outline: none;
 }
 .altertable-present-explore {
-  grid-column: 1;
-  grid-row: 2;
+  margin-top: var(--at-space-lg, 24px);
 }
 .altertable-present-copy > p {
   max-width: 58ch;
@@ -165,7 +157,7 @@
 }
 .altertable-present-visual {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -237,9 +229,6 @@
     grid-row: 2;
     min-height: 220px;
     max-height: none;
-  }
-  .altertable-present-explore {
-    grid-row: 3;
   }
 }
 @media (max-width: 600px) {

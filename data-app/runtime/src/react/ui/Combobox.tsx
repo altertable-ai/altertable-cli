@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Button,
-  ComboBox,
   Dialog,
   DialogTrigger,
   Input,
@@ -16,166 +15,104 @@ import { searchItems } from "./searchItems.ts";
 import "./Combobox.css";
 
 export type ComboboxOption = { id: string; label: string; description?: string };
-export type SingleComboboxProps = {
+type SharedProps = {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
   options: ComboboxOption[];
+  /** Null is a separate source state, not an ordinary category value. */
+  missingOption?: ComboboxOption;
   disabled?: boolean;
   placeholder?: string;
   emptyMessage?: string;
-  resetValue?: string;
   loading?: boolean;
-  loadingMessage?: string;
   error?: boolean;
   onRetry?: () => void;
 };
-export type MultiComboboxProps = {
-  label: string;
+export type SingleComboboxProps = SharedProps & {
+  value: string;
+  onChange: (value: string) => void;
+  resetValue?: string;
+  values?: never;
+  maxSelected?: never;
+};
+export type MultiComboboxProps = SharedProps & {
   values: readonly string[];
   onChange: (values: string[]) => void;
-  options: ComboboxOption[];
   maxSelected: number;
-  loading?: boolean;
-  error?: boolean;
-  onRetry?: () => void;
+  value?: never;
+  resetValue?: never;
 };
 export type ComboboxProps = SingleComboboxProps | MultiComboboxProps;
 
+/** Searchable selection picker with one focus and popup model for single and multiple values. */
 export function Combobox(props: ComboboxProps) {
-  return "values" in props ? <MultiCombobox {...props} /> : <SingleCombobox {...props} />;
-}
-
-function SingleCombobox({
-  label,
-  value,
-  onChange,
-  options,
-  disabled,
-  placeholder,
-  emptyMessage = "No matching options",
-  resetValue,
-  loading = false,
-  loadingMessage = "Loading options…",
-  error = false,
-  onRetry,
-}: SingleComboboxProps) {
-  const selectedLabel = options.find((option) => option.id === value)?.label ?? "";
-  const [input, setInput] = useState({ selectedLabel, value: selectedLabel });
-  const inputValue = input.selectedLabel === selectedLabel ? input.value : selectedLabel;
-  const setInputValue = (value: string) => setInput({ selectedLabel, value });
-  const search = inputValue === selectedLabel ? "" : inputValue.trim();
-  const matches = searchItems(options, search, {
+  const multiple = "values" in props && props.values !== undefined;
+  const { label, options, missingOption, disabled, loading, error, onRetry } = props;
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const statusId = useId();
+  const popupId = useId();
+  const chosen = multiple ? props.values : [props.value];
+  const selected = new Set(chosen);
+  const selectedOptions = [...options, ...(missingOption ? [missingOption] : [])];
+  const labels = chosen.map(
+    (id) => selectedOptions.find((option) => option.id === id)?.label ?? id,
+  );
+  const display = multiple ? labels.join(", ") || "All" : labels[0] || "All";
+  const matches = searchItems(options, search.trim(), {
     attributes: [
       { name: "label", getter: (option) => option.label },
       { name: "description", getter: (option) => option.description ?? "" },
     ],
   });
+  const atLimit = multiple && chosen.length >= props.maxSelected;
+  const canClear = multiple
+    ? chosen.length > 0
+    : props.resetValue !== undefined && props.value !== props.resetValue;
+  const feedback = error
+    ? "Couldn’t load values"
+    : loading
+      ? "Loading values…"
+      : matches.length
+        ? `${matches.length} ${matches.length === 1 ? "value" : "values"}`
+        : (props.emptyMessage ?? "No matching values");
 
-  return (
-    <ComboBox
-      aria-label={label}
-      selectedKey={value}
-      onSelectionChange={(key) => {
-        if (key === null) return;
-        const next = String(key);
-        setInputValue(options.find((option) => option.id === next)?.label ?? "");
-        onChange(next);
-      }}
-      onInputChange={setInputValue}
-      items={matches}
-      onOpenChange={(open) => {
-        if (!open) setInputValue(selectedLabel);
-      }}
-      allowsEmptyCollection
-      isDisabled={disabled}
-      aria-busy={loading || undefined}
-      className="altertable-combobox"
-    >
-      <div className="altertable-combobox-control">
-        <span className="altertable-combobox-label" aria-hidden="true">
-          {label}
-        </span>
-        <Input
-          className="altertable-combobox-value"
-          placeholder={placeholder ?? `Search ${label.toLocaleLowerCase()}`}
-          onFocus={(event) => event.currentTarget.select()}
-          onClick={(event) => event.currentTarget.select()}
-        />
-        {resetValue !== undefined && value !== resetValue && (
-          <button
-            type="button"
-            className="altertable-combobox-reset"
-            aria-label={`Reset ${label.toLocaleLowerCase()}`}
-            disabled={disabled}
-            onClick={() => {
-              setInputValue(options.find((option) => option.id === resetValue)?.label ?? "");
-              onChange(resetValue);
-            }}
-          >
-            <AppIcon name="reset" size={14} />
-          </button>
-        )}
-        <Button aria-label={`Show ${label.toLocaleLowerCase()} options`}>
-          <AppIcon name="disclosure" size={14} />
-        </Button>
-      </div>
-      <Popover className="altertable-combobox-popover" placement="bottom start">
-        <ListBox
-          items={matches}
-          aria-label={label}
-          renderEmptyState={() => (
-            <output className="altertable-combobox-empty">
-              {loading ? loadingMessage : emptyMessage}
-              {error && onRetry && (
-                <button type="button" onClick={onRetry}>
-                  Try again
-                </button>
-              )}
-            </output>
-          )}
-        >
-          {(hit) => (
-            <ListBoxItem id={hit.item.id} textValue={hit.item.label}>
-              <SearchMatch match={hit.matches.label} />
-              {hit.item.description && (
-                <small>
-                  <SearchMatch match={hit.matches.description} />
-                </small>
-              )}
-            </ListBoxItem>
-          )}
-        </ListBox>
-      </Popover>
-    </ComboBox>
-  );
-}
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
 
-function MultiCombobox({
-  label,
-  values,
-  onChange,
-  options,
-  maxSelected,
-  loading = false,
-  error = false,
-  onRetry,
-}: MultiComboboxProps) {
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const selected = new Set(values);
-  const labels = [
-    ...options.filter((option) => selected.has(option.id)).map((option) => option.label),
-    ...values.filter((value) => !options.some((option) => option.id === value)),
-  ];
-  const matches = searchItems(options, search.trim(), {
-    attributes: [{ name: "label", getter: (option) => option.label }],
-  });
-  const changeSelection = (selection: Selection) => {
+  function select(selection: Selection) {
     if (selection === "all") return;
-    const next = [...selection].map(String);
-    if (next.length <= maxSelected) onChange(next);
-  };
+    const ids = [...selection].map(String);
+    if (multiple) {
+      if (ids.length <= props.maxSelected) props.onChange(ids);
+    } else {
+      const id = ids[0];
+      if (id !== undefined) {
+        props.onChange(id);
+        setOpen(false);
+      }
+    }
+  }
+
+  function toggleMissing() {
+    if (!missingOption) return;
+    if (multiple) {
+      const next = selected.has(missingOption.id)
+        ? chosen.filter((id) => id !== missingOption.id)
+        : [...chosen, missingOption.id];
+      if (next.length <= props.maxSelected) props.onChange(next);
+    } else {
+      props.onChange(missingOption.id);
+      setOpen(false);
+    }
+  }
+
+  function clear() {
+    if (multiple) props.onChange([]);
+    else if (props.resetValue !== undefined) props.onChange(props.resetValue);
+  }
 
   return (
     <DialogTrigger
@@ -186,60 +123,99 @@ function MultiCombobox({
       }}
     >
       <Button
-        className="altertable-combobox-control altertable-combobox-multi"
-        aria-label={`${label}: ${labels.length ? labels.join(", ") : "All"}`}
+        aria-haspopup="dialog"
+        aria-controls={open ? popupId : undefined}
+        className="altertable-combobox-trigger"
+        isDisabled={disabled}
+        aria-label={`${label}: ${display}`}
       >
-        <span className="altertable-combobox-label">{label}</span>
-        <strong className="altertable-combobox-multi-value">
-          {labels.length ? labels.join(", ") : "All"}
+        <span className="altertable-combobox-label" aria-hidden="true">
+          {label}
+        </span>
+        <strong className="altertable-combobox-value" aria-hidden="true">
+          {display}
         </strong>
         <AppIcon name="disclosure" size={14} />
       </Button>
-      <Popover
-        className="altertable-combobox-popover altertable-combobox-multi-popover"
-        placement="bottom start"
-      >
-        <Dialog aria-label={`${label} options`}>
+      <Popover className="altertable-combobox-popover" placement="bottom start">
+        <Dialog id={popupId} aria-label={`${label} options`} className="altertable-combobox-dialog">
           <Input
-            aria-label={`Search ${label.toLocaleLowerCase()}`}
-            className="altertable-combobox-multi-search"
-            placeholder="Search values"
+            ref={searchRef}
+            aria-label={`Search ${label.toLocaleLowerCase()} values`}
+            aria-describedby={statusId}
+            className="altertable-combobox-search"
+            placeholder={props.placeholder ?? "Search values"}
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" || !matches.length) return;
+              event.preventDefault();
+              listRef.current?.focus();
+            }}
           />
+          <output id={statusId} className="altertable-combobox-status">
+            {feedback}
+            {atLimit ? `. Maximum of ${props.maxSelected} selections reached.` : ""}
+          </output>
           <ListBox
+            ref={listRef}
             items={matches}
-            aria-label={label}
-            selectionMode="multiple"
-            selectionBehavior="toggle"
+            aria-label={`${label} values`}
+            aria-describedby={statusId}
+            selectionMode={multiple ? "multiple" : "single"}
+            selectionBehavior={multiple ? "toggle" : "replace"}
             selectedKeys={selected}
-            onSelectionChange={changeSelection}
+            onSelectionChange={select}
             renderEmptyState={() => (
-              <output className="altertable-combobox-empty">
-                {loading
-                  ? "Loading values…"
-                  : error
-                    ? "Couldn’t load values"
-                    : "No matching values"}
-              </output>
+              <div className="altertable-combobox-empty">
+                {feedback}
+                {error && onRetry && <Button onPress={onRetry}>Try again</Button>}
+              </div>
             )}
           >
             {(hit) => (
               <ListBoxItem
                 id={hit.item.id}
                 textValue={hit.item.label}
-                isDisabled={values.length >= maxSelected && !selected.has(hit.item.id)}
+                isDisabled={atLimit && !selected.has(hit.item.id)}
               >
-                <SearchMatch match={hit.matches.label} />
-                {hit.item.description && <small>{hit.item.description}</small>}
+                <span>
+                  <SearchMatch match={hit.matches.label} />
+                </span>
+                {hit.item.description && (
+                  <small>
+                    <SearchMatch match={hit.matches.description} />
+                  </small>
+                )}
               </ListBoxItem>
             )}
           </ListBox>
-          <div className="altertable-combobox-multi-actions">
-            {values.length > 0 && <Button onPress={() => onChange([])}>Clear filter</Button>}
-            {error && <Button onPress={onRetry}>Try again</Button>}
-            {values.length >= maxSelected && <small>Select up to {maxSelected} values.</small>}
-          </div>
+          {missingOption && (
+            <div className="altertable-combobox-special">
+              <Button
+                onPress={toggleMissing}
+                isDisabled={atLimit && !selected.has(missingOption.id)}
+                aria-pressed={selected.has(missingOption.id)}
+                className="altertable-combobox-special-button"
+              >
+                <span className="altertable-combobox-special-mark" aria-hidden="true">
+                  {selected.has(missingOption.id) ? "✓" : ""}
+                </span>
+                <span>
+                  <strong>{missingOption.label}</strong>
+                  <small>{missingOption.description}</small>
+                </span>
+              </Button>
+            </div>
+          )}
+          {(canClear || (error && matches.length > 0)) && (
+            <div className="altertable-combobox-actions">
+              {canClear && <Button onPress={clear}>Clear filter</Button>}
+              {error && matches.length > 0 && onRetry && (
+                <Button onPress={onRetry}>Try again</Button>
+              )}
+            </div>
+          )}
         </Dialog>
       </Popover>
     </DialogTrigger>

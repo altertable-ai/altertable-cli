@@ -51,8 +51,14 @@ export function DimensionPicker<T extends DimensionValue>({
     const member = { kind: "missing" as const };
     const id = dimensionMemberKey(member);
     byKey.set(id, member);
-    choices.push({ id, label: "Missing" });
   }
+  const missingOption = filter.allowMissing
+    ? {
+        id: dimensionMemberKey({ kind: "missing" }),
+        label: "No value",
+        description: `Records without a ${filter.label.toLocaleLowerCase()} value`,
+      }
+    : undefined;
 
   if (filter.selection === "single") {
     return (
@@ -66,6 +72,8 @@ export function DimensionPicker<T extends DimensionValue>({
           onChange({ kind: "include", members: [member] });
         }}
         options={[{ id: allKey, label: "All" }, ...choices]}
+        missingOption={missingOption}
+        resetValue={allKey}
         loading={loading}
         error={error}
         onRetry={onRetry}
@@ -88,6 +96,7 @@ export function DimensionPicker<T extends DimensionValue>({
         onChange({ kind: "include", members: selected });
       }}
       options={choices}
+      missingOption={missingOption}
       maxSelected={filter.maxSelected}
       loading={loading}
       error={error}
