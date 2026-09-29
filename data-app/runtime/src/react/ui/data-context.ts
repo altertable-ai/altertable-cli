@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { DataIdentifierDefinition } from "./data-identifiers.tsx";
 import type { MetricFormat } from "../../core/format.ts";
 import type { MetricDefinition } from "./metric.ts";
-import type { StoryStep } from "./PlayStory.tsx";
+import type { SummaryPoint } from "./PlayStory.tsx";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
 
 export type GlossaryEntry = {
@@ -88,12 +88,12 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         queryNames: [validated.queryNames![0]!, ...validated.queryNames!.slice(1)],
       };
     }
-    function storyStep<
-      const Step extends Omit<StoryStep, "glossaryIds" | "queryNames"> & {
+    function summaryPoint<
+      const Step extends Omit<SummaryPoint, "glossaryIds" | "queryNames"> & {
         glossaryIds?: readonly (keyof Context["glossary"] & string)[];
         queryNames?: readonly Names[keyof Names][];
       },
-    >(step: Step): StoryStep {
+    >(step: Step): SummaryPoint {
       const stepReferences = references({
         id: step.id,
         glossaryIds: step.glossaryIds,
@@ -122,6 +122,6 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         evidence: references,
       };
     }
-    return { ...context, queryNames, evidence, storyStep, metric };
+    return { ...context, queryNames, evidence, summaryPoint, storyStep: summaryPoint, metric };
   };
 }

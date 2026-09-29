@@ -146,9 +146,23 @@
   color: var(--at-danger, #b42318);
   font-size: 12px;
 }
+@media (hover: hover) and (pointer: fine) {
+  .altertable-query-actions .altertable-query-action {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .altertable-query-list figure:hover .altertable-query-action,
+  .altertable-query-list figure:focus-within .altertable-query-action,
+  .altertable-query-actions:has(output) .altertable-query-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .altertable-query-list summary,
-  .altertable-query-list summary::before {
+  .altertable-query-list summary::before,
+  .altertable-query-actions .altertable-query-action {
     transition: none;
   }
 }

@@ -3,7 +3,7 @@ import type { DataView } from "../../core/data-view.ts";
 import { LiveControl, type LiveControlProps } from "./LiveControl.tsx";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
-import { PlayStory } from "./PlayStory.tsx";
+import { PresentSummary } from "./PlayStory.tsx";
 import { RefreshControl } from "./RefreshControl.tsx";
 import { classNames } from "./classNames.ts";
 import { shortcuts, useShortcut } from "./shortcuts.ts";
@@ -27,7 +27,9 @@ export type AppToolbarProps = {
   };
   live?: LiveControlProps;
   aboutData?: ReactNode;
-  story?: ComponentProps<typeof PlayStory>;
+  summary?: ComponentProps<typeof PresentSummary>;
+  /** @deprecated Use summary. */
+  story?: ComponentProps<typeof PresentSummary>;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /** Header actions only. Put reader-controlled inputs in DataApp.variables below the header.
@@ -43,6 +45,7 @@ export function AppToolbar({
   refresh,
   live,
   aboutData,
+  summary,
   story,
   end,
   controlsProps,
@@ -63,6 +66,7 @@ export function AppToolbar({
     if (refresh.refreshing) refresh.onCancel?.();
     else refresh.onRefresh();
   }
+  const presentation = summary ?? story;
   useShortcut(shortcuts.refresh, runRefresh, !!refresh);
   return (
     <div
@@ -112,7 +116,7 @@ export function AppToolbar({
         )}
         {live && <LiveControl {...live} />}
         {aboutData}
-        {story && <PlayStory {...story} />}
+        {presentation && <PresentSummary {...presentation} />}
         {end}
       </div>
     </div>

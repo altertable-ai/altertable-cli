@@ -9,7 +9,7 @@ import { AppLayout } from "./AppLayout.tsx";
 import { AppScope } from "./AppScope.tsx";
 import { AppToolbar, type AppToolbarProps } from "./AppToolbar.tsx";
 import type { DataContext } from "./data-context.ts";
-import type { PlayStoryProps } from "./PlayStory.tsx";
+import type { PresentSummaryProps } from "./PlayStory.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
 import { DataViewToast } from "./DataViewToast.tsx";
@@ -25,8 +25,12 @@ type DataAppBaseProps = {
   /** Display names only; config.scope remains the connection identity. */
   scopeLabels?: { organization?: string; environment?: string };
   variables?: ReactNode;
-  story?: Omit<PlayStoryProps, "title" | "dataContext" | "empty"> &
-    Partial<Pick<PlayStoryProps, "title" | "dataContext" | "empty">>;
+  /** Present a concise summary of the loaded app data. Prefer a few high-impact points. */
+  summary?: Omit<PresentSummaryProps, "title" | "dataContext" | "empty"> &
+    Partial<Pick<PresentSummaryProps, "title" | "dataContext" | "empty">>;
+  /** @deprecated Use summary. */
+  story?: Omit<PresentSummaryProps, "title" | "dataContext" | "empty"> &
+    Partial<Pick<PresentSummaryProps, "title" | "dataContext" | "empty">>;
   toolbarActions?: ReactNode;
   footerActions?: ReactNode;
   layoutProps?: Omit<ComponentProps<typeof AppLayout>, "children" | "footerActions">;
@@ -83,12 +87,14 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
     queries,
     refresh,
     variables,
+    summary,
     story,
     toolbarActions,
     footerActions,
     layoutProps,
   } = props;
   const [theme] = useState(() => createThemeController(config.appearance));
+  const presentation = summary ?? story;
   const scope = (
     <AppScope
       organization={scopeLabels?.organization ?? config.scope.organization}
@@ -108,14 +114,14 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
             <AppToolbar
               requestState={request?.view.kind}
               refresh={refresh ?? request?.refresh}
-              story={
-                story && {
-                  ...story,
-                  title: story.title ?? config.title,
-                  scope: story.scope ?? scope,
-                  dataContext: story.dataContext ?? dataContext,
-                  empty: story.empty ?? aboutEmpty,
-                  theme: story.theme ?? theme,
+              summary={
+                presentation && {
+                  ...presentation,
+                  title: presentation.title ?? config.title,
+                  scope: presentation.scope ?? scope,
+                  dataContext: presentation.dataContext ?? dataContext,
+                  empty: presentation.empty ?? aboutEmpty,
+                  theme: presentation.theme ?? theme,
                 }
               }
               aboutData={

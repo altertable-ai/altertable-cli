@@ -61,7 +61,6 @@ export function DataBoundary<T, Input>({
       <div
         className="altertable-data-boundary-content"
         data-updating={(updating && dimOnUpdate) || undefined}
-        data-stale-error={(hasStaleError && dimOnUpdate) || undefined}
       >
         {children(view.data, view.kind === "ready" ? view.input : view.displayedInput)}
       </div>

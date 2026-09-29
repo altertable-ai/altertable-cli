@@ -139,7 +139,7 @@ test("query notebook groups disclosed SQL and exposes one copy-all action", () =
     />,
   );
   expect(html).toContain('aria-label="Query notebook"');
-  expect(html).toContain('aria-label="Copy all SQL"');
+  expect(html).toContain('aria-label="Copy all"');
   expect(html).toContain("totals.sql");
   expect(html).toContain("details.sql");
 });

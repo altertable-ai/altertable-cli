@@ -22,7 +22,7 @@ import { Tooltip } from "./Tooltip.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import "./PlayStory.css";
 
-export type StoryStep = {
+export type SummaryPoint = {
   id: string;
   empty?: AboutEmpty;
   headline: string;
@@ -34,9 +34,12 @@ export type StoryStep = {
   queries?: DisclosedQuery[];
 };
 
-export type PlayStoryProps = {
+/** @deprecated Use SummaryPoint. */
+export type StoryStep = SummaryPoint;
+
+export type PresentSummaryProps = {
   title: string;
-  steps: StoryStep[];
+  steps: SummaryPoint[];
   empty?: AboutEmpty;
   scope?: ReactNode;
   dataContext: DataContext;
@@ -46,6 +49,9 @@ export type PlayStoryProps = {
   headerActions?: ReactNode;
   footer?: ReactNode;
 } & Omit<ComponentPropsWithRef<"button">, "title">;
+
+/** @deprecated Use PresentSummaryProps. */
+export type PlayStoryProps = PresentSummaryProps;
 
 const stepKeys: Record<string, (index: number, last: number) => number> = {
   ArrowRight: (index) => index + 1,
@@ -61,7 +67,7 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
  * inspection uses `?about=`. `launcherProps` targets the outer span; `dialogProps` targets the
  * modal.
  */
-export function PlayStory({
+export function PresentSummary({
   title,
   steps,
   empty,
@@ -78,7 +84,7 @@ export function PlayStory({
   disabled,
   ref,
   ...props
-}: PlayStoryProps) {
+}: PresentSummaryProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);
@@ -118,7 +124,7 @@ export function PlayStory({
     if (dialog.current?.open) headline.current?.focus({ preventScroll: true });
   }, [stepId]);
 
-  function writeStory(id?: string, mode: "replace" | "push" = "replace") {
+  function writePresentation(id?: string, mode: "replace" | "push" = "replace") {
     writeSearch({ present: id ? "1" : null, step: id ?? null }, mode);
   }
 
@@ -127,7 +133,7 @@ export function PlayStory({
     setStepId(steps[0]!.id);
     dialog.current?.showModal();
     headline.current?.focus({ preventScroll: true });
-    writeStory(steps[0]!.id, "push");
+    writePresentation(steps[0]!.id, "push");
   }
 
   useShortcut(shortcuts.playStory, open, !unavailable);
@@ -136,7 +142,7 @@ export function PlayStory({
     const next = steps[nextIndex];
     if (!next) return;
     setStepId(next.id);
-    writeStory(next.id);
+    writePresentation(next.id);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
@@ -186,7 +192,8 @@ export function PlayStory({
         }
         onClose={(event) => {
           if (event.target !== event.currentTarget) return;
-          if (new URLSearchParams(window.location.search).get("present") === "1") writeStory();
+          if (new URLSearchParams(window.location.search).get("present") === "1")
+            writePresentation();
           trigger.current?.focus({ preventScroll: true });
           dialogProps?.onClose?.(event);
         }}
@@ -225,7 +232,7 @@ export function PlayStory({
                 <IconButton
                   icon="close"
                   variant="ghost"
-                  label="Exit story"
+                  label="Exit presentation"
                   shortcut={{ label: "Esc", aria: "Escape" }}
                   tooltipAlign="end"
                   portalRoot={dialog}
@@ -265,7 +272,7 @@ export function PlayStory({
                 </AboutData>
               </div>
             </div>
-            <nav className="altertable-present-nav" aria-label="Story steps">
+            <nav className="altertable-present-nav" aria-label="Summary points">
               <IconButton
                 icon="previous"
                 variant="ghost"
@@ -313,3 +320,6 @@ export function PlayStory({
     </>
   );
 }
+
+/** @deprecated Use PresentSummary. */
+export const PlayStory = PresentSummary;

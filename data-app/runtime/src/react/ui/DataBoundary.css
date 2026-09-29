@@ -48,13 +48,9 @@
   opacity: 0.58;
   transition: opacity 180ms ease 450ms;
 }
-.altertable-data-boundary-content[data-stale-error="true"] {
-  opacity: 0.58;
-}
 @media (prefers-reduced-motion: reduce) {
   .altertable-data-boundary-content,
-  .altertable-data-boundary-content[data-updating="true"],
-  .altertable-data-boundary-content[data-stale-error="true"] {
+  .altertable-data-boundary-content[data-updating="true"] {
     transition: none;
   }
   .altertable-data-boundary-spinner {

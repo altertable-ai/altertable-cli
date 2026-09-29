@@ -138,7 +138,8 @@ export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./About
 
 // Present mode
 export { PlayStory } from "./PlayStory.tsx";
-export type { PlayStoryProps, StoryStep } from "./PlayStory.tsx";
+export { PresentSummary } from "./PlayStory.tsx";
+export type { PlayStoryProps, PresentSummaryProps, SummaryPoint, StoryStep } from "./PlayStory.tsx";
 
 // Buttons, overlays, and icons
 export { AppIcon } from "./icons.ts";

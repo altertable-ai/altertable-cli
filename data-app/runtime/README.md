@@ -32,7 +32,7 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | Bind filters to the URL | [variables](src/react/ui/variables.ts), [DateRangePicker](src/react/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/react/ui/searchItems.ts), [SearchMatch](src/react/ui/SearchMatch.tsx) | SearchField |
 | Explain context, glossary, and queries | [AboutData](src/react/ui/AboutData.tsx), [DataContext](src/react/ui/data-context.ts) | [GlossaryDefinition](src/react/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/react/ui/data-identifiers.tsx) |
-| Present loaded findings | [PlayStory](src/react/ui/PlayStory.tsx) | StoryStep |
+| Summarize loaded findings in Present | [PresentSummary](src/react/ui/PlayStory.tsx) | SummaryPoint |
 | Build custom controls and overlays | [Button](src/react/ui/Button.tsx), [Sheet](src/react/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
 ## Contracts
@@ -41,7 +41,7 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | --- | --- |
 | `defineOperation` | Input/output validation, check inputs, query limits and cancellation; `query(name, sql)` accepts registered names and records executed evidence. |
 | `defineDataView` | URL variables, operation input, emptiness and the primary date binding. `useView` connects the result and controls to `DataApp`. |
-| `DataApp` | Header, variable bar, refresh state, stale-result notice and dimming, default inspection empty states. |
+| `DataApp` | Header, variable bar, refresh state, stale-result notice, default inspection empty states. |
 | `view.content` | One loading/ready layout. `result.select` never evaluates loading data; `result.metric` binds comparisons to the displayed input. |
 | `context.metric` | Label, numeric format, glossary evidence and optional direction of improvement. |
 | `WidgetViewTabs` | Valid, unique selection IDs and a required empty state per tab. |
@@ -49,6 +49,14 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 SQL and business definitions belong to the app. Hosted adapters authorize every request; local development uses the CLI proxy. Browser/server boundaries and managed runtime integrity are checked by `app check`. SQL disclosure also requires server permission.
 
 A measured zero and unavailable data have different meanings. Metric readings use `null` for an unavailable previous value. The app defines whether a result is empty. `Breakdown` shows parts of a total; `Ranking` scales against its largest value. Percent formats accept ratios.
+
+`AppLayout` owns the page width, outer gutter, and vertical spacing. App content should not add a second page-level horizontal gutter unless it intentionally narrows the exploration.
+
+For app-authored charts, reveal exact values on hover and keyboard focus. If activating a bar changes a related detail, show the selected value near the chart, keep selection visually distinct from focus, and provide a clear action. Use `aria-pressed` for a toggleable bar and `:focus-visible` for its keyboard focus ring. A bar without a meaningful activation should remain a read-only mark.
+
+Use the `DataApp` title and description for the app's identity, subject, and scope. Start the page body with filters and exploration; avoid repeating the title as a large hero. Put date ranges in URL-backed variables when the data has a useful time dimension, then bind the operation and displayed period to that variable.
+
+`DataApp.summary` adds Present mode. Treat it as a short summary of the currently displayed data: two to four high-impact metrics or findings, each with a clear headline, a visual, and source evidence. Derive the points from the same loaded result as the page and its displayed input, so changing a variable updates Present and stale results keep their original period. `context.summaryPoint` validates glossary and query references. The older `story` prop and `context.storyStep` remain available for existing apps.
 
 ## Ownership
 
@@ -177,7 +185,7 @@ const actions = context.metric({
   label: "Tracked identities",
   format: { kind: "count" },
 });
-const step = context.storyStep({
+const point = context.summaryPoint({
   id: "activity",
   headline: "What people do",
   visual: <ActivityChart />,

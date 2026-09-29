@@ -161,10 +161,14 @@ test("data view keeps the last result visible when refresh fails", async ({
   await page.getByRole("button", { name: "Refresh data" }).click();
   await expect(page.getByText("Connection view ready")).toBeVisible();
   await expect(page.getByRole("alert")).toContainText(/Couldn’t refresh. Showing the last result/);
-  await expect(page.locator(".altertable-data-boundary-content")).toHaveAttribute(
+  await expect(page.locator(".altertable-data-boundary-content")).not.toHaveAttribute(
     "data-stale-error",
-    "true",
   );
+  expect(
+    await page
+      .locator(".altertable-data-boundary-content")
+      .evaluate((element) => getComputedStyle(element).opacity),
+  ).toBe("1");
 });
 
 test("widget inspection inherits the page glossary and empty states", async ({ page }) => {
@@ -174,10 +178,29 @@ test("widget inspection inherits the page glossary and empty states", async ({ p
   await expect(page.getByRole("dialog")).toContainText("Completed orders grouped by customer_id.");
   await page.getByRole("tab", { name: "Queries" }).click();
   await expect(page.getByRole("dialog")).toContainText("connection-check.sql");
-  await expect(page.getByRole("region", { name: "Query notebook" })).toBeVisible();
+  const notebook = page.getByRole("region", { name: "Query notebook" });
+  await expect(notebook).toBeVisible();
+  const copyAll = notebook.getByRole("button", { name: "Copy all" });
+  const copyOne = notebook.getByRole("button", { name: "Copy SQL for connection-check" });
+  await page.getByRole("tab", { name: "Queries" }).hover();
+  const hoverDevice = await page.evaluate(
+    () => matchMedia("(hover: hover) and (pointer: fine)").matches,
+  );
+  expect(await copyAll.evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
+  expect(await copyOne.evaluate((element) => getComputedStyle(element).opacity)).toBe(
+    hoverDevice ? "0" : "1",
+  );
+  await notebook.hover();
+  await expect
+    .poll(() => copyAll.evaluate((element) => getComputedStyle(element).opacity))
+    .toBe("1");
+  await notebook.locator("figure").hover();
+  await expect
+    .poll(() => copyOne.evaluate((element) => getComputedStyle(element).opacity))
+    .toBe("1");
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.getByRole("button", { name: "Copy all SQL" }).click();
-  await expect(page.getByRole("button", { name: "Copied all SQL" })).toBeVisible();
+  await copyAll.click();
+  await expect(page.getByRole("button", { name: "Copied all" })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
     "-- connection-check.sql",
   );

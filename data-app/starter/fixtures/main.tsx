@@ -99,7 +99,7 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      story={{
+      summary={{
         steps: [
           {
             id: "orders",
