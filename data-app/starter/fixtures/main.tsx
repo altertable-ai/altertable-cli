@@ -13,7 +13,6 @@ import {
   GlossaryDefinition,
   MetricWidget,
   Stack,
-  ExplorationSection,
   TableWidget,
   VisualizationWidget,
 } from "@altertable/data-app/react";
@@ -138,20 +137,20 @@ function Fixture() {
               visual={<p>Feature reach</p>}
             />
           </Grid>
-          <ExplorationSection
-            label="Order activity"
-            data-testid="layout-story"
-            lead={
+          <section aria-label="Order activity" data-testid="layout-story">
+            <Stack>
               <MetricWidget
                 label="Completed orders"
                 value={120}
                 format={{ kind: "count" }}
                 evidence={{ id: "orders", glossaryIds: ["orders"] }}
               />
-            }
-            visual={<VisualizationWidget title="Orders over time" visual={<p>Daily orders</p>} />}
-            support={<VisualizationWidget title="Returning customers" visual={<p>80 customers</p>} />}
-          />
+              <Grid columns={2}>
+                <VisualizationWidget title="Orders over time" visual={<p>Daily orders</p>} />
+                <VisualizationWidget title="Returning customers" visual={<p>80 customers</p>} />
+              </Grid>
+            </Stack>
+          </section>
           <Grid columns={2} data-testid="layout-grid">
             <div>Short panel</div>
             <div>

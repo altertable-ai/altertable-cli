@@ -24,8 +24,6 @@ export { Grid } from "./Grid.tsx";
 export type { GridProps } from "./Grid.tsx";
 export { GridItem } from "./GridItem.tsx";
 export type { GridItemProps } from "./GridItem.tsx";
-export { ExplorationSection } from "./ExplorationSection.tsx";
-export type { ExplorationSectionProps } from "./ExplorationSection.tsx";
 
 // Widgets and visualizations
 export type { WidgetEvidence } from "./WidgetEvidence.ts";
