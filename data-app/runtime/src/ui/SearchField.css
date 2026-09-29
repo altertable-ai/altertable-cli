@@ -1,3 +1,6 @@
+.altertable-search-landmark {
+  min-width: 0;
+}
 .altertable-search {
   display: grid;
   gap: 7px;

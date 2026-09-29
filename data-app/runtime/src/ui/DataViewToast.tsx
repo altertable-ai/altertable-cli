@@ -19,15 +19,14 @@ export function DataViewToast<Data, Input>({
   notice,
   onRetry,
 }: DataViewToastProps<Data, Input>) {
-  const [showUpdating, setShowUpdating] = useState(false);
+  const [delay, setDelay] = useState({ kind: view.kind, elapsed: false });
+  if (delay.kind !== view.kind) setDelay({ kind: view.kind, elapsed: false });
   useEffect(() => {
-    if (view.kind !== "updating") {
-      setShowUpdating(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setShowUpdating(true), 450);
+    if (view.kind !== "updating") return;
+    const timer = window.setTimeout(() => setDelay({ kind: "updating", elapsed: true }), 450);
     return () => window.clearTimeout(timer);
   }, [view.kind]);
+  const showUpdating = view.kind === "updating" && delay.kind === "updating" && delay.elapsed;
 
   if (view.kind !== "stale-error" && (view.kind !== "updating" || !showUpdating) && !notice)
     return null;

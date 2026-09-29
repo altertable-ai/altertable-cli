@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -96,13 +97,14 @@ export function Tooltip({
     if (open) timing?.rememberClose();
     setOpen(false);
   }
+  const closeFromEffect = useEffectEvent(close);
   useEffect(() => cancelHover, []);
   useEffect(() => {
     if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       suppressed.current = true;
-      close();
+      closeFromEffect();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -114,6 +116,11 @@ export function Tooltip({
     strategy: "fixed",
     whileElementsMounted: autoUpdate,
     middleware: [offset(variant === "chart" ? 16 : 8), flip(), shift({ padding: 12 })],
+  });
+  const closeOnOutsidePointer = useEffectEvent((event: PointerEvent) => {
+    const node = event.target as Node;
+    if (refs.domReference.current?.contains(node) || refs.floating.current?.contains(node)) return;
+    close();
   });
   function followCursor(event: { clientX: number; clientY: number }) {
     const { clientX: x, clientY: y } = event;
@@ -135,10 +142,7 @@ export function Tooltip({
   useEffect(() => {
     if (!open || variant !== "chart") return;
     function onDocPointerDown(event: PointerEvent) {
-      const node = event.target as Node;
-      if (refs.domReference.current?.contains(node) || refs.floating.current?.contains(node))
-        return;
-      close();
+      closeOnOutsidePointer(event);
     }
     document.addEventListener("pointerdown", onDocPointerDown);
     return () => document.removeEventListener("pointerdown", onDocPointerDown);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, ComboBox, Input, ListBox, ListBoxItem, Popover } from "react-aria-components";
 import { AppIcon } from "./icons.ts";
 import { SearchMatch } from "./SearchMatch.tsx";
@@ -32,8 +32,9 @@ export function Combobox({
   loadingMessage = "Loading options…",
 }: ComboboxProps) {
   const selectedLabel = options.find((option) => option.id === value)?.label ?? "";
-  const [inputValue, setInputValue] = useState(selectedLabel);
-  useEffect(() => setInputValue(selectedLabel), [selectedLabel]);
+  const [input, setInput] = useState({ selectedLabel, value: selectedLabel });
+  const inputValue = input.selectedLabel === selectedLabel ? input.value : selectedLabel;
+  const setInputValue = (value: string) => setInput({ selectedLabel, value });
   const search = inputValue === selectedLabel ? "" : inputValue.trim();
   const matches = searchItems(options, search, {
     attributes: [
@@ -95,9 +96,9 @@ export function Combobox({
           items={matches}
           aria-label={label}
           renderEmptyState={() => (
-            <p className="altertable-combobox-empty" role="status">
+            <output className="altertable-combobox-empty">
               {loading ? loadingMessage : emptyMessage}
-            </p>
+            </output>
           )}
         >
           {(hit) => (

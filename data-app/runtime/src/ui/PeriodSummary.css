@@ -1,4 +1,7 @@
 .altertable-period-summary {
+  margin: 0;
+}
+.altertable-period-summary-visible {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
@@ -9,7 +12,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.altertable-period-summary > svg,
+.altertable-period-summary-visible > svg,
 .altertable-period-summary-vs {
   color: var(--at-muted, #687078);
 }

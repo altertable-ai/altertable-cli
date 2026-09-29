@@ -47,85 +47,79 @@ export function SearchField({
   const descriptionId = description ? `${id}-description` : undefined;
   const statusId = status ? `${id}-status` : undefined;
   return (
-    <form
-      {...props}
-      role="search"
-      aria-label={props["aria-label"] ?? label}
-      className={classNames("altertable-search", className)}
-      data-size={size}
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit?.(value);
-      }}
-    >
-      <label
-        htmlFor={inputId}
-        className={classNames("altertable-search-label", !showLabel && "altertable-sr-only")}
+    <search className="altertable-search-landmark" aria-label={props["aria-label"] ?? label}>
+      <form
+        {...props}
+        className={classNames("altertable-search", className)}
+        data-size={size}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit?.(value);
+        }}
       >
-        {label}
-      </label>
-      <div className="altertable-search-row">
-        <div className="altertable-search-input-wrap">
-          <AppIcon name="search" size={17} />
-          <input
-            {...inputProps}
-            id={inputId}
-            type="search"
-            value={value}
-            placeholder={placeholder ?? "Search"}
-            enterKeyHint="search"
-            aria-busy={busy || undefined}
-            aria-describedby={
-              [descriptionId, statusId, inputProps?.["aria-describedby"]]
-                .filter(Boolean)
-                .join(" ") || undefined
-            }
-            className={classNames("altertable-search-input", inputProps?.className)}
-            onChange={(event) => {
-              inputProps?.onChange?.(event);
-              if (!event.defaultPrevented) onChange(event.currentTarget.value);
-            }}
-            onKeyDown={(event) => {
-              inputProps?.onKeyDown?.(event);
-              if (!event.defaultPrevented && event.key === "Escape" && value !== resetValue) {
-                event.preventDefault();
-                onChange(resetValue);
-              }
-            }}
-          />
-          {value !== resetValue && (
-            <button
-              {...clearButtonProps}
-              type="button"
-              className={classNames("altertable-search-clear", clearButtonProps?.className)}
-              aria-label={clearButtonProps?.["aria-label"] ?? `Clear ${label.toLowerCase()}`}
-              onClick={(event) => {
-                clearButtonProps?.onClick?.(event);
-                if (!event.defaultPrevented) onChange(resetValue);
-              }}
-            >
-              <AppIcon name="reset" size={16} />
-            </button>
-          )}
-        </div>
-        {children}
-      </div>
-      {description && (
-        <p id={descriptionId} className="altertable-search-description">
-          {description}
-        </p>
-      )}
-      {status && (
-        <p
-          id={statusId}
-          className="altertable-search-status"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
+        <label
+          htmlFor={inputId}
+          className={classNames("altertable-search-label", !showLabel && "altertable-sr-only")}
         >
-          {status}
-        </p>
-      )}
-    </form>
+          {label}
+        </label>
+        <div className="altertable-search-row">
+          <div className="altertable-search-input-wrap">
+            <AppIcon name="search" size={17} />
+            <input
+              {...inputProps}
+              id={inputId}
+              type="search"
+              value={value}
+              placeholder={placeholder ?? "Search"}
+              enterKeyHint="search"
+              aria-busy={busy || undefined}
+              aria-describedby={
+                [descriptionId, statusId, inputProps?.["aria-describedby"]]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
+              className={classNames("altertable-search-input", inputProps?.className)}
+              onChange={(event) => {
+                inputProps?.onChange?.(event);
+                if (!event.defaultPrevented) onChange(event.currentTarget.value);
+              }}
+              onKeyDown={(event) => {
+                inputProps?.onKeyDown?.(event);
+                if (!event.defaultPrevented && event.key === "Escape" && value !== resetValue) {
+                  event.preventDefault();
+                  onChange(resetValue);
+                }
+              }}
+            />
+            {value !== resetValue && (
+              <button
+                {...clearButtonProps}
+                type="button"
+                className={classNames("altertable-search-clear", clearButtonProps?.className)}
+                aria-label={clearButtonProps?.["aria-label"] ?? `Clear ${label.toLowerCase()}`}
+                onClick={(event) => {
+                  clearButtonProps?.onClick?.(event);
+                  if (!event.defaultPrevented) onChange(resetValue);
+                }}
+              >
+                <AppIcon name="reset" size={16} />
+              </button>
+            )}
+          </div>
+          {children}
+        </div>
+        {description && (
+          <p id={descriptionId} className="altertable-search-description">
+            {description}
+          </p>
+        )}
+        {status && (
+          <output id={statusId} className="altertable-search-status">
+            {status}
+          </output>
+        )}
+      </form>
+    </search>
   );
 }

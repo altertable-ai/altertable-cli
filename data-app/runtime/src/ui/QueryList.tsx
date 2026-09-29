@@ -93,9 +93,11 @@ function QueryFigure({ name, statement }: { name: string; statement: string }) {
               <AppIcon name={copyState === "copied" ? "check" : "copy"} size={16} />
             </Button>
           </Tooltip>
-          {copyState === "error" && <span role="status">Could not copy SQL</span>}
+          {copyState === "error" && <output>Could not copy SQL</output>}
         </span>
       </figcaption>
+      {/* A scrollable SQL block must be keyboard focusable. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
       <pre tabIndex={0} data-wrap={wrapped || undefined}>
         <SqlCode statement={statement} />
       </pre>

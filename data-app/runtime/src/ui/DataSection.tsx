@@ -96,6 +96,8 @@ export function DataSection<Data, Input>({
 }: DataSectionProps<Data, Input>) {
   const dataView = result?.view ?? view;
   if (!dataView) throw new Error("DataSection needs a data view.");
+  const emptyState = empty ?? result?.empty;
+  if (!emptyState) throw new Error("DataSection needs an empty state.");
   return (
     <DataBoundary
       {...props}
@@ -105,7 +107,7 @@ export function DataSection<Data, Input>({
       notice={notice}
       dimOnUpdate={dimOnUpdate}
       loading={loading ?? <ContentSkeleton variant="panel" />}
-      empty={<EmptyState {...(empty ?? result?.empty!)} />}
+      empty={<EmptyState {...emptyState} />}
       error={(cause) => {
         const presentation = errorPresentation(cause);
         const retryAction =

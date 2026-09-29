@@ -8,6 +8,7 @@ test("the small-screen calendar fills its panel and keeps the selected range leg
     await page.goto("/components");
     await page.getByRole("button", { name: "Choose dates" }).click();
     const popover = page.locator(".altertable-date-range-popover");
+    await expect(popover.getByRole("group", { name: "Quick ranges" })).toBeVisible();
     const grid = popover.locator(".react-aria-CalendarGrid");
     const sizes = await page.evaluate(() => {
       const popup = document

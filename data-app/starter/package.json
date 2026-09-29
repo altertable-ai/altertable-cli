@@ -2,6 +2,10 @@
   "name": "data-app-starter",
   "private": true,
   "type": "module",
+  "imports": {
+    "#app/*": "./src/*",
+    "#config": "./app.json"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --type-aware src",

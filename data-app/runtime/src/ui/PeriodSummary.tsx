@@ -41,27 +41,28 @@ export function reportingPeriodText(period: ReportingPeriod): string {
   return `${label(period)}, ${start.toISOString()} to ${end.toISOString()}`;
 }
 
-/** Read-only period context for the variable bar. The accessible name includes exact bounds. */
+/** Read-only period context for the variable bar, including exact bounds for assistive technology. */
 export function PeriodSummary({ period, comparison, className }: PeriodSummaryProps) {
   const comparisonText = comparison ? comparisonLabel(period, comparison) : null;
   const comparisonDetail =
     comparison?.kind === "period" ? reportingPeriodText(comparison.period) : comparisonText;
   return (
-    <div
-      className={classNames("altertable-period-summary", className)}
-      role="group"
-      aria-label={`Reporting period: ${reportingPeriodText(period)}${comparisonDetail ? `, compared with ${comparisonDetail}` : ""}`}
-    >
-      <AppIcon name={period.kind === "rolling" ? "clock" : "calendar"} size={16} />
-      <span className="altertable-period-summary-current">{label(period)}</span>
-      {comparisonText && (
-        <>
-          <span className="altertable-period-summary-vs" aria-hidden="true">
-            vs
-          </span>
-          <span>{comparisonText}</span>
-        </>
-      )}
-    </div>
+    <p className={classNames("altertable-period-summary", className)}>
+      <span className="altertable-sr-only">
+        {`Reporting period: ${reportingPeriodText(period)}${comparisonDetail ? `, compared with ${comparisonDetail}` : ""}`}
+      </span>
+      <span aria-hidden="true" className="altertable-period-summary-visible">
+        <AppIcon name={period.kind === "rolling" ? "clock" : "calendar"} size={16} />
+        <span className="altertable-period-summary-current">{label(period)}</span>
+        {comparisonText && (
+          <>
+            <span className="altertable-period-summary-vs" aria-hidden="true">
+              vs
+            </span>
+            <span>{comparisonText}</span>
+          </>
+        )}
+      </span>
+    </p>
   );
 }

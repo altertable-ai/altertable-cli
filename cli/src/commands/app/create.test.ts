@@ -70,6 +70,7 @@ describe("app create", () => {
     const paths = JSON.parse(result.stdout[0]!).files as string[];
     expect(paths).toContain(".altertable/runtime/src/ui/PlayStory.tsx");
     expect(paths).toContain("src/App.tsx");
+    expect(paths).toContain(".oxlintrc.json");
     expect(paths).toContain("docs/data.md");
     expect(paths).toContain(".altertable/runtime/README.md");
     expect(Bun.spawnSync(["git", "init", "--quiet"], { cwd: directory }).exitCode).toBe(0);
@@ -271,6 +272,30 @@ describe("app create", () => {
     });
     expect(result.exitCode).toBe(0);
     expect(result.stdout.join("\n")).toContain("client bundle clean");
+    writeFileSync(
+      join(directory, "src/lint-probe.tsx"),
+      'import { useEffect, useState } from "react"; export function Probe() { const [count, setCount] = useState(0); useEffect(() => { setCount(1); }, []); return <div>{count}</div>; }',
+    );
+    const lint = Bun.spawnSync([process.execPath, "run", "lint"], {
+      cwd: directory,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(lint.exitCode).toBe(1);
+    expect(new TextDecoder().decode(lint.stdout)).toContain("react(set-state-in-effect)");
+    writeFileSync(
+      join(directory, "src/lint-probe.tsx"),
+      'import { operations } from "./operations.ts"; export const probe = operations;',
+    );
+    const relativeImportLint = Bun.spawnSync([process.execPath, "run", "lint"], {
+      cwd: directory,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(relativeImportLint.exitCode).toBe(1);
+    expect(new TextDecoder().decode(relativeImportLint.stdout)).toContain(
+      "eslint(no-restricted-imports)",
+    );
   });
 
   test("never overwrites an existing directory", async () => {

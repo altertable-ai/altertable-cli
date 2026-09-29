@@ -12,5 +12,6 @@ Inspect the source and existing definitions before choosing queries. For broad q
 | Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server.ts) |
 
 Edit app-owned files in `src/`; upgrade the managed runtime through the CLI. Use public runtime imports and read their types for API contracts.
+Import app-owned files through `#app/*` and `app.json` through `#config`. The lint check rejects relative JavaScript imports.
 
 Run `altertable app check --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.

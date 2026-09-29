@@ -36,6 +36,7 @@ test("distribution is deterministic, source-based, and excludes development file
   });
   expect(files["src/App.tsx"]).toBe(payload.starter["src/App.tsx"]);
   expect(files["src/server.ts"]).toBe(payload.starter["src/server.ts"]);
+  expect(files[".oxlintrc.json"]).toBe(payload.starter[".oxlintrc.json"]);
   expect(files["bun.lock"]).toContain('"name": "example"');
 });
 

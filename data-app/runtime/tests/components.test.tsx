@@ -22,14 +22,15 @@ import { formatMetric } from "../src/format.ts";
 test("initial data errors show a useful recovery action for each failure", () => {
   function render(code: string) {
     return renderToStaticMarkup(
-      createElement(DataSection, {
-        empty: { title: "No results" },
-        result: {
+      <DataSection
+        empty={{ title: "No results" }}
+        result={{
           view: { kind: "error" as const, error: new DataAppError("Raw server text", code) },
           refetch: () => {},
-        },
-        children: () => null,
-      }),
+        }}
+      >
+        {() => null}
+      </DataSection>,
     );
   }
   const unavailable = render("source_unavailable");

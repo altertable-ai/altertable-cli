@@ -3,6 +3,7 @@ import type { SVGProps } from "react";
 export type AltertableLogoProps = SVGProps<SVGSVGElement>;
 
 export function AltertableLogo(props: AltertableLogoProps) {
+  /* oxlint-disable jsx-a11y/prefer-tag-over-role -- Inline SVG needs an image role and accessible name. */
   return (
     <svg viewBox="0 0 294 44" fill="none" role="img" aria-label="Altertable" {...props}>
       <path
@@ -19,4 +20,5 @@ export function AltertableLogo(props: AltertableLogoProps) {
       />
     </svg>
   );
+  /* oxlint-enable jsx-a11y/prefer-tag-over-role */
 }

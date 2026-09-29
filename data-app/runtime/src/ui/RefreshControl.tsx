@@ -20,16 +20,15 @@ export function RefreshControl({
   className,
   ...props
 }: RefreshControlProps) {
-  const [slow, setSlow] = useState(false);
+  const [delay, setDelay] = useState({ refreshing, elapsed: false });
+  if (delay.refreshing !== refreshing) setDelay({ refreshing, elapsed: false });
 
   useEffect(() => {
-    if (!refreshing) {
-      setSlow(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setSlow(true), 300);
+    if (!refreshing) return;
+    const timer = window.setTimeout(() => setDelay({ refreshing: true, elapsed: true }), 300);
     return () => window.clearTimeout(timer);
   }, [refreshing]);
+  const slow = refreshing && delay.refreshing && delay.elapsed;
 
   return (
     <div
@@ -40,7 +39,8 @@ export function RefreshControl({
       <div
         {...statusProps}
         className={classNames("altertable-refresh-status", statusProps?.className)}
-        role="status"
+        aria-live="polite"
+        aria-atomic="true"
       >
         {slow && refreshing ? (status ?? label) : null}
       </div>

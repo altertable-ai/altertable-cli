@@ -2,7 +2,7 @@ import { useViewVariables, type DataViewDefinition } from "./view.tsx";
 import { defineAppVariables, type VariableCollection } from "./ui/variables.ts";
 export { defineDataContent } from "./view.tsx";
 export type { DataContentState, DataViewDefinition, ResolvedVariables } from "./view.tsx";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   keepPreviousData,
@@ -104,11 +104,14 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   ) {
     const query = useDataQuery(name, input, options);
     const [last, setLast] = useState<{ name: Name; response: NonNullable<typeof query.data> }>();
-    useEffect(() => {
-      if (query.isSuccess && !query.isPlaceholderData && query.data) {
-        setLast({ name, response: query.data });
-      }
-    }, [name, query.isSuccess, query.isPlaceholderData, query.data]);
+    if (
+      query.isSuccess &&
+      !query.isPlaceholderData &&
+      query.data &&
+      (last?.name !== name || last.response !== query.data)
+    ) {
+      setLast({ name, response: query.data });
+    }
     const sameInput =
       options.sameInput ??
       ((left: InputOf<Operations[Name]>, right: InputOf<Operations[Name]>) =>

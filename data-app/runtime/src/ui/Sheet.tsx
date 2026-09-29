@@ -76,6 +76,8 @@ export function Sheet({
     };
   }, [open]);
 
+  // Native dialog backdrop clicks close the sheet; its contents remain keyboard accessible.
+  /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
   return (
     <dialog
       {...props}
@@ -138,4 +140,5 @@ export function Sheet({
       </div>
     </dialog>
   );
+  /* oxlint-enable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
 }

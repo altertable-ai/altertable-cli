@@ -266,12 +266,8 @@ export function DateRangePicker({
         <Dialog>
           <div className="altertable-date-range-content">
             {presets.length > 0 && (
-              <div
-                className="altertable-date-range-presets"
-                role="group"
-                aria-label="Quick date ranges"
-              >
-                <span className="altertable-date-range-heading">Quick ranges</span>
+              <fieldset className="altertable-date-range-presets">
+                <legend className="altertable-date-range-heading">Quick ranges</legend>
                 <div className="altertable-date-range-preset-list">
                   {presets.map((preset) => (
                     <Button
@@ -292,7 +288,7 @@ export function DateRangePicker({
                     </Button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             )}
             <div className="altertable-date-range-custom">
               <span className="altertable-date-range-heading">Custom range</span>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "react-aria-components/Tabs";
 import { searchParams, subscribeSearch, writeSearch } from "./search.ts";
 import "./Tabs.css";
@@ -11,10 +11,10 @@ export function useViewTab<View extends string>(
   views: readonly View[],
   fallback: View,
 ): [View, (key: string | number) => void] {
-  function currentView(): View {
+  const currentView = useCallback((): View => {
     const requested = searchParams().get("view") as View;
     return views.includes(requested) ? requested : fallback;
-  }
+  }, [views, fallback]);
   const [selected, setSelected] = useState<View>(currentView);
   useEffect(() => {
     function sync() {
@@ -24,7 +24,7 @@ export function useViewTab<View extends string>(
     }
     sync();
     return subscribeSearch(sync);
-  }, [views, fallback]);
+  }, [currentView]);
   function select(key: string | number) {
     const view = String(key) as View;
     if (!views.includes(view)) return;

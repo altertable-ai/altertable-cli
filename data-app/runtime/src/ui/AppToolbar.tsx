@@ -78,7 +78,7 @@ export function AppToolbar({
         {children}
         {(initialLoading || updatedAt) && (
           <span className="altertable-app-toolbar-updated">
-            {initialLoading ? <span role="status">Loading data</span> : updatedAt}
+            {initialLoading ? <output>Loading data</output> : updatedAt}
           </span>
         )}
         {refresh && (

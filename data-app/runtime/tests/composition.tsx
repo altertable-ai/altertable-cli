@@ -143,7 +143,7 @@ export function CompositionCheck() {
         className="metric"
         data-testid="metric"
       />
-      <Stack gap="md" role="group" aria-label="Request states">
+      <Stack gap="md">
         <StatusPanel status="empty" title="Empty" onMouseEnter={() => {}}>
           More detail
         </StatusPanel>

@@ -23,6 +23,8 @@ Use a configured profile for live data. `--watch-runtime` watches canonical runt
 ## Ownership and distribution
 
 - `runtime/package.json` declares public exports and a `files` allowlist. Tests and development configuration live outside that list.
+- `runtime/.oxlintrc.json` checks runtime React code; `starter/.oxlintrc.json` ships with each new app so `app check` enforces React Compiler, hooks, and accessibility correctness rules on app-owned source.
+- Generated apps use package `#app/*` and `#config` imports. Oxlint's built-in `no-restricted-imports` rule rejects relative source imports without a custom plugin.
 - `cli/src/commands/app/lib/distribution.ts` declares the starter copy allowlist. `src/`, app configuration, lockfile, and authoring docs ship. Browser fixtures, tests, dependencies, and build outputs do not.
 - `createAppFiles` changes JSON identity fields and the lockfile root name. Application code reads `app.json`; source code has no template tokens.
 - `cli/scripts/package-data-app.ts` supplies the Bun build plugin. It replaces the source payload loader with literal file data. The npm bundle embeds this payload; native releases compile that same bundle. Installed CLIs never read this repository to create an app.

@@ -14,7 +14,8 @@ export function EmptyState({ title, description, variant = "visual", className }
     <div
       className={classNames("altertable-empty-state", className)}
       data-variant={variant}
-      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <strong>{title}</strong>
       {description && <p>{description}</p>}

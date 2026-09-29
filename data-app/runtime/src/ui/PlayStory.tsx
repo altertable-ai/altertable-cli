@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -93,13 +94,17 @@ export function PlayStory({
   const step = steps[index];
   const stepIds = steps.map((item) => item.id).join("\u0000");
   const unavailable = !steps.length || !!disabled;
+  const currentSteps = useEffectEvent(() => steps);
 
   useEffect(() => {
     function syncFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("present") === "1" && steps.length) {
+      const availableSteps = currentSteps();
+      if (params.get("present") === "1" && availableSteps.length) {
         const requested = params.get("step");
-        setStepId(steps.find((item) => item.id === requested)?.id ?? steps[0]!.id);
+        setStepId(
+          availableSteps.find((item) => item.id === requested)?.id ?? availableSteps[0]!.id,
+        );
         if (!dialog.current?.open) dialog.current?.showModal();
       } else if (dialog.current?.open) {
         dialog.current.close();

@@ -1,6 +1,6 @@
 import { GettingStarted } from "@altertable/data-app-runtime/ui";
-import { dataContext } from "./data-context.ts";
-import app from "../app.json";
+import { dataContext } from "#app/data-context.ts";
+import app from "#config";
 
 /** Replace the setup screen with the first useful view once its query is ready. */
 export function App() {

@@ -15,6 +15,7 @@ export const starterFiles = [
   "AGENTS.md",
   "docs",
   ".gitignore",
+  ".oxlintrc.json",
   ".oxfmtrc.json",
 ] as const;
 export const runtimePath = ".altertable/runtime";
