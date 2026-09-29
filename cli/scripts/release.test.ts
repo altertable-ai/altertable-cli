@@ -505,7 +505,7 @@ describe("release infrastructure wiring", () => {
     }
   });
 
-  test("gates ordered draft publication on canonical and native verification", async () => {
+  test("gates ordered release publication on canonical and native verification", async () => {
     const workflow = await readWorkflow("release-please.yml");
     const releasePleaseConfig = JSON.parse(
       await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
@@ -519,7 +519,7 @@ describe("release infrastructure wiring", () => {
 
     expect(releasePleaseConfig.packages["."]?.draft).toBe(true);
     expect(workflow.on?.workflow_dispatch?.inputs?.release_tag).toEqual({
-      description: "Existing draft release tag to recover (for example, v1.2.0)",
+      description: "Existing draft or assetless release tag to recover (for example, v1.8.0)",
       required: true,
       type: "string",
     });
@@ -535,7 +535,11 @@ describe("release infrastructure wiring", () => {
     expect(contextScript).toContain("gh api --paginate --slurp");
     expect(contextScript).toContain("releases?per_page=100");
     expect(contextScript).toContain("select(.tag_name == $tag)");
-    expect(contextScript).toContain("already published");
+    expect(contextScript).toContain("asset_count=\"$(jq -r '.[0].assets | length'");
+    expect(contextScript).toContain('"${is_draft}" != "true" && "${asset_count}" != "0"');
+    expect(contextScript).toContain("already has assets");
+    expect(contextScript).toContain("git/ref/tags/${RECOVERY_TAG}");
+    expect(contextScript).toContain('"${tag_ref}" != "${release_ref}"');
     expect(contextScript).not.toContain("gh release view");
     expect(contextScript).toContain("immutable commit SHA");
     expect(contextScript).toContain("Release recovery must run from refs/heads/main");
@@ -589,6 +593,9 @@ describe("release infrastructure wiring", () => {
     ].map((name) => workflowStepIndex(publication, name));
     expect(orderedSteps.every((index) => index >= 0)).toBe(true);
     expect(orderedSteps).toEqual([...orderedSteps].sort((left, right) => left - right));
+    expect(publication.steps?.[orderedSteps[5] ?? -1]?.run).toBe(
+      "bun run scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only",
+    );
     const publishScript = "bun run .release-orchestration/cli/scripts/publish-release.ts";
     expect(publication.steps?.[orderedSteps[9] ?? -1]?.run).toBe(`${publishScript} upload-github`);
     expect(publication.steps?.[orderedSteps[10] ?? -1]?.run).toBe(`${publishScript} publish-npm`);

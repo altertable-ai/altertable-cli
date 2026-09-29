@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing draft release tag to recover (for example, v1.2.0)
+        description: Existing draft or assetless release tag to recover (for example, v1.8.0)
         required: true
         type: string
 
@@ -95,14 +95,22 @@ jobs:
             fi
 
             is_draft="$(jq -r '.[0].draft' <<<"${matching_releases}")"
+            asset_count="$(jq -r '.[0].assets | length' <<<"${matching_releases}")"
             release_ref="$(jq -r '.[0].target_commitish' <<<"${matching_releases}")"
-            if [[ "${is_draft}" != "true" ]]; then
-              echo "::error::Release ${RECOVERY_TAG} is already published"
+            if [[ "${is_draft}" != "true" && "${asset_count}" != "0" ]]; then
+              echo "::error::Published release ${RECOVERY_TAG} already has assets"
               exit 1
             fi
             if [[ ! "${release_ref}" =~ ^[0-9a-f]{40}$ ]]; then
-              echo "::error::Draft ${RECOVERY_TAG} is not pinned to an immutable commit SHA"
+              echo "::error::Release ${RECOVERY_TAG} is not pinned to an immutable commit SHA"
               exit 1
+            fi
+            if [[ "${is_draft}" != "true" ]]; then
+              tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RECOVERY_TAG}" --jq '.object.sha')"
+              if [[ "${tag_ref}" != "${release_ref}" ]]; then
+                echo "::error::Published release ${RECOVERY_TAG} does not match its Git tag"
+                exit 1
+              fi
             fi
 
             {
@@ -297,7 +305,7 @@ jobs:
           bun-version: 1.1.0
 
       - name: Smoke test exact npm bundle on minimum runtime
-        run: bun run scripts/smoke-npm-bundle.ts --expected-bun=1.1.0
+        run: bun run scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only
         working-directory: cli
 
       - name: Restore release build toolchain
