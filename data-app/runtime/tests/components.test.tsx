@@ -98,7 +98,7 @@ test("local search preserves table order and highlights original text", () => {
     }),
   );
   expect(table).toContain("<mark>Café</mark> &lt;table&gt;");
-  expect(table).toContain('class="altertable-data-panel-count">1</span>');
+  expect(table).toContain('class="altertable-data-widget-count">1</span>');
   expect(table).toMatch(/<th[^>]*data-type="number"[^>]*>Count<\/th>/);
   expect(table).toMatch(/<td[^>]*data-type="number"[^>]*>12<\/td>/);
 });

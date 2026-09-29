@@ -2,7 +2,7 @@
   min-width: 0;
   padding: var(--at-space-md, 16px) var(--at-space-lg, 24px) var(--at-space-lg, 24px);
 }
-:where(.altertable-data-panel-body) > .altertable-table-widget-content {
+:where(.altertable-data-widget-body) > .altertable-table-widget-content {
   padding: 0;
 }
 .altertable-table-widget-content .altertable-data-table-search {

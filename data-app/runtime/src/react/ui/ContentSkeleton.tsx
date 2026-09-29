@@ -20,7 +20,7 @@ export function ContentSkeleton({ variant, rows = 4, className, ...props }: Cont
       {...props}
       aria-hidden="true"
       className={classNames(
-        `altertable-${variant === "metric" ? "metric-widget" : "data-panel"}`,
+        `altertable-${variant === "metric" ? "metric-widget" : "data-widget"}`,
         "altertable-content-skeleton",
         className,
       )}

@@ -29,6 +29,8 @@ export type { StorySectionProps } from "./StorySection.tsx";
 
 // Widgets and visualizations
 export type { WidgetEvidence } from "./WidgetEvidence.ts";
+export { DataWidget } from "./DataWidget.tsx";
+export type { DataWidgetProps } from "./DataWidget.tsx";
 export { VisualizationWidget } from "./VisualizationWidget.tsx";
 export type { VisualizationWidgetProps, VisualizationWidgetView } from "./VisualizationWidget.tsx";
 export { TableWidget } from "./TableWidget.tsx";

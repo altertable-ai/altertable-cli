@@ -8,6 +8,8 @@ Give most data apps a `story={({ data, input, state }) => [...]}` callback. Pres
 
 Use `SelectableBarChart` when selecting a bar inspects a related detail. It handles exact value preview, keyboard navigation, persistent selection, and clearing. Keep the detail view tied to its controlled `selectedId`.
 
+For a custom visual, compose `DataWidget` with a bound `reading`, `isEmpty`, `empty`, and `evidence`. It supplies the same shell, loading state, and inspection as the standard visualization and table widgets. Put only the visual content in its child function.
+
 [Runtime API map](../.altertable/runtime/README.md#find-ui-by-task) lists the other components. A measured zero and unavailable data have different meanings; the app defines whether a result is empty. Check the finished app with live data at phone and desktop widths.
 
 For a categorical source dimension, define a `dimensionFilter` with fixed options or a typed `defineFacetFilter` operation, then pass it to `defineTimeView({ filters: { interface: filter }, ... })` or `defineDataView({ filters: ... })`. The operation input parser calls `parseDimensionSelection`, and its SQL uses `dimensionPredicate` for the allowlisted source column. All, a literal value named `null`, and missing are distinct. Choose useful dimensions and verify the source meaning of each value.

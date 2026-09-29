@@ -6,7 +6,7 @@ import {
   defineQueryNames,
 } from "../src/core/contract.ts";
 import { createDataClient } from "../src/client/index.ts";
-import { createDataHooks } from "../src/react/index.ts";
+import { createDataHooks, DataWidget } from "../src/react/index.ts";
 import { displayedSnapshot } from "../src/core/data-view.ts";
 import { storySteps } from "../src/react/ui/story.ts";
 import { resolveViewInput } from "../src/react/view.ts";
@@ -50,6 +50,40 @@ const view = defineDataView({
   date: { variable: "period", input: (input) => input },
   isEmpty: (data) => data.rows.length === 0,
   empty: { title: "No actions" },
+});
+
+test("a custom data widget shares the bound loading, empty, and inspection contract", () => {
+  let rendered = 0;
+  const widget = (reading: { loading: true } | { loading: false; value: number[] }) =>
+    renderToStaticMarkup(
+      <DataWidget
+        title="Sessions by source"
+        evidence={featureEvidence}
+        reading={reading}
+        isEmpty={(values) => values.length === 0}
+        empty={{ title: "No sessions" }}
+      >
+        {(values) => {
+          rendered++;
+          return (
+            <ol>
+              {values.map((value) => (
+                <li key={value}>{value}</li>
+              ))}
+            </ol>
+          );
+        }}
+      </DataWidget>,
+    );
+  expect(widget({ loading: true })).toContain("altertable-content-skeleton");
+  expect(rendered).toBe(0);
+  expect(widget({ loading: false, value: [] })).toContain("No sessions");
+  expect(rendered).toBe(0);
+  const ready = widget({ loading: false, value: [7] });
+  expect(ready).toContain("<li>7</li>");
+  expect(ready).toContain("Sessions by source");
+  expect(ready).toContain('aria-label="Explore Sessions by source"');
+  expect(rendered).toBe(1);
 });
 
 test("time view derives its control, input, and displayed period from one declaration", () => {

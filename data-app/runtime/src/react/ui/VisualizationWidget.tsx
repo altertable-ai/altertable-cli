@@ -1,6 +1,6 @@
 import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
-import { DataPanel, type DataPanelProps } from "./DataPanel.tsx";
+import { DataWidget, type DataWidgetProps } from "./DataWidget.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
 import type { DataReading } from "../../core/reading.ts";
 import { ContentSkeleton, type ContentSkeletonProps } from "./ContentSkeleton.tsx";
@@ -13,9 +13,7 @@ type VisualizationWidgetBaseProps = {
   insight?: ReactNode;
   action?: ReactNode;
   evidence?: WidgetEvidence;
-  /** Status for a secondary request shown beside this card's heading. */
-  status?: DataPanelProps["status"];
-  /** Valid result with nothing to draw, such as no rows matching a local filter. */
+  status?: DataWidgetProps["status"];
   empty?: Pick<EmptyStateProps, "title" | "description">;
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
@@ -51,19 +49,27 @@ export type VisualizationWidgetProps<Data = unknown> =
 export function VisualizationWidget<Data>(props: VisualizationWidgetProps<Data>) {
   if ("views" in props && props.views) return <VisualizationWidgetWithViews {...props} />;
   if ("reading" in props) {
-    const { reading, children, isEmpty, empty, skeleton, ...rest } = props;
-    if (reading.loading)
-      return <ContentSkeleton variant="panel" {...skeleton} className={rest.className} />;
-    const noData = isEmpty(reading.value);
+    const { reading, children, isEmpty, empty, skeleton, insight, ...shell } = props;
     return (
-      <VisualizationWidgetContent
-        {...rest}
-        empty={noData ? empty : undefined}
-        visual={noData ? null : children(reading.value)}
-      />
+      <DataWidget
+        {...shell}
+        reading={reading}
+        isEmpty={isEmpty}
+        empty={empty}
+        skeleton={skeleton}
+        footer={insight}
+      >
+        {(data) => <div className="altertable-visualization-widget-content">{children(data)}</div>}
+      </DataWidget>
     );
   }
-  return <VisualizationWidgetContent {...props} />;
+  const { visual, loading = false, insight, ...shell } = props;
+  if (loading) return <ContentSkeleton variant="panel" className={shell.className} />;
+  return (
+    <DataWidget {...shell} footer={insight}>
+      <div className="altertable-visualization-widget-content">{visual}</div>
+    </DataWidget>
+  );
 }
 
 function VisualizationWidgetWithViews<Data>({
@@ -74,65 +80,39 @@ function VisualizationWidgetWithViews<Data>({
   isEmpty,
   empty,
   skeleton,
-  ...rest
+  insight,
+  ...shell
 }: BoundVisualizationWidgetBase<Data> & {
   views: readonly VisualizationWidgetView<Data>[];
   viewLabel: string;
   initialView?: string;
 }) {
   const [selected, setSelected] = useState(initialView ?? views[0]?.id ?? "");
-  if (reading.loading)
-    return <ContentSkeleton variant="panel" {...skeleton} className={rest.className} />;
-  const noData = isEmpty(reading.value);
   return (
-    <VisualizationWidgetContent
-      {...rest}
-      empty={noData ? empty : undefined}
-      visual={
-        noData ? null : (
+    <DataWidget
+      {...shell}
+      reading={reading}
+      isEmpty={isEmpty}
+      empty={empty}
+      skeleton={skeleton}
+      footer={insight}
+    >
+      {(data) => (
+        <div className="altertable-visualization-widget-content">
           <WidgetViewTabs
             label={viewLabel}
             views={views.map((view) => ({
               id: view.id,
               label: view.label,
-              content: view.render(reading.value),
+              content: view.render(data),
               isEmpty: false,
               empty,
             }))}
             selectedKey={selected}
             onSelectionChange={setSelected}
           />
-        )
-      }
-    />
-  );
-}
-
-function VisualizationWidgetContent({
-  title,
-  description,
-  visual,
-  loading = false,
-  insight,
-  action,
-  evidence,
-  status,
-  empty,
-  ...props
-}: UnboundVisualizationWidgetProps) {
-  if (loading) return <ContentSkeleton variant="panel" className={props.className} />;
-  return (
-    <DataPanel
-      {...props}
-      title={title}
-      description={description}
-      action={action}
-      status={status}
-      about={evidence}
-      empty={empty}
-      footer={insight}
-    >
-      <div className="altertable-visualization-widget-content">{visual}</div>
-    </DataPanel>
+        </div>
+      )}
+    </DataWidget>
   );
 }

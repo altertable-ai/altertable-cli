@@ -1,7 +1,7 @@
 import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
 import { invariant } from "../../core/invariant.ts";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
-import { DataPanel } from "./DataPanel.tsx";
+import { DataWidget } from "./DataWidget.tsx";
 import { DataTable, DataTableEmptyRow, type DataTableSearch } from "./DataTable.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
 import { searchItems, type SearchHit, type SearchItemsOptions } from "./searchItems.ts";
@@ -189,16 +189,16 @@ function TableWidgetContent<Row>({
     </>
   );
   return (
-    <DataPanel
+    <DataWidget
       {...props}
       title={title}
       count={count}
       description={description}
       action={action}
-      about={evidence && { ...evidence, visual: table }}
+      evidence={evidence}
       footer={insight}
     >
       <div className="altertable-table-widget-content">{table}</div>
-    </DataPanel>
+    </DataWidget>
   );
 }

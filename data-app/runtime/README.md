@@ -26,6 +26,7 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | Initial connection check | [GettingStarted](src/react/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
 | Arrange content | [Grid](src/react/ui/Grid.tsx), [Stack](src/react/ui/Stack.tsx) | StorySection |
 | Show a key number | [MetricWidget](src/react/ui/MetricWidget.tsx) | ComparisonVisual |
+| Compose a custom evidence-backed widget | [DataWidget](src/react/ui/DataWidget.tsx) | Reading, loading, empty state, inspection, actions, footer |
 | Show charts and collections | [VisualizationWidget](src/react/ui/VisualizationWidget.tsx), [TableWidget](src/react/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |
 | Handle a request's loading, error, and stale data | [DataSection](src/react/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
 | Show freshness and refresh | [UpdatedAt](src/react/ui/UpdatedAt.tsx), [AppToolbar](src/react/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
@@ -131,6 +132,20 @@ export const calendar = defineDateRangeContract({
 `TableWidget` also accepts `reading={result.select((data) => data.rows)}` and optional `skeletonRows`. Columns and empty states are declared once for both loading and ready layouts. For bounded results already loaded in the app, pass `pagination={{ pageSize: 8 }}` to page the rows after local search; the footer counts only the supplied rows. `limit` remains a separate, mutually exclusive display cap. Large catalogs need query-backed pagination with a stable sort and total count.
 
 Bound `VisualizationWidget` and `TableWidget` calls require `evidence` from `context.evidence(...)`. A bound `MetricWidget` gets evidence from its metric definition. Evidence must name at least one glossary entry or query. Static widgets may omit it.
+
+`DataWidget` is the same shell used by chart and table widgets. For a custom widget, pass a bound `reading={result.select(...)}`, `isEmpty`, `empty`, and `evidence`, then render the ready value in its child function. It owns the loading skeleton, empty state, title, actions, status, footer, and inspection. For content that is already loaded, pass ordinary children and optional evidence. Specialized widgets add chart, table, or metric behavior; they do not define a different request lifecycle.
+
+```tsx
+<DataWidget
+  title="Activity by source"
+  evidence={sourceEvidence}
+  reading={result.select((data) => data.sources)}
+  isEmpty={(sources) => sources.length === 0}
+  empty={{ title: "No source activity" }}
+>
+  {(sources) => <CustomSourceChart data={sources} />}
+</DataWidget>
+```
 
 `MetricWidget` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `favorableDirection` is optional; changes are neutral until the author defines whether up or down is favorable.
 
