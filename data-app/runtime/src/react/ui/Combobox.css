@@ -130,3 +130,70 @@
   padding: 12px 10px;
   color: var(--at-muted, #687078);
 }
+.altertable-combobox-multi {
+  max-width: min(340px, 75vw);
+  cursor: pointer;
+  text-align: left;
+}
+.altertable-combobox-multi-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.altertable-combobox-multi > svg {
+  flex: none;
+  margin-left: auto;
+  color: var(--at-muted, #687078);
+}
+.altertable-combobox-multi-popover {
+  min-width: max(var(--trigger-width), 240px);
+  padding: 8px;
+}
+.altertable-combobox-multi-popover .react-aria-Dialog {
+  outline: none;
+}
+.altertable-combobox-multi-search {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-control, 7px);
+  background: var(--at-surface, #fff);
+  color: var(--at-text, #202124);
+  font: inherit;
+}
+.altertable-combobox-multi-popover .react-aria-ListBoxItem {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.altertable-combobox-multi-popover .react-aria-ListBoxItem[data-selected]::after {
+  content: "✓";
+  color: var(--at-accent, #4779dc);
+}
+.altertable-combobox-multi-popover .react-aria-ListBoxItem[data-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.altertable-combobox-multi-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 8px 0;
+  border-top: 1px solid var(--at-border, #e3e6e8);
+}
+.altertable-combobox-multi-actions .react-aria-Button {
+  border: 0;
+  background: none;
+  color: var(--at-accent, #4779dc);
+  cursor: pointer;
+  font: inherit;
+}
+.altertable-combobox-multi-actions small {
+  margin-left: auto;
+  color: var(--at-muted, #687078);
+}
