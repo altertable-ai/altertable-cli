@@ -63,7 +63,7 @@ describe("renderAltertableUsage", () => {
     try {
       const usage = await renderAltertableUsage(buildMainCommand());
       expect(usage).toContain(
-        `    catalogs    Manage catalogs (databases and connections) in the current\n${" ".repeat(16)}environment.`,
+        `    catalog     Manage catalogs (databases and connections) in the current\n${" ".repeat(16)}environment.`,
       );
       expect(usage).toContain(
         `    --agent                              Agent-friendly preset: structured JSON\n${" ".repeat(41)}output, no pager or terminal styling`,

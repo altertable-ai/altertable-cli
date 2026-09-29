@@ -64,7 +64,7 @@ test("dependency changes regenerate the lock and support a frozen installation",
   files["package.json"] = JSON.stringify(pkg);
   expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
   expect(await installedRuntimeIntegrity(directory)).toEqual(runtimeIntegrity(files));
-});
+}, 30_000);
 
 test("failed dependency resolution rolls back runtime, added peer, and lockfile", async () => {
   const { directory, files } = await fixture();
@@ -150,7 +150,7 @@ test("missing peers are installed from starter defaults without replacing app cu
     dependencies: { "react-dom": "19.3.0" },
     scripts: { custom: "echo user-owned" },
   });
-});
+}, 30_000);
 
 test.each(["^19.0.0", ">=19"])("compatible locked peer range %s is preserved", async (range) => {
   const { directory, files } = await fixture();

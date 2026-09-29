@@ -110,7 +110,7 @@ async function runFishCompletion(words: string[]): Promise<string[]> {
   const source = `${script}
 complete -C "$argv[1]"
 `;
-  const result = Bun.spawnSync(["fish", "-c", source, fishCommand(words)], {
+  const result = Bun.spawnSync(["fish", "--no-config", "-c", source, fishCommand(words)], {
     stdout: "pipe",
     stderr: "pipe",
   });
