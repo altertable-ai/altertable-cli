@@ -102,7 +102,7 @@ export function createAppFiles(
   const files = { ...payload.starter };
   const packageJson = JSON.parse(files["package.json"]!);
   packageJson.name = identity.name;
-  packageJson.dependencies["@altertable/data-app-runtime"] = `file:${runtimePath}`;
+  packageJson.dependencies["@altertable/data-app"] = `file:${runtimePath}`;
   files["package.json"] = `${JSON.stringify(packageJson, null, 2)}\n`;
   const app = JSON.parse(files["app.json"]!);
   app.title = identity.title;

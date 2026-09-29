@@ -1,13 +1,14 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
-import { defineDataContent, describeViewInput, type DataViewDefinition } from "../src/view.tsx";
-import { createDataContext } from "../src/ui/data-context.ts";
-import { dateRangeVariable, defineAppVariables, textVariable } from "../src/ui/variables.ts";
-import { ContentSkeleton } from "../src/ui/ContentSkeleton.tsx";
-import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
-import { calendarMetricComparison } from "../src/ui/comparison.ts";
-import { MetricWidget } from "../src/ui/MetricWidget.tsx";
+import { defineDateRangeContract, defineQueryNames } from "../src/core/contract.ts";
+import { defineDataContent } from "../src/react/content.ts";
+import { describeViewInput, type DataViewDefinition } from "../src/react/view.ts";
+import { createDataContext } from "../src/react/ui/data-context.ts";
+import { dateRangeVariable, defineAppVariables, textVariable } from "../src/react/ui/variables.ts";
+import { ContentSkeleton } from "../src/react/ui/ContentSkeleton.tsx";
+import { WidgetViewTabs } from "../src/react/ui/WidgetViewTabs.tsx";
+import { calendarMetricComparison } from "../src/react/ui/comparison.ts";
+import { MetricWidget } from "../src/react/ui/MetricWidget.tsx";
 
 const calendar = defineDateRangeContract({
   minDate: "2026-01-01",
@@ -99,6 +100,9 @@ test("context validates glossary queries and binds widget evidence to its regist
     context.evidence({ id: "total", glossaryIds: ["completed"], queryNames: ["orders"] })
       .glossaryIds,
   ).toEqual(["completed"]);
+  expect(() => context.evidence({ id: " ", glossaryIds: ["completed"] })).toThrow(
+    "Evidence needs a nonempty ID",
+  );
   expect(
     context.storyStep({
       id: "finding",

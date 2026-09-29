@@ -71,7 +71,7 @@ test("failed dependency resolution rolls back runtime, added peer, and lockfile"
   const app = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
   delete app.dependencies["react-dom"];
   await writeFile(join(directory, "package.json"), JSON.stringify(app));
-  files["src/format.ts"] += "\n// changed\n";
+  files["src/core/format.ts"] += "\n// changed\n";
   const before = await snapshot(directory);
   const failure = await upgradeApp(directory, {
     runtimeFiles: files,
@@ -132,7 +132,9 @@ test("legacy generated apps migrate internal paths while keeping app source and 
   const appSource = await readFile(join(directory, "src/App.tsx"), "utf8");
   expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
   expect(await Bun.file(join(directory, ".altertable/runtime/server.ts")).exists()).toBe(false);
-  expect(await Bun.file(join(directory, ".altertable/runtime/src/server.ts")).exists()).toBe(true);
+  expect(await Bun.file(join(directory, ".altertable/runtime/src/server/index.ts")).exists()).toBe(
+    true,
+  );
   expect(await readFile(join(directory, "src/App.tsx"), "utf8")).toBe(appSource);
   expect(await installedRuntimeIntegrity(directory)).toEqual(runtimeIntegrity(files));
 });
@@ -156,7 +158,7 @@ test.each(["^19.0.0", ">=19"])("compatible locked peer range %s is preserved", a
   app.dependencies.react = range;
   const source = JSON.stringify(app);
   await writeFile(join(directory, "package.json"), source);
-  files["src/format.ts"] += "\n// source change\n";
+  files["src/core/format.ts"] += "\n// source change\n";
   expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
   expect(await readFile(join(directory, "package.json"), "utf8")).toBe(source);
 });
@@ -166,7 +168,7 @@ test("unchanged peer requirements still reject incompatible app dependencies", a
   const app = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
   app.dependencies.react = "^18.0.0";
   await writeFile(join(directory, "package.json"), JSON.stringify(app));
-  files["src/format.ts"] += "\n// source change\n";
+  files["src/core/format.ts"] += "\n// source change\n";
   const before = await snapshot(directory);
   const failure = await upgradeApp(directory, { runtimeFiles: files }).catch(
     (error: unknown) => error,

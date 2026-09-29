@@ -1,16 +1,20 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { defineDateRangeContract, defineOperation, defineQueryNames } from "../src/contract.ts";
-import { createDataClient } from "../src/client.ts";
-import { createDataHooks } from "../src/react.tsx";
-import { resolveViewInput } from "../src/view.tsx";
-import { dateRangeVariable } from "../src/ui/variables.ts";
-import { createDataContext } from "../src/ui/data-context.ts";
-import { ComparisonVisual } from "../src/ui/ComparisonVisual.tsx";
-import { VisualizationWidget } from "../src/ui/VisualizationWidget.tsx";
-import { TableWidget } from "../src/ui/TableWidget.tsx";
-import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
-import type { DataOperation, DateRangeRequest } from "../src/contract.ts";
+import {
+  defineDateRangeContract,
+  defineOperation,
+  defineQueryNames,
+} from "../src/core/contract.ts";
+import { createDataClient } from "../src/client/index.ts";
+import { createDataHooks } from "../src/react/index.ts";
+import { resolveViewInput } from "../src/react/view.ts";
+import { dateRangeVariable } from "../src/react/ui/variables.ts";
+import { createDataContext } from "../src/react/ui/data-context.ts";
+import { ComparisonVisual } from "../src/react/ui/ComparisonVisual.tsx";
+import { VisualizationWidget } from "../src/react/ui/VisualizationWidget.tsx";
+import { TableWidget } from "../src/react/ui/TableWidget.tsx";
+import { WidgetViewTabs } from "../src/react/ui/WidgetViewTabs.tsx";
+import type { DataOperation, DateRangeRequest } from "../src/core/contract.ts";
 
 const names = defineQueryNames({ activity: "activity" });
 const context = createDataContext(names)({
@@ -20,6 +24,7 @@ const context = createDataContext(names)({
   },
 });
 const actions = context.metric({ id: "actions", glossaryId: "actions", format: { kind: "count" } });
+const featureEvidence = context.evidence({ id: "features", queryNames: [names.activity] });
 const calendar = defineDateRangeContract({
   timeZone: "UTC",
   maxRangeDays: 31,
@@ -97,6 +102,7 @@ test("bound visual selectors do not run during loading or render an empty result
   const content = view.content((result) => (
     <VisualizationWidget
       title="Features"
+      evidence={featureEvidence}
       reading={result.select((data) => {
         calls++;
         return data.rows;
@@ -193,6 +199,7 @@ test("bound visualization views render inside one widget with a selected view", 
   const html = renderToStaticMarkup(
     <VisualizationWidget
       title="Feature use"
+      evidence={featureEvidence}
       reading={{ loading: false, value: [{ name: "Insights", count: 4 }] }}
       isEmpty={(rows) => rows.length === 0}
       empty={{ title: "No feature use" }}
@@ -217,6 +224,7 @@ test("bound tables keep their row contract while loading", () => {
   const content = view.content((result) => (
     <TableWidget
       title="Features"
+      evidence={featureEvidence}
       reading={result.select((data) => data.rows)}
       rowKey={(row) => row}
       columns={[{ id: "feature", header: "Feature", cell: (row) => row }]}

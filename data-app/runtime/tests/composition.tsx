@@ -28,10 +28,11 @@ import {
   UpdatedAt,
   useAppVariables,
   defineDataContext,
+  createDataContext,
   evidenceFor,
-} from "../src/ui/index.ts";
-import type { AppToolbarProps, PlayStoryProps } from "../src/ui/index.ts";
-import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
+} from "../src/react/ui/index.ts";
+import type { AppToolbarProps, PlayStoryProps } from "../src/react/ui/index.ts";
+import { defineDateRangeContract, defineQueryNames } from "../src/core/contract.ts";
 
 const toolbarProps = {
   refresh: { refreshing: false, onRefresh: () => {} },
@@ -48,10 +49,7 @@ const dataContext = defineDataContext({
   glossary: { orders: { term: "Orders", definition: "Completed orders." } },
 });
 const queryNames = defineQueryNames({ totals: "order-totals" });
-const evidence = evidenceFor(
-  dataContext,
-  queryNames,
-)({
+const evidence = createDataContext(queryNames)(dataContext).evidence({
   id: "orders",
   glossaryIds: ["orders"],
   queryNames: [queryNames.totals],

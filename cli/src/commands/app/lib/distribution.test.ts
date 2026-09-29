@@ -19,7 +19,7 @@ afterEach(async () => {
 test("distribution is deterministic, source-based, and excludes development files", async () => {
   const payload = await readDataAppPayload();
   expect(await readDataAppPayload()).toEqual(payload);
-  expect(Object.keys(payload.runtime)).toContain("src/ui/PlayStory.tsx");
+  expect(Object.keys(payload.runtime)).toContain("src/react/ui/PlayStory.tsx");
   expect(Object.keys(payload.starter)).toContain("src/App.tsx");
   for (const path of [...Object.keys(payload.runtime), ...Object.keys(payload.starter)]) {
     expect(path).not.toMatch(/(^|\/)(tests|fixtures|node_modules|dist|\.altertable)(\/|$)|\.txt$/);

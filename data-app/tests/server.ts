@@ -1,8 +1,8 @@
 import starter from "../starter/src/index.html";
 import view from "../starter/fixtures/view.html";
 import components from "../starter/fixtures/index.html";
-import { createDataHandler } from "../runtime/src/server.ts";
-import { DataSourceError } from "../runtime/src/contract.ts";
+import { createDataHandler } from "../runtime/src/server/index.ts";
+import { DataSourceError } from "../runtime/src/core/contract.ts";
 import { operations } from "../starter/src/operations.ts";
 let fail = false;
 const handler = createDataHandler(operations, async () => ({

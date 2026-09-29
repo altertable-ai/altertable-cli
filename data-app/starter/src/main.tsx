@@ -1,4 +1,4 @@
-import { mountDataApp } from "@altertable/data-app-runtime/react";
+import { mountDataApp } from "@altertable/data-app/react";
 import { App } from "#app/App.tsx";
 import app from "#config";
 

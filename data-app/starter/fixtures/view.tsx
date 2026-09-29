@@ -1,14 +1,14 @@
-import { createDataClient } from "@altertable/data-app-runtime/client";
+import { createDataClient } from "@altertable/data-app/client";
 import {
   createDataHooks,
   mountDataApp,
-} from "@altertable/data-app-runtime/react";
+} from "@altertable/data-app/react";
 import {
   defineDateRangeContract,
   defineQueryNames,
   type DataOperation,
   type DateRangeRequest,
-} from "@altertable/data-app-runtime/contract";
+} from "@altertable/data-app/contract";
 import {
   DataApp,
   Grid,
@@ -19,7 +19,7 @@ import {
   dateRangeVariable,
   createDataContext,
   defineDataIdentifiers,
-} from "@altertable/data-app-runtime/ui";
+} from "@altertable/data-app/react";
 
 type Activity = { count: number; features: string[] };
 const config = {
@@ -66,6 +66,7 @@ const context = createDataContext(defineQueryNames({ activity: "activity" }))({
   },
 });
 const actions = context.metric({ id: "actions", glossaryId: "actions", format: { kind: "count" } });
+const activityEvidence = context.evidence({ id: "activity", queryNames: ["activity"] });
 const content = activityView.content((state) => (
   <Stack data-testid="shared-content">
     <p>{state.loading ? "Loading activity…" : `Results for ${period.describeInput(state.input)}`}</p>
@@ -73,6 +74,7 @@ const content = activityView.content((state) => (
       <GridItem span={2} data-testid="shared-primary">
         <VisualizationWidget
           title="Activity across product features and organizations"
+          evidence={activityEvidence}
           reading={state.select((data) => data.features)}
           isEmpty={(items) => items.length === 0}
           empty={{ title: "No features" }}

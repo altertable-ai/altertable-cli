@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import * as runtime from "../src/server.ts";
-import * as contract from "../src/contract.ts";
-import * as local from "../src/local.ts";
-import * as appearance from "../src/appearance.ts";
+import * as runtime from "../src/server/index.ts";
+import * as contract from "../src/core/contract.ts";
+import * as local from "../src/server/local.ts";
+import * as appearance from "../src/core/appearance.ts";
 test("runtime validates input, bounds rows, and hides query failures", async () => {
   expect(appearance.parseAppearance({ density: "compact", cornerRadius: "small" })).toMatchObject({
     density: "compact",

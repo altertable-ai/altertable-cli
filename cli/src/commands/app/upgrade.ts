@@ -159,7 +159,7 @@ export async function upgradeApp(
   const packagePath = join(directory, "package.json");
   const packageSource = await readFile(packagePath, "utf8");
   const appPackage = JSON.parse(packageSource) as PackageManifest;
-  if (appPackage.dependencies?.["@altertable/data-app-runtime"] !== `file:${runtimePath}`) {
+  if (appPackage.dependencies?.["@altertable/data-app"] !== `file:${runtimePath}`) {
     throw new ConfigurationError("package.json does not reference the generated runtime.");
   }
   const previousPackage = JSON.parse(
@@ -287,13 +287,7 @@ async function resolveLockfile(directory: string): Promise<void> {
   const env = copyProcessEnv();
   for (const key of Object.keys(env)) if (key.startsWith("ALTERTABLE_")) delete env[key];
   const child = Bun.spawn(
-    [
-      process.execPath,
-      "update",
-      "@altertable/data-app-runtime",
-      "--lockfile-only",
-      "--ignore-scripts",
-    ],
+    [process.execPath, "update", "@altertable/data-app", "--lockfile-only", "--ignore-scripts"],
     {
       cwd: directory,
       env: { ...env, BUN_BE_BUN: "1" },

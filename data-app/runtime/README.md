@@ -1,40 +1,39 @@
 # Data app runtime APIs
 
-Start with the task below, then read the linked types. Import through `@altertable/data-app-runtime/<entry>`; paths under `src/` are implementation details and can move during upgrades.
+Start with the task below, then read the linked types. Import through `@altertable/data-app/<entry>`; paths under `src/` are implementation details and can move during upgrades.
+
+`src/core/` contains shared contracts and pure data logic. `src/client/` and `src/server/` depend on core without importing React or UI code. `src/react/` owns hooks and `src/react/ui/` owns components and styles. Apps import the package entries below rather than those source folders.
 
 ## Entry points
 
 | Task | Package entry | Start here |
 | --- | --- | --- |
-| Define bounded operations, live checks, and date ranges | `/contract` | [defineOperation, defineDateRangeContract, parsers](src/contract.ts) |
-| Author app identity and scope | `/config` | [DataAppConfig](src/config.ts) |
-| Mount the browser app and load data | `/react` | [mountDataApp, createDataHooks, defineDataView, useView](src/react.tsx) |
-| Call operations without React | `/client` | [createDataClient](src/client.ts) |
-| Run locally through the CLI proxy | `/local` | [serveLocalApp, localLakehouse](src/local.ts) |
-| Author a hosted server | `/server` | [createDataHandler, RequestAccess](src/server.ts) |
-| Set brand tokens and viewer theme | `/appearance` | [parseAppearance, createThemeController](src/appearance.ts) |
-| Format dates, numbers, ratios, currency, and plural forms | `/format` | [Formatting functions](src/format.ts) |
-| Compose a view | `/ui` | [All public components and types](src/ui/index.ts) |
-| Select a semantic icon | `/icons` | [AppIcon and icon names](src/ui/icons.ts) |
+| Define bounded operations, live checks, and date ranges | `/contract` | [defineOperation, defineDateRangeContract, parsers](src/core/contract.ts) |
+| Author app identity and scope | `/config` | [DataAppConfig](src/core/config.ts) |
+| Mount the browser app, load data, and compose its UI | `/react` | [mountDataApp, createDataHooks, DataApp, Grid](src/react/index.ts) |
+| Call operations without React | `/client` | [createDataClient](src/client/index.ts) |
+| Run locally or host a server | `/server` | [serveLocalApp, localLakehouse, createDataHandler](src/server/index.ts) |
+| Set brand tokens and viewer theme | `/appearance` | [parseAppearance, createThemeController](src/core/appearance.ts) |
+| Format dates, numbers, ratios, currency, and plural forms | `/format` | [Formatting functions](src/core/format.ts) |
 
 ## Find UI by task
 
-All of these APIs are exported from `/ui`. Each component's stylesheet lives beside its implementation.
+All of these APIs are exported from `/react`. Each component's stylesheet lives beside its implementation.
 
 | Task | Start here | Related APIs |
 | --- | --- | --- |
-| Primary request and page shell | [DataApp](src/ui/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
-| Initial connection check | [GettingStarted](src/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
-| Arrange content | [Grid](src/ui/Grid.tsx), [Stack](src/ui/Stack.tsx) | StorySection |
-| Show a key number | [MetricWidget](src/ui/MetricWidget.tsx) | ComparisonVisual |
-| Show charts and collections | [VisualizationWidget](src/ui/VisualizationWidget.tsx), [TableWidget](src/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |
-| Handle a request's loading, error, and stale data | [DataSection](src/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
-| Show freshness and refresh | [UpdatedAt](src/ui/UpdatedAt.tsx), [AppToolbar](src/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
-| Bind filters to the URL | [variables](src/ui/variables.ts), [DateRangePicker](src/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
-| Search a loaded collection | [searchItems](src/ui/searchItems.ts), [SearchMatch](src/ui/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/ui/AboutData.tsx), [DataContext](src/ui/data-context.ts) | [GlossaryDefinition](src/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/ui/data-identifiers.tsx) |
-| Present loaded findings | [PlayStory](src/ui/PlayStory.tsx) | StoryStep |
-| Build custom controls and overlays | [Button](src/ui/Button.tsx), [Sheet](src/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
+| Primary request and page shell | [DataApp](src/react/ui/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
+| Initial connection check | [GettingStarted](src/react/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
+| Arrange content | [Grid](src/react/ui/Grid.tsx), [Stack](src/react/ui/Stack.tsx) | StorySection |
+| Show a key number | [MetricWidget](src/react/ui/MetricWidget.tsx) | ComparisonVisual |
+| Show charts and collections | [VisualizationWidget](src/react/ui/VisualizationWidget.tsx), [TableWidget](src/react/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |
+| Handle a request's loading, error, and stale data | [DataSection](src/react/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
+| Show freshness and refresh | [UpdatedAt](src/react/ui/UpdatedAt.tsx), [AppToolbar](src/react/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
+| Bind filters to the URL | [variables](src/react/ui/variables.ts), [DateRangePicker](src/react/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
+| Search a loaded collection | [searchItems](src/react/ui/searchItems.ts), [SearchMatch](src/react/ui/SearchMatch.tsx) | SearchField |
+| Explain context, glossary, and queries | [AboutData](src/react/ui/AboutData.tsx), [DataContext](src/react/ui/data-context.ts) | [GlossaryDefinition](src/react/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/react/ui/data-identifiers.tsx) |
+| Present loaded findings | [PlayStory](src/react/ui/PlayStory.tsx) | StoryStep |
+| Build custom controls and overlays | [Button](src/react/ui/Button.tsx), [Sheet](src/react/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
 ## Contracts
 
@@ -60,9 +59,8 @@ In the CLI repository, edit the canonical `data-app/runtime/` package. Its sibli
 ## Bind a view
 
 ```tsx
-import { createDataClient } from "@altertable/data-app-runtime/client";
-import { createDataHooks } from "@altertable/data-app-runtime/react";
-import { dateRangeVariable, DataApp, Grid, MetricWidget, VisualizationWidget, Ranking } from "@altertable/data-app-runtime/ui";
+import { createDataClient } from "@altertable/data-app/client";
+import { createDataHooks, dateRangeVariable, DataApp, Grid, MetricWidget, VisualizationWidget, Ranking } from "@altertable/data-app/react";
 import type { operations } from "#app/operations.ts";
 import { calendar } from "#app/contracts.ts";
 import { dataContext, actions } from "#app/data-context.tsx";
@@ -81,12 +79,16 @@ const activityView = defineDataView({
   isEmpty: (data) => data.features.length === 0,
   empty: { title: "No activity in this range" },
 });
+const featureEvidence = dataContext.evidence({
+  id: "feature-use", queryNames: [dataContext.queryNames.activity],
+});
 const content = activityView.content((result) => (
   <Grid columns={2}>
     <MetricWidget metric={actions} reading={result.metric((data) => ({
       current: data.count, previous: data.previousCount,
     }))} />
     <VisualizationWidget title="Feature use"
+      evidence={featureEvidence}
       reading={result.select((data) => data.features)}
       isEmpty={(features) => features.length === 0}
       empty={{ title: "No features" }}
@@ -107,7 +109,7 @@ The `date` binding identifies the controlling variable and extracts its range fr
 The shared calendar lives in a browser-safe module:
 
 ```ts
-import { defineDateRangeContract } from "@altertable/data-app-runtime/contract";
+import { defineDateRangeContract } from "@altertable/data-app/contract";
 export const calendar = defineDateRangeContract({
   minDate: "2026-01-01", maxRangeDays: 90, timeZone: "UTC",
 });
@@ -117,6 +119,8 @@ export const calendar = defineDateRangeContract({
 `useView` generates controls for date, text and fixed-option select variables; custom controls use `result.variables.bind(name)`. `input` chooses which variables reach the operation, so local search can stay local. The callback in `view.content` receives the displayed result, including its original input during refreshes and failures. Hooks belong in the enclosing component.
 
 `TableWidget` also accepts `reading={result.select((data) => data.rows)}` and optional `skeletonRows`. Columns and empty states are declared once for both loading and ready layouts. For bounded results already loaded in the app, pass `pagination={{ pageSize: 8 }}` to page the rows after local search; the footer counts only the supplied rows. `limit` remains a separate, mutually exclusive display cap. Large catalogs need query-backed pagination with a stable sort and total count.
+
+Bound `VisualizationWidget` and `TableWidget` calls require `evidence` from `context.evidence(...)`. A bound `MetricWidget` gets evidence from its metric definition. Evidence must name at least one glossary entry or query. Static widgets may omit it.
 
 `MetricWidget` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `favorableDirection` is optional; changes are neutral until the author defines whether up or down is favorable.
 

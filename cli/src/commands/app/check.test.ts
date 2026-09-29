@@ -16,7 +16,8 @@ afterEach(() => {
 describe("data app contract", () => {
   test("rejects unbounded or unchecked operations in the app process", async () => {
     mkdirSync(join(directory, "src"));
-    mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
+    mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
+    mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
     writeFileSync(
       join(directory, "app.json"),
       JSON.stringify({
@@ -25,7 +26,7 @@ describe("data app contract", () => {
       }),
     );
     writeFileSync(
-      join(directory, ".altertable/runtime/src/appearance.ts"),
+      join(directory, ".altertable/runtime/src/core/appearance.ts"),
       "export function parseAppearance() {}",
     );
     writeFileSync(
@@ -84,10 +85,11 @@ describe("data app contract", () => {
 
 test("browser bundles reject value imports of operations but allow type imports", async () => {
   mkdirSync(join(directory, "src"));
-  mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
+  mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
+  mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
   writeFileSync(join(directory, "app.json"), JSON.stringify({ schemaVersion: 1, title: "Test" }));
   writeFileSync(
-    join(directory, ".altertable/runtime/src/appearance.ts"),
+    join(directory, ".altertable/runtime/src/core/appearance.ts"),
     "export function parseAppearance() {}",
   );
   writeFileSync(
@@ -113,21 +115,22 @@ test("browser bundles reject value imports of operations but allow type imports"
 
 test("lakehouse checks execute every declared input through the current runtime layout", async () => {
   mkdirSync(join(directory, "src"));
-  mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
+  mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
+  mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
   writeFileSync(
     join(directory, "app.json"),
     JSON.stringify({ schemaVersion: 1, title: "Live check" }),
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/appearance.ts"),
+    join(directory, ".altertable/runtime/src/core/appearance.ts"),
     "export function parseAppearance() {}",
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/local.ts"),
+    join(directory, ".altertable/runtime/src/server/local.ts"),
     "export function localLakehouse() { return {}; }",
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/server.ts"),
+    join(directory, ".altertable/runtime/src/server/index.ts"),
     `
     export function createDataHandler(operations) {
       return async (request) => {

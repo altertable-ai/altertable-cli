@@ -1,5 +1,5 @@
-import { createDataContext } from "@altertable/data-app-runtime/ui";
-import { connectionQueryNames } from "@altertable/data-app-runtime/contract";
+import { createDataContext } from "@altertable/data-app/react";
+import { connectionQueryNames } from "@altertable/data-app/contract";
 
 /** Setup context only. Replace it with the exploration's scope, exact definitions, limitations,
  * and query evidence after inspecting the source data. */

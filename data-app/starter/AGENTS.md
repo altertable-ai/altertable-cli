@@ -9,7 +9,7 @@ Inspect source data, time coverage and existing definitions before choosing an e
 | Explain the exploration or define terms | `src/data-context.ts` or `.tsx` | [Data guidance](docs/data.md), [context APIs](.altertable/runtime/README.md#find-ui-by-task) |
 | Change title, scope, or brand | `app.json` | [Config and appearance APIs](.altertable/runtime/README.md#entry-points) |
 | Find a component, hook, or parser | Read `.altertable/runtime/` | [Runtime API map](.altertable/runtime/README.md) |
-| Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server.ts) |
+| Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server/index.ts) |
 
 Edit app-owned source and use public runtime APIs. The generated connectivity screen is scaffolding, not an example analysis.
 

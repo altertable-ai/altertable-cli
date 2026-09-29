@@ -1,5 +1,5 @@
 {
-  "name": "@altertable/data-app-runtime",
+  "name": "@altertable/data-app",
   "version": "0.59.1",
   "private": true,
   "files": [
@@ -9,16 +9,13 @@
   ],
   "type": "module",
   "exports": {
-    "./contract": "./src/contract.ts",
-    "./config": "./src/config.ts",
-    "./server": "./src/server.ts",
-    "./local": "./src/local.ts",
-    "./client": "./src/client.ts",
-    "./format": "./src/format.ts",
-    "./appearance": "./src/appearance.ts",
-    "./react": "./src/react.tsx",
-    "./ui": "./src/ui/index.ts",
-    "./icons": "./src/ui/icons.ts"
+    "./contract": "./src/core/contract.ts",
+    "./config": "./src/core/config.ts",
+    "./format": "./src/core/format.ts",
+    "./appearance": "./src/core/appearance.ts",
+    "./client": "./src/client/index.ts",
+    "./server": "./src/server/index.ts",
+    "./react": "./src/react/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

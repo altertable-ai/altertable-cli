@@ -1,11 +1,11 @@
-import type { DataOperation, DateRangeRequest } from "../src/contract.ts";
-import { defineDateRangeContract } from "../src/contract.ts";
-import { createDataClient } from "../src/client.ts";
-import { createDataHooks } from "../src/react.tsx";
-import { dateRangeVariable, textVariable } from "../src/ui/variables.ts";
-import type { MetricWidgetProps } from "../src/ui/MetricWidget.tsx";
-import type { DataSectionProps } from "../src/ui/DataSection.tsx";
-import type { DataAppProps } from "../src/ui/DataApp.tsx";
+import type { DataOperation, DateRangeRequest } from "../src/core/contract.ts";
+import { defineDateRangeContract } from "../src/core/contract.ts";
+import { createDataClient } from "../src/client/index.ts";
+import { createDataHooks } from "../src/react/index.ts";
+import { dateRangeVariable, textVariable } from "../src/react/ui/variables.ts";
+import type { MetricWidgetProps } from "../src/react/ui/MetricWidget.tsx";
+import type { DataSectionProps } from "../src/react/ui/DataSection.tsx";
+import type { DataAppProps } from "../src/react/ui/DataApp.tsx";
 
 const { defineDataView } = createDataHooks<{
   activity: DataOperation<DateRangeRequest, { count: number }>;
@@ -54,10 +54,10 @@ const app: DataAppProps<number> = {
 };
 void [metric, section, app];
 
-import { defineOperation, defineQueryNames } from "../src/contract.ts";
-import { createDataContext } from "../src/ui/data-context.ts";
-import { MetricWidget } from "../src/ui/MetricWidget.tsx";
-import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
+import { defineOperation, defineQueryNames } from "../src/core/contract.ts";
+import { createDataContext } from "../src/react/ui/data-context.ts";
+import { MetricWidget } from "../src/react/ui/MetricWidget.tsx";
+import { WidgetViewTabs } from "../src/react/ui/WidgetViewTabs.tsx";
 const queries = defineQueryNames({ actions: "actions" });
 defineOperation({
   queryNames: queries,

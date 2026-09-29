@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { defineDataIdentifiers } from "../src/ui/data-identifiers.tsx";
+import { defineDataIdentifiers } from "../src/react/ui/data-identifiers.tsx";
 
 const identifiers = defineDataIdentifiers({
   tables: {

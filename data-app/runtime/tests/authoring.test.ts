@@ -9,9 +9,9 @@ import {
   parseTrue,
   previousDateRange,
   rowsAsRecords,
-} from "../src/contract.ts";
-import { dataAppTitle } from "../src/config.ts";
-import { resolveDataView } from "../src/ui/DataBoundary.tsx";
+} from "../src/core/contract.ts";
+import { dataAppTitle } from "../src/core/config.ts";
+import { resolveDataView } from "../src/core/data-view.ts";
 
 test("starter connection requires a successful bounded query", async () => {
   const query = connectionCheck();

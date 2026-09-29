@@ -37,6 +37,11 @@ test("view binding preserves displayed inputs through comparison, navigation, an
   hold = false;
   release?.();
   await expect(page.getByText("Results for Mar 10–12, 2026 UTC")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Explore Activity across product features and organizations" })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("Recorded product actions.");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Choose dates" }).click();
   await page.getByRole("checkbox", { name: /Compare with previous period/ }).check();
   await expect

@@ -1,5 +1,5 @@
 import page from "#app/index.html";
-import { serveLocalApp } from "@altertable/data-app-runtime/local";
+import { serveLocalApp } from "@altertable/data-app/server";
 import { operations } from "#app/operations.ts";
 import app from "#config";
 

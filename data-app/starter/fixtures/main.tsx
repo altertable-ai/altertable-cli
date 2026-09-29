@@ -1,8 +1,8 @@
-import { mountDataApp } from "@altertable/data-app-runtime/react";
+import { mountDataApp } from "@altertable/data-app/react";
 import { useState } from "react";
-import { createDataHooks } from "@altertable/data-app-runtime/react";
-import { createDataClient } from "@altertable/data-app-runtime/client";
-import { connectionCheck, defineDateRangeContract } from "@altertable/data-app-runtime/contract";
+import { createDataHooks } from "@altertable/data-app/react";
+import { createDataClient } from "@altertable/data-app/client";
+import { connectionCheck, defineDateRangeContract } from "@altertable/data-app/contract";
 import {
   DataApp,
   dateRangeVariable,
@@ -16,7 +16,7 @@ import {
   StorySection,
   TableWidget,
   VisualizationWidget,
-} from "@altertable/data-app-runtime/ui";
+} from "@altertable/data-app/react";
 
 const { defineDataView, useView } = createDataHooks<{
   connection: ReturnType<typeof connectionCheck>;

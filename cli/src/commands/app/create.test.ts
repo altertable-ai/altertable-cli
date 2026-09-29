@@ -74,7 +74,7 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());
     const paths = JSON.parse(result.stdout[0]!).files as string[];
-    expect(paths).toContain(".altertable/runtime/src/ui/PlayStory.tsx");
+    expect(paths).toContain(".altertable/runtime/src/react/ui/PlayStory.tsx");
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
     expect(paths).toContain("docs/data.md");
@@ -401,7 +401,7 @@ describe("app create", () => {
       });
     }
 
-    const runtime = join(directory, ".altertable/runtime/src/server.ts");
+    const runtime = join(directory, ".altertable/runtime/src/server/index.ts");
     writeFileSync(runtime, `${readFileSync(runtime, "utf8")}\n// Local edit.\n`);
     expect(runCommandWithTestRuntime(["app", "upgrade", "--dir", directory])).rejects.toThrow(
       "was modified",
@@ -420,16 +420,16 @@ describe("app create", () => {
       "--without-profile",
     ]);
     const files = await readRuntimeSource();
-    files["src/format.ts"] += "\n// Changed source.\n";
+    files["src/core/format.ts"] += "\n// Changed source.\n";
     expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
-    expect(readFileSync(join(directory, ".altertable/runtime/src/format.ts"), "utf8")).toContain(
-      "Changed source",
-    );
+    expect(
+      readFileSync(join(directory, ".altertable/runtime/src/core/format.ts"), "utf8"),
+    ).toContain("Changed source");
     expect((await installedRuntimeIntegrity(directory)).sha256).toEqual(
       currentRuntimeIntegrity(files).sha256,
     );
 
-    const generated = join(directory, ".altertable/runtime/src/format.ts");
+    const generated = join(directory, ".altertable/runtime/src/core/format.ts");
     writeFileSync(generated, `${readFileSync(generated, "utf8")}\n// App edit.\n`);
     expect(upgradeApp(directory, { runtimeFiles: await readRuntimeSource() })).rejects.toThrow(
       "format.ts was modified",
@@ -450,7 +450,7 @@ describe("app create", () => {
     const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
     integrity.version = "0.1.0";
     writeFileSync(integrityPath, `${JSON.stringify(integrity, null, 2)}\n`);
-    const runtimePath = join(directory, ".altertable/runtime/src/server.ts");
+    const runtimePath = join(directory, ".altertable/runtime/src/server/index.ts");
     const beforeRuntime = readFileSync(runtimePath, "utf8");
     const beforeIntegrity = readFileSync(integrityPath, "utf8");
     const lockPath = join(directory, "bun.lock");

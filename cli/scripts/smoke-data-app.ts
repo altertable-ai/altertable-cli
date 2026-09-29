@@ -24,7 +24,7 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
       [...command, "app", "create", "package-smoke", "--dir", app, "--without-profile"],
       directory,
     );
-    if (!(await Bun.file(join(app, ".altertable/runtime/src/server.ts")).exists()))
+    if (!(await Bun.file(join(app, ".altertable/runtime/src/server/index.ts")).exists()))
       throw new Error("Packaged runtime is missing");
     if (scaffoldOnly) return;
     await run([process.execPath, "install", "--frozen-lockfile", "--ignore-scripts"], app);

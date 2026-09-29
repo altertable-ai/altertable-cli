@@ -1,24 +1,24 @@
 import { expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { searchItems } from "../src/ui/searchItems.ts";
-import { SearchMatch } from "../src/ui/SearchMatch.tsx";
-import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/shortcuts.ts";
-import { TableWidget } from "../src/ui/TableWidget.tsx";
-import { QueryList, formatSql } from "../src/ui/QueryList.tsx";
-import { DataSection } from "../src/ui/DataSection.tsx";
+import { searchItems } from "../src/react/ui/searchItems.ts";
+import { SearchMatch } from "../src/react/ui/SearchMatch.tsx";
+import { ariaKeyShortcuts, shortcutLabel } from "../src/react/ui/shortcuts.ts";
+import { TableWidget } from "../src/react/ui/TableWidget.tsx";
+import { QueryList, formatSql } from "../src/react/ui/QueryList.tsx";
+import { DataSection } from "../src/react/ui/DataSection.tsx";
 import {
   dateRangeControl,
   dateRangeVariable,
   defineAppVariables,
   selectVariable,
   textVariable,
-} from "../src/ui/variables.ts";
-import { createDataClient, DataAppError } from "../src/client.ts";
-import { createDataHandler } from "../src/server.ts";
-import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
-import { chartColor } from "../src/ui/chartColor.ts";
-import { formatMetric } from "../src/format.ts";
+} from "../src/react/ui/variables.ts";
+import { createDataClient, DataAppError } from "../src/client/index.ts";
+import { createDataHandler } from "../src/server/index.ts";
+import { defineDateRangeContract, defineQueryNames } from "../src/core/contract.ts";
+import { chartColor } from "../src/react/ui/chartColor.ts";
+import { formatMetric } from "../src/core/format.ts";
 
 test("initial data errors show a useful recovery action for each failure", () => {
   function render(code: string) {

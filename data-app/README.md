@@ -1,10 +1,10 @@
 # Data app development
 
-`runtime/` is the private `@altertable/data-app-runtime` package. `starter/` is the actual getting-started application. `tests/` runs browser scenarios against the starter and its separate component fixtures.
+`runtime/` is the private `@altertable/data-app` package. `starter/` is the actual getting-started application. `tests/` runs browser scenarios against the starter and its separate component fixtures.
 
 The [runtime API map](runtime/README.md) routes readers to public entries and UI source. The [contributor router](AGENTS.md) identifies source and checks for each change.
 
-The runtime owns the standard `DataApp` page shell, `GettingStarted` connection screen, `useDataView` request state, browser and local server entry helpers, and reusable contract parsers. Generated apps keep their question, SQL, validation, exploration context, and view in `src/`.
+The package separates React-free `core/`, `client/`, and `server/` source from `react/`, which owns hooks, the `DataApp` shell, and UI. Generated apps keep their question, SQL, validation, exploration context, and view in `src/`.
 
 ## Develop
 
@@ -28,13 +28,13 @@ Use a configured profile for live data. `--watch-runtime` watches canonical runt
 - `cli/src/commands/app/lib/distribution.ts` declares the starter copy allowlist. `src/`, app configuration, lockfile, and authoring docs ship. Browser fixtures, tests, dependencies, and build outputs do not.
 - `createAppFiles` changes JSON identity fields and the lockfile root name. Application code reads `app.json`; source code has no template tokens.
 - `cli/scripts/package-data-app.ts` supplies the Bun build plugin. It replaces the source payload loader with literal file data. The npm bundle embeds this payload; native releases compile that same bundle. Installed CLIs never read this repository to create an app.
-- Generated apps commit `.altertable/runtime/` because it is a required `file:` dependency; only this repository's starter copy is ignored. Users own their generated `src/`, `app.json`, package manifest, and docs. The CLI owns `.altertable/runtime/` and records its source checksums. Public import paths remain `@altertable/data-app-runtime/...`.
+- Generated apps commit `.altertable/runtime/` because it is a required `file:` dependency; only this repository's starter copy is ignored. Users own their generated `src/`, `app.json`, package manifest, and docs. The CLI owns `.altertable/runtime/` and records its source checksums. Public import paths remain `@altertable/data-app/...`.
 
 The runtime owns its implementation dependencies. The starter owns React, ReactDOM, and its authoring tools. When runtime dependencies change, refresh the starter lockfile after setup:
 
 ```fish
 cd data-app/starter
-bun update @altertable/data-app-runtime --lockfile-only --ignore-scripts
+bun update @altertable/data-app --lockfile-only --ignore-scripts
 ```
 
 Commit both project lockfiles when their respective dependencies change. Runtime code changes alone need no lockfile update. Keep exported API changes compatible with existing apps, or explain the required application migration explicitly.
@@ -43,7 +43,7 @@ Commit both project lockfiles when their respective dependencies change. Runtime
 
 `app upgrade` validates installed checksums before replacing managed files, including removal of obsolete runtime files. It preserves app source. Dependency changes trigger a targeted Bun lockfile update without installing packages or running lifecycle scripts. Missing peers can be seeded from the starter's pinned dependencies; incompatible new peer requirements stop with an actionable error. A failed update restores runtime, package manifest, and lockfile. Dependency resolution can require the network or a populated Bun cache. Restart running previews after an upgrade.
 
-Existing generated apps keep their public imports. Their next `app upgrade` moves runtime implementation files into `src/` inside the managed package and removes the old tracked paths. App-owned files are preserved.
+The package is still private and bundled with the CLI. New generated apps use `@altertable/data-app` imports; the CLI upgrades the managed runtime files without changing app-owned source.
 
 ## Verify
 
