@@ -25,6 +25,7 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | Primary request and page shell | [DataApp](src/react/ui/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
 | Initial connection check | [GettingStarted](src/react/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
 | Arrange content | [Grid](src/react/ui/Grid.tsx), [Stack](src/react/ui/Stack.tsx) | ExplorationSection |
+| Fade only scrollable edges | [GradientScroll](src/react/ui/GradientScroll.tsx) | Vertical or horizontal; observes content and viewport size |
 | Show a key number | [MetricWidget](src/react/ui/MetricWidget.tsx) | ComparisonVisual |
 | Compose a custom evidence-backed widget | [DataWidget](src/react/ui/DataWidget.tsx) | Reading, loading, empty state, inspection, actions, footer |
 | Show charts and collections | [VisualizationWidget](src/react/ui/VisualizationWidget.tsx), [TableWidget](src/react/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |

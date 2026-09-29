@@ -81,10 +81,11 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.altertable-combobox-popover .react-aria-ListBox {
+.altertable-combobox-options {
   max-height: min(320px, 60dvh);
   margin-top: 4px;
-  overflow: auto;
+}
+.altertable-combobox-popover .react-aria-ListBox {
   outline: none;
 }
 .altertable-combobox-popover .react-aria-ListBoxItem {
@@ -163,6 +164,9 @@
 .altertable-combobox-special-button[data-disabled] {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.altertable-combobox-special-label {
+  font-weight: 400;
 }
 .altertable-combobox-special-mark {
   display: grid;

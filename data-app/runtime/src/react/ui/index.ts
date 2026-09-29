@@ -135,6 +135,8 @@ export { SearchMatch } from "./SearchMatch.tsx";
 export type { SearchMatchProps } from "./SearchMatch.tsx";
 export { Combobox } from "./Combobox.tsx";
 export type { ComboboxOption, ComboboxProps } from "./Combobox.tsx";
+export { GradientScroll } from "./GradientScroll.tsx";
+export type { GradientScrollProps } from "./GradientScroll.tsx";
 export { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
 export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./Tabs.tsx";
 

@@ -15,6 +15,7 @@ import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import type { DataContext } from "./data-context.ts";
 import { AppIcon } from "./icons.ts";
 import { IconButton } from "./IconButton.tsx";
+import { GradientScroll } from "./GradientScroll.tsx";
 import { classNames } from "./classNames.ts";
 import { subscribeSearch, writeSearch } from "./search.ts";
 import { isEditingTarget, shortcuts, useShortcut } from "./shortcuts.ts";
@@ -236,7 +237,7 @@ export function PresentStory({
                 />
               </div>
             </header>
-            <div className="altertable-present-main" key={step.id}>
+            <GradientScroll className="altertable-present-main" key={step.id}>
               <div className="altertable-present-copy">
                 <h2 id={headlineId} ref={headline} tabIndex={-1}>
                   {step.headline}
@@ -270,7 +271,7 @@ export function PresentStory({
               <div className="altertable-present-visual" data-kind={step.visualKind}>
                 {step.visual}
               </div>
-            </div>
+            </GradientScroll>
             <nav className="altertable-present-nav" aria-label="Story findings">
               <IconButton
                 icon="previous"

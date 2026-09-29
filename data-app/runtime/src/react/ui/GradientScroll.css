@@ -1,0 +1,52 @@
+.altertable-gradient-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  --at-scroll-fade-size: 1.5rem;
+}
+.altertable-gradient-scroll[data-axis="vertical"] {
+  overflow-x: hidden;
+}
+.altertable-gradient-scroll[data-axis="horizontal"] {
+  overflow-y: hidden;
+}
+.altertable-gradient-scroll[data-axis="vertical"][data-fade-start][data-fade-end] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--at-scroll-fade-size),
+    black calc(100% - var(--at-scroll-fade-size)),
+    transparent
+  );
+}
+.altertable-gradient-scroll[data-axis="vertical"][data-fade-start]:not([data-fade-end]) {
+  mask-image: linear-gradient(to bottom, transparent, black var(--at-scroll-fade-size));
+}
+.altertable-gradient-scroll[data-axis="vertical"][data-fade-end]:not([data-fade-start]) {
+  mask-image: linear-gradient(
+    to bottom,
+    black,
+    black calc(100% - var(--at-scroll-fade-size)),
+    transparent
+  );
+}
+.altertable-gradient-scroll[data-axis="horizontal"][data-fade-start][data-fade-end] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--at-scroll-fade-size),
+    black calc(100% - var(--at-scroll-fade-size)),
+    transparent
+  );
+}
+.altertable-gradient-scroll[data-axis="horizontal"][data-fade-start]:not([data-fade-end]) {
+  mask-image: linear-gradient(to right, transparent, black var(--at-scroll-fade-size));
+}
+.altertable-gradient-scroll[data-axis="horizontal"][data-fade-end]:not([data-fade-start]) {
+  mask-image: linear-gradient(
+    to right,
+    black,
+    black calc(100% - var(--at-scroll-fade-size)),
+    transparent
+  );
+}

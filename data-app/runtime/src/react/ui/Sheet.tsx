@@ -9,6 +9,7 @@ import {
 import { useMergeRefs } from "@floating-ui/react";
 import { classNames } from "./classNames.ts";
 import { AppIcon } from "./icons.ts";
+import { GradientScroll } from "./GradientScroll.tsx";
 import "./Sheet.css";
 
 export type SheetDialogProps = Omit<
@@ -135,7 +136,7 @@ export function Sheet({
             </button>
           </div>
         </header>
-        <div className="altertable-sheet-body">{children}</div>
+        <GradientScroll className="altertable-sheet-body">{children}</GradientScroll>
         {footer && <footer className="altertable-sheet-footer">{footer}</footer>}
       </div>
     </dialog>

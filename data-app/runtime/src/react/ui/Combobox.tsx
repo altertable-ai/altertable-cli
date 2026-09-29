@@ -10,6 +10,7 @@ import {
   type Selection,
 } from "react-aria-components";
 import { AppIcon } from "./icons.ts";
+import { GradientScroll } from "./GradientScroll.tsx";
 import { SearchMatch } from "./SearchMatch.tsx";
 import { searchItems } from "./searchItems.ts";
 import "./Combobox.css";
@@ -157,39 +158,41 @@ export function Combobox(props: ComboboxProps) {
             {feedback}
             {atLimit ? `. Maximum of ${props.maxSelected} selections reached.` : ""}
           </output>
-          <ListBox
-            ref={listRef}
-            items={matches}
-            aria-label={`${label} values`}
-            aria-describedby={statusId}
-            selectionMode={multiple ? "multiple" : "single"}
-            selectionBehavior={multiple ? "toggle" : "replace"}
-            selectedKeys={selected}
-            onSelectionChange={select}
-            renderEmptyState={() => (
-              <div className="altertable-combobox-empty">
-                {feedback}
-                {error && onRetry && <Button onPress={onRetry}>Try again</Button>}
-              </div>
-            )}
-          >
-            {(hit) => (
-              <ListBoxItem
-                id={hit.item.id}
-                textValue={hit.item.label}
-                isDisabled={atLimit && !selected.has(hit.item.id)}
-              >
-                <span>
-                  <SearchMatch match={hit.matches.label} />
-                </span>
-                {hit.item.description && (
-                  <small>
-                    <SearchMatch match={hit.matches.description} />
-                  </small>
-                )}
-              </ListBoxItem>
-            )}
-          </ListBox>
+          <GradientScroll className="altertable-combobox-options">
+            <ListBox
+              ref={listRef}
+              items={matches}
+              aria-label={`${label} values`}
+              aria-describedby={statusId}
+              selectionMode={multiple ? "multiple" : "single"}
+              selectionBehavior={multiple ? "toggle" : "replace"}
+              selectedKeys={selected}
+              onSelectionChange={select}
+              renderEmptyState={() => (
+                <div className="altertable-combobox-empty">
+                  {feedback}
+                  {error && onRetry && <Button onPress={onRetry}>Try again</Button>}
+                </div>
+              )}
+            >
+              {(hit) => (
+                <ListBoxItem
+                  id={hit.item.id}
+                  textValue={hit.item.label}
+                  isDisabled={atLimit && !selected.has(hit.item.id)}
+                >
+                  <span>
+                    <SearchMatch match={hit.matches.label} />
+                  </span>
+                  {hit.item.description && (
+                    <small>
+                      <SearchMatch match={hit.matches.description} />
+                    </small>
+                  )}
+                </ListBoxItem>
+              )}
+            </ListBox>
+          </GradientScroll>
           {missingOption && (
             <div className="altertable-combobox-special">
               <Button
@@ -202,7 +205,7 @@ export function Combobox(props: ComboboxProps) {
                   {selected.has(missingOption.id) ? "✓" : ""}
                 </span>
                 <span>
-                  <strong>{missingOption.label}</strong>
+                  <span className="altertable-combobox-special-label">{missingOption.label}</span>
                   <small>{missingOption.description}</small>
                 </span>
               </Button>
