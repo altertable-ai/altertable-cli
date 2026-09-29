@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir, rename, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { smokeDataApp } from "@/../scripts/smoke-data-app.ts";
 import packageJson from "../package.json" with { type: "json" };
 import { buildNpmBundle, NPM_BUNDLE_OPTIONS, NPM_BUNDLE_PATH } from "@/../scripts/npm-bundle.ts";
 import { VERSION } from "@/version.ts";
@@ -35,8 +36,7 @@ export const HARDENED_COMPILE_FLAGS = [
 export { NPM_BUNDLE_OPTIONS as JAVASCRIPT_BUNDLE_OPTIONS };
 
 const repositoryRoot = join(import.meta.dir, "../..");
-const cliRoot = join(repositoryRoot, "cli");
-const entrypoint = join(cliRoot, "src/cli.ts");
+const entrypoint = NPM_BUNDLE_PATH;
 const defaultOutputDirectory = join(repositoryRoot, "dist");
 const bunVersionFile = join(repositoryRoot, ".bun-version");
 
@@ -178,6 +178,7 @@ export async function compileReleaseTarget(
   await assertToolchain();
   await mkdir(outputDirectory, { recursive: true });
   const outputPath = join(outputDirectory, target.asset);
+  await buildNpmBundle();
   await run(compileCommand(target, outputPath));
   await assertNonemptyFile(outputPath);
   const signingCommand = darwinSignatureCommand(target, outputPath);
@@ -415,6 +416,7 @@ export async function smokeReleaseTarget(
   if (!help.includes("Altertable CLI") || !help.includes("Commands")) {
     throw new Error(`${target.asset} returned incomplete help output.`);
   }
+  await smokeDataApp([executable]);
   console.log(`Smoke-tested ${target.asset} (${target.platform}).`);
 }
 

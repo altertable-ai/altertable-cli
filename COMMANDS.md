@@ -259,15 +259,15 @@ altertable profile delete [options] <NAME>
 | --- | --- |
 | `--yes` | Confirm deletion |
 
-### `altertable catalogs`
+### `altertable catalog`
 
 Manage catalogs (databases and connections) in the current environment.
 
 **Usage**
 
 ```bash
-altertable catalogs
-altertable catalogs create
+altertable catalog
+altertable catalog create
 ```
 
 **Subcommands**
@@ -277,18 +277,18 @@ altertable catalogs create
 **Examples**
 
 ```bash
-altertable catalogs
-altertable catalogs create Analytics
+altertable catalog
+altertable catalog create Analytics
 ```
 
-#### `altertable catalogs create`
+#### `altertable catalog create`
 
 Create an Altertable catalog.
 
 **Usage**
 
 ```bash
-altertable catalogs create <NAME>
+altertable catalog create <NAME>
 ```
 
 **Arguments**
@@ -300,7 +300,7 @@ altertable catalogs create <NAME>
 **Examples**
 
 ```bash
-altertable catalogs create Analytics
+altertable catalog create Analytics
 ```
 
 ### `altertable api`
@@ -311,7 +311,7 @@ Management REST API — HTTP invoker and OpenAPI spec.
 
 ```bash
 altertable api [options] <ENDPOINT>
-altertable api routes|spec
+altertable api route|spec
 ```
 
 **Arguments**
@@ -333,26 +333,26 @@ altertable api routes|spec
 
 **Subcommands**
 
-- `routes` — List management API paths and methods from the bundled OpenAPI spec.
+- `route` — List management API paths and methods from the bundled OpenAPI spec.
 - `spec` — Print the bundled management OpenAPI specification (YAML by default; JSON with --json).
 
 **Examples**
 
 ```bash
 altertable api /whoami
-altertable api routes
+altertable api route
 altertable api /environments/production/connections
 altertable api /service_accounts -X POST -F label="CI Bot"
 ```
 
-#### `altertable api routes`
+#### `altertable api route`
 
 List management API paths and methods from the bundled OpenAPI spec.
 
 **Usage**
 
 ```bash
-altertable api routes [OPERATION]
+altertable api route [OPERATION]
 ```
 
 **Arguments**
@@ -364,8 +364,8 @@ altertable api routes [OPERATION]
 **Examples**
 
 ```bash
-altertable api routes
-altertable api routes createDatabase
+altertable api route
+altertable api route createDatabase
 ```
 
 #### `altertable api spec`
@@ -407,6 +407,162 @@ altertable doctor [options]
 altertable doctor
 altertable doctor --offline
 altertable --json doctor
+```
+
+### `altertable app`
+
+Create, develop, check, build, and upgrade data apps.
+
+**Usage**
+
+```bash
+altertable app create|dev|build|check|upgrade
+```
+
+**Subcommands**
+
+- `create` — Create a data app project with a live connection check.
+- `dev` — Preview a data app locally with lakehouse access.
+- `build` — Typecheck and build a data app without Altertable credentials.
+- `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
+- `upgrade` — Update an unmodified data app runtime to the CLI's current version.
+
+**Examples**
+
+```bash
+altertable app create my-app
+altertable app dev
+altertable app check
+altertable app build
+altertable app upgrade
+```
+
+#### `altertable app create`
+
+Create a data app project with a live connection check.
+
+**Usage**
+
+```bash
+altertable app create [options] <NAME>
+```
+
+**Arguments**
+
+| Argument | Description |
+| --- | --- |
+| `<NAME>` | App name in kebab-case Required. |
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | Destination directory (default: ./<name>). |
+| `--without-profile` | Create an offline scaffold with organization and environment placeholders. |
+
+**Examples**
+
+```bash
+altertable app create product-pulse
+altertable app create product-pulse --dir ./apps/product-pulse
+altertable --profile production app create product-pulse
+```
+
+#### `altertable app dev`
+
+Preview a data app locally with lakehouse access.
+
+**Usage**
+
+```bash
+altertable app dev [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+| `--port <PORT>` | Local dev server port (1–65535; default: app setting). |
+| `--watch-runtime` | Upgrade generated runtime on source changes and restart preview. |
+
+**Examples**
+
+```bash
+altertable app dev
+altertable app dev --port 3022
+altertable app dev --watch-runtime
+altertable --profile staging app dev --dir ./my-app
+```
+
+#### `altertable app build`
+
+Typecheck and build a data app without Altertable credentials.
+
+**Usage**
+
+```bash
+altertable app build [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+
+**Examples**
+
+```bash
+altertable app build
+altertable app build --dir ./my-app
+```
+
+#### `altertable app check`
+
+Validate a data app's format, lint, types, contracts, build, and client credential boundary.
+
+**Usage**
+
+```bash
+altertable app check [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+| `--lakehouse` | Run each operation’s declared checks against the selected lakehouse. |
+
+**Examples**
+
+```bash
+altertable app check
+altertable app check --lakehouse
+```
+
+#### `altertable app upgrade`
+
+Update an unmodified data app runtime to the CLI's current version.
+
+**Usage**
+
+```bash
+altertable app upgrade [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--dir <DIR>` | App directory (default: current directory). |
+
+**Examples**
+
+```bash
+altertable app upgrade
+altertable app upgrade --dir ./my-app
 ```
 
 ### `altertable update`

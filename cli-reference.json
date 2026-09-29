@@ -576,27 +576,27 @@
           ]
         },
         {
-          "id": "altertable-catalogs",
-          "command": "altertable catalogs",
+          "id": "altertable-catalog",
+          "command": "altertable catalog",
           "description": "Manage catalogs (databases and connections) in the current environment.",
           "usage": [
-            "altertable catalogs",
-            "altertable catalogs create"
+            "altertable catalog",
+            "altertable catalog create"
           ],
           "aliases": [],
           "arguments": [],
           "options": [],
           "examples": [
-            "altertable catalogs",
-            "altertable catalogs create Analytics"
+            "altertable catalog",
+            "altertable catalog create Analytics"
           ],
           "subcommands": [
             {
-              "id": "altertable-catalogs-create",
-              "command": "altertable catalogs create",
+              "id": "altertable-catalog-create",
+              "command": "altertable catalog create",
               "description": "Create an Altertable catalog.",
               "usage": [
-                "altertable catalogs create <NAME>"
+                "altertable catalog create <NAME>"
               ],
               "aliases": [],
               "arguments": [
@@ -614,7 +614,7 @@
               ],
               "options": [],
               "examples": [
-                "altertable catalogs create Analytics"
+                "altertable catalog create Analytics"
               ],
               "subcommands": []
             }
@@ -626,7 +626,7 @@
           "description": "Management REST API — HTTP invoker and OpenAPI spec.",
           "usage": [
             "altertable api [options] <ENDPOINT>",
-            "altertable api routes|spec"
+            "altertable api route|spec"
           ],
           "aliases": [],
           "arguments": [
@@ -721,17 +721,17 @@
           ],
           "examples": [
             "altertable api /whoami",
-            "altertable api routes",
+            "altertable api route",
             "altertable api /environments/production/connections",
             "altertable api /service_accounts -X POST -F label=\"CI Bot\""
           ],
           "subcommands": [
             {
-              "id": "altertable-api-routes",
-              "command": "altertable api routes",
+              "id": "altertable-api-route",
+              "command": "altertable api route",
               "description": "List management API paths and methods from the bundled OpenAPI spec.",
               "usage": [
-                "altertable api routes [OPERATION]"
+                "altertable api route [OPERATION]"
               ],
               "aliases": [],
               "arguments": [
@@ -749,8 +749,8 @@
               ],
               "options": [],
               "examples": [
-                "altertable api routes",
-                "altertable api routes createDatabase"
+                "altertable api route",
+                "altertable api route createDatabase"
               ],
               "subcommands": []
             },
@@ -799,6 +799,216 @@
             "altertable --json doctor"
           ],
           "subcommands": []
+        },
+        {
+          "id": "altertable-app",
+          "command": "altertable app",
+          "description": "Create, develop, check, build, and upgrade data apps.",
+          "usage": [
+            "altertable app create|dev|build|check|upgrade"
+          ],
+          "aliases": [],
+          "arguments": [],
+          "options": [],
+          "examples": [
+            "altertable app create my-app",
+            "altertable app dev",
+            "altertable app check",
+            "altertable app build",
+            "altertable app upgrade"
+          ],
+          "subcommands": [
+            {
+              "id": "altertable-app-create",
+              "command": "altertable app create",
+              "description": "Create a data app project with a live connection check.",
+              "usage": [
+                "altertable app create [options] <NAME>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "name",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "App name in kebab-case",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [
+                {
+                  "name": "dir",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Destination directory (default: ./<name>).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "without-profile",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Create an offline scaffold with organization and environment placeholders.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app create product-pulse",
+                "altertable app create product-pulse --dir ./apps/product-pulse",
+                "altertable --profile production app create product-pulse"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-dev",
+              "command": "altertable app dev",
+              "description": "Preview a data app locally with lakehouse access.",
+              "usage": [
+                "altertable app dev [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "dir",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "App directory (default: current directory).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "port",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Local dev server port (1–65535; default: app setting).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "watch-runtime",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Upgrade generated runtime on source changes and restart preview.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app dev",
+                "altertable app dev --port 3022",
+                "altertable app dev --watch-runtime",
+                "altertable --profile staging app dev --dir ./my-app"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-build",
+              "command": "altertable app build",
+              "description": "Typecheck and build a data app without Altertable credentials.",
+              "usage": [
+                "altertable app build [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "dir",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "App directory (default: current directory).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app build",
+                "altertable app build --dir ./my-app"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-check",
+              "command": "altertable app check",
+              "description": "Validate a data app's format, lint, types, contracts, build, and client credential boundary.",
+              "usage": [
+                "altertable app check [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "dir",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "App directory (default: current directory).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "lakehouse",
+                  "aliases": [],
+                  "type": "boolean",
+                  "description": "Run each operation’s declared checks against the selected lakehouse.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app check",
+                "altertable app check --lakehouse"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-upgrade",
+              "command": "altertable app upgrade",
+              "description": "Update an unmodified data app runtime to the CLI's current version.",
+              "usage": [
+                "altertable app upgrade [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "dir",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "App directory (default: current directory).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app upgrade",
+                "altertable app upgrade --dir ./my-app"
+              ],
+              "subcommands": []
+            }
+          ]
         },
         {
           "id": "altertable-update",

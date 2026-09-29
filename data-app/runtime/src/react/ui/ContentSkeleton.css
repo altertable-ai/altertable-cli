@@ -1,0 +1,53 @@
+.altertable-content-skeleton {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 24px;
+}
+.altertable-content-skeleton-label {
+  width: 38%;
+  height: 15px;
+}
+.altertable-content-skeleton-value {
+  width: 56%;
+  height: 38px;
+}
+.altertable-content-skeleton-chart {
+  width: 100%;
+  height: 180px;
+}
+.altertable-content-skeleton-foot {
+  width: 70%;
+  height: 12px;
+}
+.altertable-content-skeleton-subtitle {
+  width: 52%;
+  height: 12px;
+}
+.altertable-content-skeleton-rows {
+  display: grid;
+  gap: 18px;
+  margin-top: 12px;
+}
+.altertable-content-skeleton-row {
+  display: grid;
+  gap: 8px;
+}
+.altertable-content-skeleton-row-label {
+  width: 56%;
+  height: 14px;
+}
+.altertable-content-skeleton-row-track {
+  width: 100%;
+  height: 8px;
+}
+.altertable-content-skeleton-row:nth-child(2) .altertable-content-skeleton-row-track {
+  width: 72%;
+}
+.altertable-content-skeleton-row:nth-child(3) .altertable-content-skeleton-row-track {
+  width: 48%;
+}
+.altertable-content-skeleton-row:nth-child(4) .altertable-content-skeleton-row-track {
+  width: 30%;
+}

@@ -1,0 +1,57 @@
+html {
+  scrollbar-gutter: stable;
+}
+body,
+#root {
+  margin: 0;
+}
+.altertable-app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.altertable-app-main {
+  display: grid;
+  align-content: start;
+  gap: var(--at-layout-gap, 24px);
+  min-width: 0;
+  width: min(100% - 48px, var(--at-content-width, 1200px));
+  margin-inline: auto;
+  padding: var(--at-layout-gap, 24px) 0 var(--at-space-md, 16px);
+}
+.altertable-app-footer {
+  margin-top: auto;
+}
+.altertable-sr-only {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 600px) {
+  .altertable-app-main {
+    width: min(100% - 32px, var(--at-content-width, 1200px));
+  }
+}
+:root {
+  --at-content-width: 960px;
+  font-family: var(--at-font, ui-sans-serif, system-ui, sans-serif);
+  color: var(--at-text, #202124);
+  background: var(--at-background, #fff);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+* {
+  box-sizing: border-box;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}

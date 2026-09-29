@@ -1,0 +1,108 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const appFile = (path) => pathToFileURL(join(process.cwd(), path)).href;
+
+async function check() {
+  const manifest = JSON.parse(await readFile("app.json", "utf8"));
+  try {
+    const { parseAppearance } = await import(appFile(".altertable/runtime/src/core/appearance.ts"));
+    parseAppearance(manifest.appearance);
+  } catch {
+    throw new Error("app.json has invalid appearance settings.");
+  }
+
+  let operations;
+  try {
+    ({ operations } = await import(appFile("src/operations.ts")));
+  } catch (error) {
+    throw new Error(
+      `Cannot load src/operations.ts: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+  }
+  if (!operations || typeof operations !== "object" || Array.isArray(operations)) {
+    throw new Error("src/operations.ts must export operations.");
+  }
+  const names = Object.keys(operations);
+  if (!names.length) throw new Error("src/operations.ts needs at least one operation.");
+  for (const name of names) {
+    const operation = operations[name];
+    if (
+      !/^[a-z][a-z0-9-]*$/.test(name) ||
+      !operation ||
+      typeof operation.input !== "function" ||
+      typeof operation.output !== "function" ||
+      typeof operation.run !== "function" ||
+      !Array.isArray(operation.checks) ||
+      !operation.checks.length ||
+      !Number.isInteger(operation.policy?.maxQueryRows) ||
+      operation.policy.maxQueryRows < 1 ||
+      !Number.isInteger(operation.policy.maxDurationMs) ||
+      operation.policy.maxDurationMs < 1 ||
+      (operation.policy.maxResponseBytes !== undefined &&
+        (!Number.isInteger(operation.policy.maxResponseBytes) ||
+          operation.policy.maxResponseBytes < 1))
+    ) {
+      throw new Error(`Operation "${name}" needs input and output parsers, check inputs, and limits.`);
+    }
+    for (const input of operation.checks) {
+      try {
+        operation.input(input);
+      } catch {
+        throw new Error(`Operation "${name}" has invalid check inputs.`);
+      }
+    }
+  }
+
+  if (await Bun.file("src/index.html").exists()) {
+    const bundle = await Bun.build({
+      entrypoints: ["src/index.html"],
+      target: "browser",
+      write: false,
+      plugins: [{
+        name: "data-app-browser-boundary",
+        setup(build) {
+          build.onLoad({ filter: /(?:operations|server|index|handler|local)\.[cm]?[jt]sx?$/ }, ({ path }) => {
+            const normalized = path.replaceAll("\\", "/");
+            const root = process.cwd().replaceAll("\\", "/");
+            if (normalized === `${root}/src/operations.ts` ||
+                normalized === `${root}/src/server.ts` ||
+                /(?:\.altertable\/runtime|node_modules\/@altertable\/data-app)\/src\/server\/(?:index|handler|local)\.ts$/.test(normalized)) {
+              throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
+            }
+          });
+        },
+      }],
+    });
+    if (!bundle.success) throw new Error(`Client import boundary failed: ${bundle.logs.join("\n")}`);
+  }
+
+  if (process.argv[1] !== "--lakehouse") return;
+  const { createDataHandler } = await import(appFile(".altertable/runtime/src/server/index.ts"));
+  const { localLakehouse } = await import(appFile(".altertable/runtime/src/server/local.ts"));
+  const handle = createDataHandler(operations, async () => ({
+    lakehouse: localLakehouse(process.env),
+    canDiscloseSql: true,
+  }));
+  for (const [name, operation] of Object.entries(operations)) {
+    for (const input of operation.checks) {
+      const response = await handle(
+        new Request(`http://localhost/api/data/${name}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        }),
+      );
+      if (!response.ok)
+        throw new Error(`Live check failed for operation "${name}" (${response.status}).`);
+    }
+  }
+}
+
+try {
+  await check();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : "Data app validation failed.");
+  process.exitCode = 1;
+}

@@ -1,0 +1,50 @@
+.altertable-table-widget-content {
+  min-width: 0;
+  padding: var(--at-space-md, 16px) var(--at-space-lg, 24px) var(--at-space-lg, 24px);
+}
+:where(.altertable-data-panel-body) > .altertable-table-widget-content {
+  padding: 0;
+}
+.altertable-table-widget-content .altertable-data-table-search {
+  margin-top: 0;
+}
+.altertable-table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 10px 4px;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.altertable-table-pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.altertable-table-pagination button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-control, 7px);
+  background: var(--at-surface, #fff);
+  color: var(--at-text, #202124);
+  font: inherit;
+  cursor: pointer;
+}
+.altertable-table-pagination button:hover:not(:disabled) {
+  background: var(--at-subtle, #f6f7f7);
+}
+.altertable-table-pagination button:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+}
+.altertable-table-pagination button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

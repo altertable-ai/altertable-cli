@@ -51,6 +51,10 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 ## Conventions
 
+- For generated app authoring, edit [the starter app guide](../data-app/starter/AGENTS.md). Keep it a task router into focused authoring guides and the runtime API map. Types describe props; reserve JSDoc for constraints, ownership, security boundaries, and surprising behavior.
+- When changing a runtime primitive, preserve semantic ownership: layout spacing belongs to `AppLayout`, `Stack`, and `TabPanels`; filters and date bounds belong to their variable and control contracts; request states belong to `DataSection`. Add a prop or slot when app authors repeatedly need the same custom wrapper.
+- Add recurring icons to `../data-app/runtime/src/react/ui/icons.ts` with a semantic name and fixed optical size. Keep toolbar and presentation button variants explicit in their owning components. Verify the generated app in both themes and at desktop and phone widths.
+
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.
 - Import command types and `defineArgs` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
 - Derive related argument schemas from shared fragments instead of repeating flag definitions.
@@ -88,7 +92,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 | `src/lib/*`                           | Code shared by multiple command families                   |
 | `src/test-utils/*`                    | Shared CLI test harnesses and temporary workspaces         |
 | `src/generated/openapi-types.ts`      | Generated — run `bun run generate` after OpenAPI changes   |
-| `src/generated/openapi-operations.ts` | Generated operation index for `api routes`                 |
+| `src/generated/openapi-operations.ts` | Generated operation index for `api route`                  |
 | `src/**/*.test.ts`                    | Unit tests colocated beside their subject                  |
 | `../tests/*.test.ts`                  | Black-box end-user CLI tests at repo root                  |
 | `../tests/integration.e2e.ts`         | Mock-server lakehouse integration test                     |
@@ -123,9 +127,11 @@ Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 ```
 altertable
 ├── login, logout
+├── app
+│   └── create, dev, build, check, upgrade
 ├── profile
 │   └── configure, show, list, status, switch, current, env, rename, delete
-├── catalogs
+├── catalog
 │   └── create
 ├── query <SQL>
 │   └── show, cancel
@@ -135,7 +141,7 @@ altertable
 ├── upload, upsert
 ├── api
 │   ├── spec
-│   ├── routes
+│   ├── route
 │   └── <PATH> [-X GET|POST|PATCH|DELETE|PUT]
 ├── update (alias: upgrade)
 └── completion
@@ -143,7 +149,7 @@ altertable
     ├── generate [bash|fish|zsh]
 ```
 
-`query`, `append`, `catalogs`, `api`, and `completion` combine direct parent behavior with
+`query`, `append`, `catalog`, `api`, and `completion` combine direct parent behavior with
 real subcommands. The parser resolves one invocation from command metadata, then executes
 only the selected handler. Declare intentional direct/subcommand ambiguity through command
 metadata; do not inspect or rewrite raw argv in parent handlers.
@@ -180,7 +186,7 @@ export const myfeatureCommand = defineCommand({
 New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new dedicated subcommands:
 
 ```bash
-altertable api routes                    # discover method + path
+altertable api route                    # discover method + path
 altertable api /whoami                   # default GET
 altertable api /path -X GET -f q=value   # forced GET puts fields in the query string
 altertable api /new_resource -f …        # invoke (POST inferred)

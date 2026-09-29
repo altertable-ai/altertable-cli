@@ -106,5 +106,5 @@ export function buildLakehouseQueryCancelRequest(input: LakehouseCancelInput): H
 }
 
 export function buildLakehouseVerifyRequest(): HttpRequest {
-  return buildLakehouseQueryRequest({ statement: "SELECT 1" }, false);
+  return { ...buildLakehouseQueryRequest({ statement: "SELECT 1" }, false), retry: true };
 }

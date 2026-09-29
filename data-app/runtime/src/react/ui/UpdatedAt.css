@@ -1,0 +1,15 @@
+.altertable-updated-at {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.altertable-updated-at:hover {
+  color: var(--at-text, #202124);
+}
+.altertable-updated-at:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 3px;
+}

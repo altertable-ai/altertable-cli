@@ -1,4 +1,5 @@
 import { basename, join, resolve } from "node:path";
+import { isRecord } from "@/lib/object.ts";
 
 export type NpmVersionLookup = { status: "published"; version: string } | { status: "missing" };
 
@@ -11,10 +12,6 @@ type PackageIdentity = {
   name: string;
   version: string;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function parseVersion(version: string): [number, number, number] {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version.trim());

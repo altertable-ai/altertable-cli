@@ -1,0 +1,24 @@
+.altertable-app-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--at-space-sm, 8px);
+  width: 100%;
+}
+.altertable-app-toolbar-updated {
+  margin-right: 6px;
+  color: color-mix(in srgb, var(--at-muted, #687078) 78%, var(--at-background, #fff));
+  font-size: 11px;
+  white-space: nowrap;
+}
+.altertable-app-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--at-space-xs, 4px);
+  margin-inline-start: auto;
+}
+.altertable-app-toolbar {
+  flex-shrink: 0;
+}

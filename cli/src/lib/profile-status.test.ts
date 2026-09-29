@@ -61,6 +61,26 @@ describe("configureVerify", () => {
     });
   });
 
+  test("retries a transient lakehouse error during the read-only verification query", async () => {
+    writeFileSync(
+      mockFile,
+      JSON.stringify([
+        { urlPattern: "/query", method: "POST", status: 500, body: "temporary failure" },
+        { urlPattern: "/query", method: "POST", body: "{}" },
+      ]),
+    );
+
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    await runWithCliRuntime(runtime, async () => {
+      await configureRunSet({ user: "alice", password: "secret" });
+      refreshCliRuntimeContext(runtime.context);
+
+      const result = await configureVerify(["lakehouse"], createExecutionContext(runtime));
+      expect(result.verified.lakehouse).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
   test("records verification errors without clearing stored credentials", async () => {
     writeFileSync(
       mockFile,

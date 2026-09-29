@@ -1,0 +1,42 @@
+.altertable-widget-disclosure {
+  margin: 16px 20px 20px;
+}
+.altertable-widget-disclosure > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: var(--at-radius-control, 7px);
+  color: var(--at-text, #202124);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.altertable-widget-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.altertable-widget-disclosure > summary:hover,
+.altertable-widget-disclosure[open] > summary {
+  background: var(--at-subtle, #f6f7f7);
+}
+.altertable-widget-disclosure > summary:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+}
+.altertable-widget-disclosure > summary svg {
+  color: var(--at-muted, #687078);
+  transition: transform 160ms ease;
+}
+.altertable-widget-disclosure[open] > summary svg {
+  transform: rotate(180deg);
+}
+.altertable-widget-disclosure-content {
+  margin-top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-widget-disclosure > summary svg {
+    transition: none;
+  }
+}

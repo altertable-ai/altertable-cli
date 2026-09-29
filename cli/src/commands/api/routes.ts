@@ -5,11 +5,11 @@ import { apiOperationDetails, apiOperationsJson, apiRouteRows } from "@/commands
 import { formatApiOperationDetails, formatApiRoutes } from "@/commands/api/lib/render.ts";
 import type { OutputSink } from "@/lib/runtime.ts";
 
-export const apiRoutesCommand = defineCommand({
+export const apiRouteCommand = defineCommand({
   metadata: {
-    name: "routes",
+    name: "route",
     description: "List management API paths and methods from the bundled OpenAPI spec.",
-    examples: ["altertable api routes", "altertable api routes createDatabase"],
+    examples: ["altertable api route", "altertable api route createDatabase"],
   },
   args: {
     operation: {
@@ -21,6 +21,11 @@ export const apiRoutesCommand = defineCommand({
   async run({ args, sink }) {
     await runApiRoutesCommand(sink, optionalStringArg(args, "operation"));
   },
+});
+
+export const apiRoutesCommand = defineCommand({
+  ...apiRouteCommand,
+  metadata: { name: "routes", hidden: true, description: "Alias for altertable api route." },
 });
 
 async function runApiRoutesCommand(sink: OutputSink, operationId?: string): Promise<void> {

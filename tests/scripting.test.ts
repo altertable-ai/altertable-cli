@@ -57,6 +57,22 @@ describe("scriptable exit codes and JSON errors", () => {
     expect(result.stdout.length).toBeGreaterThan(0);
   });
 
+  test("a subcommand-only group shows its help when invoked alone", async () => {
+    const human = await workspace.runCommand("altertable app");
+    expect(human.exitCode).toBe(0);
+    expect(human.stderr).toBe("");
+    expect(human.stdout).toContain("altertable app create|dev|build|check|upgrade");
+    expect(human.stdout).toContain("Use altertable app <command> --help");
+
+    const structured = await workspace.runCommand("altertable --json app");
+    expect(structured.exitCode).toBe(0);
+    expect(structured.stderr).toBe("");
+    expect(JSON.parse(structured.stdout)).toMatchObject({
+      command: "altertable app",
+      subcommands: expect.arrayContaining([expect.objectContaining({ name: "create" })]),
+    });
+  });
+
   test.each([
     ["auth", statusMocks.auth, "altertable api /whoami --json", 2, "auth_failed"],
     ["not found", statusMocks.missing, "altertable api /environments/production/connections/missing --json", 4, undefined],

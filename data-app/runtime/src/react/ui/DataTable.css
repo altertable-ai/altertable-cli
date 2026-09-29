@@ -1,0 +1,69 @@
+.altertable-data-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: none;
+}
+.altertable-data-table-search {
+  margin: 8px 0 12px;
+}
+.altertable-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.altertable-data-table caption {
+  padding: 0 0 8px;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  text-align: start;
+}
+.altertable-data-table th,
+.altertable-data-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--at-border, #e3e6e8);
+  text-align: start;
+  white-space: nowrap;
+  cursor: default;
+}
+.altertable-data-table thead th {
+  color: var(--at-muted, #687078);
+  font-weight: 650;
+}
+.altertable-data-table tbody th {
+  color: var(--at-text, #202124);
+  font-weight: 550;
+}
+.altertable-data-table :is(th, td)[data-type="number"] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.altertable-data-table :is(th, td)[data-type="datetime"] {
+  font-variant-numeric: tabular-nums;
+}
+.altertable-data-table-timestamp {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.altertable-data-table-timestamp:hover {
+  color: var(--at-accent, #4779dc);
+}
+.altertable-data-table-timestamp:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.altertable-data-table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.altertable-data-table .altertable-data-table-empty-row td {
+  padding: 0;
+  white-space: normal;
+}
+.altertable-data-table-share {
+  font-variant-numeric: tabular-nums;
+}

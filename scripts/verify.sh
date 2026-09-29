@@ -50,6 +50,7 @@ run_step "typecheck" bun run typecheck
 run_step "top-level test typecheck" ./node_modules/.bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
+run_step "data app checks" bun run data-app:check
 run_step "generated artifact drift check" bun run generate:check
 run_step "unit tests with coverage" bun run test:coverage
 run_step "knip" bun run knip
@@ -64,6 +65,7 @@ if [[ "${QUICK}" == true ]]; then
 fi
 
 cd "${REPO_ROOT}/cli"
+run_step "data app browser tests" bun run data-app:test:browser
 run_step "build" bun run build
 run_step "pack:check" bun run pack:check
 

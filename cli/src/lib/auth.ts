@@ -27,7 +27,8 @@ function storedLakehouseCredentialsExpired(profileName: string): boolean {
       { exitCode: EXIT_CONFIG },
     );
   }
-  return Date.now() >= expiry;
+  // Leave time to renew before a long-running data app starts a query.
+  return Date.now() + 5 * 60 * 1000 >= expiry;
 }
 
 export type LakehouseCredential =

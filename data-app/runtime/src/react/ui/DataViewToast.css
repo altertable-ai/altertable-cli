@@ -1,0 +1,54 @@
+.altertable-data-view-toast-region {
+  position: fixed;
+  z-index: 100;
+  inset-inline: 16px;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.altertable-data-view-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: min(100%, 560px);
+  max-height: 40dvh;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: var(--at-radius-surface, 12px);
+  background: var(--at-surface, #fff);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
+  color: var(--at-text, #202124);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: auto;
+}
+.altertable-data-view-toast > svg {
+  flex: none;
+  color: var(--at-muted, #687078);
+}
+.altertable-data-view-toast[data-state="stale-error"] > svg {
+  color: var(--at-danger, #b42318);
+}
+.altertable-data-view-toast > span {
+  min-width: 0;
+}
+.altertable-data-view-toast .altertable-button {
+  flex: none;
+  min-height: 32px;
+}
+.altertable-data-view-toast-spinner {
+  animation: altertable-data-view-toast-spin 1s linear infinite;
+}
+@keyframes altertable-data-view-toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-data-view-toast-spinner {
+    animation: none;
+  }
+}

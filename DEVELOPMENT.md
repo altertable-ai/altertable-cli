@@ -228,3 +228,7 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 | POST /append + GET /tasks   | `append`, `append status`    | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /upload                | `upload`                     | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /upsert                | `upsert`                     | `lakehouse.test.ts`              | `integration.e2e.ts`  |
+
+## Data apps
+
+The runnable starter and shared runtime live in [`data-app/`](data-app/README.md). That guide covers source ownership, the copy allowlist, CLI embedding, runtime upgrades, and browser tests.

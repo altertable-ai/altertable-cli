@@ -1,0 +1,116 @@
+.altertable-grid {
+  display: grid;
+  container: altertable-grid / inline-size;
+  min-width: 0;
+  align-items: start;
+  align-content: start;
+  --at-grid-gap: var(--at-layout-gap, 24px);
+  --at-grid-min-item-width: 240px;
+  gap: var(--at-grid-gap);
+  /* The calculated track caps the column count; the minimum lets narrow containers wrap. */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, max(var(--at-grid-min-item-width), var(--at-grid-column-width, 100%))), 1fr)
+  );
+}
+.altertable-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+.altertable-grid[data-align="stretch"] {
+  align-items: stretch;
+}
+.altertable-grid[data-gap="sm"] {
+  --at-grid-gap: var(--at-space-sm, 8px);
+}
+.altertable-grid[data-gap="md"] {
+  --at-grid-gap: var(--at-space-md, 16px);
+}
+.altertable-grid[data-gap="lg"] {
+  --at-grid-gap: var(--at-layout-gap, 24px);
+}
+.altertable-grid[data-min-item-width="compact"] {
+  --at-grid-min-item-width: 192px;
+}
+.altertable-grid[data-min-item-width="wide"] {
+  --at-grid-min-item-width: 320px;
+}
+.altertable-grid[data-columns="2"] {
+  --at-grid-column-width: calc((100% - var(--at-grid-gap)) / 2);
+}
+.altertable-grid[data-columns="3"] {
+  --at-grid-column-width: calc((100% - var(--at-grid-gap) - var(--at-grid-gap)) / 3);
+}
+.altertable-grid[data-columns="4"] {
+  --at-grid-column-width: calc(
+    (100% - var(--at-grid-gap) - var(--at-grid-gap) - var(--at-grid-gap)) / 4
+  );
+}
+
+.altertable-grid-item {
+  min-width: 0;
+  min-height: 0;
+}
+
+@container altertable-grid (min-width: 408px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="compact"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
+}
+@container altertable-grid (min-width: 504px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="regular"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
+}
+@container altertable-grid (min-width: 664px) {
+  .altertable-grid:not([data-columns="1"])[data-min-item-width="wide"]
+    > .altertable-grid-item[data-span="2"] {
+    grid-column: span 2;
+  }
+}
+
+/* Two-track layouts stack spans and let an unpaired card fill the row. */
+@container altertable-grid (max-width: 639px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="compact"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > * {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="compact"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@container altertable-grid (max-width: 783px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="regular"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > * {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="regular"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@container altertable-grid (max-width: 1023px) {
+  .altertable-grid[data-columns="3"][data-min-item-width="wide"]:has(
+      > .altertable-grid-item[data-span="2"]
+    )
+    > * {
+    grid-column: 1 / -1;
+  }
+  .altertable-grid[data-columns="3"][data-min-item-width="wide"]:not(
+      :has(> .altertable-grid-item[data-span="2"])
+    )
+    > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,0 +1,95 @@
+.altertable-data-panel {
+  min-width: 0;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: calc(var(--at-radius-surface, 12px) * 1.5);
+  corner-shape: squircle;
+  background: var(--at-surface, #fff);
+  box-shadow: var(--at-shadow-surface, none);
+}
+.altertable-data-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--at-space-md, 16px);
+  padding: var(--at-layout-gap, 24px) var(--at-layout-gap, 24px) 0;
+}
+.altertable-data-panel-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.altertable-data-panel-help {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+}
+.altertable-data-panel-header h2 {
+  margin: 0;
+  color: var(--at-text, #202124);
+  font-family: var(--at-font-heading, inherit);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.altertable-data-panel-count {
+  margin-left: 8px;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.altertable-data-panel-header p {
+  margin: 4px 0 0;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.altertable-data-panel-body {
+  min-width: 0;
+  padding: var(--at-space-md, 16px) var(--at-layout-gap, 24px) var(--at-layout-gap, 24px);
+}
+.altertable-data-panel-body[data-padding="flush"] {
+  padding: 0;
+}
+.altertable-data-panel-footer {
+  padding: var(--at-space-md, 16px) var(--at-layout-gap, 24px);
+}
+.altertable-data-panel-body > .altertable-status-panel {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+.altertable-data-panel-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.altertable-data-panel-status[data-state="error"] svg {
+  color: var(--at-danger, #b42318);
+}
+.altertable-data-panel-status .altertable-button {
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+.altertable-data-panel-status-spinner {
+  animation: altertable-data-panel-spin 1s linear infinite;
+}
+@keyframes altertable-data-panel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-data-panel-status-spinner {
+    animation: none;
+  }
+}

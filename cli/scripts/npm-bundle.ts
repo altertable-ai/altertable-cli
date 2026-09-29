@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { dataAppPlugin } from "@/../scripts/package-data-app.ts";
 
 export const NPM_BUNDLE_OPTIONS = {
   target: "bun",
@@ -18,6 +19,7 @@ export async function buildNpmBundle(outputPath = NPM_BUNDLE_PATH): Promise<stri
     outdir: dirname(outputPath),
     naming: basename(outputPath),
     ...NPM_BUNDLE_OPTIONS,
+    plugins: [dataAppPlugin()],
   });
   if (!result.success) {
     throw new Error(`npm bundle failed:\n${result.logs.map(String).join("\n")}`);

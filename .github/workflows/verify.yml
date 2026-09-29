@@ -46,6 +46,12 @@ jobs:
       - name: Install completion shells
         run: sudo apt-get update && sudo apt-get install --yes fish zsh
 
+      - name: Install data app browser
+        working-directory: data-app/tests
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright install --with-deps chromium
+
       - name: Verify repository and integration paths
         run: ./scripts/verify.sh --integration
 
@@ -87,4 +93,4 @@ jobs:
           bun-version: 1.1.0
 
       - name: Smoke test npm bundle on minimum runtime
-        run: bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0
+        run: bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only

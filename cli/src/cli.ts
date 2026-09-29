@@ -93,7 +93,7 @@ export function buildMainCommand(): Command {
       examples: [
         "altertable profile configure",
         "altertable profile show",
-        "altertable api routes",
+        "altertable api route",
         "altertable api /environments/production/databases",
         'altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"',
       ],
@@ -162,6 +162,9 @@ async function bootstrap(): Promise<number> {
 
     validateEnvironment();
     const selection = await executeCommand(main, rawArgs);
+    if (selection.command !== main && !selection.command.run && selection.command.subcommands) {
+      await showAltertableUsage(selection.command, selection.parent, main);
+    }
     await maybeShowUpdateNotice({
       context: getCliContext(),
       commandName: selection.commandPath.at(0),

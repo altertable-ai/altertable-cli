@@ -1,0 +1,154 @@
+.altertable-query-list {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.altertable-query-list summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border-radius: 4px;
+  color: var(--at-muted, #687078);
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+.altertable-query-list summary::-webkit-details-marker {
+  display: none;
+}
+.altertable-query-list summary::before {
+  width: 0;
+  height: 0;
+  border-block: 4px solid transparent;
+  border-inline-start: 5px solid currentColor;
+  content: "";
+  transition: rotate 120ms ease;
+}
+.altertable-query-list[open] summary::before {
+  rotate: 90deg;
+}
+.altertable-query-list summary:hover {
+  color: var(--at-text, #202124);
+}
+.altertable-query-list summary:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+  outline-offset: 2px;
+}
+.altertable-query-list figure {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--at-border, #e3e6e8);
+  border-radius: 10px;
+  background: var(--at-surface, #fff);
+}
+.altertable-query-list figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 3px 6px 3px 14px;
+  border-bottom: 1px solid var(--at-border, #e3e6e8);
+  background: transparent;
+  color: var(--at-text, #202124);
+  font: 600 12px/1.4 var(--at-font, system-ui, sans-serif);
+}
+.altertable-query-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.altertable-query-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+.altertable-query-action {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--at-muted, #687078);
+}
+.altertable-query-action:hover:not(:disabled) {
+  color: var(--at-text, #202124);
+  background: var(--at-subtle, #f6f7f7);
+}
+.altertable-query-action:focus-visible {
+  outline: 2px solid var(--at-accent, #4779dc);
+}
+.altertable-query-list pre {
+  margin: 0;
+  padding: 14px 16px 18px;
+  border: 0;
+  border-radius: 0;
+  background: var(--at-code-surface, #f4f6f9);
+  color: var(--at-code-text, #273242);
+  font: 12px/1.6 var(--at-mono-font, ui-monospace, SFMono-Regular, Consolas, monospace);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+.altertable-sql-keyword {
+  color: var(--at-accent, #305caf);
+  font-weight: 650;
+}
+.altertable-query-unavailable {
+  margin: 0;
+  color: var(--at-muted, #687078);
+  font-size: 13px;
+}
+.altertable-query-notebook {
+  gap: 16px;
+}
+.altertable-query-notebook-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 0 4px;
+}
+.altertable-query-notebook-header > span {
+  color: var(--at-muted, #687078);
+  font-size: 13px;
+  font-weight: 450;
+}
+.altertable-query-notebook-header small {
+  margin-inline-start: 8px;
+  color: var(--at-muted, #687078);
+  font-size: 11px;
+  font-weight: 500;
+}
+.altertable-query-notebook-header .altertable-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  font-size: 12px;
+}
+.altertable-query-notebook figure {
+  border-radius: 10px;
+}
+.altertable-query-notebook-error {
+  padding: 8px 12px;
+  color: var(--at-danger, #b42318);
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-query-list summary,
+  .altertable-query-list summary::before {
+    transition: none;
+  }
+}

@@ -1,3 +1,4 @@
+import { smokeDataApp } from "@/../scripts/smoke-data-app.ts";
 import { join } from "node:path";
 
 const repositoryRoot = join(import.meta.dir, "../..");
@@ -45,6 +46,7 @@ export async function smokeNpmBundle(arguments_ = Bun.argv.slice(2)): Promise<vo
     throw new Error("npm bundle returned an unexpected OpenAPI document.");
   }
 
+  await smokeDataApp([process.execPath, bundlePath], arguments_.includes("--scaffold-only"));
   console.log(`Bun ${Bun.version}: npm bundle smoke test passed.`);
 }
 

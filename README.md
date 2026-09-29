@@ -143,7 +143,7 @@ The CLI talks to two independent APIs with separate auth schemes:
 
 | Plane                    | Purpose                               | Auth                     |
 | ------------------------ | ------------------------------------- | ------------------------ |
-| **Management (control)** | `profile show`, `catalogs`            | Browser OAuth or API key |
+| **Management (control)** | `profile show`, `catalog`             | Browser OAuth or API key |
 | **Lakehouse (data)**     | `query`, `upload`, `upsert`, `append` | HTTP Basic               |
 
 Most users need both. Run the interactive wizard or configure each plane with flags:
@@ -397,14 +397,14 @@ Product-level commands stay at the top level. The full management REST surface i
 
 ```bash
 altertable profile show
-altertable catalogs
-altertable catalogs create Analytics
+altertable catalog
+altertable catalog create Analytics
 
 # Explore the bundled OpenAPI contract
 altertable api spec
 altertable api spec --json   # raw JSON document
-altertable api routes        # index of paths and methods
-altertable api routes createDatabase
+altertable api route         # index of paths and methods
+altertable api route createDatabase
 
 # HTTP calls — path is relative to /rest/v1 (base URL from config)
 altertable api /whoami
@@ -417,7 +417,7 @@ altertable api "/service_accounts/$SERVICE_ACCOUNT_ID" -X DELETE
 altertable api "/environments/production/connections/$CONNECTION_ID" -X PATCH --input rename-warehouse-connection.json
 ```
 
-Use `--env <slug>` to substitute `{environment_id}` in paths copied from `api routes`. Prefer full paths like `/environments/production/...` when the environment is known.
+Use `--env <slug>` to substitute `{environment_id}` in paths copied from `api route`. Prefer full paths like `/environments/production/...` when the environment is known.
 The method defaults to `GET`, switches to `POST` when request parameters or input are provided, and can be overridden with `-X/--method`. Use `-f/--raw-field` for strings and `-F/--field` for typed values (`true`, `false`, `null`, integers, or `@file`). Forced `GET` and `DELETE` requests put fields in the query string; `POST`, `PATCH`, and `PUT` use fields as the JSON body unless `--input` is supplied, in which case fields become query parameters.
 
 For advanced or provider-specific payloads, read JSON from a file or stdin with `--input`:
@@ -520,7 +520,7 @@ With `--json`, success stdout follows one of three contracts:
 
 1. **Raw API** — verbatim API response body (most `api *` commands).
 2. **Normalized query** — `{ metadata, columns, rows }` from `query --json` or `query --agent` (stable scripting contract).
-3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalogs --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, next_steps }` from `profile show --json`.
+3. **CLI envelope** — CLI-shaped objects such as `{ catalogs: [...] }` from `catalog --json`, `{ profiles: [...] }` from `profile list --json`, or `{ profile, next_steps }` from `profile show --json`.
 
 Human mode defaults management list/get output to tables unless `--format` is set.
 
