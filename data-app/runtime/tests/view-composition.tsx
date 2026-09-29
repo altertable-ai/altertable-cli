@@ -44,11 +44,11 @@ defineDataView({
 const metric: MetricWidgetProps = { label: "Orders", value: 123 };
 // @ts-expect-error Secondary requests require an empty state.
 const section: DataSectionProps<number> = { view: { kind: "loading" }, children: () => null };
-// @ts-expect-error Primary requests require a fallback on the request or shell.
 const app: DataAppProps<number> = {
   config: { appearance: {}, title: "Test", scope: { organization: "a", environment: "b" } },
   dataContext: { description: "Test", glossary: {} },
   aboutEmpty: { glossary: { title: "Empty" }, queries: { title: "Empty" } },
+  // @ts-expect-error Primary requests own their empty state.
   request: { view: { kind: "loading" }, refetch() {} },
   children: () => null,
 };

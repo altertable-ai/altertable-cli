@@ -24,8 +24,8 @@ export { Grid } from "./Grid.tsx";
 export type { GridProps } from "./Grid.tsx";
 export { GridItem } from "./GridItem.tsx";
 export type { GridItemProps } from "./GridItem.tsx";
-export { StorySection } from "./StorySection.tsx";
-export type { StorySectionProps } from "./StorySection.tsx";
+export { ExplorationSection } from "./ExplorationSection.tsx";
+export type { ExplorationSectionProps } from "./ExplorationSection.tsx";
 
 // Widgets and visualizations
 export type { WidgetEvidence } from "./WidgetEvidence.ts";
@@ -157,7 +157,7 @@ export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./About
 
 // Present mode
 export { PresentStory } from "./PresentStory.tsx";
-export type { PresentStoryProps, StoryStep } from "./PresentStory.tsx";
+export type { PresentStoryProps } from "./PresentStory.tsx";
 export type { StoryFinding, BoundStory } from "./story.ts";
 
 // Buttons, overlays, and icons

@@ -20,6 +20,7 @@ import { subscribeSearch, writeSearch } from "./search.ts";
 import { isEditingTarget, shortcuts, useShortcut } from "./shortcuts.ts";
 import { Tooltip } from "./Tooltip.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
+import { storySteps, type StoryFinding } from "./story.ts";
 import "./PresentStory.css";
 
 export type StoryStep = {
@@ -36,7 +37,7 @@ export type StoryStep = {
 
 export type PresentStoryProps = {
   title: string;
-  steps: StoryStep[];
+  findings: readonly StoryFinding[];
   empty?: AboutEmpty;
   scope?: ReactNode;
   dataContext: DataContext;
@@ -63,7 +64,7 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
  */
 export function PresentStory({
   title,
-  steps,
+  findings,
   empty,
   scope,
   dataContext,
@@ -79,6 +80,7 @@ export function PresentStory({
   ref,
   ...props
 }: PresentStoryProps) {
+  const steps = storySteps(findings, dataContext);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);

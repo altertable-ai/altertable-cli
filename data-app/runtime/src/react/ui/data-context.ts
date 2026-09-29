@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { DataIdentifierDefinition } from "./data-identifiers.tsx";
 import type { MetricFormat } from "../../core/format.ts";
 import type { MetricDefinition } from "./metric.ts";
-import type { StoryStep } from "./PresentStory.tsx";
+import type { StoryFinding } from "./story.ts";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
 
 export type GlossaryEntry = {
@@ -92,18 +92,12 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         queryNames: [validated.queryNames![0]!, ...validated.queryNames!.slice(1)],
       };
     }
-    function storyPoint<
-      const Step extends Omit<StoryStep, "glossaryIds" | "queryNames"> & {
-        glossaryIds?: readonly (keyof Context["glossary"] & string)[];
-        queryNames?: readonly Names[keyof Names][];
+    function finding(
+      input: Omit<StoryFinding, "evidence"> & {
+        evidence: Parameters<typeof evidence>[0];
       },
-    >(step: Step): StoryStep {
-      const stepReferences = references({
-        id: step.id,
-        glossaryIds: step.glossaryIds,
-        queryNames: step.queryNames,
-      });
-      return { ...step, ...stepReferences };
+    ): StoryFinding & { evidence: WidgetEvidence } {
+      return { ...input, evidence: evidence(input.evidence) };
     }
     function metric(definition: {
       id: string;
@@ -126,6 +120,6 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         evidence: references,
       };
     }
-    return { ...context, queryNames, evidence, storyPoint, metric };
+    return { ...context, queryNames, evidence, finding, metric };
   };
 }

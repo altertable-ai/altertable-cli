@@ -9,7 +9,7 @@ import { AppLayout } from "./AppLayout.tsx";
 import { AppScope } from "./AppScope.tsx";
 import { AppToolbar, type AppToolbarProps } from "./AppToolbar.tsx";
 import type { DataContext } from "./data-context.ts";
-import { storySteps, type BoundStory } from "./story.ts";
+import type { BoundStory } from "./story.ts";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
 import { DataViewToast } from "./DataViewToast.tsx";
@@ -24,7 +24,6 @@ type DataAppBaseProps = {
   description?: ReactNode;
   /** Display names only; config.scope remains the connection identity. */
   scopeLabels?: { organization?: string; environment?: string };
-  variables?: ReactNode;
   toolbarActions?: ReactNode;
   footerActions?: ReactNode;
   layoutProps?: Omit<ComponentProps<typeof AppLayout>, "children" | "footerActions">;
@@ -35,36 +34,30 @@ export type DataAppRequest<Data, Input> = {
   refetch: () => unknown;
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
-  empty?: Pick<EmptyStateProps, "title" | "description">;
+  empty: Pick<EmptyStateProps, "title" | "description">;
   controls?: ReactNode;
 };
 
 export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
   (
-    | ({
+    | {
         request: DataAppRequest<Data, Input>;
         /** Findings are always derived from the result currently visible to the reader. */
         story?: BoundStory<Data, Input>;
         children: (data: Data, displayedInput: Input) => ReactNode;
         loading?: ReactNode;
-        empty?: Pick<EmptyStateProps, "title" | "description">;
         label?: string;
         queries?: never;
         refresh?: never;
-      } & (
-        | {
-            request: DataAppRequest<Data, Input> & {
-              empty: Pick<EmptyStateProps, "title" | "description">;
-            };
-          }
-        | { empty: Pick<EmptyStateProps, "title" | "description"> }
-      ))
+        variables?: never;
+      }
     | {
         request?: never;
         story?: never;
         children: ReactNode;
         queries?: DisclosedQuery[];
         refresh?: AppToolbarProps["refresh"];
+        variables?: ReactNode;
         loading?: never;
         empty?: never;
         label?: never;
@@ -83,7 +76,6 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
     request,
     queries,
     refresh,
-    variables,
     toolbarActions,
     footerActions,
     layoutProps,
@@ -96,9 +88,7 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
   });
   const snapshot = request && displayedSnapshot(request.view);
   const story =
-    request && props.story && snapshot
-      ? { steps: storySteps(props.story(snapshot), dataContext) }
-      : undefined;
+    request && props.story && snapshot ? { findings: props.story(snapshot) } : undefined;
   const scope = (
     <AppScope
       organization={scopeLabels?.organization ?? config.scope.organization}
@@ -144,8 +134,8 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
             </AppToolbar>
           }
         />
-        {(variables ?? request?.controls) && (
-          <VariableBar>{variables ?? request?.controls}</VariableBar>
+        {(request?.controls ?? props.variables) && (
+          <VariableBar>{request?.controls ?? props.variables}</VariableBar>
         )}
         <div ref={bodyRef} className="altertable-app-body">
           {request ? (
@@ -154,7 +144,7 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
               notice="none"
               dimOnUpdate={false}
               loading={props.loading}
-              empty={props.empty ?? request.empty!}
+              empty={request.empty}
               label={props.label}
             >
               {(data, displayedInput) => props.children(data, displayedInput)}

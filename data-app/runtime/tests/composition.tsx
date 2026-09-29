@@ -40,7 +40,7 @@ const toolbarProps = {
 const empty = { glossary: { title: "No terms" }, queries: { title: "No queries" } };
 const storyProps = {
   title: "Story",
-  steps: [],
+  findings: [],
   dataContext: null!,
   empty,
 } satisfies PresentStoryProps;

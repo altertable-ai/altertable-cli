@@ -44,21 +44,11 @@ test("filter input preserves selected members and rejects forged values", () => 
   };
   const definition = {
     input: (values: { interface: DimensionSelection<string> }) => ({ interface: values.interface }),
-    filters: { interface: interfaceFilter },
+    variables: { interface: interfaceFilter },
   };
-  expect(
-    resolveViewInput<
-      {},
-      { interface: typeof interfaceFilter },
-      { interface: DimensionSelection<string> }
-    >(definition, { interface: selected }),
-  ).toEqual({ interface: selected });
+  expect(resolveViewInput(definition, { interface: selected })).toEqual({ interface: selected });
   expect(() =>
-    resolveViewInput<
-      {},
-      { interface: typeof interfaceFilter },
-      { interface: DimensionSelection<string> }
-    >(
+    resolveViewInput(
       { ...definition, input: () => ({ interface: { kind: "all" as const } }) },
       { interface: selected },
     ),

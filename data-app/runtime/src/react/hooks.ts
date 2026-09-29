@@ -104,7 +104,7 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     return {
       ...query,
       view,
-      displayedSnapshot: displayedSnapshot(view),
+      snapshot: displayedSnapshot(view),
       response,
       queries: response?.queries,
       refresh: {
@@ -117,17 +117,15 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   function defineDataView<
     Name extends keyof Operations & string,
     const Variables extends VariableCollection,
-    const Filters extends Record<string, DimensionVariable<any>> = {},
   >(
     definition: DataViewDefinition<
       Name,
       Variables,
       InputOf<Operations[Name]>,
-      OutputOf<Operations[Name]>,
-      Filters
+      OutputOf<Operations[Name]>
     >,
   ) {
-    const variables = defineAppVariables({ ...definition.variables, ...definition.filters });
+    const variables = defineAppVariables(definition.variables);
     return {
       ...definition,
       variables,
@@ -148,22 +146,21 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   >(definition: {
     operation: Name;
     time: Omit<DateRangeVariableOptions, "key"> & { key?: string };
-    filters?: Filters;
+    variables?: Filters;
     isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
     empty: Pick<EmptyStateProps, "title" | "description">;
   }) {
     const period = dateRangeVariable({ ...definition.time, key: definition.time.key ?? "period" });
-    return defineDataView<Name, { period: typeof period }, Filters>({
+    return defineDataView<Name, { period: typeof period } & Filters>({
       operation: definition.operation,
-      variables: { period },
-      filters: definition.filters,
+      variables: { period, ...definition.variables } as { period: typeof period } & Filters,
       input: (values) => {
-        if (!definition.filters || !Object.keys(definition.filters).length)
+        if (!definition.variables || !Object.keys(definition.variables).length)
           return values.period as InputOf<Operations[Name]>;
         return { ...values } as InputOf<Operations[Name]>;
       },
       date: {
-        variable: "period",
+        variable: "period" as never,
         input: (input) =>
           (input && typeof input === "object" && "period" in input
             ? input.period
@@ -192,22 +189,18 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   function useView<
     Name extends keyof Operations & string,
     const Variables extends VariableCollection,
-    const Filters extends Record<string, DimensionVariable<any>> = {},
   >(
     definition: DataViewDefinition<
       Name,
       Variables,
       InputOf<Operations[Name]>,
-      OutputOf<Operations[Name]>,
-      Filters
+      OutputOf<Operations[Name]>
     >,
   ) {
-    const variables = useViewVariables(
-      { ...definition.variables, ...definition.filters } as Variables & Filters,
-      (operation, input, signal) =>
-        client
-          .query(operation as keyof Operations & string, input as never, { signal })
-          .then((response) => response.data),
+    const variables = useViewVariables(definition.variables, (operation, input, signal) =>
+      client
+        .query(operation as keyof Operations & string, input as never, { signal })
+        .then((response) => response.data),
     );
     const request = useDataView(
       definition.operation,
@@ -217,7 +210,16 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
         describeInput: describeViewInput<InputOf<Operations[Name]>>(definition),
       },
     );
-    return { ...request, empty: definition.empty, controls: variables.controls, variables };
+    return {
+      view: request.view,
+      snapshot: request.snapshot,
+      refetch: request.refetch,
+      refresh: request.refresh,
+      queries: request.queries,
+      empty: definition.empty,
+      controls: variables.controls,
+      variables,
+    };
   }
   return { useDataQuery, useDataView, defineDataView, defineTimeView, defineFacetFilter, useView };
 }

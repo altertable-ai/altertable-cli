@@ -104,21 +104,23 @@ test("context validates glossary queries and binds widget evidence to its regist
     "Evidence needs a nonempty ID",
   );
   expect(
-    context.storyPoint({
+    context.finding({
       id: "finding",
       headline: "Orders rose",
       visual: <p>12 orders</p>,
-      glossaryIds: ["completed"],
-      queryNames: ["orders"],
-    }).queryNames,
+      evidence: { id: "finding", glossaryIds: ["completed"], queryNames: ["orders"] },
+    }).evidence.queryNames,
   ).toEqual(["orders"]);
   expect(() =>
-    context.storyPoint({
+    context.finding({
       id: "bad",
       headline: "Bad",
       visual: null,
-      // @ts-expect-error Story query references must belong to the registered query names.
-      queryNames: ["unknown"],
+      evidence: {
+        id: "bad",
+        // @ts-expect-error Story query references must belong to the registered query names.
+        queryNames: ["unknown"],
+      },
     }),
   ).toThrow("Unknown query");
   expect(() =>

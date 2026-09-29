@@ -13,7 +13,7 @@ import {
   GlossaryDefinition,
   MetricWidget,
   Stack,
-  StorySection,
+  ExplorationSection,
   TableWidget,
   VisualizationWidget,
 } from "@altertable/data-app/react";
@@ -138,7 +138,7 @@ function Fixture() {
               visual={<p>Feature reach</p>}
             />
           </Grid>
-          <StorySection
+          <ExplorationSection
             label="Order activity"
             data-testid="layout-story"
             lead={
