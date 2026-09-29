@@ -1,6 +1,7 @@
 import { classNames } from "./classNames.ts";
 import { AppIcon } from "./icons.ts";
 import type { ReportingPeriod } from "../contract.ts";
+import { formatDateRange } from "../format.ts";
 import "./PeriodSummary.css";
 
 export type { ReportingPeriod } from "../contract.ts";
@@ -19,7 +20,7 @@ function duration(period: Extract<ReportingPeriod, { kind: "rolling" }>): string
 
 function label(period: ReportingPeriod): string {
   if (period.kind === "rolling") return `Last ${duration(period)}`;
-  return period.start === period.end ? period.start : `${period.start} – ${period.end}`;
+  return formatDateRange(period);
 }
 
 function comparisonLabel(period: ReportingPeriod, comparison: PeriodComparison): string {

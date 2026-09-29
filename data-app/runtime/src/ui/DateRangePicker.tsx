@@ -24,6 +24,7 @@ import {
 } from "react-aria-components";
 import { classNames } from "./classNames.ts";
 import { AppIcon } from "./icons.ts";
+import { formatDateRange, pluralize } from "../format.ts";
 import "./DateRangePicker.css";
 
 /** ISO calendar dates; the app operation defines timezone and inclusive bounds. */
@@ -42,6 +43,15 @@ export type DatePresetId =
   | "previous-month";
 type DatePreset = { id: DatePresetId; label: string; range: DateRange };
 
+function inclusiveDays(range: DateRange): number {
+  return (
+    (parseDate(range.end).toDate("UTC").getTime() -
+      parseDate(range.start).toDate("UTC").getTime()) /
+      86_400_000 +
+    1
+  );
+}
+
 function monday(date: CalendarDate): CalendarDate {
   return date.subtract({ days: (date.toDate("UTC").getUTCDay() + 6) % 7 });
 }
@@ -55,7 +65,7 @@ function withinBounds(
   try {
     const start = parseDate(range.start);
     const end = parseDate(range.end);
-    const days = (end.toDate("UTC").getTime() - start.toDate("UTC").getTime()) / 86_400_000 + 1;
+    const days = inclusiveDays(range);
     return (
       days >= 1 &&
       (!maxRangeDays || days <= maxRangeDays) &&
@@ -141,6 +151,11 @@ export type DateRangePickerProps = {
   onPresetChange?: (id: DatePresetId) => void;
   selectedPresetId?: DatePresetId | null;
   calendarFooter?: ReactNode;
+  comparison?: {
+    enabled: boolean;
+    range: DateRange | null;
+    onChange: (enabled: boolean) => void;
+  };
 } & Omit<
   ComponentProps<typeof AriaDateRangePicker<CalendarDate>>,
   | "children"
@@ -169,6 +184,7 @@ export function DateRangePicker({
   onPresetChange,
   selectedPresetId,
   calendarFooter,
+  comparison,
   className,
   ...props
 }: DateRangePickerProps) {
@@ -178,6 +194,7 @@ export function DateRangePicker({
     ? { start: parseDate(value.start), end: parseDate(value.end) }
     : null;
   const presets = availableDatePresets({ minDate, maxDate, maxRangeDays, timeZone });
+  const selectedDays = value ? inclusiveDays(value) : 0;
   function choosePreset(preset: DatePreset) {
     setError("");
     if (onPresetChange) onPresetChange(preset.id);
@@ -192,7 +209,7 @@ export function DateRangePicker({
         setOpen(next);
         if (next) setError("");
       }}
-      aria-label={props["aria-label"] ?? label}
+      aria-label={`${props["aria-label"] ?? label}${comparison?.enabled ? ", compared with previous period" : ""}`}
       className={(values) =>
         classNames(
           "altertable-date-range",
@@ -220,6 +237,7 @@ export function DateRangePicker({
         <DateInput slot="start">{(segment) => <DateSegment segment={segment} />}</DateInput>
         <span aria-hidden="true">–</span>
         <DateInput slot="end">{(segment) => <DateSegment segment={segment} />}</DateInput>
+        {comparison?.enabled && <span className="altertable-date-range-comparison">vs prior</span>}
         {(onReset || resetValue) &&
           value &&
           !(
@@ -254,24 +272,26 @@ export function DateRangePicker({
                 aria-label="Quick date ranges"
               >
                 <span className="altertable-date-range-heading">Quick ranges</span>
-                {presets.map((preset) => (
-                  <Button
-                    key={preset.id}
-                    className="altertable-date-range-preset"
-                    aria-current={
-                      (
-                        selectedPresetId === undefined
-                          ? value?.start === preset.range.start && value?.end === preset.range.end
-                          : selectedPresetId === preset.id
-                      )
-                        ? "true"
-                        : undefined
-                    }
-                    onPress={() => choosePreset(preset)}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
+                <div className="altertable-date-range-preset-list">
+                  {presets.map((preset) => (
+                    <Button
+                      key={preset.id}
+                      className="altertable-date-range-preset"
+                      aria-current={
+                        (
+                          selectedPresetId === undefined
+                            ? value?.start === preset.range.start && value?.end === preset.range.end
+                            : selectedPresetId === preset.id
+                        )
+                          ? "true"
+                          : undefined
+                      }
+                      onPress={() => choosePreset(preset)}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="altertable-date-range-custom">
@@ -354,12 +374,33 @@ export function DateRangePicker({
                 </CalendarGrid>
               </RangeCalendar>
               <div className="altertable-date-range-footer">
-                <span>
-                  {value ? `${value.start} – ${value.end}` : "Select a start and end date"}
-                </span>
+                <div>
+                  <span className="altertable-date-range-footer-label">Selected dates</span>
+                  <strong>{value ? formatDateRange(value) : "Select a start and end date"}</strong>
+                </div>
+                {value && (
+                  <span className="altertable-date-range-footer-meta">
+                    {selectedDays} {pluralize(selectedDays, "day")}
+                    {timeZone ? ` · ${timeZone}` : ""}
+                  </span>
+                )}
               </div>
             </div>
           </div>
+          {comparison && (
+            <label className="altertable-date-range-compare">
+              <input
+                type="checkbox"
+                checked={comparison.enabled}
+                disabled={!comparison.range}
+                onChange={(event) => comparison.onChange(event.target.checked)}
+              />
+              <span>
+                Compare with previous period
+                {comparison.range && <small>{formatDateRange(comparison.range)}</small>}
+              </span>
+            </label>
+          )}
           {calendarFooter}
         </Dialog>
       </Popover>

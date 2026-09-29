@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { mountDataApp } from "@altertable/data-app-runtime/react";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
 import { createDataClient } from "@altertable/data-app-runtime/client";
-import { connectionCheck } from "@altertable/data-app-runtime/contract";
+import { connectionCheck, defineDateRangeContract } from "@altertable/data-app-runtime/contract";
 import {
   DataApp,
+  dateRangeControl,
+  dateRangeVariable,
   defineDataIdentifiers,
   ContentSkeleton,
   DateRangePicker,
@@ -14,6 +17,7 @@ import {
   Stack,
   StorySection,
   VisualizationCard,
+  type DateRangeSelection,
 } from "@altertable/data-app-runtime/ui";
 
 const { useDataView } = createDataHooks<{ connection: ReturnType<typeof connectionCheck> }>(
@@ -56,8 +60,20 @@ const empty = {
   glossary: { title: "No terms for this view" },
   queries: { title: "No SQL for this view" },
 };
+const periodVariable = dateRangeVariable({
+  key: "period",
+  comparison: true,
+  contract: defineDateRangeContract({
+    minDate: "2026-08-01",
+    maxDate: "2026-09-30",
+    maxRangeDays: 60,
+    timeZone: "UTC",
+  }),
+  defaultValue: { kind: "dates", start: "2026-09-10", end: "2026-09-12" },
+});
 
 function Fixture() {
+  const [period, setPeriod] = useState<DateRangeSelection>(periodVariable.defaultValue);
   const connection = useDataView(
     "connection",
     {},
@@ -84,7 +100,7 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      variables={<DateRangePicker value={null} onChange={() => {}} label="Date range" />}
+      variables={<DateRangePicker {...dateRangeControl(periodVariable, period, setPeriod)} label="Date range" />}
       story={{
         steps: [
           {

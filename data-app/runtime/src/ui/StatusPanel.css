@@ -12,7 +12,24 @@
   line-height: 1.5;
 }
 .altertable-status-panel[data-status="error"] {
-  border-color: color-mix(in srgb, var(--at-danger, #b42318) 35%, var(--at-border, #e3e6e8));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px;
+  row-gap: 18px;
+  width: min(100%, 520px);
+  margin: clamp(16px, 4vw, 48px) auto 0;
+}
+.altertable-status-panel[data-status="error"] > svg {
+  margin-top: 1px;
+  color: var(--at-danger, #b42318);
+}
+.altertable-status-panel[data-status="error"] .altertable-status-action {
+  grid-column: 2;
+}
+.altertable-status-panel[data-status="error"] .altertable-status-copy {
+  min-width: 0;
 }
 .altertable-status-panel strong {
   color: var(--at-text, #202124);
@@ -30,7 +47,7 @@
   flex: none;
 }
 @media (max-width: 600px) {
-  .altertable-status-panel {
+  .altertable-status-panel:not([data-status="error"]) {
     align-items: flex-start;
     flex-direction: column;
   }

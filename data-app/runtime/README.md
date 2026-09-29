@@ -13,7 +13,7 @@ Start with the task below, then read the linked types. Import through `@altertab
 | Run locally through the CLI proxy | `/local` | [serveLocalApp, localLakehouse](src/local.ts) |
 | Author a hosted server | `/server` | [createDataHandler, RequestAccess](src/server.ts) |
 | Set brand tokens and viewer theme | `/appearance` | [parseAppearance, createThemeController](src/appearance.ts) |
-| Format numbers, ratios, currency, and plural forms | `/format` | [Formatting functions](src/format.ts) |
+| Format dates, numbers, ratios, currency, and plural forms | `/format` | [Formatting functions](src/format.ts) |
 | Compose a view | `/ui` | [All public components and types](src/ui/index.ts) |
 | Select a semantic icon | `/icons` | [AppIcon and icon names](src/ui/icons.ts) |
 
@@ -41,6 +41,7 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 - SQL, credentials, and viewer authorization stay on the server. Hosted apps must authorize each request; the local adapter is for CLI development. SQL disclosure requires both operation policy and server permission.
 - `useDataView` distinguishes requested inputs from the inputs that produced visible data. Pass it once to `DataApp.request`; the shell owns the primary boundary, refresh notice, and inspection defaults. Use `DataSection` for independent requests. Let the app define emptiness; a measured zero can be a valid result.
 - Each operation declares `checks` beside its input parser. `app check --lakehouse` runs them; `app.json` owns identity and appearance. `defineDateRangeContract` shares a calendar range's parser, variable bounds, and displayed period.
+- To offer a previous-period comparison, set `comparison: true` on `dateRangeVariable`. `dateRangeControl` adds the picker control and URL state; `variable.comparisonRange(selection)` returns the immediately preceding equal-length range only when selected and within source coverage. Include both ranges in the operation input and query both on the server. The runtime does not infer comparison results from current-period data.
 - `defineDataContext` preserves glossary keys for `evidenceFor`. Use `defineQueryNames` when card evidence references named SQL; `evidenceFor(dataContext, queryNames)` checks both sets of names. Card inspection inherits context, queries, and empty states from `DataApp`.
 - `Breakdown` shows parts of a total; `Ranking` scales against the largest visible value. `formatPercent` accepts a ratio, for example `0.116` for 11.6%.
 - Default page, grid, and stack gaps scale with the viewport and appearance density. Keep body and label text legible; scale display headlines instead.

@@ -40,4 +40,6 @@ Import `defineDataIdentifiers` and `DataContext` from `/ui`. Plain strings remai
 
 Prefer a dynamic, source-bounded date range for ongoing questions. Bind controls to `useAppVariables` values so URL state, reset, and Back/Forward work. Keep local search out of operation inputs. Use a fixed period only for a deliberate historical snapshot or rolling sub-day question; explain that choice in the data context.
 
+For comparisons, set `comparison: true` on `dateRangeVariable`, pass `dateRangeControl` to `DateRangePicker`, and use `variable.comparisonRange(selection)` to get the preceding equal-length range only when the reader selected it. It returns `null` when comparison is off or source coverage is insufficient. When present, send both ranges to the operation and query each on the server; keep the displayed comparison tied to the result that produced it.
+
 After changing operations or inputs, run `altertable app check --lakehouse` with the matching profile. It executes the operations' declared checks; keep them aligned with their input parsers. Inspect the rendered app at phone and desktop widths, including loading, empty, error, and stale results.

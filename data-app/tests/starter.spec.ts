@@ -100,6 +100,17 @@ test("glossary definitions open in place on hover and keyboard activation", asyn
   await expect(definition).toHaveCount(0);
 });
 
+test("date comparison offers the preceding range only when available", async ({ page }) => {
+  await page.goto("/components");
+  await page.getByRole("button", { name: "Choose dates" }).click();
+  const compare = page.getByRole("checkbox", { name: /Compare with previous period/ });
+  await expect(compare).toBeEnabled();
+  await expect(page.getByText("Sep 7–9, 2026")).toBeVisible();
+  await compare.check();
+  await expect(page.locator(".altertable-date-range-comparison")).toHaveText("vs prior");
+  await expect(compare).toBeChecked();
+});
+
 test("Present mode retains navigation, deep links, inspection, and theme switching", async ({
   page,
 }) => {
@@ -118,19 +129,31 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
   await expect(page.getByText("No terms for this view")).toBeVisible();
   await page.getByRole("tab", { name: "Queries" }).click();
-  await expect(page.getByText("No SQL for this view")).toBeVisible();
+  const queryEmpty = page.getByText("No SQL for this view");
+  await expect(queryEmpty).toBeVisible();
+  expect(await queryEmpty.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("450");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Close panel" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("data view keeps the last result visible when refresh fails", async ({ page, request }) => {
+test("data view keeps the last result visible when refresh fails", async ({
+  page,
+  request,
+}, testInfo) => {
   await request.post("/__test/state", { data: "failure" });
   await page.goto("/components");
-  await expect(page.getByText("Couldn’t load data")).toBeVisible();
+  const error = page.getByRole("alert");
+  await expect(error).toContainText("Couldn’t load results");
+  await expect(error).toContainText("The lakehouse isn’t responding.");
+  await expect(error.getByRole("button", { name: "Retry" })).toBeVisible();
+  expect(
+    await error.evaluate((element) => element.getBoundingClientRect().width),
+  ).toBeLessThanOrEqual(520);
+  await page.screenshot({ path: testInfo.outputPath("initial-data-error.png"), fullPage: true });
   await request.post("/__test/state", { data: "success" });
-  await page.getByRole("button", { name: "Try again" }).click();
+  await error.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("Connection view ready")).toBeVisible();
   await expect(page.getByRole("group", { name: "Reporting period" })).toHaveCount(0);
   await expect(page).toHaveTitle("Orders exploration • Acme/production • Altertable app");

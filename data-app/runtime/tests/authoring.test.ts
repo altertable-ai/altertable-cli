@@ -7,6 +7,7 @@ import {
   parseEmptyInput,
   parseLabel,
   parseTrue,
+  previousDateRange,
   rowsAsRecords,
 } from "../src/contract.ts";
 import { dataAppTitle } from "../src/config.ts";
@@ -143,4 +144,25 @@ test("a changing date range keeps the displayed period with its result", () => {
       isEmpty: (data) => data.count === 0,
     }),
   ).toEqual({ kind: "empty", input: requested });
+});
+
+test("comparison uses the preceding equal-length range and respects source coverage", () => {
+  expect(previousDateRange({ start: "2026-03-01", end: "2026-03-03" })).toEqual({
+    start: "2026-02-26",
+    end: "2026-02-28",
+  });
+  const contract = defineDateRangeContract({
+    minDate: "2026-02-27",
+    maxDate: "2026-03-31",
+    maxRangeDays: 31,
+    timeZone: "UTC",
+  });
+  expect(contract.comparison({ start: "2026-03-04", end: "2026-03-06" })).toEqual({
+    start: "2026-03-01",
+    end: "2026-03-03",
+  });
+  expect(contract.comparison({ start: "2026-03-01", end: "2026-03-03" })).toBeNull();
+  expect(contract.describeInput({ start: "2026-03-04", end: "2026-03-06" })).toBe(
+    "Mar 4–6, 2026 UTC",
+  );
 });

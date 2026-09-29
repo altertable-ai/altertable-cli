@@ -1,5 +1,23 @@
 type CommonOptions = { locale?: string; missing?: string };
 
+/** Compact, unambiguous calendar dates for labels and request status. */
+export function formatDateRange({ start, end }: { start: string; end: string }): string {
+  const first = new Date(`${start}T00:00:00Z`);
+  const last = new Date(`${end}T00:00:00Z`);
+  const format = (date: Date, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(date);
+  const full = (date: Date) => format(date, { month: "short", day: "numeric", year: "numeric" });
+  if (start === end) return full(first);
+  if (first.getUTCFullYear() !== last.getUTCFullYear()) return `${full(first)}–${full(last)}`;
+  const firstMonth = format(first, { month: "short" });
+  const lastMonth = format(last, { month: "short" });
+  const firstDay = first.getUTCDate();
+  const lastDay = last.getUTCDate();
+  return firstMonth === lastMonth
+    ? `${firstMonth} ${firstDay}–${lastDay}, ${last.getUTCFullYear()}`
+    : `${firstMonth} ${firstDay}–${lastMonth} ${lastDay}, ${last.getUTCFullYear()}`;
+}
+
 export type MetricFormat =
   | { kind: "count"; compact?: boolean; locale?: string }
   | { kind: "ratio"; maximumFractionDigits?: number; locale?: string }

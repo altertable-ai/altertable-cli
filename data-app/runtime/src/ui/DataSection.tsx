@@ -1,9 +1,58 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
+import { DataAppError } from "../client.ts";
 import { Button } from "./Button.tsx";
 import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import { DataBoundary, type DataView } from "./DataBoundary.tsx";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
 import { StatusPanel } from "./StatusPanel.tsx";
+
+function errorPresentation(cause: Error) {
+  const code = cause instanceof DataAppError ? cause.code : "request_failed";
+  switch (code) {
+    case "source_unauthorized":
+      return {
+        title: "Connection needs attention",
+        description: "Ask the app owner to reconnect the lakehouse.",
+        retryable: false,
+      };
+    case "source_forbidden":
+      return {
+        title: "Data access denied",
+        description: "The selected profile cannot read this data. Ask the app owner for access.",
+        retryable: false,
+      };
+    case "source_query_rejected":
+      return {
+        title: "This view cannot run its query",
+        description: "Ask the app owner to check the data operation.",
+        retryable: false,
+      };
+    case "source_rate_limited":
+      return {
+        title: "Data source is busy",
+        description: "The lakehouse is handling too many requests.",
+        retryable: true,
+      };
+    case "timeout":
+      return {
+        title: "Request timed out",
+        description: "The lakehouse took too long to respond.",
+        retryable: true,
+      };
+    case "source_unavailable":
+      return {
+        title: "Couldn’t load results",
+        description: "The lakehouse isn’t responding.",
+        retryable: true,
+      };
+    default:
+      return {
+        title: "Couldn’t load results",
+        description: "The data request failed.",
+        retryable: true,
+      };
+  }
+}
 
 export type DataSectionProps<Data, Input = unknown> = (
   | { view: DataView<Data, Input>; result?: never }
@@ -36,8 +85,6 @@ export function DataSection<Data, Input>({
 }: DataSectionProps<Data, Input>) {
   const dataView = result?.view ?? view;
   if (!dataView) throw new Error("DataSection needs a data view.");
-  const retryAction = error?.onRetry ?? (result ? () => void result.refetch() : undefined);
-  const retry = retryAction && <Button onClick={retryAction}>Try again</Button>;
   return (
     <DataBoundary
       {...props}
@@ -48,15 +95,25 @@ export function DataSection<Data, Input>({
       dimOnUpdate={dimOnUpdate}
       loading={loading ?? <ContentSkeleton variant="panel" />}
       empty={<EmptyState {...(empty ?? { title: "No data in this range" })} />}
-      error={(cause) => (
-        <StatusPanel
-          status="error"
-          title={error?.title ?? "Couldn’t load data"}
-          description={error?.description ?? cause.message}
-          action={retry}
-        />
-      )}
-      staleError={() => retry}
+      error={(cause) => {
+        const presentation = errorPresentation(cause);
+        const retryAction =
+          error?.onRetry ??
+          (presentation.retryable && result ? () => void result.refetch() : undefined);
+        return (
+          <StatusPanel
+            status="error"
+            title={error?.title ?? presentation.title}
+            description={error?.description ?? presentation.description}
+            action={retryAction && <Button onClick={retryAction}>Retry</Button>}
+          />
+        );
+      }}
+      staleError={() =>
+        (error?.onRetry || result) && (
+          <Button onClick={error?.onRetry ?? (() => void result?.refetch())}>Retry</Button>
+        )
+      }
     >
       {children}
     </DataBoundary>

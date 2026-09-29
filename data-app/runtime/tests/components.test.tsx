@@ -5,6 +5,7 @@ import { searchItems } from "../src/ui/searchItems.ts";
 import { SearchMatch } from "../src/ui/SearchMatch.tsx";
 import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/shortcuts.ts";
 import { TableCard } from "../src/ui/TableCard.tsx";
+import { DataSection } from "../src/ui/DataSection.tsx";
 import {
   dateRangeControl,
   dateRangeVariable,
@@ -17,6 +18,31 @@ import { createDataHandler } from "../src/server.ts";
 import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
 import { chartColor } from "../src/ui/chartColor.ts";
 import { formatMetric } from "../src/format.ts";
+
+test("initial data errors show a useful recovery action for each failure", () => {
+  function render(code: string) {
+    return renderToStaticMarkup(
+      createElement(DataSection, {
+        result: {
+          view: { kind: "error" as const, error: new DataAppError("Raw server text", code) },
+          refetch: () => {},
+        },
+        children: () => null,
+      }),
+    );
+  }
+  const unavailable = render("source_unavailable");
+  expect(unavailable).toContain("Couldn’t load results");
+  expect(unavailable).toContain("The lakehouse isn’t responding.");
+  expect(unavailable).toContain("Retry</button>");
+  expect(unavailable).not.toContain("Raw server text");
+  const forbidden = render("source_forbidden");
+  expect(forbidden).toContain("Data access denied");
+  expect(forbidden).not.toContain("Retry</button>");
+  const query = render("source_query_rejected");
+  expect(query).toContain("Ask the app owner to check the data operation.");
+  expect(query).not.toContain("Retry</button>");
+});
 
 test("local search preserves table order and highlights original text", () => {
   const rows = [
@@ -163,6 +189,50 @@ test("app variables validate URLs and keep date presets relative", () => {
     start: "2020-01-06",
     end: "2020-01-08",
   });
+});
+
+test("date comparison is opt-in, URL-backed, and bounded by source coverage", () => {
+  const period = dateRangeVariable({
+    key: "period",
+    comparison: true,
+    contract: defineDateRangeContract({
+      minDate: "2026-03-01",
+      maxDate: "2026-03-31",
+      maxRangeDays: 31,
+      timeZone: "UTC",
+    }),
+    defaultValue: { kind: "dates", start: "2026-03-10", end: "2026-03-12" },
+  });
+  const selected = period.read(
+    new URLSearchParams("start=2026-03-10&end=2026-03-12&compare=previous"),
+  );
+  expect(selected).toEqual({
+    kind: "dates",
+    start: "2026-03-10",
+    end: "2026-03-12",
+    comparison: "previous",
+  });
+  expect(period.previous(selected)).toEqual({ start: "2026-03-07", end: "2026-03-09" });
+  expect(period.comparisonRange(selected)).toEqual({ start: "2026-03-07", end: "2026-03-09" });
+  expect(period.comparisonRange(period.defaultValue)).toBeNull();
+  expect(period.write(selected)).toEqual({
+    period: null,
+    start: "2026-03-10",
+    end: "2026-03-12",
+    compare: "previous",
+  });
+  expect(
+    period.read(new URLSearchParams("start=2026-03-01&end=2026-03-03&compare=previous")),
+  ).toEqual({
+    kind: "dates",
+    start: "2026-03-01",
+    end: "2026-03-03",
+  });
+  const changes: unknown[] = [];
+  const control = dateRangeControl(period, selected, (next) => changes.push(next));
+  expect(control.comparison?.range).toEqual({ start: "2026-03-07", end: "2026-03-09" });
+  control.onChange({ start: "2026-03-01", end: "2026-03-03" });
+  expect(changes).toEqual([{ kind: "dates", start: "2026-03-01", end: "2026-03-03" }]);
 });
 
 test("operation routes decode one path segment and client errors remain useful", async () => {

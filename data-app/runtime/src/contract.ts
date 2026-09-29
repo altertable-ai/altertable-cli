@@ -1,4 +1,5 @@
 import { parseDate, today } from "@internationalized/date";
+import { formatDateRange } from "./format.ts";
 
 export type QueryResult = {
   columns: { name: string; type?: string }[];
@@ -24,6 +25,19 @@ export function parseTrue(value: unknown): true {
 }
 
 export type DateRangeInput = { start: string; end: string };
+
+/** The immediately preceding, equally long set of calendar days. */
+export function previousDateRange({ start, end }: DateRangeInput): DateRangeInput {
+  const first = parseDate(start);
+  const last = parseDate(end);
+  const days = (last.toDate("UTC").getTime() - first.toDate("UTC").getTime()) / 86_400_000 + 1;
+  if (days < 1) throw new Error("Date range must start before it ends.");
+  const previousEnd = first.subtract({ days: 1 });
+  return {
+    start: previousEnd.subtract({ days: days - 1 }).toString(),
+    end: previousEnd.toString(),
+  };
+}
 
 export type ReportingPeriod =
   | { kind: "rolling"; amount: number; unit: "hour" | "day"; end: string }
@@ -66,11 +80,16 @@ export function defineDateRangeContract(options: DateRangeContractOptions) {
     end,
     timeZone: options.timeZone,
   });
-  const describeInput = ({ start, end }: DateRangeInput) => `${start}–${end} ${options.timeZone}`;
+  const describeInput = (input: DateRangeInput) => `${formatDateRange(input)} ${options.timeZone}`;
+  const comparison = (input: DateRangeInput): DateRangeInput | null => {
+    const previous = previousDateRange(input);
+    return options.minDate && previous.start < options.minDate ? null : previous;
+  };
   return {
     bounds,
     parse: (value: unknown) => parseDateRangeInput(value, bounds()),
     period,
+    comparison,
     describeInput,
     view: { period, describeInput },
   };

@@ -87,8 +87,8 @@ export function selectVariable({
 }
 
 export type DateRangeSelection =
-  | { kind: "preset"; id: DatePresetId }
-  | { kind: "dates"; start: string; end: string };
+  | { kind: "preset"; id: DatePresetId; comparison?: "previous" }
+  | { kind: "dates"; start: string; end: string; comparison?: "previous" };
 
 export type DateRangeVariableOptions = {
   /** URL key for a relative preset; explicit dates use startKey and endKey. */
@@ -98,12 +98,18 @@ export type DateRangeVariableOptions = {
   defaultValue: DateRangeSelection;
   contract: DateRangeContract;
   history?: HistoryMode;
+  /** Opt into a URL-backed comparison with the preceding equal-length range. */
+  comparison?: boolean;
+  comparisonKey?: string;
 };
 
 export type DateRangeVariable = AppVariable<DateRangeSelection> & {
   kind: "dateRange";
+  supportsComparison: boolean;
   bounds: () => { minDate?: string; maxDate: string; maxRangeDays: number; timeZone: string };
   resolve: (selection: DateRangeSelection) => DateRange;
+  previous: (selection: DateRangeSelection) => DateRange | null;
+  comparisonRange: (selection: DateRangeSelection) => DateRange | null;
 };
 
 const PRESET_IDS = new Set<DatePresetId>([
@@ -127,6 +133,8 @@ export function dateRangeVariable({
   defaultValue,
   contract,
   history = "push",
+  comparison = false,
+  comparisonKey = "compare",
 }: DateRangeVariableOptions): DateRangeVariable {
   const bounds = contract.bounds;
   function resolve(selection: DateRangeSelection): DateRange {
@@ -145,6 +153,7 @@ export function dateRangeVariable({
   }
   const same = (left: DateRangeSelection, right: DateRangeSelection) =>
     left.kind === right.kind &&
+    left.comparison === right.comparison &&
     (left.kind === "preset" && right.kind === "preset"
       ? left.id === right.id
       : left.kind === "dates" &&
@@ -153,41 +162,59 @@ export function dateRangeVariable({
         left.end === right.end);
   const variable: DateRangeVariable = {
     kind: "dateRange",
-    urlKeys: [key, startKey, endKey],
+    supportsComparison: comparison,
+    urlKeys: comparison ? [key, startKey, endKey, comparisonKey] : [key, startKey, endKey],
     defaultValue,
     history,
     bounds,
     resolve,
+    previous: (selection) => (comparison ? contract.comparison(resolve(selection)) : null),
+    comparisonRange: (selection) =>
+      selection.comparison === "previous" && comparison
+        ? contract.comparison(resolve(selection))
+        : null,
     same,
     valid: (value) => {
       try {
-        resolve(value);
-        return true;
+        const range = resolve(value);
+        return (
+          value.comparison === undefined ||
+          (value.comparison === "previous" && comparison && contract.comparison(range) !== null)
+        );
       } catch {
         return false;
       }
     },
     read: (params) => {
+      const withComparison = (selection: DateRangeSelection): DateRangeSelection => {
+        if (!comparison || params.get(comparisonKey) !== "previous") return selection;
+        const selected = { ...selection, comparison: "previous" as const };
+        return variable.valid(selected) ? selected : selection;
+      };
       const presetId = params.get(key);
       if (presetId && PRESET_IDS.has(presetId as DatePresetId)) {
         const selection = { kind: "preset", id: presetId as DatePresetId } as const;
-        if (variable.valid(selection)) return selection;
+        if (variable.valid(selection)) return withComparison(selection);
       }
       const start = params.get(startKey);
       const end = params.get(endKey);
       if (start && end) {
         const selection = { kind: "dates", start, end } as const;
-        if (variable.valid(selection)) return selection;
+        if (variable.valid(selection)) return withComparison(selection);
       }
-      return defaultValue;
+      return withComparison(defaultValue);
     },
-    write: (value) =>
-      same(value, defaultValue)
+    write: (value) => ({
+      ...(same(value, defaultValue)
         ? { [key]: null, [startKey]: null, [endKey]: null }
         : value.kind === "preset"
           ? { [key]: value.id, [startKey]: null, [endKey]: null }
-          : { [key]: null, [startKey]: value.start, [endKey]: value.end },
+          : { [key]: null, [startKey]: value.start, [endKey]: value.end }),
+      ...(comparison ? { [comparisonKey]: value.comparison ?? null } : {}),
+    }),
   };
+  if (defaultValue.comparison)
+    throw new Error(`Date variable ${key} comparison must be activated by the reader.`);
   if (!variable.valid(defaultValue))
     throw new Error(`Date variable ${key} has a default outside its available data range.`);
   return variable;
@@ -200,15 +227,33 @@ export function dateRangeControl(
   onChange: (selection: DateRangeSelection) => void,
 ) {
   const value = variable.resolve(selection);
+  const update = (next: DateRangeSelection) =>
+    onChange(
+      selection.comparison && variable.previous(next) ? { ...next, comparison: "previous" } : next,
+    );
   return {
     value,
     onChange: (range: DateRange | null) =>
-      onChange(range ? { kind: "dates", ...range } : variable.defaultValue),
-    onPresetChange: (id: DatePresetId) => onChange({ kind: "preset", id }),
+      update(range ? { kind: "dates", ...range } : variable.defaultValue),
+    onPresetChange: (id: DatePresetId) => update({ kind: "preset", id }),
     selectedPresetId: selection.kind === "preset" ? selection.id : null,
     onReset: () => onChange(variable.defaultValue),
     isDefault: variable.same(selection, variable.defaultValue),
     resetValue: variable.resolve(variable.defaultValue),
+    ...(variable.supportsComparison
+      ? {
+          comparison: {
+            enabled: selection.comparison === "previous",
+            range: variable.previous(selection),
+            onChange: (enabled: boolean) =>
+              onChange(
+                enabled
+                  ? { ...selection, comparison: "previous" }
+                  : { ...selection, comparison: undefined },
+              ),
+          },
+        }
+      : {}),
     ...variable.bounds(),
   };
 }

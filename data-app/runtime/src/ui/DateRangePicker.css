@@ -56,6 +56,16 @@
 .altertable-date-range .react-aria-Group > span[aria-hidden] {
   color: var(--at-muted, #687078);
 }
+.altertable-date-range-comparison {
+  flex: none;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--at-subtle, #f6f7f7);
+  color: var(--at-muted, #687078);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .altertable-date-range .react-aria-Group .react-aria-Button {
   display: grid;
   place-items: center;
@@ -145,14 +155,18 @@
 .altertable-date-range-presets {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
   min-width: 0;
   max-height: min(380px, 62dvh);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 12px;
   border-right: 1px solid var(--at-border, #e3e6e8);
+}
+.altertable-date-range-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .altertable-date-range-custom {
   min-width: 0;
@@ -196,15 +210,54 @@
 }
 .altertable-date-range-footer {
   display: flex;
-  align-items: center;
+  align-items: end;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--at-border, #e3e6e8);
+  padding: 10px 12px;
+  border-radius: var(--at-radius-control, 7px);
+  background: var(--at-subtle, #f6f7f7);
   color: var(--at-muted, #687078);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+.altertable-date-range-footer > div {
+  display: grid;
+  gap: 2px;
+}
+.altertable-date-range-footer-label {
+  font-weight: 600;
+}
+.altertable-date-range-footer strong {
+  color: var(--at-text, #202124);
+  font-size: 13px;
+  font-weight: 650;
+}
+.altertable-date-range-footer-meta {
+  white-space: nowrap;
+}
+.altertable-date-range-compare {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 4px;
+  padding: 10px 8px 2px;
+  cursor: pointer;
+}
+.altertable-date-range-compare:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+.altertable-date-range-compare input {
+  margin: 2px 0 0;
+  accent-color: var(--at-accent, #4779dc);
+}
+.altertable-date-range-compare small {
+  display: block;
+  margin-top: 2px;
+  color: var(--at-muted, #687078);
+  font-size: 11px;
 }
 .altertable-date-range-popover .react-aria-RangeCalendar {
   width: max-content;
@@ -363,7 +416,8 @@
 }
 @media (max-width: 620px) {
   .altertable-date-range-popover {
-    max-width: calc(100vw - 24px);
+    box-sizing: border-box;
+    width: min(420px, calc(100vw - 24px));
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -373,23 +427,54 @@
     gap: 10px;
   }
   .altertable-date-range-presets {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
     max-height: none;
     overflow: visible;
     padding: 0 0 10px;
     border-right: 0;
     border-bottom: 1px solid var(--at-border, #e3e6e8);
   }
+  .altertable-date-range-preset-list {
+    flex-direction: row;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    padding-bottom: 2px;
+  }
   .altertable-date-range-popover .altertable-date-range-preset {
+    flex: none;
     width: auto;
-    min-height: 30px;
+    min-height: 36px;
     border: 1px solid var(--at-border, #e3e6e8);
+    scroll-snap-align: start;
+    white-space: nowrap;
   }
   .altertable-date-range-heading {
-    flex-basis: 100%;
     padding-bottom: 4px;
+  }
+  .altertable-date-range-popover .react-aria-RangeCalendar,
+  .altertable-date-range-popover .react-aria-CalendarGrid {
+    width: 100%;
+    max-width: none;
+  }
+  .altertable-date-range-popover .react-aria-RangeCalendar header {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 32px;
+    gap: 6px;
+  }
+  .altertable-date-range-popover .react-aria-CalendarGrid {
+    table-layout: fixed;
+  }
+  .altertable-date-range-popover .react-aria-CalendarGrid th,
+  .altertable-date-range-popover .react-aria-CalendarGrid td {
+    width: 14.2857%;
+  }
+  .altertable-date-range-popover .react-aria-CalendarCell {
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+    aspect-ratio: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {

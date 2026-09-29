@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { classNames } from "./classNames.ts";
+import { AppIcon } from "./icons.ts";
 import "./StatusPanel.css";
 
 export type StatusPanelProps = {
@@ -29,7 +30,8 @@ export function StatusPanel({
       data-status={status}
       role={role ?? (status === "error" ? "alert" : "status")}
     >
-      <div>
+      {status === "error" && <AppIcon name="error" size={18} />}
+      <div className="altertable-status-copy">
         <strong>{title}</strong>
         {description && <p>{description}</p>}
         {details && <small>{details}</small>}
