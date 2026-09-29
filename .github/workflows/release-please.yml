@@ -258,7 +258,9 @@ jobs:
           persist-credentials: false
           ref: ${{ needs.release-context.outputs.orchestration_ref }}
           path: .release-orchestration
-          sparse-checkout: cli/scripts/publish-release.ts
+          sparse-checkout: |
+            cli/scripts/publish-release.ts
+            cli/src/lib/object.ts
           sparse-checkout-cone-mode: false
 
       - name: Install Bun

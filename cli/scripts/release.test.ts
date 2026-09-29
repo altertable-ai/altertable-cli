@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   assertReleaseTag,
   assertToolchain,
@@ -575,7 +575,9 @@ describe("release infrastructure wiring", () => {
     expect(releaseCheckout?.with?.ref).toContain("release_ref");
     expect(orchestrationCheckout?.with?.ref).toContain("orchestration_ref");
     expect(orchestrationCheckout?.with?.path).toBe(".release-orchestration");
-    expect(orchestrationCheckout?.with?.["sparse-checkout"]).toBe("cli/scripts/publish-release.ts");
+    expect(orchestrationCheckout?.with?.["sparse-checkout"]).toBe(
+      "cli/scripts/publish-release.ts\ncli/src/lib/object.ts\n",
+    );
 
     const orderedSteps = [
       "Download tested release binaries",
@@ -605,6 +607,37 @@ describe("release infrastructure wiring", () => {
     for (const index of orderedSteps.slice(9)) {
       expect(publication.steps?.[index]?.env?.RELEASE_ROOT).toBe("${{ github.workspace }}");
       expect(publication.steps?.[index]?.env?.RELEASE_TAG).toContain("tag_name");
+    }
+  });
+
+  test("builds release publication from only the orchestration checkout", async () => {
+    const workflow = await readWorkflow("release-please.yml");
+    const checkout = workflow.jobs["release-artifacts"]?.steps?.find(
+      ({ name }) => name === "Check out current release orchestration",
+    );
+    const sparseCheckout = checkout?.with?.["sparse-checkout"];
+    if (typeof sparseCheckout !== "string") {
+      throw new Error("Release orchestration sparse checkout is missing");
+    }
+    const paths = sparseCheckout
+      .trim()
+      .split("\n")
+      .map((path) => path.trim());
+    const directory = await mkdtemp(join(tmpdir(), "altertable-release-orchestration-test-"));
+    try {
+      for (const path of paths) {
+        const destination = join(directory, path);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(join(repositoryRoot, path), destination);
+      }
+      const result = await Bun.build({
+        entrypoints: [join(directory, "cli/scripts/publish-release.ts")],
+        outdir: join(directory, "dist"),
+        target: "bun",
+      });
+      expect(result.success).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 
