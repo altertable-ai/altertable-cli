@@ -5,7 +5,7 @@ import type { DataContext } from "./data-context.ts";
 
 export type InspectionDefaults = {
   dataContext: DataContext;
-  empty: AboutEmpty;
+  empty?: AboutEmpty;
   queries?: DisclosedQuery[];
 };
 

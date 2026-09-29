@@ -79,6 +79,11 @@ export function createDataHandler(
       async queryAll(statement, options) {
         if (!Number.isInteger(options.limit) || options.limit < 1)
           throw new Error("Query needs a positive row limit.");
+        if (
+          operation.queryNames &&
+          !Object.values(operation.queryNames).includes(options.name ?? "")
+        )
+          throw new Error(`Query name is not registered for operation ${name}.`);
         const query: DisclosedQuery = {
           name: options.name ?? `Query ${queries.length + 1}`,
           statement,

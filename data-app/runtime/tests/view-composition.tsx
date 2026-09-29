@@ -2,7 +2,7 @@ import type { DataOperation, DateRangeRequest } from "../src/contract.ts";
 import { defineDateRangeContract } from "../src/contract.ts";
 import { createDataClient } from "../src/client.ts";
 import { createDataHooks } from "../src/react.tsx";
-import { dateRangeVariable } from "../src/ui/variables.ts";
+import { dateRangeVariable, textVariable } from "../src/ui/variables.ts";
 import type { MetricCardProps } from "../src/ui/MetricCard.tsx";
 import type { DataSectionProps } from "../src/ui/DataSection.tsx";
 import type { DataAppProps } from "../src/ui/DataApp.tsx";
@@ -19,7 +19,6 @@ defineDataView({
   operation: "activity",
   variables: { period },
   input: ({ period }) => period,
-  describeInput: period.describeInput,
   isEmpty: (data) => data.count === 0,
   empty: { title: "No activity" },
 });
@@ -31,6 +30,14 @@ defineDataView({
   describeInput: period.describeInput,
   isEmpty: () => false,
   empty: { title: "Empty" },
+});
+// @ts-expect-error Without a date variable, the input needs an authored description.
+defineDataView({
+  operation: "activity",
+  variables: { search: textVariable({ key: "search" }) },
+  input: () => ({ range: { start: "2026-01-01", end: "2026-01-02" }, comparison: null }),
+  isEmpty: (data) => data.count === 0,
+  empty: { title: "No activity" },
 });
 // @ts-expect-error Numbers require a format.
 const metric: MetricCardProps = { label: "Orders", value: 123 };

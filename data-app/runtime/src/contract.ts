@@ -232,6 +232,7 @@ export type DataOperation<Input, Output> = {
   output: (value: unknown) => Output;
   run: (context: OperationContext, input: Input) => Promise<Output>;
   checks: readonly Input[];
+  queryNames?: Readonly<Record<string, string>>;
   policy: {
     maxQueryRows: number;
     maxDurationMs: number;
@@ -254,9 +255,12 @@ export function defineOperation<Input, Output>(operation: DataOperation<Input, O
   ) {
     throw new Error("Each data operation needs check inputs and positive row and duration limits.");
   }
+  if (operation.queryNames) defineQueryNames(operation.queryNames);
   for (const input of operation.checks) operation.input(input);
   return operation;
 }
+
+export const connectionQueryNames = defineQueryNames({ connection: "connection-check" });
 
 /** Success requires a bounded SQL query; it does not establish access to a particular dataset. */
 export function connectionCheck(): DataOperation<Record<string, never>, true> {
@@ -264,12 +268,13 @@ export function connectionCheck(): DataOperation<Record<string, never>, true> {
     input: parseEmptyInput,
     output: parseTrue,
     checks: [{}],
+    queryNames: connectionQueryNames,
     policy: { maxQueryRows: 1, maxDurationMs: 15_000, exposeSql: true },
     async run({ lakehouse, signal }): Promise<true> {
       await lakehouse.queryAll("SELECT 1 AS connection_check", {
         limit: 1,
         signal,
-        name: "connection-check",
+        name: connectionQueryNames.connection,
       });
       return true;
     },
@@ -283,6 +288,7 @@ export type DataOperations = Record<
     output: (value: unknown) => unknown;
     run: (context: OperationContext, input: never) => Promise<unknown>;
     checks: readonly unknown[];
+    queryNames?: Readonly<Record<string, string>>;
     policy: DataOperation<never, unknown>["policy"];
   }
 >;

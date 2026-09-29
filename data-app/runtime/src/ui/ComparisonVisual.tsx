@@ -39,7 +39,7 @@ export function ComparisonVisual({
             <strong>{previous.display}</strong>
           </div>
           <span className="altertable-comparison-track">
-            <span style={{ width: `${(previous.value / max) * 100}%` }} />
+            <span style={{ width: `${((previous.value ?? 0) / max) * 100}%` }} />
           </span>
         </div>
       )}

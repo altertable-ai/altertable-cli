@@ -37,7 +37,7 @@ export type StoryStep = {
 export type PlayStoryProps = {
   title: string;
   steps: StoryStep[];
-  empty: AboutEmpty;
+  empty?: AboutEmpty;
   scope?: ReactNode;
   dataContext: DataContext;
   theme?: ThemeController;

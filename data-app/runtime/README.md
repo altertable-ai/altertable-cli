@@ -41,8 +41,8 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 - SQL, credentials, and viewer authorization stay on the server. Hosted apps must authorize each request; the local adapter is for CLI development. SQL disclosure requires both operation policy and server permission.
 - `useDataView` distinguishes requested inputs from the inputs that produced visible data. Pass it once to `DataApp.request`; the shell owns the primary boundary, refresh notice, and inspection defaults. Use `DataSection` for independent requests. Let the app define emptiness; a measured zero can be a valid result.
 - Each operation declares `checks` beside its input parser. `app check --lakehouse` runs them; `app.json` owns identity and appearance. `defineDateRangeContract` shares a calendar range's parser, variable bounds, and displayed period.
-- To offer a previous-period comparison, set `comparison: true` on `dateRangeVariable`. `dateRangeControl` adds the picker control and URL state; `variable.comparisonRange(selection)` returns the immediately preceding equal-length range only when selected and within source coverage. Use `variable.input(selection)` or a bound view to resolve both ranges; `calendar.parseRequest` validates the operation input. Query both ranges in the operation. The runtime does not infer comparison results from current-period data.
-- `createDataContext(queryNames)` validates glossary query references and supplies typed `context.evidence`. Card inspection inherits context, queries, and empty states from `DataApp`.
+- To offer a previous-period comparison, set `comparison: true` on `dateRangeVariable`. `dateRangeControl` adds the picker control and URL state; `variable.comparisonRange(selection)` returns the immediately preceding equal-length range only when selected and within source coverage. Use `variable.input(selection)` or a bound view to resolve both ranges; `calendar.parseRequest` validates the operation input. Query both ranges in the operation. `calendarMetricComparison(displayedInput, values)` supplies the metric and period labels from the visible result; use `null` for an unavailable previous value and `0` for a measured zero.
+- Give `defineOperation` a `queryNames` registry when its results expose query evidence. Reuse that registry with `createDataContext(queryNames)` for glossary entries, card evidence, and `context.storyStep(...)` in Present mode. The server rejects unregistered query names. Card inspection inherits context, queries, and empty states from `DataApp`.
 - `Breakdown` shows parts of a total; `Ranking` scales against the largest visible value. `formatPercent` accepts a ratio, for example `0.116` for 11.6%.
 - Default page, grid, and stack gaps scale with the viewport and appearance density. Keep body and label text legible; scale display headlines instead.
 - Use `GlossaryDefinition` for a term in running text: `<GlossaryDefinition entry={dataContext.glossary.orders}>completed orders</GlossaryDefinition>`. It shows the registered definition on hover or activation; `AboutData` remains the place for full evidence.
@@ -77,7 +77,6 @@ const activityView = defineDataView({
   operation: "activity",
   variables: { period },
   input: ({ period }) => period,
-  describeInput: period.describeInput,
   isEmpty: (data) => data.features.length === 0,
   empty: { title: "No activity in this range" },
 });
@@ -85,7 +84,7 @@ const activityView = defineDataView({
 function App() {
   const activity = useView(activityView);
   return (
-    <DataApp config={config} dataContext={dataContext} aboutEmpty={aboutEmpty} request={activity}>
+    <DataApp config={config} dataContext={dataContext} request={activity}>
       {(data, displayedInput) => (
         <MetricCard label="Actions" value={data.count} format={{ kind: "count" }} />
       )}
@@ -94,7 +93,7 @@ function App() {
 }
 ```
 
-`useView` generates date, text, and fixed-option select controls; `variables` can override the shell's controls. Its `variables.bind(name)` supports custom controls. `input` explicitly selects which resolved variables affect the operation, so local search can stay out of query inputs. Labels, emptiness, and input mapping are declared once. `useDataView` remains available for requests with manually managed inputs.
+`useView` generates date, text, and fixed-option select controls; `variables` can override the shell's controls. Its `variables.bind(name)` supports custom controls. `input` explicitly selects which resolved variables affect the operation, so local search can stay out of query inputs. A view with one date variable and a `DateRangeRequest` derives its displayed input label from the date contract; other views require `describeInput`. Supply it to override the date label. `useDataView` remains available for requests with manually managed inputs. `DataApp` provides default empty states for Glossary and Queries; pass `aboutEmpty` to customize the copy.
 
 A date resolves to `{ range, comparison }`, with comparison `null` when disabled. Define the shared contract in `src/contracts.ts`:
 
@@ -136,6 +135,7 @@ const content = defineDataContent<Activity, DateRangeRequest>((state) => (
 
 ```tsx
 const queries = defineQueryNames({ activity: "feature-activity" });
+// In the server operation: queryNames: queries
 const identifiers = defineDataIdentifiers({
   tables: { events: { catalog: "product_analytics", schema: "analytics", name: "events" } },
   columns: { identity: { table: "events", name: "identity_uuid" } },
@@ -157,9 +157,15 @@ const evidence = context.evidence({
   glossaryIds: ["identities"],
   queryNames: [queries.activity],
 });
+const step = context.storyStep({
+  id: "activity",
+  headline: "What people do",
+  visual: <ActivityChart />,
+  queryNames: [queries.activity],
+});
 ```
 
-Import `defineQueryNames` from `/contract` and the context/identifier factories from `/ui`. Unknown glossary/query references fail type checks and registry validation. Physical source identity stays in the identifier registry for future linking.
+Import `defineQueryNames` from `/contract` and the context/identifier factories from `/ui`. Use the same registry in `defineOperation({ queryNames: queries, ... })`. Unknown glossary/query references fail type checks and registry validation; the server also validates returned query names. Physical source identity stays in the identifier registry for future linking.
 
 ## API migration
 

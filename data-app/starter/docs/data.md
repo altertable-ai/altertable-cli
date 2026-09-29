@@ -12,7 +12,7 @@ Inspect catalogs, time coverage, and existing definitions before selecting the e
 
 `defineOperation` requires input/output parsers, limits, and live-check inputs. For date comparisons, share a `defineDateRangeContract` between the browser variable and the operation's `input: calendar.parseRequest`. This is portable validation; deployment adapters can reuse it without the local server. Query `input.range` and `input.comparison` when present.
 
-Use `createDataContext(queryNames)` to bind the glossary and card evidence to registered queries. Register physical source names with `defineDataIdentifiers`; prose uses `<DataIdentifier id="tables.events" />`. The [runtime guide](../.altertable/runtime/README.md#bind-evidence) shows the complete pattern.
+Use one `defineQueryNames` registry in `defineOperation({ queryNames, ... })` and `createDataContext(queryNames)`. The operation validates returned query names; the context types glossary entries, card evidence, and Present steps through `context.storyStep`. Register physical source names with `defineDataIdentifiers`; prose uses `<DataIdentifier id="tables.events" />`. The [runtime guide](../.altertable/runtime/README.md#bind-evidence) shows the complete pattern.
 
 Prefer a source-bounded date variable for ongoing questions. Fixed periods belong to deliberate historical explorations. SQL and business definitions remain app-owned. `app dev` and `app check --lakehouse` reject mismatches with known profile scope; app checks also reject browser value imports of the server entry, operations, or runtime server adapters.
 

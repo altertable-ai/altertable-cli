@@ -1,11 +1,13 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { defineDateRangeContract, defineQueryNames } from "../src/contract.ts";
-import { defineDataContent } from "../src/view.tsx";
+import { defineDataContent, describeViewInput, type DataViewDefinition } from "../src/view.tsx";
 import { createDataContext } from "../src/ui/data-context.ts";
 import { dateRangeVariable, defineAppVariables, textVariable } from "../src/ui/variables.ts";
 import { ContentSkeleton } from "../src/ui/ContentSkeleton.tsx";
 import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
+import { calendarMetricComparison } from "../src/ui/comparison.ts";
+import { MetricCard } from "../src/ui/MetricCard.tsx";
 
 const calendar = defineDateRangeContract({
   minDate: "2026-01-01",
@@ -34,6 +36,45 @@ test("date requests derive a comparison and reject forged or unavailable ranges"
   expect(() =>
     calendar.parseRequest({ range: { start: "2026-02-30", end: "2026-03-03" } }),
   ).toThrow();
+  const definition = {
+    operation: "activity",
+    variables: { period: variable },
+    input: ({ period }: { period: typeof request }) => period,
+    isEmpty: (data: { count: number }) => data.count === 0,
+    empty: { title: "No activity" },
+  } satisfies DataViewDefinition<
+    "activity",
+    { period: typeof variable },
+    typeof request,
+    { count: number }
+  >;
+  expect(describeViewInput<typeof request>(definition)(request)).toBe("Mar 1–3, 2026 UTC");
+  expect(() =>
+    describeViewInput({ ...definition, variables: { first: variable, second: variable } }),
+  ).toThrow("exactly one date range variable");
+  expect(describeViewInput({ ...definition, describeInput: () => "custom period" })(request)).toBe(
+    "custom period",
+  );
+});
+
+test("comparison labels follow displayed inputs and distinguish unavailable from zero", () => {
+  const input = calendar.request({ start: "2026-03-01", end: "2026-03-03" }, true);
+  const format = { kind: "count" } as const;
+  expect(
+    calendarMetricComparison({ ...input, comparison: null }, { current: 12, previous: 7, format }),
+  ).toBeUndefined();
+  const available = calendarMetricComparison(input, { current: 12, previous: 0, format });
+  expect(available).toMatchObject({
+    current: { display: "12", period: "Mar 1–3, 2026" },
+    previous: { value: 0, display: "0", period: "Feb 26–28, 2026" },
+  });
+  const unavailable = calendarMetricComparison(input, { current: 12, previous: null, format });
+  expect(unavailable?.previous).toMatchObject({ value: null, display: "Not available" });
+  expect(
+    renderToStaticMarkup(
+      <MetricCard label="Orders" value={12} format={format} comparison={unavailable} />,
+    ),
+  ).toContain("Previous period unavailable");
 });
 
 test("variables cannot overwrite navigation, inspection, or presentation routes", () => {
@@ -57,6 +98,24 @@ test("context validates glossary queries and binds card evidence to its registri
     context.evidence({ id: "total", glossaryIds: ["completed"], queryNames: ["orders"] })
       .glossaryIds,
   ).toEqual(["completed"]);
+  expect(
+    context.storyStep({
+      id: "finding",
+      headline: "Orders rose",
+      visual: <p>12 orders</p>,
+      glossaryIds: ["completed"],
+      queryNames: ["orders"],
+    }).queryNames,
+  ).toEqual(["orders"]);
+  expect(() =>
+    context.storyStep({
+      id: "bad",
+      headline: "Bad",
+      visual: null,
+      // @ts-expect-error Story query references must belong to the registered query names.
+      queryNames: ["unknown"],
+    }),
+  ).toThrow("Unknown query");
   expect(() =>
     define({
       description: "Orders",

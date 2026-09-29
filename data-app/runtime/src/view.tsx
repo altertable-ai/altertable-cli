@@ -28,10 +28,26 @@ export type DataViewDefinition<
   operation: Name;
   variables: Variables;
   input: (values: ResolvedVariables<Variables>) => Input;
-  describeInput: (input: Input) => string;
   isEmpty: (data: Data) => boolean;
   empty: Pick<EmptyStateProps, "title" | "description">;
-};
+} & ([Extract<Variables[keyof Variables], DateRangeVariable>] extends [never]
+  ? { describeInput: (input: Input) => string }
+  : Input extends DateRangeRequest
+    ? { describeInput?: (input: Input) => string }
+    : { describeInput: (input: Input) => string });
+
+export function describeViewInput<Input>(definition: {
+  variables: VariableCollection;
+  describeInput?: (input: never) => string;
+}): (input: Input) => string {
+  if (definition.describeInput) return (input) => definition.describeInput!(input as never);
+  const dates = Object.values(definition.variables).filter(
+    (variable): variable is DateRangeVariable => variable.kind === "dateRange",
+  );
+  if (dates.length !== 1)
+    throw new Error("A view without describeInput needs exactly one date range variable.");
+  return (input) => dates[0]!.describeInput(input as DateRangeRequest);
+}
 
 /** Resolves URL selections once per render. Date controls and operation inputs share that selection. */
 export function useViewVariables<Variables extends VariableCollection>(definitions: Variables) {

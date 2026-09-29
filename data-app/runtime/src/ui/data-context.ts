@@ -1,6 +1,7 @@
 import { defineQueryNames } from "../contract.ts";
 import type { ReactNode } from "react";
 import type { DataIdentifierDefinition } from "./data-identifiers.tsx";
+import type { StoryStep } from "./PlayStory.tsx";
 
 export type GlossaryEntry = {
   term: string;
@@ -61,6 +62,20 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         if (!known.has(query)) throw new Error(`Unknown query ${query} for glossary entry ${id}.`);
       }
     }
-    return { ...context, queryNames, evidence: evidenceFor(context, queryNames) };
+    const evidence = evidenceFor(context, queryNames);
+    function storyStep<
+      const Step extends Omit<StoryStep, "glossaryIds" | "queryNames"> & {
+        glossaryIds?: readonly (keyof Context["glossary"] & string)[];
+        queryNames?: readonly Names[keyof Names][];
+      },
+    >(step: Step): StoryStep {
+      const references = evidence({
+        id: step.id,
+        glossaryIds: step.glossaryIds,
+        queryNames: step.queryNames,
+      });
+      return { ...step, ...references };
+    }
+    return { ...context, queryNames, evidence, storyStep };
   };
 }

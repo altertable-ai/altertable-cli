@@ -20,7 +20,7 @@ import type { EmptyStateProps } from "./EmptyState.tsx";
 type DataAppBaseProps = {
   config: DataAppConfig;
   dataContext: DataContext;
-  aboutEmpty: AboutEmpty;
+  aboutEmpty?: AboutEmpty;
   description?: ReactNode;
   /** Display names only; config.scope remains the connection identity. */
   scopeLabels?: { organization?: string; environment?: string };

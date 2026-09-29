@@ -7,7 +7,7 @@ import "./Inspect.css";
 
 export type GlossaryExplanationProps = {
   entry: GlossaryEntry;
-  empty: AboutEmpty;
+  empty?: AboutEmpty;
   title?: ReactNode;
   description?: ReactNode;
   visual?: ReactNode;

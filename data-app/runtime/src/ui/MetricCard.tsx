@@ -53,6 +53,10 @@ export function MetricCard({
         {Math.abs(change.percent).toFixed(1)}% vs{" "}
         {comparison?.previous?.period?.toLowerCase() ?? "previous period"}
       </span>
+    ) : comparison?.previous?.value === null ? (
+      <span className="altertable-metric-change" data-tone="neutral">
+        Previous period unavailable
+      </span>
     ) : null;
   const help = evidence ? (
     <AboutData

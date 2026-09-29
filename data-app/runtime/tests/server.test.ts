@@ -44,6 +44,7 @@ test("runtime validates input, bounds rows, and hides query failures", async () 
   ).toMatchObject({ rows: [[1]], queryId: "q1" });
   const operation = contract.defineOperation({
     checks: [1],
+    queryNames: contract.defineQueryNames({ totals: "totals" }),
     input(value: unknown) {
       if (value !== 1) throw new Error("Bad input");
       return 1;
@@ -94,6 +95,22 @@ test("runtime validates input, bounds rows, and hides query failures", async () 
     queries: [{ name: "totals", statement: "SELECT 1", queryId: "query-1" }],
   });
   expect(requestedLimit).toBe(1);
+  const unregistered = runtime.createDataHandler(
+    {
+      totals: {
+        ...operation,
+        run: async ({ lakehouse, signal }) => {
+          await lakehouse.queryAll("SELECT 1", { limit: 1, signal, name: "other" });
+          return 1;
+        },
+      },
+    },
+    async () => ({
+      canDiscloseSql: true,
+      lakehouse: { queryAll: async () => ({ columns: [], rows: [] }) },
+    }),
+  );
+  expect((await unregistered(request(1))).status).toBe(502);
   expect(
     (
       await handle(

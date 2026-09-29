@@ -1,8 +1,39 @@
+import type { DateRangeRequest } from "../contract.ts";
+import { formatDateRange, formatMetric, type MetricFormat } from "../format.ts";
+
 export type MetricComparison = {
   current: { value: number; display: string; period?: string };
-  previous?: { value: number; display: string; period?: string };
+  previous?: { value: number | null; display: string; period?: string };
   goodWhen?: "up" | "down";
 };
+
+/** Label a comparison from the input that produced the displayed result. Null means the
+ * requested previous period has no comparable value; zero remains a measured value. */
+export function calendarMetricComparison(
+  displayedInput: DateRangeRequest,
+  values: {
+    current: number;
+    previous: number | null;
+    format: MetricFormat;
+    goodWhen?: MetricComparison["goodWhen"];
+  },
+): MetricComparison | undefined {
+  if (!displayedInput.comparison) return undefined;
+  return {
+    current: {
+      value: values.current,
+      display: formatMetric(values.current, values.format),
+      period: formatDateRange(displayedInput.range),
+    },
+    previous: {
+      value: values.previous,
+      display:
+        values.previous === null ? "Not available" : formatMetric(values.previous, values.format),
+      period: formatDateRange(displayedInput.comparison),
+    },
+    goodWhen: values.goodWhen,
+  };
+}
 
 /** A zero or missing baseline has no meaningful relative percentage. */
 export function comparisonChange({ current, previous, goodWhen }: MetricComparison) {

@@ -2,6 +2,11 @@
   "name": "@altertable/data-app-runtime",
   "version": "0.59.1",
   "private": true,
+  "files": [
+    "src",
+    "package.json",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
     "./contract": "./src/contract.ts",
@@ -15,6 +20,13 @@
     "./ui": "./src/ui/index.ts",
     "./icons": "./src/ui/icons.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware src tests",
+    "format": "oxfmt src tests",
+    "format:check": "oxfmt --check src tests",
+    "test": "bun test tests"
+  },
   "dependencies": {
     "@floating-ui/react": "0.27.20",
     "@internationalized/date": "3.12.4",
@@ -23,22 +35,6 @@
     "lucide-react": "1.48.0",
     "react-aria-components": "1.21.1"
   },
-  "peerDependencies": {
-    "react": ">=19",
-    "react-dom": ">=19"
-  },
-  "files": [
-    "src",
-    "package.json",
-    "README.md"
-  ],
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint --type-aware src tests",
-    "format": "oxfmt src tests",
-    "format:check": "oxfmt --check src tests",
-    "test": "bun test tests"
-  },
   "devDependencies": {
     "@types/bun": "1.4.2",
     "@types/react": "19.3.0",
@@ -46,8 +42,12 @@
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
     "oxlint-tsgolint": "7.0.2003",
-    "typescript": "7.0.2",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
   }
 }

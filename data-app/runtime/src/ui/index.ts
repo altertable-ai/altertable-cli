@@ -44,6 +44,7 @@ export { CardViewTabs } from "./CardViewTabs.tsx";
 export type { CardView, CardViewTabsProps } from "./CardViewTabs.tsx";
 export { ComparisonVisual } from "./ComparisonVisual.tsx";
 export type { ComparisonVisualProps } from "./ComparisonVisual.tsx";
+export { calendarMetricComparison } from "./comparison.ts";
 export type { MetricComparison } from "./comparison.ts";
 export { DataTable, DataTableEmptyRow, DataTableTimestamp, DataTableShare } from "./DataTable.tsx";
 export type {
