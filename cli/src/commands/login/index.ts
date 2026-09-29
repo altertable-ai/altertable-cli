@@ -41,6 +41,7 @@ export const loginCommand = defineCommand({
     description: "Sign in with your browser (OAuth) and store the session.",
     examples: [
       "altertable login",
+      "altertable login --org acme --env staging",
       "altertable login --replace-profile",
       'altertable login --service-account "CI Bot" --scope analytics:ro',
       'altertable login --service-account "CI Bot" --scope ro',
@@ -65,6 +66,16 @@ export const loginCommand = defineCommand({
     "replace-profile": {
       type: "boolean",
       description: "Store the login session in the current profile instead of switching profiles",
+    },
+    org: {
+      type: "string",
+      valueHint: "SLUG",
+      description: "Preselect this organization in the browser authorization page",
+    },
+    env: {
+      type: "string",
+      valueHint: "SLUG",
+      description: "Preselect this environment in the browser authorization page",
     },
     "service-account": {
       type: "string",
@@ -189,6 +200,8 @@ type LoginArgs = {
   "control-plane-url"?: string;
   "allow-insecure-http"?: boolean;
   "replace-profile"?: boolean;
+  org?: string;
+  env?: string;
   "service-account"?: string;
   scope?: string;
 };
@@ -398,6 +411,11 @@ async function completeServiceAccountLogin(
 
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const serviceAccountRequest = parseServiceAccountLoginArgs(args);
+  for (const flag of ["org", "env"] as const) {
+    if (args[flag] !== undefined && args[flag].trim().length === 0) {
+      throw new ConfigurationError(`--${flag} requires a non-empty slug.`);
+    }
+  }
   applyLoginDataPlaneUrl(args);
   assertNoEnvConfigMode();
   assertInteractiveLogin();
@@ -409,7 +427,10 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   );
 
   // Past this point the flow is profile-free so it can't accidentally read another org's stored session.
-  const oauthResponse = await runLoginFlow(sink, oauthBase);
+  const oauthResponse = await runLoginFlow(sink, oauthBase, {
+    organization: args.org,
+    environment: args.env,
+  });
   const whoami = await fetchLoginWhoami(oauthResponse, managementApiBase);
 
   if (serviceAccountRequest) {
