@@ -27,6 +27,9 @@ test("the small-screen calendar fills its panel and keeps the selected range leg
     await expect(popover.getByText("Selected dates")).toBeVisible();
     await expect(popover.getByText("Sep 10–12, 2026")).toBeVisible();
     await expect(popover.getByText("3 days · UTC")).toBeVisible();
+    await expect(
+      popover.locator(".altertable-date-range-custom .altertable-date-range-compare"),
+    ).toContainText("Sep 7–9, 2026");
     await page.keyboard.press("Escape");
   }
   await page.setViewportSize({ width: 320, height: 568 });

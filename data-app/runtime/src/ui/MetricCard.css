@@ -30,14 +30,13 @@
 }
 .altertable-metric-reading {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px;
 }
 .altertable-metric-trend {
   font-size: 12px;
-  white-space: nowrap;
 }
 .altertable-metric-change {
   display: inline-flex;

@@ -13,15 +13,11 @@ export type QueryListProps = {
   expanded?: boolean;
 } & Omit<ComponentPropsWithRef<"details">, "children">;
 
-const CLAUSE =
-  /\b(WITH|SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|LIMIT|UNION ALL|UNION|QUALIFY|WINDOW)\b/gi;
 const KEYWORD =
   /\b(WITH|SELECT|FROM|WHERE|AND|OR|NOT|IN|AS|ON|JOIN|LEFT|RIGHT|INNER|FULL|OUTER|CROSS|GROUP BY|ORDER BY|HAVING|LIMIT|UNION|ALL|DISTINCT|CASE|WHEN|THEN|ELSE|END|NULL|TRUE|FALSE|BETWEEN|LIKE|ILIKE|EXISTS|VALUES|CAST|COUNT|SUM|AVG|MIN|MAX|QUALIFY|WINDOW|OVER|PARTITION|BY)\b/gi;
 
 export function formatSql(statement: string): string {
-  const trimmed = statement.trim();
-  if (!trimmed || trimmed.includes("\n")) return trimmed;
-  return trimmed.replace(/\s+/g, " ").replace(CLAUSE, "\n$1").replace(/^\n/, "");
+  return statement.trim();
 }
 
 function SqlCode({ statement }: { statement: string }) {
@@ -44,7 +40,6 @@ function SqlCode({ statement }: { statement: string }) {
 
 function QueryFigure({ name, statement }: { name: string; statement: string }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-  const [wrapped, setWrapped] = useState(true);
   useEffect(() => {
     if (copyState === "idle") return;
     const timer = window.setTimeout(() => setCopyState("idle"), 1500);
@@ -62,20 +57,9 @@ function QueryFigure({ name, statement }: { name: string; statement: string }) {
     <figure>
       <figcaption>
         <span className="altertable-query-filename">
-          <AppIcon name="sql" size={15} />
           {name.endsWith(".sql") ? name : `${name}.sql`}
         </span>
         <span className="altertable-query-actions">
-          <Tooltip content={wrapped ? "Show unwrapped lines" : "Wrap long lines"}>
-            <Button
-              className="altertable-query-action"
-              aria-label="Wrap long lines"
-              aria-pressed={wrapped}
-              onClick={() => setWrapped((value) => !value)}
-            >
-              <AppIcon name="wrap" size={16} />
-            </Button>
-          </Tooltip>
           <Tooltip
             content={
               copyState === "copied"
@@ -96,12 +80,58 @@ function QueryFigure({ name, statement }: { name: string; statement: string }) {
           {copyState === "error" && <output>Could not copy SQL</output>}
         </span>
       </figcaption>
-      {/* A scrollable SQL block must be keyboard focusable. */}
-      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-      <pre tabIndex={0} data-wrap={wrapped || undefined}>
+      <pre>
         <SqlCode statement={statement} />
       </pre>
     </figure>
+  );
+}
+
+function QueryNotebook({ queries, className }: { queries: DisclosedQuery[]; className?: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  useEffect(() => {
+    if (copyState === "idle") return;
+    const timer = window.setTimeout(() => setCopyState("idle"), 1500);
+    return () => window.clearTimeout(timer);
+  }, [copyState]);
+  async function copyAll() {
+    const sql = queries
+      .map(({ name, statement }) => {
+        const formatted = formatSql(statement);
+        return `-- ${name.endsWith(".sql") ? name : `${name}.sql`}\n${formatted.endsWith(";") ? formatted : `${formatted};`}`;
+      })
+      .join("\n\n");
+    try {
+      await navigator.clipboard.writeText(sql);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+  }
+  return (
+    <section
+      className={classNames("altertable-query-list", "altertable-query-notebook", className)}
+      aria-label="Query notebook"
+    >
+      <header className="altertable-query-notebook-header">
+        <span>
+          {queries.length} {queries.length === 1 ? "SQL query" : "SQL queries"}
+        </span>
+        <Button
+          aria-label={copyState === "copied" ? "Copied all SQL" : "Copy all SQL"}
+          onClick={() => void copyAll()}
+        >
+          <AppIcon name={copyState === "copied" ? "check" : "copy"} size={16} />
+          {copyState === "copied" ? "Copied" : "Copy all SQL"}
+        </Button>
+      </header>
+      {copyState === "error" && (
+        <output className="altertable-query-notebook-error">Could not copy SQL</output>
+      )}
+      {queries.map((query) => (
+        <QueryFigure key={query.name} name={query.name} statement={query.statement} />
+      ))}
+    </section>
   );
 }
 
@@ -130,8 +160,7 @@ export function QueryList({
   const figures = shown.map((query) => (
     <QueryFigure key={query.name} name={query.name} statement={query.statement} />
   ));
-  if (expanded)
-    return <div className={classNames("altertable-query-list", className)}>{figures}</div>;
+  if (expanded) return <QueryNotebook queries={shown} className={className} />;
   return (
     <details {...props} className={classNames("altertable-query-list", className)}>
       <summary>{summary}</summary>

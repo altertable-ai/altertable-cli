@@ -110,7 +110,7 @@ export type DateRangeVariableOptions = {
   key: string;
   startKey?: string;
   endKey?: string;
-  defaultValue: DateRangeSelection;
+  defaultValue: DateRangeSelection & { comparison?: never };
   contract: DateRangeContract;
   history?: HistoryMode;
   /** Opt into a URL-backed comparison with the preceding equal-length range. */

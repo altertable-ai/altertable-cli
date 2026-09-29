@@ -76,7 +76,7 @@
   .altertable-grid[data-columns="3"][data-min-item-width="compact"]:has(
       > .altertable-grid-item[data-span="2"]
     )
-    > .altertable-grid-item {
+    > * {
     grid-column: 1 / -1;
   }
   .altertable-grid[data-columns="3"][data-min-item-width="compact"]:not(
@@ -90,7 +90,7 @@
   .altertable-grid[data-columns="3"][data-min-item-width="regular"]:has(
       > .altertable-grid-item[data-span="2"]
     )
-    > .altertable-grid-item {
+    > * {
     grid-column: 1 / -1;
   }
   .altertable-grid[data-columns="3"][data-min-item-width="regular"]:not(
@@ -104,7 +104,7 @@
   .altertable-grid[data-columns="3"][data-min-item-width="wide"]:has(
       > .altertable-grid-item[data-span="2"]
     )
-    > .altertable-grid-item {
+    > * {
     grid-column: 1 / -1;
   }
   .altertable-grid[data-columns="3"][data-min-item-width="wide"]:not(

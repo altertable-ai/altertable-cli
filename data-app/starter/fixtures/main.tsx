@@ -1,4 +1,5 @@
 import { mountDataApp } from "@altertable/data-app-runtime/react";
+import { useState } from "react";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import { connectionCheck, defineDateRangeContract } from "@altertable/data-app-runtime/contract";
@@ -13,6 +14,7 @@ import {
   MetricCard,
   Stack,
   StorySection,
+  TableCard,
   VisualizationCard,
 } from "@altertable/data-app-runtime/ui";
 
@@ -79,6 +81,7 @@ const connectionView = defineDataView({
 
 function Fixture() {
   const connection = useView(connectionView);
+  const [orderSearch, setOrderSearch] = useState("");
   return (
     <DataApp
       config={config}
@@ -131,9 +134,11 @@ function Fixture() {
             <GridItem span={2} data-testid="primary-grid-item">
               <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
             </GridItem>
-            <GridItem data-testid="support-grid-item">
-              <VisualizationCard title="Supporting view" visual={<p>Feature reach</p>} />
-            </GridItem>
+            <VisualizationCard
+              data-testid="support-grid-item"
+              title="Supporting view"
+              visual={<p>Feature reach</p>}
+            />
           </Grid>
           <StorySection
             label="Order activity"
@@ -159,6 +164,23 @@ function Fixture() {
             <div>First narrow card</div>
             <div>Second narrow card</div>
           </Grid>
+          <TableCard
+            title="Paginated orders"
+            rows={Array.from({ length: 11 }, (_, index) => ({
+              id: index + 1,
+              name: `Order ${index + 1}`,
+            }))}
+            rowKey={(row) => row.id}
+            columns={[{ id: "order", header: "Order", cell: (row) => row.name }]}
+            search={{
+              label: "Search orders",
+              value: orderSearch,
+              onChange: setOrderSearch,
+              attributes: [{ name: "order", getter: (row) => row.name }],
+            }}
+            pagination={{ pageSize: 4 }}
+            empty={{ title: "No orders" }}
+          />
           <p>Connection view ready</p>
         </Stack>
       )}

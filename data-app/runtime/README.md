@@ -116,6 +116,8 @@ export const calendar = defineDateRangeContract({
 
 `useView` generates controls for date, text and fixed-option select variables; custom controls use `result.variables.bind(name)`. `input` chooses which variables reach the operation, so local search can stay local. The callback in `view.content` receives the displayed result, including its original input during refreshes and failures. Hooks belong in the enclosing component.
 
+`TableCard` also accepts `reading={result.select((data) => data.rows)}` and optional `skeletonRows`. Columns and empty states are declared once for both loading and ready layouts. For bounded results already loaded in the app, pass `pagination={{ pageSize: 8 }}` to page the rows after local search; the footer counts only the supplied rows. `limit` remains a separate, mutually exclusive display cap. Large catalogs need query-backed pagination with a stable sort and total count.
+
 `MetricCard` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `goodWhen` is optional; changes are neutral until the author defines whether up or down is desirable.
 
 `defineDataContent` remains available for manually managed requests. Its optional `{ date: (input) => rangeRequest }` binds comparison readings. `DataSection` handles independent requests. Low-level cards, tabs and layout components remain available for custom interfaces.
@@ -186,5 +188,5 @@ Import `defineQueryNames` from `/contract` and the context/identifier factories 
 - Views that previously inferred their date variable now declare `date: { variable: "period", input: (input) => input }`, or supply `describeInput` for a non-date view.
 - Numeric metrics use `value={count} format={{ kind: "count" }}`. Custom formatted JSX or strings use `content={...}` instead of `value`.
 - Supply `empty` to secondary `DataSection` requests or pass a bound `useView` result. A primary `DataApp` accepts it either from `useView` or as an explicit prop.
-- Each `CardViewTabs` view supplies `isEmpty` and `empty`.
+- For alternate views of the same bound result, pass `views={[{ id, label, render }]}` and `viewLabel` to `VisualizationCard`. Its required `isEmpty` and `empty` apply to the whole result; the card owns selection. Use `CardViewTabs` directly only when views have independent empty states.
 - Variable URL keys cannot use `view`, `about`, `tab`, `present`, or `step`.

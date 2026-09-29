@@ -86,7 +86,7 @@ describe("app create", () => {
       "supplies no analytical result",
     );
     expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
-      "no sample analysis to emulate",
+      "connectivity screen is scaffolding, not an example analysis",
     );
     expect(Bun.spawnSync(["git", "init", "--quiet"], { cwd: directory }).exitCode).toBe(0);
     const ignored = Bun.spawnSync(

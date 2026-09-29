@@ -30,7 +30,7 @@ export type { StorySectionProps } from "./StorySection.tsx";
 // Cards and visualizations
 export type { CardEvidence } from "./CardEvidence.ts";
 export { VisualizationCard } from "./VisualizationCard.tsx";
-export type { VisualizationCardProps } from "./VisualizationCard.tsx";
+export type { VisualizationCardProps, VisualizationCardView } from "./VisualizationCard.tsx";
 export { TableCard } from "./TableCard.tsx";
 export type { TableCardColumn, TableCardProps, TableCardSearch } from "./TableCard.tsx";
 export { chartColor } from "./chartColor.ts";

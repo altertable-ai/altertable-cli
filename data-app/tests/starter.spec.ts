@@ -174,6 +174,36 @@ test("card inspection inherits the page glossary and empty states", async ({ pag
   await expect(page.getByRole("dialog")).toContainText("Completed orders grouped by customer_id.");
   await page.getByRole("tab", { name: "Queries" }).click();
   await expect(page.getByRole("dialog")).toContainText("connection-check.sql");
+  await expect(page.getByRole("region", { name: "Query notebook" })).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy all SQL" }).click();
+  await expect(page.getByRole("button", { name: "Copied all SQL" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "-- connection-check.sql",
+  );
+});
+
+test("table pages show bounded rows and reset when filtering changes", async ({ page }) => {
+  await page.goto("/components");
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  const table = page.getByRole("table");
+  const pagination = page.getByRole("navigation", { name: "Table pages" });
+  await expect(pagination).toContainText("1–4 of 11 results");
+  await expect(table.getByText("Order 4")).toBeVisible();
+  await expect(table.getByText("Order 5")).toHaveCount(0);
+  await pagination.getByRole("button", { name: "Next page" }).click();
+  await expect(pagination).toContainText("5–8 of 11 results");
+  await expect(table.getByText("Order 5")).toBeVisible();
+  await pagination.getByRole("button", { name: "Next page" }).click();
+  await expect(pagination).toContainText("9–11 of 11 results");
+  await expect(pagination.getByRole("button", { name: "Next page" })).toBeDisabled();
+  await page.getByRole("searchbox", { name: "Search orders" }).fill("Order");
+  await expect(pagination).toContainText("1–4 of 11 results");
+  await page.getByRole("searchbox", { name: "Search orders" }).fill("Order 5");
+  await expect(pagination).toContainText("1–1 of 1 result");
+  await expect(pagination.getByRole("button", { name: "Previous page" })).toBeDisabled();
+  await expect(pagination.getByRole("button", { name: "Next page" })).toBeDisabled();
+  await expect(table.getByText("Order 5")).toBeVisible();
 });
 
 test("request progress appears before Refresh", async ({ page }) => {

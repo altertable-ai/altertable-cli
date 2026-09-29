@@ -244,8 +244,9 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  margin-top: 4px;
-  padding: 10px 8px 2px;
+  margin-top: 10px;
+  padding: 10px 4px 2px;
+  border-top: 1px solid var(--at-border, #e3e6e8);
   cursor: pointer;
 }
 .altertable-date-range-compare:has(input:disabled) {

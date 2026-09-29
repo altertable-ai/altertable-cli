@@ -8,6 +8,7 @@ import { dateRangeVariable } from "../src/ui/variables.ts";
 import { createDataContext } from "../src/ui/data-context.ts";
 import { ComparisonVisual } from "../src/ui/ComparisonVisual.tsx";
 import { VisualizationCard } from "../src/ui/VisualizationCard.tsx";
+import { TableCard } from "../src/ui/TableCard.tsx";
 import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
 import type { DataOperation, DateRangeRequest } from "../src/contract.ts";
 
@@ -165,4 +166,53 @@ test("card tabs reject duplicate and unknown IDs instead of producing a blank pa
       />,
     ),
   ).toThrow("Unknown card tab");
+});
+
+test("bound visualization views render inside one card with a selected view", () => {
+  const html = renderToStaticMarkup(
+    <VisualizationCard
+      title="Feature use"
+      reading={{ loading: false, value: [{ name: "Insights", count: 4 }] }}
+      isEmpty={(rows) => rows.length === 0}
+      empty={{ title: "No feature use" }}
+      viewLabel="Measure"
+      views={[
+        {
+          id: "actions",
+          label: "Actions",
+          render: (rows) => <span>{rows[0]?.count} actions</span>,
+        },
+        { id: "reach", label: "Reach", render: (rows) => <span>{rows[0]?.name}</span> },
+      ]}
+    />,
+  );
+  expect(html).toContain("Feature use");
+  expect(html).toContain("Actions");
+  expect(html).toContain("Reach");
+  expect(html).toContain("4 actions");
+});
+
+test("bound tables keep their row contract while loading", () => {
+  const content = view.content((result) => (
+    <TableCard
+      title="Features"
+      reading={result.select((data) => data.rows)}
+      rowKey={(row) => row}
+      columns={[{ id: "feature", header: "Feature", cell: (row) => row }]}
+      empty={{ title: "No features" }}
+      skeletonRows={3}
+    />
+  ));
+  expect(
+    renderToStaticMarkup(content.loading).match(/class="altertable-content-skeleton-row"/g),
+  ).toHaveLength(3);
+  const input = calendar.request({ start: "2026-03-10", end: "2026-03-12" });
+  expect(
+    renderToStaticMarkup(
+      content.children({ current: 1, previous: null, rows: ["Insights"] }, input),
+    ),
+  ).toContain("Insights");
+  expect(
+    renderToStaticMarkup(content.children({ current: 0, previous: null, rows: [] }, input)),
+  ).toContain("No features");
 });

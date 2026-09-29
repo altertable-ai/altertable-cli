@@ -381,22 +381,22 @@ export function DateRangePicker({
                   </span>
                 )}
               </div>
+              {comparison && (
+                <label className="altertable-date-range-compare">
+                  <input
+                    type="checkbox"
+                    checked={comparison.enabled}
+                    disabled={!comparison.range}
+                    onChange={(event) => comparison.onChange(event.target.checked)}
+                  />
+                  <span>
+                    Compare with previous period
+                    {comparison.range && <small>{formatDateRange(comparison.range)}</small>}
+                  </span>
+                </label>
+              )}
             </div>
           </div>
-          {comparison && (
-            <label className="altertable-date-range-compare">
-              <input
-                type="checkbox"
-                checked={comparison.enabled}
-                disabled={!comparison.range}
-                onChange={(event) => comparison.onChange(event.target.checked)}
-              />
-              <span>
-                Compare with previous period
-                {comparison.range && <small>{formatDateRange(comparison.range)}</small>}
-              </span>
-            </label>
-          )}
           {calendarFooter}
         </Dialog>
       </Popover>

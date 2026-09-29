@@ -5,6 +5,7 @@ import { searchItems } from "../src/ui/searchItems.ts";
 import { SearchMatch } from "../src/ui/SearchMatch.tsx";
 import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/shortcuts.ts";
 import { TableCard } from "../src/ui/TableCard.tsx";
+import { QueryList, formatSql } from "../src/ui/QueryList.tsx";
 import { DataSection } from "../src/ui/DataSection.tsx";
 import {
   dateRangeControl,
@@ -125,6 +126,28 @@ test("table search finds a later matching row before applying the display limit"
   );
   expect(table).toContain("Café");
   expect(table).not.toContain("Alpha");
+});
+
+test("query notebook groups disclosed SQL and exposes one copy-all action", () => {
+  const html = renderToStaticMarkup(
+    <QueryList
+      expanded
+      queries={[
+        { name: "totals", statement: "select count(*) from orders" },
+        { name: "details", statement: "select id from orders" },
+      ]}
+    />,
+  );
+  expect(html).toContain('aria-label="Query notebook"');
+  expect(html).toContain('aria-label="Copy all SQL"');
+  expect(html).toContain("totals.sql");
+  expect(html).toContain("details.sql");
+});
+
+test("read-only SQL keeps literals and query whitespace intact", () => {
+  expect(formatSql("  SELECT 'FROM orders' AS label\n  FROM orders  ")).toBe(
+    "SELECT 'FROM orders' AS label\n  FROM orders",
+  );
 });
 
 test("category color follows identity and numeric metric formats use their units", () => {

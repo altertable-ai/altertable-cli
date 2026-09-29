@@ -90,3 +90,10 @@ const invalidTabs = (
   <CardViewTabs label="Views" views={tabs} selectedKey="missing" onSelectionChange={() => {}} />
 );
 void [conflictingMetric, invalidTabs];
+
+dateRangeVariable({
+  key: "invalid-default",
+  contract: defineDateRangeContract({ maxRangeDays: 30, timeZone: "UTC" }),
+  // @ts-expect-error Comparison is activated by the reader, never by the app default.
+  defaultValue: { kind: "preset", id: "last-7", comparison: "previous" },
+});
