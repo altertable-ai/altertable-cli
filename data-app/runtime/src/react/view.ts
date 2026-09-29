@@ -5,6 +5,7 @@ import type {
   VariableCollection,
 } from "../core/variables.ts";
 import type { DateRangeRequest } from "../core/contract.ts";
+import type { DimensionVariable } from "../core/dimension.ts";
 
 export type ResolvedVariables<Variables extends VariableCollection> = {
   [Key in keyof Variables]: Variables[Key] extends DateRangeVariable
@@ -27,10 +28,12 @@ export type DataViewDefinition<
   Variables extends VariableCollection,
   Input,
   Data,
+  Filters extends Record<string, DimensionVariable<any>> = {},
 > = {
   operation: Name;
   variables: Variables;
-  input: (values: ResolvedVariables<Variables>) => Input;
+  filters?: Filters;
+  input: (values: ResolvedVariables<Variables & Filters>) => Input;
   isEmpty: (data: Data) => boolean;
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (
@@ -42,6 +45,7 @@ export function describeViewInput<Input>(definition: {
   variables: VariableCollection;
   date?: { variable: string; input: (input: Input) => DateRangeRequest };
   describeInput?: (input: Input) => string;
+  filters?: Record<string, DimensionVariable<any>>;
 }): (input: Input) => string {
   const date = definition.date;
   const variable = date && definition.variables[date.variable];
@@ -49,15 +53,32 @@ export function describeViewInput<Input>(definition: {
     throw new Error("The view date must reference a date range variable.");
   if (definition.describeInput) return definition.describeInput;
   if (!date || !variable) throw new Error("A view needs a date binding or describeInput.");
-  return (input) => (variable as DateRangeVariable).describeInput(date.input(input));
+  return (input) => {
+    const period = (variable as DateRangeVariable).describeInput(date.input(input));
+    const filters = Object.entries(definition.filters ?? {})
+      .map(([key, filter]) => {
+        const selected =
+          input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
+        return filter.valid(selected as never)
+          ? `${filter.label}: ${filter.describe(selected as never)}`
+          : null;
+      })
+      .filter(Boolean);
+    return [period, ...filters].join(" · ");
+  };
 }
 
-export function resolveViewInput<Variables extends VariableCollection, Input>(
+export function resolveViewInput<
+  Variables extends VariableCollection,
+  Filters extends Record<string, DimensionVariable<any>>,
+  Input,
+>(
   definition: {
-    input: (values: ResolvedVariables<Variables>) => Input;
+    input: (values: ResolvedVariables<Variables & Filters>) => Input;
     date?: ViewDate<Variables, Input>;
+    filters?: Filters;
   },
-  values: ResolvedVariables<Variables>,
+  values: ResolvedVariables<Variables & Filters>,
 ): Input {
   const input = definition.input(values);
   if (definition.date) {
@@ -70,6 +91,13 @@ export function resolveViewInput<Variables extends VariableCollection, Input>(
       !sameRange(selected.comparison, mapped.comparison)
     )
       throw new Error("The operation input must preserve the selected date range and comparison.");
+  }
+  for (const [key, filter] of Object.entries(definition.filters ?? {})) {
+    const selected = values[key] as never;
+    const mapped =
+      input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
+    if (!filter.valid(mapped as never) || !filter.same(selected, mapped as never))
+      throw new Error(`The operation input must preserve the ${key} dimension selection.`);
   }
   return input;
 }

@@ -7,6 +7,8 @@ import {
 } from "../src/core/contract.ts";
 import { createDataClient } from "../src/client/index.ts";
 import { createDataHooks } from "../src/react/index.ts";
+import { displayedSnapshot } from "../src/core/data-view.ts";
+import { summaryPoints } from "../src/react/ui/summary.ts";
 import { resolveViewInput } from "../src/react/view.ts";
 import { dateRangeVariable } from "../src/react/ui/variables.ts";
 import { createDataContext } from "../src/react/ui/data-context.ts";
@@ -38,9 +40,9 @@ const period = dateRangeVariable({
   defaultValue: { kind: "preset", id: "last-7" },
 });
 type Data = { current: number; previous: number | null; rows: string[] };
-const { defineDataView } = createDataHooks<{ activity: DataOperation<DateRangeRequest, Data> }>(
-  createDataClient(),
-);
+const { defineDataView, defineTimeView } = createDataHooks<{
+  activity: DataOperation<DateRangeRequest, Data>;
+}>(createDataClient());
 const view = defineDataView({
   operation: "activity",
   variables: { period },
@@ -48,6 +50,43 @@ const view = defineDataView({
   date: { variable: "period", input: (input) => input },
   isEmpty: (data) => data.rows.length === 0,
   empty: { title: "No actions" },
+});
+
+test("time view derives its control, input, and displayed period from one declaration", () => {
+  const timed = defineTimeView({
+    operation: "activity",
+    time: { contract: calendar, defaultValue: { kind: "preset", id: "last-7" } },
+    isEmpty: (data) => !data.rows.length,
+    empty: { title: "No actions" },
+  });
+  const input = calendar.request({ start: "2026-03-10", end: "2026-03-12" });
+  expect(timed.variables.period.kind).toBe("dateRange");
+  expect(resolveViewInput(timed, { period: input })).toEqual(input);
+  expect(timed.describeInput(input)).toContain("Mar 10–12, 2026");
+});
+
+test("Present findings use the displayed input and require unique, supported evidence", () => {
+  const data = { current: 12, previous: null, rows: ["a"] };
+  const view = {
+    kind: "stale-error" as const,
+    data,
+    displayedInput: "old",
+    requestedInput: "new",
+    error: new Error("offline"),
+    message: "stale",
+  };
+  expect(displayedSnapshot(view)).toEqual({ data, input: "old", state: "stale-error" });
+  const finding = {
+    id: "concentration",
+    headline: "Most activity occurred on one day",
+    visual: "12 actions",
+    evidence: featureEvidence,
+  };
+  expect(summaryPoints([finding], context)[0]?.queryNames).toEqual(["activity"]);
+  expect(() => summaryPoints([finding, finding], context)).toThrow("unique");
+  expect(() =>
+    summaryPoints([{ ...finding, evidence: { id: "missing", queryNames: ["unknown"] } }], context),
+  ).toThrow("Unknown query");
 });
 
 test("bound metrics share values, formatting, evidence and displayed comparison periods", () => {

@@ -19,6 +19,9 @@ body,
   margin-inline: auto;
   padding: var(--at-layout-gap, 24px) 0 var(--at-space-md, 16px);
 }
+.altertable-app-body {
+  min-width: 0;
+}
 .altertable-app-footer {
   margin-top: auto;
 }

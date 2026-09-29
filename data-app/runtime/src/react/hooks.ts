@@ -1,10 +1,19 @@
 import { useState, type ReactNode } from "react";
 import { keepPreviousData, hashKey, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DataOperations } from "../core/contract.ts";
+import type { DataOperations, DateRangeRequest } from "../core/contract.ts";
 import type { DataClient, InputOf, OutputOf } from "../client/index.ts";
-import { resolveDataView } from "../core/data-view.ts";
+import { displayedSnapshot, resolveDataView } from "../core/data-view.ts";
 import { reportingPeriodText, type ReportingPeriod } from "./ui/PeriodSummary.tsx";
 import { defineAppVariables, type VariableCollection } from "../core/variables.ts";
+import { dateRangeVariable, type DateRangeVariableOptions } from "./ui/variables.ts";
+import {
+  dimensionFilter,
+  type DimensionFilterOptions,
+  type DimensionOption,
+  type DimensionValue,
+  type DimensionVariable,
+} from "../core/dimension.ts";
+import type { EmptyStateProps } from "./ui/EmptyState.tsx";
 import { defineDataContent, type DataContentState } from "./content.ts";
 import { describeViewInput, resolveViewInput, type DataViewDefinition } from "./view.ts";
 import { useViewVariables } from "./view-controls.tsx";
@@ -95,6 +104,7 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     return {
       ...query,
       view,
+      displayedSnapshot: displayedSnapshot(view),
       response,
       queries: response?.queries,
       refresh: {
@@ -107,17 +117,20 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   function defineDataView<
     Name extends keyof Operations & string,
     const Variables extends VariableCollection,
+    const Filters extends Record<string, DimensionVariable<any>> = {},
   >(
     definition: DataViewDefinition<
       Name,
       Variables,
       InputOf<Operations[Name]>,
-      OutputOf<Operations[Name]>
+      OutputOf<Operations[Name]>,
+      Filters
     >,
   ) {
-    defineAppVariables(definition.variables);
+    const variables = defineAppVariables({ ...definition.variables, ...definition.filters });
     return {
       ...definition,
+      variables,
       describeInput: describeViewInput<InputOf<Operations[Name]>>(definition),
       content: (
         render: (
@@ -127,18 +140,75 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     };
   }
 
+  /** One time declaration owns the URL picker, operation input, and displayed-period label.
+   * Use defineDataView with describeInput for deliberately fixed-period views. */
+  function defineTimeView<
+    Name extends keyof Operations & string,
+    const Filters extends Record<string, DimensionVariable<any>> = {},
+  >(definition: {
+    operation: Name;
+    time: Omit<DateRangeVariableOptions, "key"> & { key?: string };
+    filters?: Filters;
+    isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
+    empty: Pick<EmptyStateProps, "title" | "description">;
+  }) {
+    const period = dateRangeVariable({ ...definition.time, key: definition.time.key ?? "period" });
+    return defineDataView<Name, { period: typeof period }, Filters>({
+      operation: definition.operation,
+      variables: { period },
+      filters: definition.filters,
+      input: (values) => {
+        if (!definition.filters || !Object.keys(definition.filters).length)
+          return values.period as InputOf<Operations[Name]>;
+        return { ...values } as InputOf<Operations[Name]>;
+      },
+      date: {
+        variable: "period",
+        input: (input) =>
+          (input && typeof input === "object" && "period" in input
+            ? input.period
+            : input) as DateRangeRequest,
+      },
+      isEmpty: definition.isEmpty,
+      empty: definition.empty,
+    });
+  }
+
+  /** Bind a facet source to a declared operation and its typed input. */
+  function defineFacetFilter<
+    Name extends keyof Operations & string,
+    const T extends DimensionValue,
+  >(
+    config: Omit<DimensionFilterOptions<T>, "options" | "facet"> & {
+      facet: {
+        operation: Name;
+        input: (values: Record<string, unknown>) => InputOf<Operations[Name]>;
+      };
+    } & (OutputOf<Operations[Name]> extends readonly DimensionOption<T>[] ? object : never),
+  ) {
+    return dimensionFilter<T>(config);
+  }
+
   function useView<
     Name extends keyof Operations & string,
     const Variables extends VariableCollection,
+    const Filters extends Record<string, DimensionVariable<any>> = {},
   >(
     definition: DataViewDefinition<
       Name,
       Variables,
       InputOf<Operations[Name]>,
-      OutputOf<Operations[Name]>
+      OutputOf<Operations[Name]>,
+      Filters
     >,
   ) {
-    const variables = useViewVariables(definition.variables);
+    const variables = useViewVariables(
+      { ...definition.variables, ...definition.filters } as Variables & Filters,
+      (operation, input, signal) =>
+        client
+          .query(operation as keyof Operations & string, input as never, { signal })
+          .then((response) => response.data),
+    );
     const request = useDataView(
       definition.operation,
       resolveViewInput(definition, variables.resolved),
@@ -149,5 +219,5 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     );
     return { ...request, empty: definition.empty, controls: variables.controls, variables };
   }
-  return { useDataQuery, useDataView, defineDataView, useView };
+  return { useDataQuery, useDataView, defineDataView, defineTimeView, defineFacetFilter, useView };
 }

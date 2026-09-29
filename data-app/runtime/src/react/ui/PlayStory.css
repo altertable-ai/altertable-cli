@@ -72,6 +72,7 @@
   line-height: 24px;
 }
 .altertable-present-title strong {
+  font-size: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -109,7 +110,7 @@
   display: grid;
   flex: 1;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  align-content: safe center;
+  align-content: start;
   align-items: start;
   column-gap: clamp(28px, 5vw, 72px);
   row-gap: var(--at-space-lg, 24px);

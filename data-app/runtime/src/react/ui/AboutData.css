@@ -78,6 +78,13 @@
   padding: 24px 0 14px;
   background: var(--at-surface, #fff);
 }
+@media (max-width: 600px) {
+  .altertable-about-tabbar {
+    margin-top: -20px;
+    padding-top: 20px;
+    top: -20px;
+  }
+}
 .altertable-about-tabs .react-aria-TabList {
   display: flex;
   flex-wrap: wrap;
@@ -107,11 +114,4 @@
 }
 .altertable-about-tabs .react-aria-TabPanel {
   min-width: 0;
-}
-@media (max-width: 600px) {
-  .altertable-about-tabbar {
-    top: -20px;
-    margin-top: -20px;
-    padding-top: 20px;
-  }
 }

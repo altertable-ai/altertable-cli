@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { SearchField } from "./ui/SearchField.tsx";
 import { Combobox } from "./ui/Combobox.tsx";
 import { DateRangePicker } from "./ui/DateRangePicker.tsx";
+import { DimensionPicker } from "./ui/DimensionPicker.tsx";
+import {
+  parseDimensionOptions,
+  type DimensionSelection,
+  type DimensionVariable,
+} from "../core/dimension.ts";
 import {
   dateRangeControl,
   useAppVariables,
@@ -11,17 +18,47 @@ import {
 } from "./ui/variables.ts";
 import type { ResolvedVariables } from "./view.ts";
 
-/** Resolves URL selections once per render. Date controls and operation inputs share that selection. */
-export function useViewVariables<Variables extends VariableCollection>(definitions: Variables) {
+/** URL values resolve before facets; facet keys include their dependent inputs for cached, bounded loading. */
+export function useViewVariables<Variables extends VariableCollection>(
+  definitions: Variables,
+  loadFacet?: (operation: string, input: unknown, signal: AbortSignal) => Promise<unknown>,
+) {
   const variables = useAppVariables(definitions);
   const resolved = {} as ResolvedVariables<Variables>;
+  for (const name of Object.keys(definitions) as (keyof Variables & string)[]) {
+    const definition = definitions[name]!;
+    const value = variables.values[name];
+    resolved[name] = (
+      definition.kind === "dateRange" ? definition.input(value as DateRangeSelection) : value
+    ) as ResolvedVariables<Variables>[typeof name];
+  }
+  const facets = Object.entries(definitions).filter(
+    (entry): entry is [string, DimensionVariable<any>] =>
+      entry[1].kind === "dimension" && !!entry[1].facet,
+  );
+  if (facets.length && !loadFacet) throw new Error("Facet dimensions need an operation loader.");
+  const facetQueries = useQueries({
+    queries: facets.map(([name, filter]) => {
+      const facet = filter.facet!;
+      const input = facet.input({ ...resolved, [name]: { kind: "all" } });
+      return {
+        queryKey: ["dimension-facet", name, facet.operation, input],
+        queryFn: ({ signal }: { signal: AbortSignal }) =>
+          loadFacet!(facet.operation, input, signal).then((result) =>
+            parseDimensionOptions(result, filter),
+          ),
+        staleTime: 60_000,
+        gcTime: 300_000,
+      };
+    }),
+  });
+  const facetState = new Map(facets.map(([name], index) => [name, facetQueries[index]!]));
   const controls: ReactNode[] = [];
   for (const name of Object.keys(definitions) as (keyof Variables & string)[]) {
     const definition = definitions[name]!;
     const value = variables.values[name];
     if (definition.kind === "dateRange") {
       const selection = value as DateRangeSelection;
-      resolved[name] = definition.input(selection) as ResolvedVariables<Variables>[typeof name];
       controls.push(
         <DateRangePicker
           key={name}
@@ -30,8 +67,24 @@ export function useViewVariables<Variables extends VariableCollection>(definitio
           )}
         />,
       );
+    } else if (definition.kind === "dimension") {
+      const filter = definition as DimensionVariable;
+      const facet = facetState.get(name);
+      controls.push(
+        <DimensionPicker
+          key={name}
+          filter={filter}
+          value={value as DimensionSelection}
+          options={facet?.data ?? filter.options}
+          loading={!!facet?.isPending}
+          error={!!facet?.isError}
+          onRetry={() => void facet?.refetch()}
+          onChange={(next) =>
+            variables.set(name, next as AppVariableValues<Variables>[typeof name])
+          }
+        />,
+      );
     } else {
-      resolved[name] = value as ResolvedVariables<Variables>[typeof name];
       const binding = {
         label: definition.label ?? name,
         value: value as string,

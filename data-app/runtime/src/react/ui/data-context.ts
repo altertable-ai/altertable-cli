@@ -16,6 +16,7 @@ export type DataContext = {
   description: ReactNode;
   glossary: Record<string, GlossaryEntry>;
   identifiers?: Readonly<Record<string, DataIdentifierDefinition>>;
+  queryNames?: Readonly<Record<string, string>>;
 };
 
 export function defineDataContext<const Context extends DataContext>(context: Context): Context {

@@ -99,22 +99,20 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      summary={{
-        steps: [
+      summary={() => [
           {
             id: "orders",
             headline: "Orders increased",
             visual: <p>120 orders</p>,
-            glossaryIds: ["orders"],
+            evidence: { id: "orders", glossaryIds: ["orders"] },
           },
           {
             id: "customers",
             headline: "More returning customers",
             visual: <p>80 customers</p>,
-            glossaryIds: [],
+            evidence: { id: "customers", glossaryIds: ["orders"] },
           },
-        ],
-      }}
+        ]}
     >
       {() => (
         <Stack data-testid="layout-stack">

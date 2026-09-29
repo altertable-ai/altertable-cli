@@ -1,0 +1,91 @@
+.altertable-selectable-bars {
+  min-width: 0;
+}
+.altertable-selectable-bars-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  margin-top: 18px;
+  color: var(--at-accent, #315e40);
+  font-size: 13px;
+}
+.altertable-selectable-bars-preview small {
+  margin-right: 8px;
+  color: var(--at-muted, #83948a);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.altertable-selectable-bars-preview button {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.altertable-selectable-bars-scroll {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  align-items: stretch;
+  gap: 9px;
+  height: 260px;
+  margin: 12px 2px 14px;
+  overflow-x: auto;
+}
+.altertable-selectable-bars-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--at-muted, #7f8c83);
+}
+.altertable-selectable-bars-item:focus:not(:focus-visible) {
+  outline: none;
+}
+.altertable-selectable-bars-item:focus-visible {
+  outline: 2px solid var(--at-accent, #356d48);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.altertable-selectable-bars-area {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  width: 100%;
+  height: 220px;
+  border-bottom: 1px solid var(--at-border, #dae4dd);
+}
+.altertable-selectable-bars-bar {
+  width: min(30px, 76%);
+  border-radius: 5px 5px 0 0;
+  background: #a8c9b3;
+  transition:
+    height 0.25s,
+    background 0.2s;
+}
+.altertable-selectable-bars-item:is(:hover, [aria-pressed="true"]) .altertable-selectable-bars-bar {
+  background: var(--at-accent, #356d48);
+}
+.altertable-selectable-bars-label {
+  padding-top: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.altertable-selectable-bars-help {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--at-border, #edf1ee);
+  color: var(--at-muted, #8a988e);
+  font-size: 12px;
+}

@@ -320,3 +320,16 @@ export type DataOperations = Record<
     policy: DataOperation<never, unknown>["policy"];
   }
 >;
+export {
+  dimensionFilter,
+  parseDimensionSelection,
+  parseDimensionOptions,
+  dimensionPredicate,
+} from "./dimension.ts";
+export type {
+  DimensionSelection,
+  DimensionMember,
+  DimensionOption,
+  DimensionVariable,
+  DimensionFilterOptions,
+} from "./dimension.ts";

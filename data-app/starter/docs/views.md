@@ -1,7 +1,13 @@
 # View authoring
 
-Use the app title and description for identity and scope, then lead with a supported finding and provide complementary ways to explore the question. Avoid a second hero header inside the exploration. For time-based data, add a URL-backed date range variable unless the user explicitly needs a fixed reporting period. Check actual content at phone and desktop widths in both themes.
+Use `DataApp` for the title, description, scope, controls, and request boundary. Body content begins with the exploration. A second top-level heading triggers a development warning. `AppLayout` owns the outer gutter and page width.
 
-Give most data apps a `DataApp.summary` so Present can recap the current view. Keep it to two to four consequential points from the displayed result, with evidence and the displayed period. Present is a concise summary of the exploration, not a separate narrative or data fetch.
+For time-based data, use `defineTimeView({ operation, time: { contract, defaultValue }, isEmpty, empty })`. The view generates the URL-backed date picker, operation input, and displayed-period label. For an intentional fixed reporting period, use `defineDataView` with `describeInput`.
 
-[Bind a view](../.altertable/runtime/README.md#bind-a-view) for variables, request states, shared skeletons, metrics and comparisons. [Bind evidence](../.altertable/runtime/README.md#bind-evidence) for glossary definitions and Present steps. The [UI map](../.altertable/runtime/README.md#find-ui-by-task) routes other components to their types.
+Give most data apps a `summary={({ data, input, state }) => [...]}` callback. Present uses the displayed snapshot, including the original input during refresh or failure. Author one to four consequential findings with stable IDs, evidence, and a comparative or relational visual. Prefer a concentration, split, shift, or meaningful co-occurrence over a repeated KPI. State that association is not causation where relevant. Each finding needs `evidence: context.evidence(...)` or a bound metric.
+
+Use `SelectableBarChart` when selecting a bar inspects a related detail. It handles exact value preview, keyboard navigation, persistent selection, and clearing. Keep the detail view tied to its controlled `selectedId`.
+
+[Runtime API map](../.altertable/runtime/README.md#find-ui-by-task) lists the other components. A measured zero and unavailable data have different meanings; the app defines whether a result is empty. Check the finished app with live data at phone and desktop widths.
+
+For a categorical source dimension, define a `dimensionFilter` with fixed options or a typed `defineFacetFilter` operation, then pass it to `defineTimeView({ filters: { interface: filter }, ... })` or `defineDataView({ filters: ... })`. The operation input parser calls `parseDimensionSelection`, and its SQL uses `dimensionPredicate` for the allowlisted source column. All, a literal value named `null`, and missing are distinct. Choose useful dimensions and verify the source meaning of each value.

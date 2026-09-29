@@ -1,11 +1,15 @@
 import { availableDatePresets, type DatePresetId, type DateRange } from "./date-range.ts";
 import type { DateRangeContract, DateRangeRequest } from "./contract.ts";
+import type { DimensionSelection, DimensionVariable } from "./dimension.ts";
 
 export type HistoryMode = "push" | "replace";
 
 /** An app-owned value with one URL representation. Controls never parse or write routes. */
-export type AppVariable<Value> = {
-  kind: Value extends string ? "text" | "select" : "dateRange";
+export type AppVariable<
+  Value,
+  Kind extends string = Value extends string ? "text" | "select" : "dateRange",
+> = {
+  kind: Kind;
   label?: string;
   options?: readonly { id: string; label: string }[];
   urlKeys: readonly string[];
@@ -17,9 +21,16 @@ export type AppVariable<Value> = {
   same: (left: Value, right: Value) => boolean;
 };
 
-export type VariableCollection = Record<string, AppVariable<string> | DateRangeVariable>;
+export type VariableCollection = Record<
+  string,
+  AppVariable<string> | DateRangeVariable | DimensionVariable<any>
+>;
 export type AppVariableValues<Variables> = {
-  [Key in keyof Variables]: Variables[Key] extends AppVariable<infer Value> ? Value : never;
+  [Key in keyof Variables]: Variables[Key] extends DimensionVariable<infer Value>
+    ? DimensionSelection<Value>
+    : Variables[Key] extends AppVariable<infer Value, string>
+      ? Value
+      : never;
 };
 
 /** Name variables once in the app. URL keys must be unique across its controls. */

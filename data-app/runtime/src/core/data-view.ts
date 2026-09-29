@@ -14,6 +14,19 @@ export type DataView<T, Input = unknown> =
     };
 
 export type DataSnapshot<Data, Input> = { data: Data; input: Input };
+export type DisplayedSnapshot<Data, Input> = DataSnapshot<Data, Input> & {
+  state: "ready" | "updating" | "stale-error";
+};
+
+/** The result currently shown to the reader, including the input that produced it. */
+export function displayedSnapshot<Data, Input>(
+  view: DataView<Data, Input>,
+): DisplayedSnapshot<Data, Input> | undefined {
+  if (view.kind === "ready") return { data: view.data, input: view.input, state: view.kind };
+  if (view.kind === "updating" || view.kind === "stale-error")
+    return { data: view.data, input: view.displayedInput, state: view.kind };
+  return undefined;
+}
 
 /** Keep the requested input separate from the input that produced visible data. */
 export function resolveDataView<Data, Input>({

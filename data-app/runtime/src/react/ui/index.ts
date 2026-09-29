@@ -55,6 +55,22 @@ export type {
 } from "./DataTable.tsx";
 export { MetricWidget } from "./MetricWidget.tsx";
 export type { MetricWidgetProps } from "./MetricWidget.tsx";
+export { SelectableBarChart } from "./SelectableBarChart.tsx";
+export type { SelectableBarChartProps, SelectableBarItem } from "./SelectableBarChart.tsx";
+export { DimensionPicker } from "./DimensionPicker.tsx";
+export {
+  dimensionFilter,
+  parseDimensionSelection,
+  parseDimensionOptions,
+  dimensionPredicate,
+} from "../../core/dimension.ts";
+export type {
+  DimensionSelection,
+  DimensionMember,
+  DimensionOption,
+  DimensionVariable,
+  DimensionFilterOptions,
+} from "../../core/dimension.ts";
 
 // Request states and freshness
 export { EmptyState } from "./EmptyState.tsx";
@@ -63,7 +79,8 @@ export { Skeleton } from "./Skeleton.tsx";
 export type { SkeletonProps } from "./Skeleton.tsx";
 export { DataBoundary } from "./DataBoundary.tsx";
 export { resolveDataView } from "../../core/data-view.ts";
-export type { DataView, DataSnapshot } from "../../core/data-view.ts";
+export { displayedSnapshot } from "../../core/data-view.ts";
+export type { DataView, DataSnapshot, DisplayedSnapshot } from "../../core/data-view.ts";
 export type { DataBoundaryProps } from "./DataBoundary.tsx";
 export { RefreshRegion } from "./RefreshRegion.tsx";
 export type { RefreshRegionProps } from "./RefreshRegion.tsx";
@@ -140,6 +157,7 @@ export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./About
 export { PlayStory } from "./PlayStory.tsx";
 export { PresentSummary } from "./PlayStory.tsx";
 export type { PlayStoryProps, PresentSummaryProps, SummaryPoint, StoryStep } from "./PlayStory.tsx";
+export type { SummaryFinding, BoundSummary } from "./summary.ts";
 
 // Buttons, overlays, and icons
 export { AppIcon } from "./icons.ts";

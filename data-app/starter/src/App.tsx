@@ -1,5 +1,5 @@
 import { GettingStarted } from "@altertable/data-app/react";
-import { dataContext } from "#app/data-context.ts";
+import { dataContext } from "#app/data-context.tsx";
 import app from "#config";
 
 /** Connectivity-only screen. Investigate the requested question, then replace this with a view
