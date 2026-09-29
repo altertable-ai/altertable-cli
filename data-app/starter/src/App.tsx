@@ -2,7 +2,8 @@ import { GettingStarted } from "@altertable/data-app-runtime/ui";
 import { dataContext } from "#app/data-context.ts";
 import app from "#config";
 
-/** Replace the setup screen with the first useful view once its query is ready. */
+/** Connectivity-only screen. Investigate the requested question, then replace this with a view
+ * that leads with a supported finding and explores the useful angles behind it. */
 export function App() {
   return <GettingStarted config={app} dataContext={dataContext} />;
 }

@@ -1,19 +1,43 @@
 import { AppIcon } from "./icons.ts";
 import { comparisonChange, type MetricComparison } from "./comparison.ts";
+import type { MetricDefinition } from "./metric.ts";
+import { metricComparison } from "./metric.ts";
+import type { MetricReading } from "../reading.ts";
+import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import "./ComparisonVisual.css";
 
-export type ComparisonVisualProps = MetricComparison & {
+type UnboundComparisonProps = MetricComparison & {
   label: string;
   emphasis?: "standard" | "story";
 };
 
-export function ComparisonVisual({
+export type ComparisonVisualProps =
+  | UnboundComparisonProps
+  | {
+      metric: MetricDefinition;
+      reading: MetricReading;
+      emphasis?: "standard" | "story";
+    };
+
+export function ComparisonVisual(props: ComparisonVisualProps) {
+  if ("metric" in props) {
+    if (props.reading.loading) return <ContentSkeleton variant="panel" />;
+    const comparison = metricComparison(props.metric, props.reading);
+    if (!comparison) return null;
+    return (
+      <ComparisonContent {...comparison} label={props.metric.label} emphasis={props.emphasis} />
+    );
+  }
+  return <ComparisonContent {...props} />;
+}
+
+function ComparisonContent({
   label,
   current,
   previous,
   goodWhen,
   emphasis = "standard",
-}: ComparisonVisualProps) {
+}: UnboundComparisonProps) {
   const max = Math.max(current.value, previous?.value ?? 0, 1);
   const { percent, tone, icon } = comparisonChange({ current, previous, goodWhen });
   return (

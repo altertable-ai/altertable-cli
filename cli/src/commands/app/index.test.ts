@@ -127,6 +127,7 @@ describe("app commands", () => {
     expect(result.exitCode).toBe(0);
     expect(captured("build")).toEqual({});
     expect(captured("typecheck")).toEqual({});
+    expect(result.stdout.join("\n")).toContain(`Built data app in ${directory}/dist.`);
   });
 
   test("requires the selected script before launching Bun", async () => {

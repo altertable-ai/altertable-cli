@@ -6,6 +6,8 @@ import { comparisonChange, type MetricComparison } from "./comparison.ts";
 import { classNames } from "./classNames.ts";
 import { formatMetric, type MetricFormat } from "../format.ts";
 import { ContentSkeleton } from "./ContentSkeleton.tsx";
+import type { MetricReading } from "../reading.ts";
+import { metricComparison, type MetricDefinition } from "./metric.ts";
 import "./Inspect.css";
 import "./MetricCard.css";
 
@@ -19,7 +21,7 @@ type MetricCardBaseProps = {
   visual?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
 
-export type MetricCardProps = MetricCardBaseProps &
+type UnboundMetricCardProps = MetricCardBaseProps &
   (
     | { loading: true; value?: never; format?: never; content?: never }
     | ({ loading?: false } & (
@@ -28,7 +30,39 @@ export type MetricCardProps = MetricCardBaseProps &
       ))
   );
 
-export function MetricCard({
+export type MetricCardProps =
+  | UnboundMetricCardProps
+  | (Omit<MetricCardBaseProps, "label" | "comparison" | "evidence"> & {
+      metric: MetricDefinition;
+      reading: MetricReading;
+      label?: never;
+      value?: never;
+      format?: never;
+      content?: never;
+      comparison?: never;
+      evidence?: never;
+      loading?: never;
+    });
+
+export function MetricCard(props: MetricCardProps) {
+  if ("metric" in props) {
+    const { metric, reading, ...rest } = props;
+    if (reading.loading) return <MetricCardContent {...rest} label={metric.label} loading />;
+    return (
+      <MetricCardContent
+        {...rest}
+        label={metric.label}
+        value={reading.value.current}
+        format={metric.format}
+        evidence={metric.evidence}
+        comparison={metricComparison(metric, reading)}
+      />
+    );
+  }
+  return <MetricCardContent {...props} />;
+}
+
+function MetricCardContent({
   label,
   value,
   content,
@@ -42,7 +76,7 @@ export function MetricCard({
   visual,
   className,
   ...props
-}: MetricCardProps) {
+}: UnboundMetricCardProps) {
   if (loading) return <ContentSkeleton variant="metric" className={className} />;
   const shownValue = format ? formatMetric(value as number, format) : content;
   const change = comparison ? comparisonChange(comparison) : null;

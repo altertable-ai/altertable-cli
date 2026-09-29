@@ -411,7 +411,7 @@ altertable --json doctor
 
 ### `altertable app`
 
-Create, run, check, and build a data app.
+Create, develop, check, build, and upgrade data apps.
 
 **Usage**
 
@@ -421,10 +421,10 @@ altertable app create|dev|build|check|upgrade
 
 **Subcommands**
 
-- `create` — Create a minimal data app project.
-- `dev` — Run a data app with lakehouse access.
+- `create` — Create a data app project with a live connection check.
+- `dev` — Preview a data app locally with lakehouse access.
 - `build` — Typecheck and build a data app without Altertable credentials.
-- `check` — Validate a data app's format, lint, types, contract, build, and client credential boundary.
+- `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
 - `upgrade` — Update an unmodified data app runtime to the CLI's current version.
 
 **Examples**
@@ -434,11 +434,12 @@ altertable app create my-app
 altertable app dev
 altertable app check
 altertable app build
+altertable app upgrade
 ```
 
 #### `altertable app create`
 
-Create a minimal data app project.
+Create a data app project with a live connection check.
 
 **Usage**
 
@@ -469,7 +470,7 @@ altertable --profile production app create product-pulse
 
 #### `altertable app dev`
 
-Run a data app with lakehouse access.
+Preview a data app locally with lakehouse access.
 
 **Usage**
 
@@ -519,7 +520,7 @@ altertable app build --dir ./my-app
 
 #### `altertable app check`
 
-Validate a data app's format, lint, types, contract, build, and client credential boundary.
+Validate a data app's format, lint, types, contracts, build, and client credential boundary.
 
 **Usage**
 
@@ -532,7 +533,7 @@ altertable app check [options]
 | Option | Description |
 | --- | --- |
 | `--dir <DIR>` | App directory (default: current directory). |
-| `--lakehouse` | Run each app.json operation against the selected lakehouse. |
+| `--lakehouse` | Run each operation’s declared checks against the selected lakehouse. |
 
 **Examples**
 

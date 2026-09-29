@@ -1,7 +1,6 @@
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import {
   createDataHooks,
-  defineDataContent,
   mountDataApp,
 } from "@altertable/data-app-runtime/react";
 import {
@@ -16,7 +15,6 @@ import {
   GridItem,
   Stack,
   MetricCard,
-  ContentSkeleton,
   VisualizationCard,
   dateRangeVariable,
   createDataContext,
@@ -48,7 +46,7 @@ const activityView = defineDataView({
   operation: "activity",
   variables: { period },
   input: ({ period }) => period,
-  describeInput: period.describeInput,
+  date: { variable: "period", input: (input) => input },
   isEmpty: (data) => data.features.length === 0,
   empty: { title: "No activity in this range", description: "Choose another range." },
 });
@@ -67,40 +65,24 @@ const context = createDataContext(defineQueryNames({ activity: "activity" }))({
     actions: { term: "Actions", definition: "Recorded product actions.", queryNames: ["activity"] },
   },
 });
-const content = defineDataContent<Activity, DateRangeRequest>((state) => (
+const actions = context.metric({ id: "actions", glossaryId: "actions", format: { kind: "count" } });
+const content = activityView.content((state) => (
   <Stack data-testid="shared-content">
-    <p>
-      {state.loading ? "Loading activity…" : `Results for ${period.describeInput(state.input)}`}
-    </p>
+    <p>{state.loading ? "Loading activity…" : `Results for ${period.describeInput(state.input)}`}</p>
     <Grid columns={3} minItemWidth="compact" data-testid="shared-grid">
       <GridItem span={2} data-testid="shared-primary">
-        {state.loading ? (
-          <ContentSkeleton variant="ranking" rows={3} />
-        ) : (
-          <VisualizationCard
-            title="Activity across product features and organizations"
-            visual={
-              <ul>
-                {state.data.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-            }
-          />
-        )}
+        <VisualizationCard
+          title="Activity across product features and organizations"
+          reading={state.select((data) => data.features)}
+          isEmpty={(items) => items.length === 0}
+          empty={{ title: "No features" }}
+          skeleton={{ variant: "ranking", rows: 3 }}
+        >
+          {(features) => <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul>}
+        </VisualizationCard>
       </GridItem>
       <GridItem data-testid="shared-support">
-        <MetricCard
-          label="Actions"
-          {...(state.loading
-            ? { loading: true }
-            : { value: state.data.count, format: { kind: "count" } })}
-          evidence={context.evidence({
-            id: "actions",
-            glossaryIds: ["actions"],
-            queryNames: ["activity"],
-          })}
-        />
+        <MetricCard metric={actions} reading={state.metric((data) => ({ current: data.count }))} />
       </GridItem>
     </Grid>
   </Stack>

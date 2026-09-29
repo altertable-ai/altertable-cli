@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { defineCommand } from "@/lib/command.ts";
 import { EXIT_GENERIC } from "@/lib/errors.ts";
 import {
@@ -16,7 +17,7 @@ export const appBuildCommand = defineCommand({
   args: {
     dir: { type: "string", description: "App directory (default: current directory)." },
   },
-  async run({ args, runtime }) {
+  async run({ args, runtime, sink }) {
     assertAppOutputMode(runtime.context.json, runtime.context.agent);
     const directory = appDirectory(args.dir);
     requireAppScripts(directory, ["typecheck", "build"]);
@@ -25,6 +26,7 @@ export const appBuildCommand = defineCommand({
     const typecheckExitCode = await runAppCommand("typecheck", directory);
     if (typecheckExitCode !== 0) return { exitCode: EXIT_GENERIC };
     const exitCode = await runAppCommand("build", directory);
-    return { exitCode: exitCode === 0 ? 0 : EXIT_GENERIC };
+    if (exitCode !== 0) return { exitCode: EXIT_GENERIC };
+    sink.writeHuman(`Built data app in ${join(directory, "dist")}.`);
   },
 });

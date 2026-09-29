@@ -158,3 +158,6 @@ export type {
   HelpPopoverProps,
   HelpPopoverTriggerProps,
 } from "./HelpPopover.tsx";
+
+export type { MetricDefinition } from "./metric.ts";
+export type { DataReading, MetricReading, MetricValues } from "../reading.ts";

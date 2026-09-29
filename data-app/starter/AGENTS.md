@@ -1,6 +1,6 @@
 # Build this data app
 
-Inspect the source and existing definitions before choosing queries. For broad questions, investigate several useful angles. Build conclusions from observed results; do not present association as cause. Keep copy concise and relevant to the reader.
+Inspect source data, time coverage and existing definitions before choosing an exploration. For broad questions, investigate complementary angles. Build conclusions from observed results; do not present association as cause. Keep copy concise and relevant to the reader.
 
 | Task | App-owned files | Read next |
 | --- | --- | --- |
@@ -11,6 +11,6 @@ Inspect the source and existing definitions before choosing queries. For broad q
 | Find a component, hook, or parser | Read `.altertable/runtime/` | [Runtime API map](.altertable/runtime/README.md) |
 | Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server.ts) |
 
-Edit app-owned files in `src/`; use public runtime imports and read their types for API contracts. Import app-owned files through `#app/*` and `app.json` through `#config`.
+Edit app-owned source and use public runtime APIs. The generated connectivity screen is scaffolding, not an example analysis.
 
 Run `altertable app check --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.

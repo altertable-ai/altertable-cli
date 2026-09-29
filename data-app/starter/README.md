@@ -2,6 +2,8 @@
 
 This starter runs a lightweight SQL query to check the lakehouse connection. “Connected” appears only after that query succeeds; having a configured profile alone is not enough. The check does not establish access to specific datasets.
 
+The generated screen is a setup state. Its operation and data context contain no analytical example to copy. Discover the relevant data and build the exploration around the user's question; broad questions deserve more than one useful angle.
+
 ## Run locally
 
 Configure a profile with lakehouse access, then run from this directory:

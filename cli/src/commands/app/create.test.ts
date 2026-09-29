@@ -49,7 +49,13 @@ describe("app create", () => {
       directory,
       scope: { organization: "Your organization", environment: "your environment" },
       scopeSource: "placeholder",
-      nextSteps: ["altertable app dev", "altertable app check", "altertable app build"],
+      nextSteps: [
+        "Set organization and environment in app.json.",
+        "Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.",
+        "altertable app dev",
+        "altertable app check --lakehouse",
+        "altertable app build",
+      ],
     });
     expect(JSON.parse(readFileSync(join(directory, "package.json"), "utf8"))).toMatchObject({
       name: "product-pulse",
@@ -73,6 +79,15 @@ describe("app create", () => {
     expect(paths).toContain(".oxlintrc.json");
     expect(paths).toContain("docs/data.md");
     expect(paths).toContain(".altertable/runtime/README.md");
+    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
+      "Connectivity-only screen",
+    );
+    expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain(
+      "supplies no analytical result",
+    );
+    expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
+      "no sample analysis to emulate",
+    );
     expect(Bun.spawnSync(["git", "init", "--quiet"], { cwd: directory }).exitCode).toBe(0);
     const ignored = Bun.spawnSync(
       [
@@ -271,7 +286,7 @@ describe("app create", () => {
       agent: false,
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.join("\n")).toContain("client bundle clean");
+    expect(result.stdout.join("\n")).toContain("client credential scan passed");
     writeFileSync(
       join(directory, "src/lint-probe.tsx"),
       'import { useEffect, useState } from "react"; export function Probe() { const [count, setCount] = useState(0); useEffect(() => { setCount(1); }, []); return <div>{count}</div>; }',
@@ -339,8 +354,9 @@ describe("app create", () => {
       ["app", "create", "first-app", "--dir", directory, "--without-profile"],
       { debug: false, json: false, agent: false },
     );
-    expect(result.stdout.join("\n")).toContain("Organization/environment:");
-    expect(result.stdout.join("\n")).toContain("From that directory, run altertable app dev.");
+    expect(result.stdout.join("\n")).toContain("set the organization and environment in app.json");
+    expect(result.stdout.join("\n")).toContain("`altertable app build`");
+    expect(result.stdout.join("\n")).not.toContain("run altertable app dev.");
   });
 
   test("returns the created directory in agent output", async () => {
@@ -371,6 +387,19 @@ describe("app create", () => {
     });
     expect(current.stdout.join("\n")).toContain("already current");
     expect(readFileSync(operations, "utf8")).toContain("App-specific change");
+
+    for (const mode of [
+      { debug: false, json: true, agent: false },
+      { debug: false, json: false, agent: true },
+    ]) {
+      const output = await runCommandWithTestRuntime(["app", "upgrade", "--dir", directory], mode);
+      expect(JSON.parse(output.stdout[0]!)).toEqual({
+        directory,
+        upgraded: false,
+        runtimeVersion: currentRuntimeIntegrity().version,
+        nextSteps: [],
+      });
+    }
 
     const runtime = join(directory, ".altertable/runtime/src/server.ts");
     writeFileSync(runtime, `${readFileSync(runtime, "utf8")}\n// Local edit.\n`);

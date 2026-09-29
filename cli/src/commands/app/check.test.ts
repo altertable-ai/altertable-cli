@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkAppProject, checkClientBundle } from "@/commands/app/check.ts";
@@ -109,4 +109,48 @@ test("browser bundles reject value imports of operations but allow type imports"
     'import type { operations } from "./operations.ts"; const name: keyof typeof operations = "totals"; console.log(name);',
   );
   await checkAppProject(directory);
+});
+
+test("lakehouse checks execute every declared input through the current runtime layout", async () => {
+  mkdirSync(join(directory, "src"));
+  mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
+  writeFileSync(
+    join(directory, "app.json"),
+    JSON.stringify({ schemaVersion: 1, title: "Live check" }),
+  );
+  writeFileSync(
+    join(directory, ".altertable/runtime/src/appearance.ts"),
+    "export function parseAppearance() {}",
+  );
+  writeFileSync(
+    join(directory, ".altertable/runtime/src/local.ts"),
+    "export function localLakehouse() { return {}; }",
+  );
+  writeFileSync(
+    join(directory, ".altertable/runtime/src/server.ts"),
+    `
+    export function createDataHandler(operations) {
+      return async (request) => {
+        const input = await request.json();
+        await operations.totals.run({}, input);
+        return new Response("ok");
+      };
+    }
+  `,
+  );
+  writeFileSync(
+    join(directory, "src/operations.ts"),
+    `
+    import { appendFileSync } from "node:fs";
+    export const operations = { totals: {
+      checks: [{ day: 1 }, { day: 2 }], input: (value) => value, output: (value) => value,
+      policy: { maxQueryRows: 1, maxDurationMs: 1000 },
+      async run(context, input) { appendFileSync("executed.txt", String(input.day)); return input; },
+    } };
+  `,
+  );
+  await checkAppProject(directory);
+  expect(Bun.file(join(directory, "executed.txt")).size).toBe(0);
+  await checkAppProject(directory, {});
+  expect(readFileSync(join(directory, "executed.txt"), "utf8")).toBe("12");
 });

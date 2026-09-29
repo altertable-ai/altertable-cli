@@ -4,6 +4,7 @@ import { defineCommand } from "@/lib/command.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 import { copyProcessEnv } from "@/lib/env.ts";
+import { isRecord } from "@/lib/object.ts";
 import { appDirectory } from "@/commands/app/lib/run.ts";
 import {
   currentRuntimeIntegrity,
@@ -20,12 +21,28 @@ export const appUpgradeCommand = defineCommand({
   },
   args: { dir: { type: "string", description: "App directory (default: current directory)." } },
   async run({ args, sink }) {
-    const upgraded = await upgradeApp(appDirectory(args.dir));
-    sink.writeHuman(
-      upgraded
-        ? `Updated data app runtime to ${currentRuntimeIntegrity().version}. Run altertable app check, then restart any running app dev server.`
-        : `Data app runtime ${currentRuntimeIntegrity().version} is already current.`,
-    );
+    const directory = appDirectory(args.dir);
+    const upgraded = await upgradeApp(directory);
+    const version = currentRuntimeIntegrity().version;
+    if (sink.json) {
+      sink.writeJson({
+        directory,
+        upgraded,
+        runtimeVersion: version,
+        nextSteps: upgraded
+          ? [
+              "Run `altertable app check` in the app directory.",
+              "Restart any running `altertable app dev` server.",
+            ]
+          : [],
+      });
+    } else {
+      sink.writeHuman(
+        upgraded
+          ? `Updated data app runtime to ${version}. Run \`altertable app check\`, then restart any running \`altertable app dev\` server.`
+          : `Data app runtime ${version} is already current.`,
+      );
+    }
   },
 });
 
@@ -35,10 +52,6 @@ type UpgradeOptions = {
   resolveLock?: (directory: string) => Promise<void>;
 };
 type Applied = { destination: string; backup: string | null };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
 
 function parseJsonc(source: string): unknown {
   let withoutComments = "";

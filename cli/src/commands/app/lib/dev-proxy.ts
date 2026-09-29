@@ -44,7 +44,7 @@ export function startAppDevProxy(
         }
         if (error instanceof ConfigurationError) {
           console.error(
-            `Data app lakehouse access failed for profile ${execution.profile}. Run 'altertable login' or update the profile, then retry.`,
+            `Data app lakehouse access failed for profile ${execution.profile}. Run \`altertable login\` or update the profile, then retry.`,
           );
           return new Response("Lakehouse access needs attention", { status: 401 });
         }

@@ -36,18 +36,20 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | Present loaded findings | [PlayStory](src/ui/PlayStory.tsx) | StoryStep |
 | Build custom controls and overlays | [Button](src/ui/Button.tsx), [Sheet](src/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
-## Boundaries to preserve
+## Contracts
 
-- SQL, credentials, and viewer authorization stay on the server. Hosted apps must authorize each request; the local adapter is for CLI development. SQL disclosure requires both operation policy and server permission.
-- `useDataView` distinguishes requested inputs from the inputs that produced visible data. Pass it once to `DataApp.request`; the shell owns the primary boundary, refresh notice, and inspection defaults. Use `DataSection` for independent requests. Let the app define emptiness; a measured zero can be a valid result.
-- Each operation declares `checks` beside its input parser. `app check --lakehouse` runs them; `app.json` owns identity and appearance. `defineDateRangeContract` shares a calendar range's parser, variable bounds, and displayed period.
-- To offer a previous-period comparison, set `comparison: true` on `dateRangeVariable`. `dateRangeControl` adds the picker control and URL state; `variable.comparisonRange(selection)` returns the immediately preceding equal-length range only when selected and within source coverage. Use `variable.input(selection)` or a bound view to resolve both ranges; `calendar.parseRequest` validates the operation input. Query both ranges in the operation. `calendarMetricComparison(displayedInput, values)` supplies the metric and period labels from the visible result; use `null` for an unavailable previous value and `0` for a measured zero.
-- Give `defineOperation` a `queryNames` registry when its results expose query evidence. Reuse that registry with `createDataContext(queryNames)` for glossary entries, card evidence, and `context.storyStep(...)` in Present mode. The server rejects unregistered query names. Card inspection inherits context, queries, and empty states from `DataApp`.
-- `Breakdown` shows parts of a total; `Ranking` scales against the largest visible value. `formatPercent` accepts a ratio, for example `0.116` for 11.6%.
-- Default page, grid, and stack gaps scale with the viewport and appearance density. Keep body and label text legible; scale display headlines instead.
-- Use `GlossaryDefinition` for a term in running text: `<GlossaryDefinition entry={dataContext.glossary.orders}>completed orders</GlossaryDefinition>`. It shows the registered definition on hover or activation; `AboutData` remains the place for full evidence.
-- Variable registration rejects duplicate and reserved URL keys. App variables own URL state. `?view=` belongs to page navigation; `?about=` and `?tab=` belong to inspection; `?present=` and `?step=` belong to Present mode.
-- Present steps use an already loaded result. They carry authored findings and evidence references, without issuing another query.
+| Definition | Runtime owns |
+| --- | --- |
+| `defineOperation` | Input/output validation, check inputs, query limits and cancellation; `query(name, sql)` accepts registered names and records executed evidence. |
+| `defineDataView` | URL variables, operation input, emptiness and the primary date binding. `useView` connects the result and controls to `DataApp`. |
+| `DataApp` | Header, variable bar, refresh state, stale-result notice and dimming, default inspection empty states. |
+| `view.content` | One loading/ready layout. `result.select` never evaluates loading data; `result.metric` binds comparisons to the displayed input. |
+| `context.metric` | Label, numeric format, glossary evidence and optional direction of improvement. |
+| `CardViewTabs` | Valid, unique selection IDs and a required empty state per tab. |
+
+SQL and business definitions belong to the app. Hosted adapters authorize every request; local development uses the CLI proxy. Browser/server boundaries and managed runtime integrity are checked by `app check`. SQL disclosure also requires server permission.
+
+A measured zero and unavailable data have different meanings. Metric readings use `null` for an unavailable previous value. The app defines whether a result is empty. `Breakdown` shows parts of a total; `Ranking` scales against its largest value. Percent formats accept ratios.
 
 ## Ownership
 
@@ -57,19 +59,17 @@ In the CLI repository, edit the canonical `data-app/runtime/` package. Its sibli
 
 ## Bind a view
 
-Definitions live in browser-safe modules. Import operation types with `import type`; the browser bundle must not import operation implementations. The request and UI contracts do not depend on a particular hosting adapter.
-
 ```tsx
 import { createDataClient } from "@altertable/data-app-runtime/client";
-import { createDataHooks, defineDataContent } from "@altertable/data-app-runtime/react";
-import { dateRangeVariable, DataApp, Grid, MetricCard } from "@altertable/data-app-runtime/ui";
-import type { operations } from "./operations.ts";
-import { calendar } from "./contracts.ts";
+import { createDataHooks } from "@altertable/data-app-runtime/react";
+import { dateRangeVariable, DataApp, Grid, MetricCard, VisualizationCard, Ranking } from "@altertable/data-app-runtime/ui";
+import type { operations } from "#app/operations.ts";
+import { calendar } from "#app/contracts.ts";
+import { dataContext, actions } from "#app/data-context.tsx";
+import config from "#config";
 
 const period = dateRangeVariable({
-  key: "period",
-  contract: calendar,
-  comparison: true,
+  key: "period", contract: calendar, comparison: true,
   defaultValue: { kind: "preset", id: "last-30" },
 });
 const { defineDataView, useView } = createDataHooks(createDataClient<typeof operations>());
@@ -77,59 +77,67 @@ const activityView = defineDataView({
   operation: "activity",
   variables: { period },
   input: ({ period }) => period,
+  date: { variable: "period", input: (input) => input },
   isEmpty: (data) => data.features.length === 0,
   empty: { title: "No activity in this range" },
 });
-
+const content = activityView.content((result) => (
+  <Grid columns={2}>
+    <MetricCard metric={actions} reading={result.metric((data) => ({
+      current: data.count, previous: data.previousCount,
+    }))} />
+    <VisualizationCard title="Feature use"
+      reading={result.select((data) => data.features)}
+      isEmpty={(features) => features.length === 0}
+      empty={{ title: "No features" }}
+      skeleton={{ variant: "ranking", rows: 6 }}
+    >
+      {(features) => <Ranking items={features} />}
+    </VisualizationCard>
+  </Grid>
+));
 function App() {
   const activity = useView(activityView);
-  return (
-    <DataApp config={config} dataContext={dataContext} request={activity}>
-      {(data, displayedInput) => (
-        <MetricCard label="Actions" value={data.count} format={{ kind: "count" }} />
-      )}
-    </DataApp>
-  );
+  return <DataApp config={config} dataContext={dataContext} request={activity} {...content} />;
 }
 ```
 
-`useView` generates date, text, and fixed-option select controls; `variables` can override the shell's controls. Its `variables.bind(name)` supports custom controls. `input` explicitly selects which resolved variables affect the operation, so local search can stay out of query inputs. A view with one date variable and a `DateRangeRequest` derives its displayed input label from the date contract; other views require `describeInput`. Supply it to override the date label. `useDataView` remains available for requests with manually managed inputs. `DataApp` provides default empty states for Glossary and Queries; pass `aboutEmpty` to customize the copy.
+The `date` binding identifies the controlling variable and extracts its range from the operation input. Nested inputs use, for example, `input: (input) => input.period`. The runtime rejects mappings that silently change the selected range or comparison. Non-date views supply `describeInput`; date views can override it when other inputs also need describing.
 
-A date resolves to `{ range, comparison }`, with comparison `null` when disabled. Define the shared contract in `src/contracts.ts`:
+The shared calendar lives in a browser-safe module:
 
 ```ts
 import { defineDateRangeContract } from "@altertable/data-app-runtime/contract";
-
 export const calendar = defineDateRangeContract({
-  minDate: "2026-01-01",
-  maxRangeDays: 90,
-  timeZone: "UTC",
+  minDate: "2026-01-01", maxRangeDays: 90, timeZone: "UTC",
 });
-// In defineOperation: input: calendar.parseRequest
+// Server operation: input: calendar.parseRequest
 ```
 
-The parser rejects forged comparisons and out-of-coverage ranges. The same parser can run behind any deployment adapter. Result children receive the displayed input, including its comparison range, even while controls request something else.
+`useView` generates controls for date, text and fixed-option select variables; custom controls use `result.variables.bind(name)`. `input` chooses which variables reach the operation, so local search can stay local. The callback in `view.content` receives the displayed result, including its original input during refreshes and failures. Hooks belong in the enclosing component.
 
-## Share loading structure
+`MetricCard` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `goodWhen` is optional; changes are neutral until the author defines whether up or down is desirable.
 
-`defineDataContent<Data, Input>` returns the `loading` and `children` props for `DataApp` or `DataSection`. Its pure render callback receives a loading/ready union. Keep hooks in the enclosing component.
+`defineDataContent` remains available for manually managed requests. Its optional `{ date: (input) => rangeRequest }` binds comparison readings. `DataSection` handles independent requests. Low-level cards, tabs and layout components remain available for custom interfaces.
 
-```tsx
-const content = defineDataContent<Activity, DateRangeRequest>((state) => (
-  <Grid columns={3}>
-    <MetricCard
-      label="Actions"
-      {...(state.loading
-        ? { loading: true }
-        : { value: state.data.count, format: { kind: "count" } })}
-    />
-    {/* Additional cards use this same grid in both states. */}
-  </Grid>
-));
-// <DataApp ... request={activity} {...content} />
+## Execute named queries
+
+```ts
+const queries = defineQueryNames({ activity: "feature-activity" });
+const activity = defineOperation({
+  queryNames: queries,
+  input: calendar.parseRequest,
+  output: parseActivity,
+  checks: [checkInput],
+  policy: { maxQueryRows: 100, maxDurationMs: 15000, exposeSql: true },
+  async run({ query }, input) {
+    const result = await query(queries.activity, buildActivitySql(input));
+    return parseActivityRows(result);
+  },
+});
 ```
 
-`ContentSkeleton` accepts `variant="ranking" rows={6}` for a representative collection shape. Placeholder values never become successful results. `DataSection` requires an empty fallback on its props or bound result; `CardViewTabs` requires `isEmpty` and `empty` on each view. Low-level React Aria tabs remain available for non-data interfaces.
+`query` inherits the operation's limit and cancellation signal; `{ limit }` can lower a particular query's bound. Names are checked by TypeScript and at runtime. The server records the SQL and query ID when execution occurs, so evidence does not need a separate result field. Browser modules import operation types with `import type`; they never import server implementations.
 
 ## Bind evidence
 
@@ -157,6 +165,12 @@ const evidence = context.evidence({
   glossaryIds: ["identities"],
   queryNames: [queries.activity],
 });
+const actions = context.metric({
+  id: "actions",
+  glossaryId: "identities",
+  label: "Tracked identities",
+  format: { kind: "count" },
+});
 const step = context.storyStep({
   id: "activity",
   headline: "What people do",
@@ -169,6 +183,7 @@ Import `defineQueryNames` from `/contract` and the context/identifier factories 
 
 ## API migration
 
+- Views that previously inferred their date variable now declare `date: { variable: "period", input: (input) => input }`, or supply `describeInput` for a non-date view.
 - Numeric metrics use `value={count} format={{ kind: "count" }}`. Custom formatted JSX or strings use `content={...}` instead of `value`.
 - Supply `empty` to secondary `DataSection` requests or pass a bound `useView` result. A primary `DataApp` accepts it either from `useView` or as an explicit prop.
 - Each `CardViewTabs` view supplies `isEmpty` and `empty`.

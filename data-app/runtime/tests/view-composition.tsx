@@ -19,6 +19,7 @@ defineDataView({
   operation: "activity",
   variables: { period },
   input: ({ period }) => period,
+  date: { variable: "period", input: (input) => input },
   isEmpty: (data) => data.count === 0,
   empty: { title: "No activity" },
 });
@@ -52,3 +53,40 @@ const app: DataAppProps<number> = {
   children: () => null,
 };
 void [metric, section, app];
+
+import { defineOperation, defineQueryNames } from "../src/contract.ts";
+import { createDataContext } from "../src/ui/data-context.ts";
+import { MetricCard } from "../src/ui/MetricCard.tsx";
+import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
+const queries = defineQueryNames({ actions: "actions" });
+defineOperation({
+  queryNames: queries,
+  input: () => ({}),
+  output: () => true,
+  checks: [{}],
+  policy: { maxQueryRows: 1, maxDurationMs: 1000 },
+  async run({ query }) {
+    // @ts-expect-error Query identity is scoped to the operation registry.
+    await query("unknown", "SELECT 1");
+    return true;
+  },
+});
+const context = createDataContext(queries)({
+  description: "Activity",
+  glossary: { actions: { term: "Actions", definition: "Actions", queryNames: [queries.actions] } },
+});
+const actions = context.metric({ id: "actions", glossaryId: "actions", format: { kind: "count" } });
+// @ts-expect-error Metric definitions bind glossary identity.
+context.metric({ id: "missing", glossaryId: "missing", format: { kind: "count" } });
+const conflictingMetric = (
+  // @ts-expect-error A bound metric cannot supply a second current value.
+  <MetricCard metric={actions} reading={{ loading: false, value: { current: 1 } }} value={2} />
+);
+const tabs = [
+  { id: "actions", label: "Actions", content: null, isEmpty: true, empty: { title: "Empty" } },
+] as const;
+const invalidTabs = (
+  // @ts-expect-error Selection must belong to the declared tabs.
+  <CardViewTabs label="Views" views={tabs} selectedKey="missing" onSelectionChange={() => {}} />
+);
+void [conflictingMetric, invalidTabs];

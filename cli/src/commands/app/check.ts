@@ -26,14 +26,14 @@ export const appCheckCommand = defineCommand({
   metadata: {
     name: "check",
     description:
-      "Validate a data app's format, lint, types, contract, build, and client credential boundary.",
+      "Validate a data app's format, lint, types, contracts, build, and client credential boundary.",
     examples: ["altertable app check", "altertable app check --lakehouse"],
   },
   args: {
     dir: { type: "string", description: "App directory (default: current directory)." },
     lakehouse: {
       type: "boolean",
-      description: "Run each app.json operation against the selected lakehouse.",
+      description: "Run each operation’s declared checks against the selected lakehouse.",
     },
   },
   async run({ args, execution, runtime, sink }) {
@@ -49,7 +49,7 @@ export const appCheckCommand = defineCommand({
       Object.entries(current.sha256).some(([name, checksum]) => installed.sha256[name] !== checksum)
     ) {
       throw new ConfigurationError(
-        `Data app runtime ${installed.version} is outdated. Run altertable app upgrade.`,
+        `Data app runtime ${installed.version} is outdated. Run \`altertable app upgrade\`.`,
       );
     }
     if ((await runAppCommand("install", directory)) !== 0) return { exitCode: EXIT_GENERIC };
@@ -74,7 +74,7 @@ export const appCheckCommand = defineCommand({
       });
     }
     sink.writeHuman(
-      `Checked ${manifest.title}: operation contracts and client bundle clean${args.lakehouse ? ", lakehouse operation checks passed" : ""}.`,
+      `Checked ${manifest.title}: format, lint, types, operation contracts, build, and client credential scan passed${args.lakehouse ? "; lakehouse operation checks passed" : ""}.`,
     );
   },
 });
@@ -116,6 +116,7 @@ export async function checkAppProject(
       process.execPath,
       "-e",
       projectCheckScript,
+      "--",
       lakehouseEnvironment ? "--lakehouse" : "--contract",
     ],
     { cwd: directory, env, stdin: "ignore", stdout: "inherit", stderr: "inherit" },

@@ -79,8 +79,8 @@ async function check() {
   }
 
   if (process.argv[1] !== "--lakehouse") return;
-  const { createDataHandler } = await import(appFile(".altertable/runtime/server.ts"));
-  const { localLakehouse } = await import(appFile(".altertable/runtime/local.ts"));
+  const { createDataHandler } = await import(appFile(".altertable/runtime/src/server.ts"));
+  const { localLakehouse } = await import(appFile(".altertable/runtime/src/local.ts"));
   const handle = createDataHandler(operations, async () => ({
     lakehouse: localLakehouse(process.env),
     canDiscloseSql: true,

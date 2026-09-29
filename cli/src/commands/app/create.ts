@@ -10,7 +10,7 @@ import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 export const appCreateCommand = defineCommand({
   metadata: {
     name: "create",
-    description: "Create a minimal data app project.",
+    description: "Create a data app project with a live connection check.",
     examples: [
       "altertable app create product-pulse",
       "altertable app create product-pulse --dir ./apps/product-pulse",
@@ -53,7 +53,7 @@ export const appCreateCommand = defineCommand({
     const environment = configGet("api_key_env", candidateProfile).trim();
     if (!withoutProfile && (!organizationSlug || !environment)) {
       throw new CliError(
-        `Profile "${candidateProfile}" needs an organization and environment before it can seed a data app. Run altertable login --org <org> --env <env> to connect, or use --without-profile for an offline scaffold.`,
+        `Profile "${candidateProfile}" needs an organization and environment before it can seed a data app. Run \`altertable login --org <org> --env <env>\` to connect, or use \`--without-profile\` for an offline scaffold.`,
       );
     }
     const profileName = withoutProfile ? undefined : candidateProfile;
@@ -83,6 +83,17 @@ export const appCreateCommand = defineCommand({
       throw new CliError(`Could not create data app in ${directory}.`, { cause: error });
     }
 
+    const nextSteps = profileName
+      ? ["app dev", "app check", "app build"].map(
+          (command) => `altertable --profile ${profileName} ${command}`,
+        )
+      : [
+          "Set organization and environment in app.json.",
+          "Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.",
+          "altertable app dev",
+          "altertable app check --lakehouse",
+          "altertable app build",
+        ];
     const result = {
       name,
       directory,
@@ -90,14 +101,16 @@ export const appCreateCommand = defineCommand({
       scopeSource: profileName ? "profile" : "placeholder",
       ...(profileName ? { profile: profileName, organizationSlug } : {}),
       files: files.map(([path]) => path),
-      nextSteps: ["app dev", "app check", "app build"].map(
-        (command) => `altertable${profileName ? ` --profile ${profileName}` : ""} ${command}`,
-      ),
+      nextSteps,
     };
     if (sink.json) sink.writeJson(result);
+    else if (profileName)
+      sink.writeHuman(
+        `Created ${title} in ${directory}.\nScope: ${scope.organization} / ${scope.environment} (profile ${profileName}).\nFrom that directory, run \`${nextSteps[0]}\`.`,
+      );
     else
       sink.writeHuman(
-        `Created ${title} in ${directory}.\nOrganization/environment: ${scope.organization} / ${scope.environment}${profileName ? ` (profile ${profileName})` : " (offline placeholders)"}.\nFrom that directory, run ${result.nextSteps[0]}.`,
+        `Created ${title} in ${directory} with placeholder scope.\nBefore previewing, set the organization and environment in app.json and select a matching profile (or run \`altertable login --org <org> --env <env>\`).\nYou can run \`altertable app build\` from that directory now.`,
       );
   },
 });

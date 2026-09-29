@@ -40,6 +40,7 @@ test("date requests derive a comparison and reject forged or unavailable ranges"
     operation: "activity",
     variables: { period: variable },
     input: ({ period }: { period: typeof request }) => period,
+    date: { variable: "period", input: (input: typeof request) => input },
     isEmpty: (data: { count: number }) => data.count === 0,
     empty: { title: "No activity" },
   } satisfies DataViewDefinition<
@@ -51,7 +52,7 @@ test("date requests derive a comparison and reject forged or unavailable ranges"
   expect(describeViewInput<typeof request>(definition)(request)).toBe("Mar 1–3, 2026 UTC");
   expect(() =>
     describeViewInput({ ...definition, variables: { first: variable, second: variable } }),
-  ).toThrow("exactly one date range variable");
+  ).toThrow("date range variable");
   expect(describeViewInput({ ...definition, describeInput: () => "custom period" })(request)).toBe(
     "custom period",
   );

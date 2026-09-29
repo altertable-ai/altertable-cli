@@ -1,4 +1,11 @@
-import { describeViewInput, useViewVariables, type DataViewDefinition } from "./view.tsx";
+import {
+  defineDataContent,
+  resolveViewInput,
+  describeViewInput,
+  useViewVariables,
+  type DataContentState,
+  type DataViewDefinition,
+} from "./view.tsx";
 import { defineAppVariables, type VariableCollection } from "./ui/variables.ts";
 export { defineDataContent } from "./view.tsx";
 export type { DataContentState, DataViewDefinition, ResolvedVariables } from "./view.tsx";
@@ -160,6 +167,11 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     return {
       ...definition,
       describeInput: describeViewInput<InputOf<Operations[Name]>>(definition),
+      content: (
+        render: (
+          state: DataContentState<OutputOf<Operations[Name]>, InputOf<Operations[Name]>>,
+        ) => ReactNode,
+      ) => defineDataContent(render, { date: definition.date?.input }),
     };
   }
 
@@ -175,10 +187,14 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     >,
   ) {
     const variables = useViewVariables(definition.variables);
-    const request = useDataView(definition.operation, definition.input(variables.resolved), {
-      ...definition,
-      describeInput: describeViewInput<InputOf<Operations[Name]>>(definition),
-    });
+    const request = useDataView(
+      definition.operation,
+      resolveViewInput(definition, variables.resolved),
+      {
+        ...definition,
+        describeInput: describeViewInput<InputOf<Operations[Name]>>(definition),
+      },
+    );
     return { ...request, empty: definition.empty, controls: variables.controls, variables };
   }
   return { useDataQuery, useDataView, defineDataView, useView };

@@ -9,12 +9,13 @@ export const appCommand = defineCommand({
   metadata: {
     name: "app",
     commandGroup: "platform",
-    description: "Create, run, check, and build a data app.",
+    description: "Create, develop, check, build, and upgrade data apps.",
     examples: [
       "altertable app create my-app",
       "altertable app dev",
       "altertable app check",
       "altertable app build",
+      "altertable app upgrade",
     ],
   },
   subcommands: {

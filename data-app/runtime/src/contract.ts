@@ -241,7 +241,25 @@ export type DataOperation<Input, Output> = {
   };
 };
 
-export function defineOperation<Input, Output>(operation: DataOperation<Input, Output>) {
+export type OperationQuery<Names extends Readonly<Record<string, string>>> = (
+  name: Names[keyof Names],
+  statement: string,
+  options?: { limit?: number },
+) => Promise<QueryResult>;
+
+export function defineOperation<
+  Input,
+  Output,
+  const Names extends Readonly<Record<string, string>> = Record<string, never>,
+>(
+  operation: Omit<DataOperation<Input, Output>, "run" | "queryNames"> & {
+    queryNames?: Names;
+    run: (
+      context: OperationContext & { query: OperationQuery<NoInfer<Names>> },
+      input: Input,
+    ) => Promise<Output>;
+  },
+): DataOperation<Input, Output> & { queryNames?: Names } {
   if (
     !Array.isArray(operation.checks) ||
     !operation.checks.length ||
@@ -257,7 +275,21 @@ export function defineOperation<Input, Output>(operation: DataOperation<Input, O
   }
   if (operation.queryNames) defineQueryNames(operation.queryNames);
   for (const input of operation.checks) operation.input(input);
-  return operation;
+  return {
+    ...operation,
+    run(context, input) {
+      const query: OperationQuery<Names> = (name, statement, options) => {
+        if (!operation.queryNames || !Object.values(operation.queryNames).includes(name))
+          throw new Error(`Unknown query name: ${name}.`);
+        return context.lakehouse.queryAll(statement, {
+          name,
+          limit: options?.limit ?? operation.policy.maxQueryRows,
+          signal: context.signal,
+        });
+      };
+      return operation.run({ ...context, query }, input);
+    },
+  };
 }
 
 export const connectionQueryNames = defineQueryNames({ connection: "connection-check" });
@@ -270,12 +302,8 @@ export function connectionCheck(): DataOperation<Record<string, never>, true> {
     checks: [{}],
     queryNames: connectionQueryNames,
     policy: { maxQueryRows: 1, maxDurationMs: 15_000, exposeSql: true },
-    async run({ lakehouse, signal }): Promise<true> {
-      await lakehouse.queryAll("SELECT 1 AS connection_check", {
-        limit: 1,
-        signal,
-        name: connectionQueryNames.connection,
-      });
+    async run({ query }): Promise<true> {
+      await query(connectionQueryNames.connection, "SELECT 1 AS connection_check");
       return true;
     },
   });

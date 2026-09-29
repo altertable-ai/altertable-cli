@@ -803,7 +803,7 @@
         {
           "id": "altertable-app",
           "command": "altertable app",
-          "description": "Create, run, check, and build a data app.",
+          "description": "Create, develop, check, build, and upgrade data apps.",
           "usage": [
             "altertable app create|dev|build|check|upgrade"
           ],
@@ -814,13 +814,14 @@
             "altertable app create my-app",
             "altertable app dev",
             "altertable app check",
-            "altertable app build"
+            "altertable app build",
+            "altertable app upgrade"
           ],
           "subcommands": [
             {
               "id": "altertable-app-create",
               "command": "altertable app create",
-              "description": "Create a minimal data app project.",
+              "description": "Create a data app project with a live connection check.",
               "usage": [
                 "altertable app create [options] <NAME>"
               ],
@@ -870,7 +871,7 @@
             {
               "id": "altertable-app-dev",
               "command": "altertable app dev",
-              "description": "Run a data app with lakehouse access.",
+              "description": "Preview a data app locally with lakehouse access.",
               "usage": [
                 "altertable app dev [options]"
               ],
@@ -946,7 +947,7 @@
             {
               "id": "altertable-app-check",
               "command": "altertable app check",
-              "description": "Validate a data app's format, lint, types, contract, build, and client credential boundary.",
+              "description": "Validate a data app's format, lint, types, contracts, build, and client credential boundary.",
               "usage": [
                 "altertable app check [options]"
               ],
@@ -967,7 +968,7 @@
                   "name": "lakehouse",
                   "aliases": [],
                   "type": "boolean",
-                  "description": "Run each app.json operation against the selected lakehouse.",
+                  "description": "Run each operation’s declared checks against the selected lakehouse.",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",

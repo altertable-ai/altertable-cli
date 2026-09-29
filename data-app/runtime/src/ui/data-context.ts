@@ -1,6 +1,8 @@
 import { defineQueryNames } from "../contract.ts";
 import type { ReactNode } from "react";
 import type { DataIdentifierDefinition } from "./data-identifiers.tsx";
+import type { MetricFormat } from "../format.ts";
+import type { MetricDefinition } from "./metric.ts";
 import type { StoryStep } from "./PlayStory.tsx";
 
 export type GlossaryEntry = {
@@ -76,6 +78,27 @@ export function createDataContext<const Names extends Record<string, string>>(qu
       });
       return { ...step, ...references };
     }
-    return { ...context, queryNames, evidence, storyStep };
+    function metric(definition: {
+      id: string;
+      glossaryId: keyof Context["glossary"] & string;
+      label?: string;
+      format: MetricFormat;
+      goodWhen?: "up" | "down";
+      queryNames?: readonly Names[keyof Names][];
+    }): MetricDefinition {
+      const references = evidence({
+        id: definition.id,
+        glossaryIds: [definition.glossaryId],
+        queryNames: definition.queryNames ?? context.glossary[definition.glossaryId]?.queryNames,
+      });
+      return {
+        id: definition.id,
+        label: definition.label ?? context.glossary[definition.glossaryId]!.term,
+        format: definition.format,
+        goodWhen: definition.goodWhen,
+        evidence: references,
+      };
+    }
+    return { ...context, queryNames, evidence, storyStep, metric };
   };
 }
