@@ -253,9 +253,12 @@ export function PresentStory({
                     visual={step.visual}
                     visualKind={step.visualKind}
                     dataContext={dataContext}
-                    glossaryIds={step.glossaryIds}
+                    references={{
+                      kind: "ids",
+                      glossaryIds: step.glossaryIds,
+                      queryNames: step.queryNames,
+                    }}
                     queries={step.queries ?? []}
-                    queryNames={step.queryNames}
                     tooltip="Explore this finding"
                     variant="outline"
                     portalRoot={dialog}

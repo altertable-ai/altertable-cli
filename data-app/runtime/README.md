@@ -28,11 +28,11 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | Show a key number | [MetricWidget](src/react/ui/MetricWidget.tsx) | ComparisonVisual |
 | Compose a custom evidence-backed widget | [DataWidget](src/react/ui/DataWidget.tsx) | Reading, loading, empty state, inspection, actions, footer |
 | Show charts and collections | [VisualizationWidget](src/react/ui/VisualizationWidget.tsx), [TableWidget](src/react/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |
-| Handle a request's loading, error, and stale data | [DataSection](src/react/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
+| Handle a request's loading, error, and stale data | [DataSection](src/react/ui/DataSection.tsx) | DataBoundary for custom state rendering; DataViewToast, EmptyState, StatusPanel, Skeleton |
 | Show freshness and refresh | [UpdatedAt](src/react/ui/UpdatedAt.tsx), [AppToolbar](src/react/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
 | Bind filters to the URL | [variables](src/react/ui/variables.ts), [DateRangePicker](src/react/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/react/ui/searchItems.ts), [SearchMatch](src/react/ui/SearchMatch.tsx) | SearchField |
-| Explain context, glossary, and queries | [AboutData](src/react/ui/AboutData.tsx), [DataContext](src/react/ui/data-context.ts) | [GlossaryDefinition](src/react/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/react/ui/data-identifiers.tsx) |
+| Explain context, glossary, and queries | [AboutData](src/react/ui/AboutData.tsx), [createDataContext](src/react/ui/data-context.ts) | [GlossaryDefinition](src/react/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/react/ui/data-identifiers.tsx) |
 | Present an evidence-backed story | [PresentStory](src/react/ui/PresentStory.tsx) | StoryFinding, BoundStory |
 | Build custom controls and overlays | [Button](src/react/ui/Button.tsx), [Sheet](src/react/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
@@ -47,6 +47,8 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | `context.metric` | Label, numeric format, glossary evidence and optional direction of improvement. |
 | `WidgetViewTabs` | Valid, unique selection IDs and a required empty state per tab. |
 
+`useView(view)` returns one request object for `DataApp` or `DataSection`: its `view` is the request state, and its `snapshot` is the result currently displayed with the input that produced it. `view.content` adapts that result to a loading/ready layout. A `DataReading` is a selected value for a widget, not another request state. `DataBoundary` remains public when an app needs custom state rendering; `DataSection` supplies standard request states and retry behavior.
+
 SQL and business definitions belong to the app. Hosted adapters authorize every request; local development uses the CLI proxy. Browser/server boundaries and managed runtime integrity are checked by `app check`. SQL disclosure also requires server permission.
 
 A measured zero and unavailable data have different meanings. Metric readings use `null` for an unavailable previous value. The app defines whether a result is empty. `Breakdown` shows parts of a total; `Ranking` scales against its largest value. Percent formats accept ratios.
@@ -57,9 +59,13 @@ For app-authored charts, reveal exact values on hover and keyboard focus. If act
 
 `DataApp` owns the title, description, scope, header spacing, and request boundary. Its body starts with controls and exploration; a second `h1` emits a development warning. `defineTimeView` derives a URL date variable, picker, operation input, and displayed-period label from one `time` declaration. For an intentional fixed period, use `defineDataView` with an explicit `describeInput`.
 
+`DataApp.request` owns its empty state, controls, query disclosure, and refresh action. Do not repeat those as shell props. A standalone `DataApp` can still receive authored controls and content for setup views.
+
 `DataApp.story` builds an evidence-backed narrative from the **displayed snapshot**: `story={({data, input, state}) => findings}`. It is unavailable until data is visible and retains the input that produced stale results. Return one to four consequential findings with stable IDs, a headline, a visual, and required `evidence` from `context.evidence(...)` or a metric. `context.finding(...)` binds a finding to the same evidence registry. `PresentStory` accepts those findings directly. Choose relationships and comparisons that help a reader understand what matters, rather than repeating the page's KPI values. `SelectableBarChart` provides standard inspect-on-select behavior for daily charts.
 
 A categorical dimension is a `dimensionFilter({ key, label, valueType, selection, options, allowMissing })`. Put it beside date and other inputs in the view's `variables` record. The runtime generates its control and binds its URL selection. The operation input must preserve that named field or the view rejects the configuration. On the server, call `parseDimensionSelection` in the input parser and `dimensionPredicate("allowlisted_column", input.interface, ["allowlisted_column"])` in SQL; selected values use centralized escaping, while missing emits `IS NULL` and All emits no predicate. The Combobox picker owns search, reset, keyboard interaction, and selected values in its trigger. For changing options, `createDataHooks(...).defineFacetFilter({ ..., facet: { operation, input: (otherSelections) => facetInput } })` fetches a bounded operation with 60-second query caching and option loading/error UI. The app's facet input chooses which date and other filters affect counts. Selected values remain visible with a zero count if absent from a newer facet result.
+
+`createDataContext(queryNames)(context)` is the evidence registry. Use `context.evidence`, `context.metric`, or `context.finding` to bind references. Inspection uses one `references` subject: registry IDs and query names for app content, or a direct glossary entry for a standalone term. The page, widget, and Story all use that same inspection sheet.
 
 ## Ownership
 

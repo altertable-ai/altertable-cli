@@ -43,7 +43,10 @@ defineDataView({
 // @ts-expect-error Numbers require a format.
 const metric: MetricWidgetProps = { label: "Orders", value: 123 };
 // @ts-expect-error Secondary requests require an empty state.
-const section: DataSectionProps<number> = { view: { kind: "loading" }, children: () => null };
+const section: DataSectionProps<number> = {
+  result: { view: { kind: "loading" }, refetch() {} },
+  children: () => null,
+};
 const app: DataAppProps<number> = {
   config: { appearance: {}, title: "Test", scope: { organization: "a", environment: "b" } },
   dataContext: { description: "Test", glossary: {} },

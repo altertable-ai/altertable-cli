@@ -87,7 +87,7 @@ export type { DataBoundaryProps } from "./DataBoundary.tsx";
 export { RefreshRegion } from "./RefreshRegion.tsx";
 export type { RefreshRegionProps } from "./RefreshRegion.tsx";
 export { DataSection } from "./DataSection.tsx";
-export type { DataSectionProps } from "./DataSection.tsx";
+export type { DataSectionProps, SectionResult } from "./DataSection.tsx";
 export { StatusPanel } from "./StatusPanel.tsx";
 export type { StatusPanelProps } from "./StatusPanel.tsx";
 export { ContentSkeleton } from "./ContentSkeleton.tsx";
@@ -139,7 +139,7 @@ export { searchParams, slug, subscribeSearch, writeSearch } from "./search.ts";
 export { Tabs, TabList, Tab, TabPanels, TabPanel, useViewTab } from "./Tabs.tsx";
 
 // Data context and query inspection
-export { createDataContext, defineDataContext, evidenceFor } from "./data-context.ts";
+export { createDataContext } from "./data-context.ts";
 export type { DataContext, GlossaryEntry } from "./data-context.ts";
 export { defineDataIdentifiers } from "./data-identifiers.tsx";
 export type {

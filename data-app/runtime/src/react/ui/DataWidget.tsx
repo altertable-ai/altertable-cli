@@ -77,7 +77,12 @@ function DataWidgetContent({
   const content = empty ? <EmptyState {...empty} /> : children;
   const help = evidence && (
     <AboutData
-      {...evidence}
+      id={evidence.id}
+      references={{
+        kind: "ids",
+        glossaryIds: evidence.glossaryIds,
+        queryNames: evidence.queryNames,
+      }}
       iconOnly
       variant="ghost"
       className="altertable-inspect-trigger"

@@ -42,11 +42,10 @@ export type AboutSubject = {
   visual?: ReactNode;
   visualKind?: "metric" | "chart";
   dataContext?: DataContext;
-  glossaryEntry?: GlossaryEntry;
-  glossaryEntries?: GlossaryEntry[];
-  glossaryIds?: string[];
+  references?:
+    | { kind: "ids"; glossaryIds?: readonly string[]; queryNames?: readonly string[] }
+    | { kind: "entries"; entries: readonly GlossaryEntry[] };
   queries?: DisclosedQuery[];
-  queryNames?: string[];
 };
 
 export type AboutDataProps = AboutSubject & {
@@ -71,7 +70,7 @@ export type AboutDataProps = AboutSubject & {
 
 function namedGlossaryEntries(
   dataContext: DataContext | undefined,
-  ids: string[],
+  ids: readonly string[],
 ): GlossaryEntry[] {
   return ids.map((id) => {
     const entry = dataContext?.glossary[id];
@@ -80,20 +79,16 @@ function namedGlossaryEntries(
   });
 }
 
-function listedGlossaryEntries({
-  glossaryEntry,
-  glossaryEntries,
-  dataContext,
-  glossaryIds,
-}: AboutSubject): GlossaryEntry[] {
-  if (glossaryEntries?.length) return glossaryEntries;
-  if (glossaryEntry) return [glossaryEntry];
-  if (glossaryIds) return namedGlossaryEntries(dataContext, glossaryIds);
+function listedGlossaryEntries({ references, dataContext }: AboutSubject): GlossaryEntry[] {
+  if (references?.kind === "entries") return [...references.entries];
+  if (references?.kind === "ids" && references.glossaryIds)
+    return namedGlossaryEntries(dataContext, references.glossaryIds);
   return Object.values(dataContext?.glossary ?? {});
 }
 
 function glossaryQueries(subject: AboutSubject): string[] | undefined {
-  if (subject.queryNames?.length) return subject.queryNames;
+  if (subject.references?.kind === "ids" && subject.references.queryNames?.length)
+    return [...subject.references.queryNames];
   const names = listedGlossaryEntries(subject).flatMap((item) => item.queryNames ?? []);
   return names.length ? names : undefined;
 }
@@ -128,11 +123,8 @@ export function AboutData({
   visualKind,
   variant,
   dataContext,
-  glossaryEntry,
-  glossaryEntries,
-  glossaryIds,
+  references,
   queries,
-  queryNames,
   empty,
   iconOnly = false,
   shortcut = true,
@@ -160,11 +152,8 @@ export function AboutData({
     description,
     visual,
     dataContext: resolvedContext,
-    glossaryEntry,
-    glossaryEntries,
-    glossaryIds,
+    references,
     queries: resolvedQueries,
-    queryNames,
     empty: resolvedEmpty,
   };
   const listed = listedGlossaryEntries(subject);

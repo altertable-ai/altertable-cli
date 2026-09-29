@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from
 import { createThemeController } from "../../core/appearance.ts";
 import type { DisclosedQuery } from "../../core/contract.ts";
 import type { DataAppConfig } from "../../core/config.ts";
-import { displayedSnapshot, type DataView } from "../../core/data-view.ts";
+import { displayedSnapshot } from "../../core/data-view.ts";
 import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import { AppHeader } from "./AppHeader.tsx";
 import { AppLayout } from "./AppLayout.tsx";
@@ -14,7 +14,7 @@ import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
 import { DataViewToast } from "./DataViewToast.tsx";
 import { InspectionContext } from "./InspectionContext.tsx";
-import { DataSection } from "./DataSection.tsx";
+import { DataSection, type SectionResult } from "./DataSection.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
 
 type DataAppBaseProps = {
@@ -29,9 +29,7 @@ type DataAppBaseProps = {
   layoutProps?: Omit<ComponentProps<typeof AppLayout>, "children" | "footerActions">;
 };
 
-export type DataAppRequest<Data, Input> = {
-  view: DataView<Data, Input>;
-  refetch: () => unknown;
+export type DataAppRequest<Data, Input> = SectionResult<Data, Input> & {
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
   empty: Pick<EmptyStateProps, "title" | "description">;

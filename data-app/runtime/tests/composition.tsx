@@ -27,9 +27,7 @@ import {
   TooltipProvider,
   UpdatedAt,
   useAppVariables,
-  defineDataContext,
   createDataContext,
-  evidenceFor,
 } from "../src/react/ui/index.ts";
 import type { AppToolbarProps, PresentStoryProps } from "../src/react/ui/index.ts";
 import { defineDateRangeContract, defineQueryNames } from "../src/core/contract.ts";
@@ -44,20 +42,20 @@ const storyProps = {
   dataContext: null!,
   empty,
 } satisfies PresentStoryProps;
-const dataContext = defineDataContext({
+const queryNames = defineQueryNames({ totals: "order-totals" });
+const dataContext = createDataContext(queryNames)({
   description: "Orders",
   glossary: { orders: { term: "Orders", definition: "Completed orders." } },
 });
-const queryNames = defineQueryNames({ totals: "order-totals" });
-const evidence = createDataContext(queryNames)(dataContext).evidence({
+const evidence = dataContext.evidence({
   id: "orders",
   glossaryIds: ["orders"],
   queryNames: [queryNames.totals],
 });
 // @ts-expect-error A widget cannot refer to a glossary entry absent from this context.
-evidenceFor(dataContext)({ id: "missing", glossaryIds: ["unknown"] });
+dataContext.evidence({ id: "missing", glossaryIds: ["unknown"] });
 // @ts-expect-error A widget cannot refer to a query absent from the named query registry.
-evidenceFor(dataContext, queryNames)({ id: "missing-query", queryNames: ["other-query"] });
+dataContext.evidence({ id: "missing-query", queryNames: ["other-query"] });
 const variables = defineAppVariables({
   period: dateRangeVariable({
     key: "period",

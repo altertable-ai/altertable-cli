@@ -37,7 +37,7 @@ export function GlossaryExplanation({
       title={title ?? entry.term}
       description={description}
       visual={visual}
-      glossaryEntry={entry}
+      references={{ kind: "entries", entries: [entry] }}
       empty={empty}
       dataContext={dataContext}
       queries={queries}

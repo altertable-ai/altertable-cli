@@ -98,7 +98,11 @@ function MetricWidgetContent({
       variant="ghost"
       className="altertable-inspect-trigger"
       tooltip="Explore this metric"
-      {...evidence}
+      references={{
+        kind: "ids",
+        glossaryIds: evidence.glossaryIds,
+        queryNames: evidence.queryNames,
+      }}
       shortcut={false}
       id={evidence.id}
       title={label}

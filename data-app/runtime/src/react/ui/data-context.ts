@@ -20,11 +20,7 @@ export type DataContext = {
   queryNames?: Readonly<Record<string, string>>;
 };
 
-export function defineDataContext<const Context extends DataContext>(context: Context): Context {
-  return context;
-}
-
-export function evidenceFor<
+function evidenceFor<
   const Context extends DataContext,
   const Names extends Record<string, string> = Record<string, string>,
 >(context: Context, names?: Names) {
