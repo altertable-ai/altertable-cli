@@ -1,3 +1,4 @@
+import { checkAppScope } from "@/commands/app/lib/scope.ts";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { defineCommand } from "@/lib/command.ts";
@@ -40,6 +41,7 @@ export const appCheckCommand = defineCommand({
     const directory = appDirectory(args.dir);
     requireAppScripts(directory, ["format:check", "lint", "typecheck", "build"]);
     const manifest = await readManifest(directory);
+    if (args.lakehouse) await checkAppScope(directory, execution.profile);
     const installed = await installedRuntimeIntegrity(directory);
     const current = currentRuntimeIntegrity();
     if (

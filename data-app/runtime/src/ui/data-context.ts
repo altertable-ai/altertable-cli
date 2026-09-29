@@ -1,3 +1,4 @@
+import { defineQueryNames } from "../contract.ts";
 import type { ReactNode } from "react";
 import type { DataIdentifierDefinition } from "./data-identifiers.tsx";
 
@@ -38,5 +39,28 @@ export function evidenceFor<
       glossaryIds: evidence.glossaryIds ? [...evidence.glossaryIds] : undefined,
       queryNames: evidence.queryNames ? [...evidence.queryNames] : undefined,
     };
+  };
+}
+
+/** Bind glossary query references and card evidence to the same registry. */
+export function createDataContext<const Names extends Record<string, string>>(queryNames: Names) {
+  defineQueryNames(queryNames);
+  return <
+    const Context extends Omit<DataContext, "glossary"> & {
+      glossary: Record<
+        string,
+        Omit<GlossaryEntry, "queryNames"> & { queryNames?: Names[keyof Names][] }
+      >;
+    },
+  >(
+    context: Context,
+  ) => {
+    const known = new Set(Object.values(queryNames));
+    for (const [id, entry] of Object.entries(context.glossary)) {
+      for (const query of entry.queryNames ?? []) {
+        if (!known.has(query)) throw new Error(`Unknown query ${query} for glossary entry ${id}.`);
+      }
+    }
+    return { ...context, queryNames, evidence: evidenceFor(context, queryNames) };
   };
 }

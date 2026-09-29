@@ -55,6 +55,29 @@ async function check() {
     }
   }
 
+  if (await Bun.file("src/index.html").exists()) {
+    const bundle = await Bun.build({
+      entrypoints: ["src/index.html"],
+      target: "browser",
+      write: false,
+      plugins: [{
+        name: "data-app-browser-boundary",
+        setup(build) {
+          build.onLoad({ filter: /(?:operations|server|local)\.[cm]?[jt]sx?$/ }, ({ path }) => {
+            const normalized = path.replaceAll("\\", "/");
+            const root = process.cwd().replaceAll("\\", "/");
+            if (normalized === `${root}/src/operations.ts` ||
+                normalized === `${root}/src/server.ts` ||
+                /(?:\.altertable\/runtime|@altertable\/data-app-runtime)\/(?:src\/)?(?:server|local)\.ts$/.test(normalized)) {
+              throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
+            }
+          });
+        },
+      }],
+    });
+    if (!bundle.success) throw new Error(`Client import boundary failed: ${bundle.logs.join("\n")}`);
+  }
+
   if (process.argv[1] !== "--lakehouse") return;
   const { createDataHandler } = await import(appFile(".altertable/runtime/server.ts"));
   const { localLakehouse } = await import(appFile(".altertable/runtime/local.ts"));

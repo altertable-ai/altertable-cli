@@ -1,9 +1,16 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "./Tabs.tsx";
+import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
 import { classNames } from "./classNames.ts";
 import "./CardViewTabs.css";
 
-export type CardView = { id: string; label: ReactNode; content: ReactNode };
+export type CardView = {
+  id: string;
+  label: ReactNode;
+  content: ReactNode;
+  empty: Pick<EmptyStateProps, "title" | "description">;
+  isEmpty: boolean;
+};
 export type CardViewTabsProps = {
   label: string;
   views: CardView[];
@@ -32,7 +39,7 @@ export function CardViewTabs({
         <TabPanels>
           {views.map((view) => (
             <TabPanel key={view.id} id={view.id}>
-              {view.content}
+              {view.isEmpty ? <EmptyState {...view.empty} /> : view.content}
             </TabPanel>
           ))}
         </TabPanels>

@@ -54,12 +54,23 @@ function errorPresentation(cause: Error) {
   }
 }
 
+type SectionEmpty = Pick<EmptyStateProps, "title" | "description">;
+type SectionResult<Data, Input> = {
+  view: DataView<Data, Input>;
+  refetch: () => unknown;
+  empty?: SectionEmpty;
+};
+
 export type DataSectionProps<Data, Input = unknown> = (
-  | { view: DataView<Data, Input>; result?: never }
-  | { result: { view: DataView<Data, Input>; refetch: () => unknown }; view?: never }
+  | { view: DataView<Data, Input>; result?: never; empty: SectionEmpty }
+  | { result: SectionResult<Data, Input>; view?: never; empty: SectionEmpty }
+  | {
+      result: SectionResult<Data, Input> & { empty: SectionEmpty };
+      view?: never;
+      empty?: SectionEmpty;
+    }
 ) & {
   children: (data: Data, displayedInput: Input) => ReactNode;
-  empty?: Pick<EmptyStateProps, "title" | "description">;
   /** Placeholder layout for an initial request; use the ready view's grid without copied values. */
   loading?: ReactNode;
   error?: { title: ReactNode; description?: ReactNode; onRetry?: () => void };
@@ -94,7 +105,7 @@ export function DataSection<Data, Input>({
       notice={notice}
       dimOnUpdate={dimOnUpdate}
       loading={loading ?? <ContentSkeleton variant="panel" />}
-      empty={<EmptyState {...(empty ?? { title: "No data in this range" })} />}
+      empty={<EmptyState {...(empty ?? result?.empty!)} />}
       error={(cause) => {
         const presentation = errorPresentation(cause);
         const retryAction =

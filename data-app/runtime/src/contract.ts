@@ -25,6 +25,7 @@ export function parseTrue(value: unknown): true {
 }
 
 export type DateRangeInput = { start: string; end: string };
+export type DateRangeRequest = { range: DateRangeInput; comparison: DateRangeInput | null };
 
 /** The immediately preceding, equally long set of calendar days. */
 export function previousDateRange({ start, end }: DateRangeInput): DateRangeInput {
@@ -85,7 +86,26 @@ export function defineDateRangeContract(options: DateRangeContractOptions) {
     const previous = previousDateRange(input);
     return options.minDate && previous.start < options.minDate ? null : previous;
   };
+  const request = (value: unknown, compare = false): DateRangeRequest => {
+    const range = parseDateRangeInput(value, bounds());
+    const previous = compare ? comparison(range) : null;
+    if (compare && !previous) throw new Error("Comparison is outside available source coverage.");
+    return { range, comparison: previous };
+  };
+  const parseRequest = (value: unknown): DateRangeRequest => {
+    if (!value || typeof value !== "object") throw new Error("Choose a date range.");
+    const input = value as Record<string, unknown>;
+    const parsed = request(input.range, input.comparison != null);
+    if (input.comparison != null) {
+      const supplied = parseDateRangeInput(input.comparison, bounds());
+      if (supplied.start !== parsed.comparison?.start || supplied.end !== parsed.comparison?.end)
+        throw new Error("Comparison must be the preceding equal-length range.");
+    }
+    return parsed;
+  };
   return {
+    request,
+    parseRequest,
     bounds,
     parse: (value: unknown) => parseDateRangeInput(value, bounds()),
     period,

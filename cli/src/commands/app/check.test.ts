@@ -81,3 +81,32 @@ describe("data app contract", () => {
     await checkClientBundle(directory);
   });
 });
+
+test("browser bundles reject value imports of operations but allow type imports", async () => {
+  mkdirSync(join(directory, "src"));
+  mkdirSync(join(directory, ".altertable/runtime/src"), { recursive: true });
+  writeFileSync(join(directory, "app.json"), JSON.stringify({ schemaVersion: 1, title: "Test" }));
+  writeFileSync(
+    join(directory, ".altertable/runtime/src/appearance.ts"),
+    "export function parseAppearance() {}",
+  );
+  writeFileSync(
+    join(directory, "src/operations.ts"),
+    "export const operations = { totals: { checks: [{}], input: () => ({}), output: (v: unknown) => v, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+  );
+  writeFileSync(
+    join(directory, "src/index.html"),
+    '<script type="module" src="./main.ts"></script>',
+  );
+  writeFileSync(
+    join(directory, "src/main.ts"),
+    'import { operations } from "./operations.ts"; console.log(operations);',
+  );
+  const boundaryError = await checkAppProject(directory).catch((error: unknown) => error);
+  expect(boundaryError).toMatchObject({ message: "Data app validation failed." });
+  writeFileSync(
+    join(directory, "src/main.ts"),
+    'import type { operations } from "./operations.ts"; const name: keyof typeof operations = "totals"; console.log(name);',
+  );
+  await checkAppProject(directory);
+});

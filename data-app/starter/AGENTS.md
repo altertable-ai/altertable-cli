@@ -1,8 +1,6 @@
 # Build this data app
 
-Confirm `app.json` scope against the connected profile before querying. Inspect the source and execute bounded queries in that scope. For a broad question, explore more than one useful angle before choosing the view; a connection check does not establish coverage.
-
-Write the question, SQL, and validation in `src/operations.ts`; put each operation's fixed live-check inputs in its `checks`. Explain the exploration and define terms in `src/data-context.ts` or `.tsx`. Build conclusions from observed results, without presenting association as cause.
+Inspect the source and existing definitions before choosing queries. For broad questions, investigate several useful angles. Build conclusions from observed results; do not present association as cause. Keep copy concise and relevant to the reader.
 
 | Task | App-owned files | Read next |
 | --- | --- | --- |
@@ -13,6 +11,6 @@ Write the question, SQL, and validation in `src/operations.ts`; put each operati
 | Find a component, hook, or parser | Read `.altertable/runtime/` | [Runtime API map](.altertable/runtime/README.md) |
 | Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](.altertable/runtime/src/server.ts) |
 
-Use public imports from `@altertable/data-app-runtime`. Keep credentials and SQL execution on the server. Edit app-owned files in `src/`; upgrade the managed runtime through the CLI.
+Edit app-owned files in `src/`; upgrade the managed runtime through the CLI. Use public runtime imports and read their types for API contracts.
 
-Run `altertable app check --lakehouse` with the matching profile, then inspect the rendered app at phone and desktop widths, including loading, empty, error, and stale results.
+Run `altertable app check --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.

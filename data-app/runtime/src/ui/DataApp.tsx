@@ -37,19 +37,28 @@ export type DataAppRequest<Data, Input> = {
   refetch: () => unknown;
   queries?: DisclosedQuery[];
   refresh?: AppToolbarProps["refresh"];
+  empty?: Pick<EmptyStateProps, "title" | "description">;
+  controls?: ReactNode;
 };
 
 export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
   (
-    | {
+    | ({
         request: DataAppRequest<Data, Input>;
         children: (data: Data, displayedInput: Input) => ReactNode;
         loading?: ReactNode;
-        empty: Pick<EmptyStateProps, "title" | "description">;
+        empty?: Pick<EmptyStateProps, "title" | "description">;
         label?: string;
         queries?: never;
         refresh?: never;
-      }
+      } & (
+        | {
+            request: DataAppRequest<Data, Input> & {
+              empty: Pick<EmptyStateProps, "title" | "description">;
+            };
+          }
+        | { empty: Pick<EmptyStateProps, "title" | "description"> }
+      ))
     | {
         request?: never;
         children: ReactNode;
@@ -125,13 +134,15 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
             </AppToolbar>
           }
         />
-        {variables && <VariableBar>{variables}</VariableBar>}
+        {(variables ?? request?.controls) && (
+          <VariableBar>{variables ?? request?.controls}</VariableBar>
+        )}
         {request ? (
           <DataSection
             result={request}
             notice="none"
             loading={props.loading}
-            empty={props.empty}
+            empty={props.empty ?? request.empty!}
             label={props.label}
           >
             {(data, displayedInput) => props.children(data, displayedInput)}

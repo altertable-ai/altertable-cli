@@ -2,13 +2,15 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { today } from "@internationalized/date";
 import { availableDatePresets, type DatePresetId, type DateRange } from "./DateRangePicker.tsx";
 import { subscribeSearch, writeSearch } from "./search.ts";
-import type { DateRangeContract } from "../contract.ts";
+import type { DateRangeContract, DateRangeRequest } from "../contract.ts";
 
 type HistoryMode = "push" | "replace";
 
 /** An app-owned value with one URL representation. Controls never parse or write routes. */
 export type AppVariable<Value> = {
-  kind: "text" | "select" | "dateRange";
+  kind: Value extends string ? "text" | "select" : "dateRange";
+  label?: string;
+  options?: readonly { id: string; label: string }[];
   urlKeys: readonly string[];
   defaultValue: Value;
   history: HistoryMode;
@@ -18,7 +20,7 @@ export type AppVariable<Value> = {
   same: (left: Value, right: Value) => boolean;
 };
 
-type VariableCollection = Record<string, AppVariable<string> | DateRangeVariable>;
+export type VariableCollection = Record<string, AppVariable<string> | DateRangeVariable>;
 export type AppVariableValues<Variables> = {
   [Key in keyof Variables]: Variables[Key] extends AppVariable<infer Value> ? Value : never;
 };
@@ -30,6 +32,8 @@ export function defineAppVariables<const Variables extends VariableCollection>(
   const owners = new Map<string, string>();
   for (const [name, variable] of Object.entries(variables)) {
     for (const key of variable.urlKeys) {
+      if (["view", "about", "tab", "present", "step"].includes(key))
+        throw new Error(`Variable ${name} uses reserved URL key: ${key}.`);
       if (!key || owners.has(key))
         throw new Error(`Variable ${name} has an empty or duplicate URL key: ${key}.`);
       owners.set(key, name);
@@ -38,16 +42,23 @@ export function defineAppVariables<const Variables extends VariableCollection>(
   return variables;
 }
 
-type ScalarVariableOptions = { key: string; defaultValue?: string; history?: HistoryMode };
+type ScalarVariableOptions = {
+  label?: string;
+  key: string;
+  defaultValue?: string;
+  history?: HistoryMode;
+};
 
 /** A local text filter. Typing replaces the current history entry by default. */
 export function textVariable({
   key,
+  label,
   defaultValue = "",
   history = "replace",
 }: ScalarVariableOptions): AppVariable<string> {
   return {
     kind: "text",
+    label: label ?? key,
     urlKeys: [key],
     defaultValue,
     history,
@@ -61,6 +72,7 @@ export function textVariable({
 /** A single choice. Supply values when the option set is known before data loads. */
 export function selectVariable({
   key,
+  label,
   defaultValue,
   values,
   history = "push",
@@ -73,6 +85,8 @@ export function selectVariable({
   const valid = (value: string) => typeof value === "string" && (!values || values.includes(value));
   return {
     kind: "select",
+    label: label ?? key,
+    options: values?.map((id) => ({ id, label: id })),
     urlKeys: [key],
     defaultValue,
     history,
@@ -91,6 +105,7 @@ export type DateRangeSelection =
   | { kind: "dates"; start: string; end: string; comparison?: "previous" };
 
 export type DateRangeVariableOptions = {
+  label?: string;
   /** URL key for a relative preset; explicit dates use startKey and endKey. */
   key: string;
   startKey?: string;
@@ -106,6 +121,8 @@ export type DateRangeVariableOptions = {
 export type DateRangeVariable = AppVariable<DateRangeSelection> & {
   kind: "dateRange";
   supportsComparison: boolean;
+  input: (selection: DateRangeSelection) => DateRangeRequest;
+  describeInput: (input: DateRangeRequest) => string;
   bounds: () => { minDate?: string; maxDate: string; maxRangeDays: number; timeZone: string };
   resolve: (selection: DateRangeSelection) => DateRange;
   previous: (selection: DateRangeSelection) => DateRange | null;
@@ -128,6 +145,7 @@ const PRESET_IDS = new Set<DatePresetId>([
 /** A date variable keeps relative presets relative and validates exact dates against source coverage. */
 export function dateRangeVariable({
   key,
+  label = "Date range",
   startKey = "start",
   endKey = "end",
   defaultValue,
@@ -162,7 +180,11 @@ export function dateRangeVariable({
         left.end === right.end);
   const variable: DateRangeVariable = {
     kind: "dateRange",
+    label,
     supportsComparison: comparison,
+    input: (selection) =>
+      contract.request(resolve(selection), selection.comparison === "previous" && comparison),
+    describeInput: (input) => contract.describeInput(input.range),
     urlKeys: comparison ? [key, startKey, endKey, comparisonKey] : [key, startKey, endKey],
     defaultValue,
     history,
@@ -233,6 +255,7 @@ export function dateRangeControl(
     );
   return {
     value,
+    label: variable.label,
     onChange: (range: DateRange | null) =>
       update(range ? { kind: "dates", ...range } : variable.defaultValue),
     onPresetChange: (id: DatePresetId) => update({ kind: "preset", id }),
@@ -265,6 +288,7 @@ const serverSearch = () => "";
 export function useAppVariables<const Variables extends VariableCollection>(
   definitions: Variables,
 ) {
+  defineAppVariables(definitions);
   const search = useSyncExternalStore(subscribeSearch, currentSearch, serverSearch);
   const zones = Object.values(definitions)
     .filter((item) => item.kind === "dateRange")

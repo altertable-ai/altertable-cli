@@ -1,15 +1,12 @@
-import { useState } from "react";
 import { mountDataApp } from "@altertable/data-app-runtime/react";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import { connectionCheck, defineDateRangeContract } from "@altertable/data-app-runtime/contract";
 import {
   DataApp,
-  dateRangeControl,
   dateRangeVariable,
   defineDataIdentifiers,
   ContentSkeleton,
-  DateRangePicker,
   Grid,
   GridItem,
   GlossaryDefinition,
@@ -17,12 +14,11 @@ import {
   Stack,
   StorySection,
   VisualizationCard,
-  type DateRangeSelection,
 } from "@altertable/data-app-runtime/ui";
 
-const { useDataView } = createDataHooks<{ connection: ReturnType<typeof connectionCheck> }>(
-  createDataClient(),
-);
+const { defineDataView, useView } = createDataHooks<{
+  connection: ReturnType<typeof connectionCheck>;
+}>(createDataClient());
 
 const config = {
   title: "Orders exploration",
@@ -72,16 +68,17 @@ const periodVariable = dateRangeVariable({
   defaultValue: { kind: "dates", start: "2026-09-10", end: "2026-09-12" },
 });
 
+const connectionView = defineDataView({
+  operation: "connection",
+  variables: { period: periodVariable },
+  input: () => ({}),
+  isEmpty: () => false,
+  describeInput: () => "connection check",
+  empty: { title: "No orders in this period" },
+});
+
 function Fixture() {
-  const [period, setPeriod] = useState<DateRangeSelection>(periodVariable.defaultValue);
-  const connection = useDataView(
-    "connection",
-    {},
-    {
-      isEmpty: () => false,
-      period: () => ({ kind: "calendar", start: "2026-09-01", end: "2026-09-30", timeZone: "UTC" }),
-    },
-  );
+  const connection = useView(connectionView);
   return (
     <DataApp
       config={config}
@@ -89,7 +86,6 @@ function Fixture() {
       dataContext={dataContext}
       aboutEmpty={empty}
       request={connection}
-      empty={{ title: "No orders in this period" }}
       loading={
         <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
           <GridItem span={2}>
@@ -100,7 +96,6 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      variables={<DateRangePicker {...dateRangeControl(periodVariable, period, setPeriod)} label="Date range" />}
       story={{
         steps: [
           {
@@ -118,46 +113,55 @@ function Fixture() {
         ],
       }}
     >
-      {() => <Stack data-testid="layout-stack">
-        <p>
-          Review{" "}
-          <GlossaryDefinition entry={dataContext.glossary.orders}>
-            completed orders
-          </GlossaryDefinition>
-          .
-        </p>
-        <Grid columns={3} minItemWidth="compact" data-testid="peer-grid">
-          <MetricCard label="Actions" value="120" />
-          <MetricCard label="Identities" value="40" />
-          <MetricCard label="Organizations" value="26" />
-        </Grid>
-        <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
-          <GridItem span={2} data-testid="primary-grid-item">
-            <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
-          </GridItem>
-          <GridItem data-testid="support-grid-item">
-            <VisualizationCard title="Supporting view" visual={<p>Feature reach</p>} />
-          </GridItem>
-        </Grid>
-        <StorySection
-          label="Order activity"
-          data-testid="layout-story"
-          lead={<MetricCard label="Completed orders" value="120" evidence={{ id: "orders", glossaryIds: ["orders"] }} />}
-          visual={<VisualizationCard title="Orders over time" visual={<p>Daily orders</p>} />}
-          support={<VisualizationCard title="Returning customers" visual={<p>80 customers</p>} />}
-        />
-        <Grid columns={2} data-testid="layout-grid">
-          <div>Short panel</div>
-          <div>
-            <div style={{ height: 160 }}>Tall panel</div>
-          </div>
-        </Grid>
-        <Grid columns={2} data-testid="constrained-grid" style={{ maxWidth: 480 }}>
-          <div>First narrow card</div>
-          <div>Second narrow card</div>
-        </Grid>
-        <p>Connection view ready</p>
-      </Stack>}
+      {() => (
+        <Stack data-testid="layout-stack">
+          <p>
+            Review{" "}
+            <GlossaryDefinition entry={dataContext.glossary.orders}>
+              completed orders
+            </GlossaryDefinition>
+            .
+          </p>
+          <Grid columns={3} minItemWidth="compact" data-testid="peer-grid">
+            <MetricCard label="Actions" value={120} format={{ kind: "count" }} />
+            <MetricCard label="Identities" value={40} format={{ kind: "count" }} />
+            <MetricCard label="Organizations" value={26} format={{ kind: "count" }} />
+          </Grid>
+          <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
+            <GridItem span={2} data-testid="primary-grid-item">
+              <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
+            </GridItem>
+            <GridItem data-testid="support-grid-item">
+              <VisualizationCard title="Supporting view" visual={<p>Feature reach</p>} />
+            </GridItem>
+          </Grid>
+          <StorySection
+            label="Order activity"
+            data-testid="layout-story"
+            lead={
+              <MetricCard
+                label="Completed orders"
+                value={120}
+                format={{ kind: "count" }}
+                evidence={{ id: "orders", glossaryIds: ["orders"] }}
+              />
+            }
+            visual={<VisualizationCard title="Orders over time" visual={<p>Daily orders</p>} />}
+            support={<VisualizationCard title="Returning customers" visual={<p>80 customers</p>} />}
+          />
+          <Grid columns={2} data-testid="layout-grid">
+            <div>Short panel</div>
+            <div>
+              <div style={{ height: 160 }}>Tall panel</div>
+            </div>
+          </Grid>
+          <Grid columns={2} data-testid="constrained-grid" style={{ maxWidth: 480 }}>
+            <div>First narrow card</div>
+            <div>Second narrow card</div>
+          </Grid>
+          <p>Connection view ready</p>
+        </Stack>
+      )}
     </DataApp>
   );
 }

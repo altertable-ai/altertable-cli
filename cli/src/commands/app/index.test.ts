@@ -9,10 +9,21 @@ import {
 
 let workspace: LakehouseTestWorkspace;
 let directory: string;
+let previousEnvironment: string | undefined;
 
 beforeEach(() => {
   workspace = createLakehouseTestWorkspace("app-command");
+  previousEnvironment = process.env.ALTERTABLE_ENV;
+  process.env.ALTERTABLE_ENV = "production";
   directory = workspace.createDirectory("app");
+  workspace.writeFile(
+    "app/app.json",
+    JSON.stringify({
+      schemaVersion: 1,
+      title: "Test",
+      scope: { organization: "acme", environment: "production" },
+    }),
+  );
   workspace.writeFile(
     "app/package.json",
     JSON.stringify({
@@ -43,6 +54,8 @@ afterEach(() => {
   delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
   delete process.env.ALTERTABLE_API_KEY;
   workspace.cleanup();
+  if (previousEnvironment === undefined) delete process.env.ALTERTABLE_ENV;
+  else process.env.ALTERTABLE_ENV = previousEnvironment;
 });
 
 function captured(script: "typecheck" | "dev" | "build"): Record<string, string> {
@@ -50,10 +63,26 @@ function captured(script: "typecheck" | "dev" | "build"): Record<string, string>
 }
 
 function runAppCommand(args: string[]) {
-  return runCommandWithTestRuntime(args, { debug: false, json: false, agent: false });
+  return runCommandWithTestRuntime(args, {
+    debug: false,
+    json: false,
+    agent: false,
+  });
 }
 
 describe("app commands", () => {
+  test("dev rejects a mismatched scope before launching the app", async () => {
+    workspace.writeFile(
+      "app/app.json",
+      JSON.stringify({ scope: { organization: "acme", environment: "staging" } }),
+    );
+    const error = await runAppCommand(["app", "dev", "--dir", directory]).catch(
+      (error: unknown) => error,
+    );
+    expect(error).toMatchObject({ message: expect.stringContaining("does not match") });
+    expect(existsSync(join(directory, "dev.json"))).toBe(false);
+  });
+
   test("dev gives the app only a loopback proxy without blocking on lakehouse access", async () => {
     workspace.writeMocks([
       { urlPattern: "/query", method: "POST", status: 500, body: "temporary failure" },

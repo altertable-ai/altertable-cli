@@ -1,3 +1,4 @@
+import { checkAppScope } from "@/commands/app/lib/scope.ts";
 import { watch } from "node:fs";
 import { defineCommand } from "@/lib/command.ts";
 import { CliError, ConfigurationError, EXIT_GENERIC } from "@/lib/errors.ts";
@@ -35,6 +36,7 @@ export const appDevCommand = defineCommand({
     const port = appPort(args.port);
     const directory = appDirectory(args.dir);
     requireAppScripts(directory, ["dev"]);
+    await checkAppScope(directory, execution.profile);
     if (args["watch-runtime"]) {
       try {
         await upgradeApp(directory, { runtimeFiles: await readRuntimeSource() });

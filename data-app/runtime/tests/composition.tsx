@@ -137,6 +137,7 @@ export function CompositionCheck() {
       <MetricCard
         label="Metric"
         value={1}
+        format={{ kind: "count" }}
         evidence={evidence}
         insight={<Button>Explain</Button>}
         className="metric"

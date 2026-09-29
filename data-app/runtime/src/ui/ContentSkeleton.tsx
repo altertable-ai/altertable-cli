@@ -4,11 +4,14 @@ import { Skeleton } from "./Skeleton.tsx";
 import "./ContentSkeleton.css";
 
 export type ContentSkeletonProps = {
+  rows?: number;
   variant: "metric" | "panel" | "ranking";
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /** A metric, panel, or ranking placeholder to compose in the same layout as live content. */
-export function ContentSkeleton({ variant, className, ...props }: ContentSkeletonProps) {
+export function ContentSkeleton({ variant, rows = 4, className, ...props }: ContentSkeletonProps) {
+  if (!Number.isInteger(rows) || rows < 0 || rows > 100)
+    throw new Error("Skeleton rows must be between 0 and 100.");
   return (
     <div
       {...props}
@@ -32,7 +35,7 @@ export function ContentSkeleton({ variant, className, ...props }: ContentSkeleto
       {variant === "panel" && <Skeleton className="altertable-content-skeleton-foot" />}
       {variant === "ranking" && (
         <div className="altertable-content-skeleton-rows">
-          {[0, 1, 2, 3].map((row) => (
+          {Array.from({ length: rows }, (_, index) => index).map((row) => (
             <div className="altertable-content-skeleton-row" key={row}>
               <Skeleton className="altertable-content-skeleton-row-label" />
               <Skeleton className="altertable-content-skeleton-row-track" />

@@ -1,4 +1,5 @@
 import starter from "../starter/src/index.html";
+import view from "../starter/fixtures/view.html";
 import components from "../starter/fixtures/index.html";
 import { createDataHandler } from "../runtime/src/server.ts";
 import { DataSourceError } from "../runtime/src/contract.ts";
@@ -18,7 +19,7 @@ const handler = createDataHandler(operations, async () => ({
 Bun.serve({
   hostname: "127.0.0.1",
   port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
-  routes: { "/": starter, "/components": components },
+  routes: { "/": starter, "/components": components, "/view": view },
   async fetch(request) {
     if (new URL(request.url).pathname === "/__test/state") {
       fail = (await request.text()) === "failure";

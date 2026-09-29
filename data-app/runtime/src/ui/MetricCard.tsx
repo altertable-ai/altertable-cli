@@ -21,16 +21,17 @@ type MetricCardBaseProps = {
 
 export type MetricCardProps = MetricCardBaseProps &
   (
-    | { loading: true; value?: never; format?: never }
+    | { loading: true; value?: never; format?: never; content?: never }
     | ({ loading?: false } & (
-        | { value: number; format: MetricFormat }
-        | { value: ReactNode; format?: never }
+        | { value: number; format: MetricFormat; content?: never }
+        | { content: ReactNode; value?: never; format?: never }
       ))
   );
 
 export function MetricCard({
   label,
   value,
+  content,
   format,
   loading = false,
   description,
@@ -43,7 +44,7 @@ export function MetricCard({
   ...props
 }: MetricCardProps) {
   if (loading) return <ContentSkeleton variant="metric" className={className} />;
-  const shownValue = format ? formatMetric(value as number, format) : value;
+  const shownValue = format ? formatMetric(value as number, format) : content;
   const change = comparison ? comparisonChange(comparison) : null;
   const shownTrend =
     change?.percent != null ? (

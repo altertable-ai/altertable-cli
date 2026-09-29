@@ -1,3 +1,7 @@
+import { useViewVariables, type DataViewDefinition } from "./view.tsx";
+import { defineAppVariables, type VariableCollection } from "./ui/variables.ts";
+export { defineDataContent } from "./view.tsx";
+export type { DataContentState, DataViewDefinition, ResolvedVariables } from "./view.tsx";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -138,5 +142,39 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
       },
     };
   }
-  return { useDataQuery, useDataView };
+  function defineDataView<
+    Name extends keyof Operations & string,
+    const Variables extends VariableCollection,
+  >(
+    definition: DataViewDefinition<
+      Name,
+      Variables,
+      InputOf<Operations[Name]>,
+      OutputOf<Operations[Name]>
+    >,
+  ) {
+    defineAppVariables(definition.variables);
+    return definition;
+  }
+
+  function useView<
+    Name extends keyof Operations & string,
+    const Variables extends VariableCollection,
+  >(
+    definition: DataViewDefinition<
+      Name,
+      Variables,
+      InputOf<Operations[Name]>,
+      OutputOf<Operations[Name]>
+    >,
+  ) {
+    const variables = useViewVariables(definition.variables);
+    const request = useDataView(
+      definition.operation,
+      definition.input(variables.resolved),
+      definition,
+    );
+    return { ...request, empty: definition.empty, controls: variables.controls, variables };
+  }
+  return { useDataQuery, useDataView, defineDataView, useView };
 }

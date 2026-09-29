@@ -1,7 +1,9 @@
 # View authoring
 
-Lead with the strongest supported finding, then show the evidence and a complementary question. Use `DataApp` for the primary `useDataView` result and `DataSection` for independent requests. The shell owns refresh state, toast, dimming, and About the data. Use `evidenceFor(dataContext)` to check glossary IDs while authoring cards.
+Lead with a supported finding, its evidence, and a complementary question. Keep copy specific to the result. Use `Stack` for sections and `Grid` for peer cards. The runtime owns responsive gaps, wrapping, and typography; `GridItem` adds intentional spans.
 
-Use `Stack` for consecutive sections and `Grid` for peer cards; make the primary visual wider when the reading order calls for it. Cards can render their own loading skeletons. `TableCard` searches the full row collection before applying a display limit. Use `Breakdown` for parts of one total and `Ranking` for comparison with the largest visible value.
+Use `createDataHooks(client).defineDataView` to declare variables, operation inputs, emptiness, and input labels once. `useView(definition)` supplies the request and controls to `DataApp`. See the [complete binding example](../.altertable/runtime/README.md#bind-a-view).
 
-Keep copy specific to the current result. Make marks readable in text and usable by touch. Check the rendered app at phone and desktop widths in both themes. The [UI API map](../.altertable/runtime/README.md#find-ui-by-task) links components and types.
+Use `defineDataContent` when loading and ready states should share a layout. Its loading state has no result values. Numeric `MetricCard` values require a format; custom readings use `content`. `CardViewTabs` requires each tab's empty state.
+
+The [runtime API map](../.altertable/runtime/README.md#find-ui-by-task) routes charts, evidence, context, and Present mode to their types. Check the app's actual content at phone and desktop widths in both themes.
