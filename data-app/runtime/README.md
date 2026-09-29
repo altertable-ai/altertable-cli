@@ -26,8 +26,8 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | Primary request and page shell | [DataApp](src/ui/DataApp.tsx) | AppLayout, AppHeader, AppToolbar, AppFooter, AppScope, ThemeToggle |
 | Initial connection check | [GettingStarted](src/ui/GettingStarted.tsx) | Pair with `connectionCheck()` from `/contract` |
 | Arrange content | [Grid](src/ui/Grid.tsx), [Stack](src/ui/Stack.tsx) | StorySection |
-| Show a key number | [MetricCard](src/ui/MetricCard.tsx) | ComparisonVisual |
-| Show charts and collections | [VisualizationCard](src/ui/VisualizationCard.tsx), [TableCard](src/ui/TableCard.tsx) | DataTable, Ranking, Breakdown, chartColor |
+| Show a key number | [MetricWidget](src/ui/MetricWidget.tsx) | ComparisonVisual |
+| Show charts and collections | [VisualizationWidget](src/ui/VisualizationWidget.tsx), [TableWidget](src/ui/TableWidget.tsx) | DataTable, Ranking, Breakdown, chartColor |
 | Handle a request's loading, error, and stale data | [DataSection](src/ui/DataSection.tsx) | DataBoundary, DataViewToast, EmptyState, StatusPanel, Skeleton |
 | Show freshness and refresh | [UpdatedAt](src/ui/UpdatedAt.tsx), [AppToolbar](src/ui/AppToolbar.tsx) | RefreshRegion, LiveControl |
 | Bind filters to the URL | [variables](src/ui/variables.ts), [DateRangePicker](src/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
@@ -45,7 +45,7 @@ All of these APIs are exported from `/ui`. Each component's stylesheet lives bes
 | `DataApp` | Header, variable bar, refresh state, stale-result notice and dimming, default inspection empty states. |
 | `view.content` | One loading/ready layout. `result.select` never evaluates loading data; `result.metric` binds comparisons to the displayed input. |
 | `context.metric` | Label, numeric format, glossary evidence and optional direction of improvement. |
-| `CardViewTabs` | Valid, unique selection IDs and a required empty state per tab. |
+| `WidgetViewTabs` | Valid, unique selection IDs and a required empty state per tab. |
 
 SQL and business definitions belong to the app. Hosted adapters authorize every request; local development uses the CLI proxy. Browser/server boundaries and managed runtime integrity are checked by `app check`. SQL disclosure also requires server permission.
 
@@ -62,7 +62,7 @@ In the CLI repository, edit the canonical `data-app/runtime/` package. Its sibli
 ```tsx
 import { createDataClient } from "@altertable/data-app-runtime/client";
 import { createDataHooks } from "@altertable/data-app-runtime/react";
-import { dateRangeVariable, DataApp, Grid, MetricCard, VisualizationCard, Ranking } from "@altertable/data-app-runtime/ui";
+import { dateRangeVariable, DataApp, Grid, MetricWidget, VisualizationWidget, Ranking } from "@altertable/data-app-runtime/ui";
 import type { operations } from "#app/operations.ts";
 import { calendar } from "#app/contracts.ts";
 import { dataContext, actions } from "#app/data-context.tsx";
@@ -83,17 +83,17 @@ const activityView = defineDataView({
 });
 const content = activityView.content((result) => (
   <Grid columns={2}>
-    <MetricCard metric={actions} reading={result.metric((data) => ({
+    <MetricWidget metric={actions} reading={result.metric((data) => ({
       current: data.count, previous: data.previousCount,
     }))} />
-    <VisualizationCard title="Feature use"
+    <VisualizationWidget title="Feature use"
       reading={result.select((data) => data.features)}
       isEmpty={(features) => features.length === 0}
       empty={{ title: "No features" }}
       skeleton={{ variant: "ranking", rows: 6 }}
     >
       {(features) => <Ranking items={features} />}
-    </VisualizationCard>
+    </VisualizationWidget>
   </Grid>
 ));
 function App() {
@@ -116,11 +116,11 @@ export const calendar = defineDateRangeContract({
 
 `useView` generates controls for date, text and fixed-option select variables; custom controls use `result.variables.bind(name)`. `input` chooses which variables reach the operation, so local search can stay local. The callback in `view.content` receives the displayed result, including its original input during refreshes and failures. Hooks belong in the enclosing component.
 
-`TableCard` also accepts `reading={result.select((data) => data.rows)}` and optional `skeletonRows`. Columns and empty states are declared once for both loading and ready layouts. For bounded results already loaded in the app, pass `pagination={{ pageSize: 8 }}` to page the rows after local search; the footer counts only the supplied rows. `limit` remains a separate, mutually exclusive display cap. Large catalogs need query-backed pagination with a stable sort and total count.
+`TableWidget` also accepts `reading={result.select((data) => data.rows)}` and optional `skeletonRows`. Columns and empty states are declared once for both loading and ready layouts. For bounded results already loaded in the app, pass `pagination={{ pageSize: 8 }}` to page the rows after local search; the footer counts only the supplied rows. `limit` remains a separate, mutually exclusive display cap. Large catalogs need query-backed pagination with a stable sort and total count.
 
-`MetricCard` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `goodWhen` is optional; changes are neutral until the author defines whether up or down is desirable.
+`MetricWidget` and `ComparisonVisual` both accept the same `metric` and `reading`. The comparison is enabled by the displayed result's range. The definition supplies formatting and evidence; a reading cannot override those or provide a second value. `favorableDirection` is optional; changes are neutral until the author defines whether up or down is favorable.
 
-`defineDataContent` remains available for manually managed requests. Its optional `{ date: (input) => rangeRequest }` binds comparison readings. `DataSection` handles independent requests. Low-level cards, tabs and layout components remain available for custom interfaces.
+`defineDataContent` remains available for manually managed requests. Its optional `{ date: (input) => rangeRequest }` binds comparison readings. `DataSection` handles independent requests. Low-level widgets, tabs and layout components remain available for custom interfaces.
 
 ## Execute named queries
 
@@ -188,5 +188,5 @@ Import `defineQueryNames` from `/contract` and the context/identifier factories 
 - Views that previously inferred their date variable now declare `date: { variable: "period", input: (input) => input }`, or supply `describeInput` for a non-date view.
 - Numeric metrics use `value={count} format={{ kind: "count" }}`. Custom formatted JSX or strings use `content={...}` instead of `value`.
 - Supply `empty` to secondary `DataSection` requests or pass a bound `useView` result. A primary `DataApp` accepts it either from `useView` or as an explicit prop.
-- For alternate views of the same bound result, pass `views={[{ id, label, render }]}` and `viewLabel` to `VisualizationCard`. Its required `isEmpty` and `empty` apply to the whole result; the card owns selection. Use `CardViewTabs` directly only when views have independent empty states.
+- For alternate views of the same bound result, pass `views={[{ id, label, render }]}` and `viewLabel` to `VisualizationWidget`. Its required `isEmpty` and `empty` apply to the whole result; the widget owns selection. Use `WidgetViewTabs` directly only when views have independent empty states.
 - Variable URL keys cannot use `view`, `about`, `tab`, `present`, or `step`.

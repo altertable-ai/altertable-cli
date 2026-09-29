@@ -11,11 +11,11 @@ import {
   Grid,
   GridItem,
   GlossaryDefinition,
-  MetricCard,
+  MetricWidget,
   Stack,
   StorySection,
-  TableCard,
-  VisualizationCard,
+  TableWidget,
+  VisualizationWidget,
 } from "@altertable/data-app-runtime/ui";
 
 const { defineDataView, useView } = createDataHooks<{
@@ -126,15 +126,15 @@ function Fixture() {
             .
           </p>
           <Grid columns={3} minItemWidth="compact" data-testid="peer-grid">
-            <MetricCard label="Actions" value={120} format={{ kind: "count" }} />
-            <MetricCard label="Identities" value={40} format={{ kind: "count" }} />
-            <MetricCard label="Organizations" value={26} format={{ kind: "count" }} />
+            <MetricWidget label="Actions" value={120} format={{ kind: "count" }} />
+            <MetricWidget label="Identities" value={40} format={{ kind: "count" }} />
+            <MetricWidget label="Organizations" value={26} format={{ kind: "count" }} />
           </Grid>
           <Grid columns={3} minItemWidth="compact" data-testid="spanned-grid">
             <GridItem span={2} data-testid="primary-grid-item">
-              <VisualizationCard title="Primary view" visual={<p>Product activity</p>} />
+              <VisualizationWidget title="Primary view" visual={<p>Product activity</p>} />
             </GridItem>
-            <VisualizationCard
+            <VisualizationWidget
               data-testid="support-grid-item"
               title="Supporting view"
               visual={<p>Feature reach</p>}
@@ -144,15 +144,15 @@ function Fixture() {
             label="Order activity"
             data-testid="layout-story"
             lead={
-              <MetricCard
+              <MetricWidget
                 label="Completed orders"
                 value={120}
                 format={{ kind: "count" }}
                 evidence={{ id: "orders", glossaryIds: ["orders"] }}
               />
             }
-            visual={<VisualizationCard title="Orders over time" visual={<p>Daily orders</p>} />}
-            support={<VisualizationCard title="Returning customers" visual={<p>80 customers</p>} />}
+            visual={<VisualizationWidget title="Orders over time" visual={<p>Daily orders</p>} />}
+            support={<VisualizationWidget title="Returning customers" visual={<p>80 customers</p>} />}
           />
           <Grid columns={2} data-testid="layout-grid">
             <div>Short panel</div>
@@ -161,10 +161,10 @@ function Fixture() {
             </div>
           </Grid>
           <Grid columns={2} data-testid="constrained-grid" style={{ maxWidth: 480 }}>
-            <div>First narrow card</div>
-            <div>Second narrow card</div>
+            <div>First narrow widget</div>
+            <div>Second narrow widget</div>
           </Grid>
-          <TableCard
+          <TableWidget
             title="Paginated orders"
             rows={Array.from({ length: 11 }, (_, index) => ({
               id: index + 1,

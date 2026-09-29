@@ -7,9 +7,9 @@ import { resolveViewInput } from "../src/view.tsx";
 import { dateRangeVariable } from "../src/ui/variables.ts";
 import { createDataContext } from "../src/ui/data-context.ts";
 import { ComparisonVisual } from "../src/ui/ComparisonVisual.tsx";
-import { VisualizationCard } from "../src/ui/VisualizationCard.tsx";
-import { TableCard } from "../src/ui/TableCard.tsx";
-import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
+import { VisualizationWidget } from "../src/ui/VisualizationWidget.tsx";
+import { TableWidget } from "../src/ui/TableWidget.tsx";
+import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
 import type { DataOperation, DateRangeRequest } from "../src/contract.ts";
 
 const names = defineQueryNames({ activity: "activity" });
@@ -71,10 +71,31 @@ test("bound metrics share values, formatting, evidence and displayed comparison 
   ).not.toContain("Infinity");
 });
 
+test("favorable direction colors a comparison without changing its numeric direction", () => {
+  const fewerIsBetter = context.metric({
+    id: "errors",
+    glossaryId: "actions",
+    format: { kind: "count" },
+    favorableDirection: "down",
+  });
+  const content = view.content((result) => (
+    <ComparisonVisual
+      metric={fewerIsBetter}
+      reading={result.metric((data) => ({ current: data.current, previous: data.previous }))}
+    />
+  ));
+  const input = calendar.request({ start: "2026-03-10", end: "2026-03-12" }, true);
+  const html = renderToStaticMarkup(
+    content.children({ current: 120, previous: 100, rows: ["a"] }, input),
+  );
+  expect(html).toContain('data-tone="bad"');
+  expect(html).toContain("20.0%");
+});
+
 test("bound visual selectors do not run during loading or render an empty result", () => {
   let calls = 0;
   const content = view.content((result) => (
-    <VisualizationCard
+    <VisualizationWidget
       title="Features"
       reading={result.select((data) => {
         calls++;
@@ -85,7 +106,7 @@ test("bound visual selectors do not run during loading or render an empty result
       skeleton={{ variant: "ranking", rows: 6 }}
     >
       {(rows) => <p>{rows.join(", ")}</p>}
-    </VisualizationCard>
+    </VisualizationWidget>
   ));
   expect(calls).toBe(0);
   expect(
@@ -138,7 +159,7 @@ test("operation query runner supplies registered identity, policy limit and canc
   expect(captured).toEqual({ statement: "SELECT 1", name: "activity", limit: 12, signal });
 });
 
-test("card tabs reject duplicate and unknown IDs instead of producing a blank panel", () => {
+test("widget tabs reject duplicate and unknown IDs instead of producing a blank panel", () => {
   const tab = {
     id: "actions",
     label: "Actions",
@@ -148,7 +169,7 @@ test("card tabs reject duplicate and unknown IDs instead of producing a blank pa
   };
   expect(() =>
     renderToStaticMarkup(
-      <CardViewTabs
+      <WidgetViewTabs
         label="Views"
         views={[tab, tab]}
         selectedKey="actions"
@@ -158,19 +179,19 @@ test("card tabs reject duplicate and unknown IDs instead of producing a blank pa
   ).toThrow("unique");
   expect(() =>
     renderToStaticMarkup(
-      <CardViewTabs
+      <WidgetViewTabs
         label="Views"
         views={[tab]}
         selectedKey="missing"
         onSelectionChange={() => {}}
       />,
     ),
-  ).toThrow("Unknown card tab");
+  ).toThrow("Unknown widget tab");
 });
 
-test("bound visualization views render inside one card with a selected view", () => {
+test("bound visualization views render inside one widget with a selected view", () => {
   const html = renderToStaticMarkup(
-    <VisualizationCard
+    <VisualizationWidget
       title="Feature use"
       reading={{ loading: false, value: [{ name: "Insights", count: 4 }] }}
       isEmpty={(rows) => rows.length === 0}
@@ -194,7 +215,7 @@ test("bound visualization views render inside one card with a selected view", ()
 
 test("bound tables keep their row contract while loading", () => {
   const content = view.content((result) => (
-    <TableCard
+    <TableWidget
       title="Features"
       reading={result.select((data) => data.rows)}
       rowKey={(row) => row}

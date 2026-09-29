@@ -259,15 +259,15 @@ altertable profile delete [options] <NAME>
 | --- | --- |
 | `--yes` | Confirm deletion |
 
-### `altertable catalogs`
+### `altertable catalog`
 
 Manage catalogs (databases and connections) in the current environment.
 
 **Usage**
 
 ```bash
-altertable catalogs
-altertable catalogs create
+altertable catalog
+altertable catalog create
 ```
 
 **Subcommands**
@@ -277,18 +277,18 @@ altertable catalogs create
 **Examples**
 
 ```bash
-altertable catalogs
-altertable catalogs create Analytics
+altertable catalog
+altertable catalog create Analytics
 ```
 
-#### `altertable catalogs create`
+#### `altertable catalog create`
 
 Create an Altertable catalog.
 
 **Usage**
 
 ```bash
-altertable catalogs create <NAME>
+altertable catalog create <NAME>
 ```
 
 **Arguments**
@@ -300,7 +300,7 @@ altertable catalogs create <NAME>
 **Examples**
 
 ```bash
-altertable catalogs create Analytics
+altertable catalog create Analytics
 ```
 
 ### `altertable api`
@@ -311,7 +311,7 @@ Management REST API — HTTP invoker and OpenAPI spec.
 
 ```bash
 altertable api [options] <ENDPOINT>
-altertable api routes|spec
+altertable api route|spec
 ```
 
 **Arguments**
@@ -333,26 +333,26 @@ altertable api routes|spec
 
 **Subcommands**
 
-- `routes` — List management API paths and methods from the bundled OpenAPI spec.
+- `route` — List management API paths and methods from the bundled OpenAPI spec.
 - `spec` — Print the bundled management OpenAPI specification (YAML by default; JSON with --json).
 
 **Examples**
 
 ```bash
 altertable api /whoami
-altertable api routes
+altertable api route
 altertable api /environments/production/connections
 altertable api /service_accounts -X POST -F label="CI Bot"
 ```
 
-#### `altertable api routes`
+#### `altertable api route`
 
 List management API paths and methods from the bundled OpenAPI spec.
 
 **Usage**
 
 ```bash
-altertable api routes [OPERATION]
+altertable api route [OPERATION]
 ```
 
 **Arguments**
@@ -364,8 +364,8 @@ altertable api routes [OPERATION]
 **Examples**
 
 ```bash
-altertable api routes
-altertable api routes createDatabase
+altertable api route
+altertable api route createDatabase
 ```
 
 #### `altertable api spec`

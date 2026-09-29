@@ -84,8 +84,8 @@ describe("api", () => {
     );
   });
 
-  test("api routes inspects one operation in human mode", async () => {
-    const result = await runCommandWithTestRuntime(["api", "routes", "createDatabase"], {
+  test("api route inspects one operation in human mode", async () => {
+    const result = await runCommandWithTestRuntime(["api", "route", "createDatabase"], {
       debug: false,
       json: false,
       agent: false,
@@ -97,9 +97,9 @@ describe("api", () => {
     expect(output).toContain("environment_id");
   });
 
-  test("api routes operation detail includes path parameters in JSON mode", async () => {
+  test("api route operation detail includes path parameters in JSON mode", async () => {
     const result = await runCommandWithTestRuntime(
-      ["api", "routes", "createServiceAccountCredential"],
+      ["api", "route", "createServiceAccountCredential"],
       { debug: false, json: true, agent: false },
     );
     const output = result.stdout.join("");
@@ -118,10 +118,15 @@ describe("api", () => {
     expect(topLevelNames).not.toContain("credentials");
   });
 
-  test("api command tree exposes spec and routes subcommands", () => {
+  test("api command tree exposes spec and route subcommands", () => {
     const subcommands = apiCommand.subcommands as Record<string, Command>;
     expect(subcommands.spec?.run).toBeDefined();
-    expect(subcommands.routes?.run).toBeDefined();
+    expect(subcommands.route?.run).toBeDefined();
+  });
+
+  test("api routes remains a callable hidden alias", async () => {
+    const result = await runCommandWithTestRuntime(["api", "routes", "createDatabase"]);
+    expect(result.stdout.join("")).toContain("createDatabase");
   });
 
   describe("api HTTP invoker", () => {

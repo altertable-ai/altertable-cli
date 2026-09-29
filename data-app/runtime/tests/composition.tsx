@@ -7,14 +7,14 @@ import {
   AppToolbar,
   VariableBar,
   Button,
-  VisualizationCard,
+  VisualizationWidget,
   DateRangePicker,
   dateRangeControl,
   dateRangeVariable,
   defineAppVariables,
   HelpPopover,
   GlossaryExplanation,
-  MetricCard,
+  MetricWidget,
   PeriodSummary,
   PlayStory,
   RefreshRegion,
@@ -56,9 +56,9 @@ const evidence = evidenceFor(
   glossaryIds: ["orders"],
   queryNames: [queryNames.totals],
 });
-// @ts-expect-error A card cannot refer to a glossary entry absent from this context.
+// @ts-expect-error A widget cannot refer to a glossary entry absent from this context.
 evidenceFor(dataContext)({ id: "missing", glossaryIds: ["unknown"] });
-// @ts-expect-error A card cannot refer to a query absent from the named query registry.
+// @ts-expect-error A widget cannot refer to a query absent from the named query registry.
 evidenceFor(dataContext, queryNames)({ id: "missing-query", queryNames: ["other-query"] });
 const variables = defineAppVariables({
   period: dateRangeVariable({
@@ -133,8 +133,8 @@ export function CompositionCheck() {
           comparison={{ kind: "previous" }}
         />
       </VariableBar>
-      <VisualizationCard title="Panel" visual="Content" className="panel" data-testid="panel" />
-      <MetricCard
+      <VisualizationWidget title="Panel" visual="Content" className="panel" data-testid="panel" />
+      <MetricWidget
         label="Metric"
         value={1}
         format={{ kind: "count" }}

@@ -33,8 +33,8 @@ const minimalRootCommand = defineCommand({
         },
       },
     },
-    catalogs: {
-      metadata: { name: "catalogs" },
+    catalog: {
+      metadata: { name: "catalog" },
       subcommands: {
         list: { metadata: { name: "list" } },
         create: { metadata: { name: "create" } },
@@ -148,7 +148,7 @@ describe("completion command", () => {
   test("bash output contains nested subcommand words", async () => {
     const output = await runCompletion(() => minimalRootCommand, "bash");
     expect(output).toContain("connections");
-    expect(output).toContain("catalogs");
+    expect(output).toContain("catalog");
     expect(output).toContain("list");
   });
 
@@ -159,11 +159,11 @@ describe("completion command", () => {
     expect(output).toContain("--input");
   });
 
-  test("zsh output contains compdef and nested catalogs create branch", async () => {
+  test("zsh output contains compdef and nested catalog create branch", async () => {
     const output = await runCompletion(() => minimalRootCommand, "zsh");
     expect(output).toContain("#compdef altertable");
     expect(output).toContain("altertable");
-    expect(output).toContain("catalogs");
+    expect(output).toContain("catalog");
     expect(output).toContain("create");
   });
 

@@ -1,11 +1,11 @@
-.altertable-table-card-content {
+.altertable-table-widget-content {
   min-width: 0;
   padding: var(--at-space-md, 16px) var(--at-space-lg, 24px) var(--at-space-lg, 24px);
 }
-:where(.altertable-data-panel-body) > .altertable-table-card-content {
+:where(.altertable-data-panel-body) > .altertable-table-widget-content {
   padding: 0;
 }
-.altertable-table-card-content .altertable-data-table-search {
+.altertable-table-widget-content .altertable-data-table-search {
   margin-top: 0;
 }
 .altertable-table-pagination {

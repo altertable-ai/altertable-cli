@@ -167,7 +167,7 @@ test("data view keeps the last result visible when refresh fails", async ({
   );
 });
 
-test("card inspection inherits the page glossary and empty states", async ({ page }) => {
+test("widget inspection inherits the page glossary and empty states", async ({ page }) => {
   await page.goto("/components");
   await expect(page.getByText("Connection view ready")).toBeVisible();
   await page.getByRole("button", { name: "Explore Completed orders" }).click();

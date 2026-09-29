@@ -83,7 +83,7 @@ export function createDataContext<const Names extends Record<string, string>>(qu
       glossaryId: keyof Context["glossary"] & string;
       label?: string;
       format: MetricFormat;
-      goodWhen?: "up" | "down";
+      favorableDirection?: "up" | "down";
       queryNames?: readonly Names[keyof Names][];
     }): MetricDefinition {
       const references = evidence({
@@ -95,7 +95,7 @@ export function createDataContext<const Names extends Record<string, string>>(qu
         id: definition.id,
         label: definition.label ?? context.glossary[definition.glossaryId]!.term,
         format: definition.format,
-        goodWhen: definition.goodWhen,
+        favorableDirection: definition.favorableDirection,
         evidence: references,
       };
     }

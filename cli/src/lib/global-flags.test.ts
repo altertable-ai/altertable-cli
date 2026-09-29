@@ -19,7 +19,7 @@ describe("parseGlobalOutputFlags", () => {
   });
 
   test("parses --no-color", () => {
-    const context = parseGlobalOutputFlags(["--no-color", "catalogs"]);
+    const context = parseGlobalOutputFlags(["--no-color", "catalog"]);
     expect(context.noColor).toBe(true);
   });
 

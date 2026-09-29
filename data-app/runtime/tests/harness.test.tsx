@@ -5,9 +5,9 @@ import { defineDataContent, describeViewInput, type DataViewDefinition } from ".
 import { createDataContext } from "../src/ui/data-context.ts";
 import { dateRangeVariable, defineAppVariables, textVariable } from "../src/ui/variables.ts";
 import { ContentSkeleton } from "../src/ui/ContentSkeleton.tsx";
-import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
+import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
 import { calendarMetricComparison } from "../src/ui/comparison.ts";
-import { MetricCard } from "../src/ui/MetricCard.tsx";
+import { MetricWidget } from "../src/ui/MetricWidget.tsx";
 
 const calendar = defineDateRangeContract({
   minDate: "2026-01-01",
@@ -66,14 +66,14 @@ test("comparison labels follow displayed inputs and distinguish unavailable from
   ).toBeUndefined();
   const available = calendarMetricComparison(input, { current: 12, previous: 0, format });
   expect(available).toMatchObject({
-    current: { display: "12", period: "Mar 1–3, 2026" },
-    previous: { value: 0, display: "0", period: "Feb 26–28, 2026" },
+    current: { formattedValue: "12", periodLabel: "Mar 1–3, 2026" },
+    previous: { value: 0, formattedValue: "0", periodLabel: "Feb 26–28, 2026" },
   });
   const unavailable = calendarMetricComparison(input, { current: 12, previous: null, format });
-  expect(unavailable?.previous).toMatchObject({ value: null, display: "Not available" });
+  expect(unavailable?.previous).toMatchObject({ value: null, formattedValue: "Not available" });
   expect(
     renderToStaticMarkup(
-      <MetricCard label="Orders" value={12} format={format} comparison={unavailable} />,
+      <MetricWidget label="Orders" value={12} format={format} comparison={unavailable} />,
     ),
   ).toContain("Previous period unavailable");
 });
@@ -87,7 +87,7 @@ test("variables cannot overwrite navigation, inspection, or presentation routes"
   ).toThrow("duplicate");
 });
 
-test("context validates glossary queries and binds card evidence to its registries", () => {
+test("context validates glossary queries and binds widget evidence to its registries", () => {
   const define = createDataContext(defineQueryNames({ orders: "orders" }));
   const context = define({
     description: "Orders",
@@ -149,9 +149,9 @@ test("one composition renders skeleton structure without any result values", () 
   );
 });
 
-test("an empty card tab renders its authored fallback", () => {
+test("an empty widget tab renders its authored fallback", () => {
   const markup = renderToStaticMarkup(
-    <CardViewTabs
+    <WidgetViewTabs
       label="Views"
       selectedKey="orders"
       onSelectionChange={() => {}}

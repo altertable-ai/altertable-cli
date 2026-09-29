@@ -74,7 +74,7 @@ test("shared loading and ready layouts fit narrow containers in both themes", as
     });
     await route.fulfill({
       json: {
-        data: { count: 120, features: ["Long feature names remain readable within their card"] },
+        data: { count: 120, features: ["Long feature names remain readable within their widget"] },
         queriedAt: "2026-03-12T00:00:00Z",
         requestId: "fixture",
         queryIds: [],

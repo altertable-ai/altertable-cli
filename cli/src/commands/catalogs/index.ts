@@ -7,13 +7,13 @@ import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/ren
 import { span } from "@/ui/document.ts";
 import { renderDisplayText } from "@/ui/terminal/styles.ts";
 
-export const catalogsCommand = defineCommand({
+export const catalogCommand = defineCommand({
   metadata: {
-    name: "catalogs",
+    name: "catalog",
     commandGroup: "platform",
     invocations: ["direct", "subcommand"],
     description: "Manage catalogs (databases and connections) in the current environment.",
-    examples: ["altertable catalogs", "altertable catalogs create Analytics"],
+    examples: ["altertable catalog", "altertable catalog create Analytics"],
   },
   subcommands: {
     create: catalogsCreateCommand,
@@ -36,5 +36,15 @@ export const catalogsCommand = defineCommand({
       },
       sink,
     );
+  },
+});
+
+export const catalogsCommand = defineCommand({
+  ...catalogCommand,
+  metadata: {
+    name: "catalogs",
+    hidden: true,
+    description: "Alias for altertable catalog.",
+    invocations: ["direct", "subcommand"],
   },
 });

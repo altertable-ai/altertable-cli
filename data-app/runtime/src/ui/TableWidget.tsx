@@ -1,5 +1,5 @@
 import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
-import type { CardEvidence } from "./CardEvidence.ts";
+import type { WidgetEvidence } from "./WidgetEvidence.ts";
 import { DataPanel } from "./DataPanel.tsx";
 import { DataTable, DataTableEmptyRow, type DataTableSearch } from "./DataTable.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
@@ -9,9 +9,9 @@ import { formatCount, pluralize } from "../format.ts";
 import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import { AppIcon } from "./icons.ts";
 import { Tooltip } from "./Tooltip.tsx";
-import "./TableCard.css";
+import "./TableWidget.css";
 
-export type TableCardColumn<Row> = {
+export type TableWidgetColumn<Row> = {
   id: string;
   header: ReactNode;
   type?: "number" | "datetime";
@@ -19,19 +19,19 @@ export type TableCardColumn<Row> = {
   cell: (row: Row, hit?: SearchHit<Row>) => ReactNode;
 };
 
-export type TableCardSearch<Row> = Omit<DataTableSearch, "itemCount"> &
+export type TableWidgetSearch<Row> = Omit<DataTableSearch, "itemCount"> &
   Pick<SearchItemsOptions<Row>, "attributes" | "mode" | "fuzzyThreshold">;
 
-type TableCardBaseProps<Row> = {
+type TableWidgetBaseProps<Row> = {
   title: ReactNode;
   count?: number;
   description?: ReactNode;
-  columns: readonly [TableCardColumn<Row>, ...TableCardColumn<Row>[]];
+  columns: readonly [TableWidgetColumn<Row>, ...TableWidgetColumn<Row>[]];
   rowKey: (row: Row) => string | number;
   insight?: ReactNode;
   action?: ReactNode;
-  evidence?: CardEvidence;
-  search?: TableCardSearch<Row>;
+  evidence?: WidgetEvidence;
+  search?: TableWidgetSearch<Row>;
   /** Valid result with no rows; the header remains visible. */
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (
@@ -45,23 +45,23 @@ type TableCardBaseProps<Row> = {
   Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
 /** Column definitions own both header and body semantics; the first column is the row header. */
-export type TableCardProps<Row> = TableCardBaseProps<Row> &
+export type TableWidgetProps<Row> = TableWidgetBaseProps<Row> &
   (
     | { rows: readonly Row[]; reading?: never; skeletonRows?: never }
     | { reading: DataReading<readonly Row[]>; rows?: never; skeletonRows?: number }
   );
 
-export function TableCard<Row>(props: TableCardProps<Row>) {
+export function TableWidget<Row>(props: TableWidgetProps<Row>) {
   if (props.reading) {
     const { reading, skeletonRows = 5, ...rest } = props;
     if (reading.loading)
       return <ContentSkeleton variant="ranking" rows={skeletonRows} className={rest.className} />;
-    return <TableCardContent {...rest} rows={reading.value} />;
+    return <TableWidgetContent {...rest} rows={reading.value} />;
   }
-  return <TableCardContent {...props} />;
+  return <TableWidgetContent {...props} />;
 }
 
-function TableCardContent<Row>({
+function TableWidgetContent<Row>({
   title,
   count,
   description,
@@ -76,9 +76,9 @@ function TableCardContent<Row>({
   pagination,
   empty,
   ...props
-}: TableCardBaseProps<Row> & { rows: readonly Row[] }) {
+}: TableWidgetBaseProps<Row> & { rows: readonly Row[] }) {
   if (pagination && (!Number.isSafeInteger(pagination.pageSize) || pagination.pageSize < 1)) {
-    throw new Error("TableCard pagination.pageSize must be a positive integer.");
+    throw new Error("TableWidget pagination.pageSize must be a positive integer.");
   }
   const rowKeys = JSON.stringify(rows.map(rowKey));
   const [pageState, setPageState] = useState({ page: 0, rowKeys, searchValue: search?.value });
@@ -191,7 +191,7 @@ function TableCardContent<Row>({
       about={evidence && { ...evidence, visual: table }}
       footer={insight}
     >
-      <div className="altertable-table-card-content">{table}</div>
+      <div className="altertable-table-widget-content">{table}</div>
     </DataPanel>
   );
 }

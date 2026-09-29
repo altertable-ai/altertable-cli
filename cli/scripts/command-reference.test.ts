@@ -62,7 +62,7 @@ describe("command reference", () => {
     );
     expect(reference).toContain("```bash\naltertable profile env [NAME]\n```");
     expect(reference).toContain("```bash\naltertable completion generate <BASH|FISH|ZSH>\n```");
-    expect(reference).toContain("```bash\naltertable catalogs create <NAME>\n```");
+    expect(reference).toContain("```bash\naltertable catalog create <NAME>\n```");
     expect(reference).toContain("`-h, --help`");
     expect(reference).toContain("`-v, --version`");
     expect(reference).toContain("`--to <TO>` | Destination as catalog.schema.table Required.");

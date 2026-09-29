@@ -14,8 +14,8 @@ import {
   Grid,
   GridItem,
   Stack,
-  MetricCard,
-  VisualizationCard,
+  MetricWidget,
+  VisualizationWidget,
   dateRangeVariable,
   createDataContext,
   defineDataIdentifiers,
@@ -71,7 +71,7 @@ const content = activityView.content((state) => (
     <p>{state.loading ? "Loading activity…" : `Results for ${period.describeInput(state.input)}`}</p>
     <Grid columns={3} minItemWidth="compact" data-testid="shared-grid">
       <GridItem span={2} data-testid="shared-primary">
-        <VisualizationCard
+        <VisualizationWidget
           title="Activity across product features and organizations"
           reading={state.select((data) => data.features)}
           isEmpty={(items) => items.length === 0}
@@ -79,10 +79,10 @@ const content = activityView.content((state) => (
           skeleton={{ variant: "ranking", rows: 3 }}
         >
           {(features) => <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul>}
-        </VisualizationCard>
+        </VisualizationWidget>
       </GridItem>
       <GridItem data-testid="shared-support">
-        <MetricCard metric={actions} reading={state.metric((data) => ({ current: data.count }))} />
+        <MetricWidget metric={actions} reading={state.metric((data) => ({ current: data.count }))} />
       </GridItem>
     </Grid>
   </Stack>

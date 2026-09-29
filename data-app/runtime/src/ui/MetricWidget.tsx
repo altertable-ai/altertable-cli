@@ -1,6 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { AboutData } from "./AboutData.tsx";
-import type { CardEvidence } from "./CardEvidence.ts";
+import type { WidgetEvidence } from "./WidgetEvidence.ts";
 import { AppIcon } from "./icons.ts";
 import { comparisonChange, type MetricComparison } from "./comparison.ts";
 import { classNames } from "./classNames.ts";
@@ -9,19 +9,19 @@ import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import type { MetricReading } from "../reading.ts";
 import { metricComparison, type MetricDefinition } from "./metric.ts";
 import "./Inspect.css";
-import "./MetricCard.css";
+import "./MetricWidget.css";
 
-type MetricCardBaseProps = {
+type MetricWidgetBaseProps = {
   label: string;
   description?: ReactNode;
   comparison?: MetricComparison;
-  evidence?: CardEvidence;
+  evidence?: WidgetEvidence;
   action?: ReactNode;
   insight?: ReactNode;
   visual?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
 
-type UnboundMetricCardProps = MetricCardBaseProps &
+type UnboundMetricWidgetProps = MetricWidgetBaseProps &
   (
     | { loading: true; value?: never; format?: never; content?: never }
     | ({ loading?: false } & (
@@ -30,9 +30,9 @@ type UnboundMetricCardProps = MetricCardBaseProps &
       ))
   );
 
-export type MetricCardProps =
-  | UnboundMetricCardProps
-  | (Omit<MetricCardBaseProps, "label" | "comparison" | "evidence"> & {
+export type MetricWidgetProps =
+  | UnboundMetricWidgetProps
+  | (Omit<MetricWidgetBaseProps, "label" | "comparison" | "evidence"> & {
       metric: MetricDefinition;
       reading: MetricReading;
       label?: never;
@@ -44,12 +44,12 @@ export type MetricCardProps =
       loading?: never;
     });
 
-export function MetricCard(props: MetricCardProps) {
+export function MetricWidget(props: MetricWidgetProps) {
   if ("metric" in props) {
     const { metric, reading, ...rest } = props;
-    if (reading.loading) return <MetricCardContent {...rest} label={metric.label} loading />;
+    if (reading.loading) return <MetricWidgetContent {...rest} label={metric.label} loading />;
     return (
-      <MetricCardContent
+      <MetricWidgetContent
         {...rest}
         label={metric.label}
         value={reading.value.current}
@@ -59,10 +59,10 @@ export function MetricCard(props: MetricCardProps) {
       />
     );
   }
-  return <MetricCardContent {...props} />;
+  return <MetricWidgetContent {...props} />;
 }
 
-function MetricCardContent({
+function MetricWidgetContent({
   label,
   value,
   content,
@@ -76,7 +76,7 @@ function MetricCardContent({
   visual,
   className,
   ...props
-}: UnboundMetricCardProps) {
+}: UnboundMetricWidgetProps) {
   if (loading) return <ContentSkeleton variant="metric" className={className} />;
   const shownValue = format ? formatMetric(value as number, format) : content;
   const change = comparison ? comparisonChange(comparison) : null;
@@ -85,7 +85,7 @@ function MetricCardContent({
       <span className="altertable-metric-change" data-tone={change.tone}>
         <AppIcon name={change.icon} size={14} />
         {Math.abs(change.percent).toFixed(1)}% vs{" "}
-        {comparison?.previous?.period?.toLowerCase() ?? "previous period"}
+        {comparison?.previous?.periodLabel?.toLowerCase() ?? "previous period"}
       </span>
     ) : comparison?.previous?.value === null ? (
       <span className="altertable-metric-change" data-tone="neutral">
@@ -118,7 +118,7 @@ function MetricCardContent({
     </AboutData>
   ) : null;
   return (
-    <div {...props} className={classNames("altertable-metric-card", className)}>
+    <div {...props} className={classNames("altertable-metric-widget", className)}>
       <div className="altertable-metric-label">
         <span>{label}</span>
         {(action || help) && (

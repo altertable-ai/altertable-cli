@@ -35,11 +35,11 @@ function ComparisonContent({
   label,
   current,
   previous,
-  goodWhen,
+  favorableDirection,
   emphasis = "standard",
 }: UnboundComparisonProps) {
   const max = Math.max(current.value, previous?.value ?? 0, 1);
-  const { percent, tone, icon } = comparisonChange({ current, previous, goodWhen });
+  const { percent, tone, icon } = comparisonChange({ current, previous, favorableDirection });
   return (
     <figure
       className="altertable-comparison-visual"
@@ -49,8 +49,8 @@ function ComparisonContent({
       <figcaption>{label}</figcaption>
       <div className="altertable-comparison-row" data-period="current">
         <div>
-          <span>{current.period ?? "Current period"}</span>
-          <strong>{current.display}</strong>
+          <span>{current.periodLabel ?? "Current period"}</span>
+          <strong>{current.formattedValue}</strong>
         </div>
         <span className="altertable-comparison-track">
           <span style={{ width: `${(current.value / max) * 100}%` }} />
@@ -59,8 +59,8 @@ function ComparisonContent({
       {previous && (
         <div className="altertable-comparison-row" data-period="previous">
           <div>
-            <span>{previous.period ?? "Previous period"}</span>
-            <strong>{previous.display}</strong>
+            <span>{previous.periodLabel ?? "Previous period"}</span>
+            <strong>{previous.formattedValue}</strong>
           </div>
           <span className="altertable-comparison-track">
             <span style={{ width: `${((previous.value ?? 0) / max) * 100}%` }} />
@@ -74,7 +74,7 @@ function ComparisonContent({
           <>
             <AppIcon name={icon} size={17} />
             {Math.abs(percent).toFixed(1)}% vs{" "}
-            {previous?.period?.toLowerCase() ?? "previous period"}
+            {previous?.periodLabel?.toLowerCase() ?? "previous period"}
           </>
         )}
       </p>

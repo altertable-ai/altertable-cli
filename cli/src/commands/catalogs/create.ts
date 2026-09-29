@@ -8,7 +8,7 @@ export const catalogsCreateCommand = defineCommand({
   metadata: {
     name: "create",
     description: "Create an Altertable catalog.",
-    examples: ["altertable catalogs create Analytics"],
+    examples: ["altertable catalog create Analytics"],
   },
   args: {
     name: {

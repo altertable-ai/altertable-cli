@@ -576,27 +576,27 @@
           ]
         },
         {
-          "id": "altertable-catalogs",
-          "command": "altertable catalogs",
+          "id": "altertable-catalog",
+          "command": "altertable catalog",
           "description": "Manage catalogs (databases and connections) in the current environment.",
           "usage": [
-            "altertable catalogs",
-            "altertable catalogs create"
+            "altertable catalog",
+            "altertable catalog create"
           ],
           "aliases": [],
           "arguments": [],
           "options": [],
           "examples": [
-            "altertable catalogs",
-            "altertable catalogs create Analytics"
+            "altertable catalog",
+            "altertable catalog create Analytics"
           ],
           "subcommands": [
             {
-              "id": "altertable-catalogs-create",
-              "command": "altertable catalogs create",
+              "id": "altertable-catalog-create",
+              "command": "altertable catalog create",
               "description": "Create an Altertable catalog.",
               "usage": [
-                "altertable catalogs create <NAME>"
+                "altertable catalog create <NAME>"
               ],
               "aliases": [],
               "arguments": [
@@ -614,7 +614,7 @@
               ],
               "options": [],
               "examples": [
-                "altertable catalogs create Analytics"
+                "altertable catalog create Analytics"
               ],
               "subcommands": []
             }
@@ -626,7 +626,7 @@
           "description": "Management REST API — HTTP invoker and OpenAPI spec.",
           "usage": [
             "altertable api [options] <ENDPOINT>",
-            "altertable api routes|spec"
+            "altertable api route|spec"
           ],
           "aliases": [],
           "arguments": [
@@ -721,17 +721,17 @@
           ],
           "examples": [
             "altertable api /whoami",
-            "altertable api routes",
+            "altertable api route",
             "altertable api /environments/production/connections",
             "altertable api /service_accounts -X POST -F label=\"CI Bot\""
           ],
           "subcommands": [
             {
-              "id": "altertable-api-routes",
-              "command": "altertable api routes",
+              "id": "altertable-api-route",
+              "command": "altertable api route",
               "description": "List management API paths and methods from the bundled OpenAPI spec.",
               "usage": [
-                "altertable api routes [OPERATION]"
+                "altertable api route [OPERATION]"
               ],
               "aliases": [],
               "arguments": [
@@ -749,8 +749,8 @@
               ],
               "options": [],
               "examples": [
-                "altertable api routes",
-                "altertable api routes createDatabase"
+                "altertable api route",
+                "altertable api route createDatabase"
               ],
               "subcommands": []
             },

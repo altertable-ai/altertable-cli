@@ -92,7 +92,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 | `src/lib/*`                           | Code shared by multiple command families                   |
 | `src/test-utils/*`                    | Shared CLI test harnesses and temporary workspaces         |
 | `src/generated/openapi-types.ts`      | Generated — run `bun run generate` after OpenAPI changes   |
-| `src/generated/openapi-operations.ts` | Generated operation index for `api routes`                 |
+| `src/generated/openapi-operations.ts` | Generated operation index for `api route`                  |
 | `src/**/*.test.ts`                    | Unit tests colocated beside their subject                  |
 | `../tests/*.test.ts`                  | Black-box end-user CLI tests at repo root                  |
 | `../tests/integration.e2e.ts`         | Mock-server lakehouse integration test                     |
@@ -131,7 +131,7 @@ altertable
 │   └── create, dev, build, check, upgrade
 ├── profile
 │   └── configure, show, list, status, switch, current, env, rename, delete
-├── catalogs
+├── catalog
 │   └── create
 ├── query <SQL>
 │   └── show, cancel
@@ -141,7 +141,7 @@ altertable
 ├── upload, upsert
 ├── api
 │   ├── spec
-│   ├── routes
+│   ├── route
 │   └── <PATH> [-X GET|POST|PATCH|DELETE|PUT]
 ├── update (alias: upgrade)
 └── completion
@@ -149,7 +149,7 @@ altertable
     ├── generate [bash|fish|zsh]
 ```
 
-`query`, `append`, `catalogs`, `api`, and `completion` combine direct parent behavior with
+`query`, `append`, `catalog`, `api`, and `completion` combine direct parent behavior with
 real subcommands. The parser resolves one invocation from command metadata, then executes
 only the selected handler. Declare intentional direct/subcommand ambiguity through command
 metadata; do not inspect or rewrite raw argv in parent handlers.
@@ -186,7 +186,7 @@ export const myfeatureCommand = defineCommand({
 New API operations ship in `cli/openapi/openapi.yaml` (copied from the server). Run `bun run generate` to refresh types and `OPENAPI_OPERATIONS`. Integrators call them via HTTP — no new dedicated subcommands:
 
 ```bash
-altertable api routes                    # discover method + path
+altertable api route                    # discover method + path
 altertable api /whoami                   # default GET
 altertable api /path -X GET -f q=value   # forced GET puts fields in the query string
 altertable api /new_resource -f …        # invoke (POST inferred)

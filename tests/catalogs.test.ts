@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
 import { catalogsMock, jsonMock } from "./mock-http.ts";
 
-describe("altertable catalogs", () => {
+describe("altertable catalog", () => {
   let workspace: TestWorkspace;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describe("altertable catalogs", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(catalogsMock());
 
-    const result = await workspace.runCommand('altertable catalogs create "My Cat"');
+    const result = await workspace.runCommand('altertable catalog create "My Cat"');
 
     expect(result.exitCode).toBe(0);
     expect(await workspace.httpLogValue("METHOD")).toBe("POST");
@@ -29,7 +29,7 @@ describe("altertable catalogs", () => {
   });
 
   test("create requires a configured management plane", async () => {
-    const result = await workspace.runCommand("altertable catalogs create X", {
+    const result = await workspace.runCommand("altertable catalog create X", {
       env: { ALTERTABLE_ENV: "" },
     });
     expect(result.exitCode).toBe(10);
@@ -43,7 +43,7 @@ describe("altertable catalogs", () => {
     await workspace.setupMockHttp(catalogsMock());
 
     const result = await workspace.runCommand(
-      "altertable catalogs create --engine altertable --name Analytics",
+      "altertable catalog create --engine altertable --name Analytics",
     );
 
     expect(result.exitCode).toBe(1);
@@ -55,7 +55,7 @@ describe("altertable catalogs", () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp(catalogsMock());
 
-    const result = await workspace.runCommand("altertable catalogs");
+    const result = await workspace.runCommand("altertable catalog");
     const urls = await workspace.httpLogValues("URL");
 
     expect(result.exitCode).toBe(0);
@@ -64,9 +64,23 @@ describe("altertable catalogs", () => {
     expect(result.stdout.indexOf("my-cat")).toBeLessThan(result.stdout.indexOf("prod-pg"));
   });
 
+  test("catalogs remains a callable hidden alias", async () => {
+    await workspace.setupMockHttp(catalogsMock());
+    const result = await workspace.runCommand("altertable catalogs");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("my-cat");
+  });
+
+  test("catalogs create remains a callable hidden alias", async () => {
+    await workspace.setupMockHttp(catalogsMock());
+    const result = await workspace.runCommand("altertable catalogs create Analytics");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Created catalog "My Cat"');
+  });
+
   test("--agent returns a structured catalogs envelope", async () => {
     await workspace.setupMockHttp(catalogsMock());
-    const result = await workspace.runCommand("altertable catalogs --agent");
+    const result = await workspace.runCommand("altertable catalog --agent");
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout).catalogs).toHaveLength(2);
@@ -75,7 +89,7 @@ describe("altertable catalogs", () => {
   test("databases always render as altertable engine while connections preserve theirs", async () => {
     await workspace.setupMockHttp(catalogsMock({ databaseEngine: "postgres", includeCreate: false }));
 
-    const result = await workspace.runCommand("altertable catalogs");
+    const result = await workspace.runCommand("altertable catalog");
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toMatch(/^my-cat\s+.*altertable/m);
@@ -87,7 +101,7 @@ describe("altertable catalogs", () => {
       jsonMock("GET", "/environments/production/databases", { error: { code: "not_found" } }, 404),
     ]);
 
-    const result = await workspace.runCommand("altertable catalogs");
+    const result = await workspace.runCommand("altertable catalog");
 
     expect(result.exitCode).toBe(4);
   });

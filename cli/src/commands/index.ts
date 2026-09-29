@@ -2,7 +2,7 @@ import type { Command } from "@/lib/command.ts";
 import { loginCommand } from "@/commands/login/index.ts";
 import { logoutCommand } from "@/commands/logout/index.ts";
 import { profileCommand } from "@/commands/profile/index.ts";
-import { catalogsCommand } from "@/commands/catalogs/index.ts";
+import { catalogCommand, catalogsCommand } from "@/commands/catalogs/index.ts";
 import { duckdbCommand } from "@/commands/duckdb/index.ts";
 import { appendCommand } from "@/commands/append/index.ts";
 import { queryCommand } from "@/commands/query/index.ts";
@@ -20,6 +20,7 @@ export function buildTopLevelCommands(getMainCommand: () => Command): Record<str
     login: loginCommand,
     logout: logoutCommand,
     profile: profileCommand,
+    catalog: catalogCommand,
     catalogs: catalogsCommand,
     query: queryCommand,
     schema: schemaCommand,

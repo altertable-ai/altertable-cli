@@ -222,18 +222,20 @@ describe("buildCompletionSpec", () => {
 
   test("real root command includes expected top-level and nested commands", async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
-    const catalogs = findNode(spec, "catalogs");
+    const catalog = findNode(spec, "catalog");
     const api = findNode(spec, "api");
 
     expect(findNode(spec, "query")).toBeDefined();
     expect(findNode(spec, "update")).toBeDefined();
     expect(findNode(spec, "upgrade")).toBeDefined();
     expect(spec.flags.some((flag) => flag.name === "agent")).toBe(true);
-    expect(catalogs).toBeDefined();
+    expect(catalog).toBeDefined();
+    expect(findNode(spec, "catalogs")).toBeUndefined();
     expect(api).toBeDefined();
     expect(findNode(spec, "connections")).toBeUndefined();
-    expect(catalogs?.subcommands.map((node) => node.name)).toEqual(["create"]);
-    expect(api?.subcommands.map((node) => node.name)).toEqual(["routes", "spec"]);
+    expect(catalog?.subcommands.map((node) => node.name)).toEqual(["create"]);
+    expect(api?.subcommands.map((node) => node.name)).toEqual(["route", "spec"]);
+    expect(api?.subcommands.some((node) => node.name === "routes")).toBe(false);
     expect(api?.flags.some((flag) => flag.name === "method")).toBe(true);
     expect(api?.flags.some((flag) => flag.name === "raw-field")).toBe(true);
     expect(api?.flags.some((flag) => flag.name === "field")).toBe(true);
@@ -396,7 +398,7 @@ describe("formatBashCompletion", () => {
     const output = formatBashCompletion(spec);
     expect(output).toContain("'api')");
     expect(output).toContain("--method");
-    expect(output).toContain("catalogs");
+    expect(output).toContain("catalog");
   });
 
   test("includes leaf command flags", async () => {
@@ -449,7 +451,7 @@ describe("collectCompletionContexts", () => {
     const api = contexts.find((context) => context.segments.join("/") === "api");
     expect(api?.flags.some((flag) => flag.name === "field")).toBe(true);
     expect(api?.flags.some((flag) => flag.name === "input")).toBe(true);
-    expect(api?.subcommands).toEqual(["routes", "spec"]);
+    expect(api?.subcommands).toEqual(["route", "spec"]);
   });
 });
 

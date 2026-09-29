@@ -3,7 +3,7 @@ import { defineDateRangeContract } from "../src/contract.ts";
 import { createDataClient } from "../src/client.ts";
 import { createDataHooks } from "../src/react.tsx";
 import { dateRangeVariable, textVariable } from "../src/ui/variables.ts";
-import type { MetricCardProps } from "../src/ui/MetricCard.tsx";
+import type { MetricWidgetProps } from "../src/ui/MetricWidget.tsx";
 import type { DataSectionProps } from "../src/ui/DataSection.tsx";
 import type { DataAppProps } from "../src/ui/DataApp.tsx";
 
@@ -41,7 +41,7 @@ defineDataView({
   empty: { title: "No activity" },
 });
 // @ts-expect-error Numbers require a format.
-const metric: MetricCardProps = { label: "Orders", value: 123 };
+const metric: MetricWidgetProps = { label: "Orders", value: 123 };
 // @ts-expect-error Secondary requests require an empty state.
 const section: DataSectionProps<number> = { view: { kind: "loading" }, children: () => null };
 // @ts-expect-error Primary requests require a fallback on the request or shell.
@@ -56,8 +56,8 @@ void [metric, section, app];
 
 import { defineOperation, defineQueryNames } from "../src/contract.ts";
 import { createDataContext } from "../src/ui/data-context.ts";
-import { MetricCard } from "../src/ui/MetricCard.tsx";
-import { CardViewTabs } from "../src/ui/CardViewTabs.tsx";
+import { MetricWidget } from "../src/ui/MetricWidget.tsx";
+import { WidgetViewTabs } from "../src/ui/WidgetViewTabs.tsx";
 const queries = defineQueryNames({ actions: "actions" });
 defineOperation({
   queryNames: queries,
@@ -80,14 +80,14 @@ const actions = context.metric({ id: "actions", glossaryId: "actions", format: {
 context.metric({ id: "missing", glossaryId: "missing", format: { kind: "count" } });
 const conflictingMetric = (
   // @ts-expect-error A bound metric cannot supply a second current value.
-  <MetricCard metric={actions} reading={{ loading: false, value: { current: 1 } }} value={2} />
+  <MetricWidget metric={actions} reading={{ loading: false, value: { current: 1 } }} value={2} />
 );
 const tabs = [
   { id: "actions", label: "Actions", content: null, isEmpty: true, empty: { title: "Empty" } },
 ] as const;
 const invalidTabs = (
   // @ts-expect-error Selection must belong to the declared tabs.
-  <CardViewTabs label="Views" views={tabs} selectedKey="missing" onSelectionChange={() => {}} />
+  <WidgetViewTabs label="Views" views={tabs} selectedKey="missing" onSelectionChange={() => {}} />
 );
 void [conflictingMetric, invalidTabs];
 

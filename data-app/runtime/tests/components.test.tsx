@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { searchItems } from "../src/ui/searchItems.ts";
 import { SearchMatch } from "../src/ui/SearchMatch.tsx";
 import { ariaKeyShortcuts, shortcutLabel } from "../src/ui/shortcuts.ts";
-import { TableCard } from "../src/ui/TableCard.tsx";
+import { TableWidget } from "../src/ui/TableWidget.tsx";
 import { QueryList, formatSql } from "../src/ui/QueryList.tsx";
 import { DataSection } from "../src/ui/DataSection.tsx";
 import {
@@ -80,7 +80,7 @@ test("local search preserves table order and highlights original text", () => {
     ),
   ).toContain("<mark>Café</mark> &lt;table&gt;");
   const table = renderToStaticMarkup(
-    createElement(TableCard<(typeof hits)[number]>, {
+    createElement(TableWidget<(typeof hits)[number]>, {
       title: "Results",
       count: hits.length,
       columns: [
@@ -109,7 +109,7 @@ test("table search finds a later matching row before applying the display limit"
     { id: "last", name: "Café" },
   ];
   const table = renderToStaticMarkup(
-    createElement(TableCard<(typeof rows)[number]>, {
+    createElement(TableWidget<(typeof rows)[number]>, {
       title: "Customers",
       columns: [{ id: "name", header: "Name", cell: (row) => row.name }],
       rows,

@@ -22,15 +22,15 @@
 }
 @media (hover: hover) and (pointer: fine) {
   :is(
-    .altertable-metric-card .altertable-metric-help,
+    .altertable-metric-widget .altertable-metric-help,
     .altertable-data-panel .altertable-data-panel-help
   ) {
     opacity: 0;
     transition: opacity 120ms ease;
   }
   :is(
-    .altertable-metric-card:hover .altertable-metric-help,
-    .altertable-metric-card:focus-within .altertable-metric-help,
+    .altertable-metric-widget:hover .altertable-metric-help,
+    .altertable-metric-widget:focus-within .altertable-metric-help,
     .altertable-data-panel:hover .altertable-data-panel-help,
     .altertable-data-panel:focus-within .altertable-data-panel-help,
     .altertable-metric-help:has([data-open="true"]),

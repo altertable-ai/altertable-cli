@@ -27,21 +27,21 @@ export type { GridItemProps } from "./GridItem.tsx";
 export { StorySection } from "./StorySection.tsx";
 export type { StorySectionProps } from "./StorySection.tsx";
 
-// Cards and visualizations
-export type { CardEvidence } from "./CardEvidence.ts";
-export { VisualizationCard } from "./VisualizationCard.tsx";
-export type { VisualizationCardProps, VisualizationCardView } from "./VisualizationCard.tsx";
-export { TableCard } from "./TableCard.tsx";
-export type { TableCardColumn, TableCardProps, TableCardSearch } from "./TableCard.tsx";
+// Widgets and visualizations
+export type { WidgetEvidence } from "./WidgetEvidence.ts";
+export { VisualizationWidget } from "./VisualizationWidget.tsx";
+export type { VisualizationWidgetProps, VisualizationWidgetView } from "./VisualizationWidget.tsx";
+export { TableWidget } from "./TableWidget.tsx";
+export type { TableWidgetColumn, TableWidgetProps, TableWidgetSearch } from "./TableWidget.tsx";
 export { chartColor } from "./chartColor.ts";
 export { Breakdown } from "./Breakdown.tsx";
 export type { BreakdownItem, BreakdownProps } from "./Breakdown.tsx";
 export { Ranking } from "./Ranking.tsx";
 export type { RankingItem, RankingProps } from "./Ranking.tsx";
-export { CardDisclosure } from "./CardDisclosure.tsx";
-export type { CardDisclosureProps } from "./CardDisclosure.tsx";
-export { CardViewTabs } from "./CardViewTabs.tsx";
-export type { CardView, CardViewTabsProps } from "./CardViewTabs.tsx";
+export { WidgetDisclosure } from "./WidgetDisclosure.tsx";
+export type { WidgetDisclosureProps } from "./WidgetDisclosure.tsx";
+export { WidgetViewTabs } from "./WidgetViewTabs.tsx";
+export type { WidgetView, WidgetViewTabsProps } from "./WidgetViewTabs.tsx";
 export { ComparisonVisual } from "./ComparisonVisual.tsx";
 export type { ComparisonVisualProps } from "./ComparisonVisual.tsx";
 export { calendarMetricComparison } from "./comparison.ts";
@@ -53,8 +53,8 @@ export type {
   DataTableEmptyRowProps,
   DataTableTimestampProps,
 } from "./DataTable.tsx";
-export { MetricCard } from "./MetricCard.tsx";
-export type { MetricCardProps } from "./MetricCard.tsx";
+export { MetricWidget } from "./MetricWidget.tsx";
+export type { MetricWidgetProps } from "./MetricWidget.tsx";
 
 // Request states and freshness
 export { EmptyState } from "./EmptyState.tsx";
