@@ -1,5 +1,5 @@
 import { basename, join, resolve } from "node:path";
-import { isRecord } from "@/lib/object.ts";
+import { isRecord } from "../src/lib/object.ts";
 
 export type NpmVersionLookup = { status: "published"; version: string } | { status: "missing" };
 
