@@ -104,7 +104,7 @@ test("context validates glossary queries and binds widget evidence to its regist
     "Evidence needs a nonempty ID",
   );
   expect(
-    context.storyStep({
+    context.storyPoint({
       id: "finding",
       headline: "Orders rose",
       visual: <p>12 orders</p>,
@@ -113,7 +113,7 @@ test("context validates glossary queries and binds widget evidence to its regist
     }).queryNames,
   ).toEqual(["orders"]);
   expect(() =>
-    context.storyStep({
+    context.storyPoint({
       id: "bad",
       headline: "Bad",
       visual: null,

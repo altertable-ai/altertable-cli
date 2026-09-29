@@ -6,6 +6,7 @@ import type {
 } from "../core/variables.ts";
 import type { DateRangeRequest } from "../core/contract.ts";
 import type { DimensionVariable } from "../core/dimension.ts";
+import { invariant } from "../core/invariant.ts";
 
 export type ResolvedVariables<Variables extends VariableCollection> = {
   [Key in keyof Variables]: Variables[Key] extends DateRangeVariable
@@ -49,10 +50,12 @@ export function describeViewInput<Input>(definition: {
 }): (input: Input) => string {
   const date = definition.date;
   const variable = date && definition.variables[date.variable];
-  if (date && variable?.kind !== "dateRange")
-    throw new Error("The view date must reference a date range variable.");
+  invariant(
+    !date || variable?.kind === "dateRange",
+    "The view date must reference a date range variable.",
+  );
   if (definition.describeInput) return definition.describeInput;
-  if (!date || !variable) throw new Error("A view needs a date binding or describeInput.");
+  invariant(date && variable, "A view needs a date binding or describeInput.");
   return (input) => {
     const period = (variable as DateRangeVariable).describeInput(date.input(input));
     const filters = Object.entries(definition.filters ?? {})
@@ -86,18 +89,19 @@ export function resolveViewInput<
     const mapped = definition.date.input(input);
     const sameRange = (a: DateRangeRequest["comparison"], b: DateRangeRequest["comparison"]) =>
       a === null || b === null ? a === b : a.start === b.start && a.end === b.end;
-    if (
-      !sameRange(selected.range, mapped.range) ||
-      !sameRange(selected.comparison, mapped.comparison)
-    )
-      throw new Error("The operation input must preserve the selected date range and comparison.");
+    invariant(
+      sameRange(selected.range, mapped.range) && sameRange(selected.comparison, mapped.comparison),
+      "The operation input must preserve the selected date range and comparison.",
+    );
   }
   for (const [key, filter] of Object.entries(definition.filters ?? {})) {
     const selected = values[key] as never;
     const mapped =
       input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
-    if (!filter.valid(mapped as never) || !filter.same(selected, mapped as never))
-      throw new Error(`The operation input must preserve the ${key} dimension selection.`);
+    invariant(
+      filter.valid(mapped as never) && filter.same(selected, mapped as never),
+      `The operation input must preserve the ${key} dimension selection.`,
+    );
   }
   return input;
 }

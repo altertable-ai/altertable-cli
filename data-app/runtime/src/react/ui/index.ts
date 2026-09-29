@@ -61,7 +61,7 @@ export { DimensionPicker } from "./DimensionPicker.tsx";
 export {
   dimensionFilter,
   parseDimensionSelection,
-  parseDimensionOptions,
+  parseFacetOptions,
   dimensionPredicate,
 } from "../../core/dimension.ts";
 export type {
@@ -154,10 +154,9 @@ export { AboutData } from "./AboutData.tsx";
 export type { AboutDataProps, AboutEmpty, AboutSubject, AboutTab } from "./AboutData.tsx";
 
 // Present mode
-export { PlayStory } from "./PlayStory.tsx";
-export { PresentSummary } from "./PlayStory.tsx";
-export type { PlayStoryProps, PresentSummaryProps, SummaryPoint, StoryStep } from "./PlayStory.tsx";
-export type { SummaryFinding, BoundSummary } from "./summary.ts";
+export { PresentStory } from "./PresentStory.tsx";
+export type { PresentStoryProps, StoryStep } from "./PresentStory.tsx";
+export type { StoryFinding, BoundStory } from "./story.ts";
 
 // Buttons, overlays, and icons
 export { AppIcon } from "./icons.ts";

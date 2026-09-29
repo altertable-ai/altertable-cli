@@ -6,6 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { invariant } from "../../core/invariant.ts";
 import { useMergeRefs } from "@floating-ui/react";
 import { AppIcon } from "./icons.ts";
 import type { DisclosedQuery } from "../../core/contract.ts";
@@ -74,7 +75,7 @@ function namedGlossaryEntries(
 ): GlossaryEntry[] {
   return ids.map((id) => {
     const entry = dataContext?.glossary[id];
-    if (!entry) throw new Error(`Unknown glossary entry: ${id}.`);
+    invariant(entry, `Unknown glossary entry: ${id}.`);
     return entry;
   });
 }
@@ -170,8 +171,10 @@ export function AboutData({
   const names = glossaryQueries(subject);
   if (names && resolvedQueries?.length) {
     for (const name of names) {
-      if (!resolvedQueries.some((query) => query.name === name))
-        throw new Error(`Unknown query name: ${name}.`);
+      invariant(
+        resolvedQueries.some((query) => query.name === name),
+        `Unknown query name: ${name}.`,
+      );
     }
   }
   const hasQueries = (resolvedQueries ?? []).some((query) => !names || names.includes(query.name));

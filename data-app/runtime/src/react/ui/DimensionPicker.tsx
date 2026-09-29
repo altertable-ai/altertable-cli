@@ -5,11 +5,11 @@ import type {
   DimensionValue,
   DimensionVariable,
 } from "../../core/dimension.ts";
+import { dimensionMemberKey } from "../../core/dimension.ts";
+import { invariant } from "../../core/invariant.ts";
 import { Combobox, type ComboboxOption } from "./Combobox.tsx";
 
-const allKey = JSON.stringify([]);
-const memberKey = (member: DimensionMember) =>
-  JSON.stringify(member.kind === "missing" ? ["m"] : ["v", member.value]);
+const allKey = "all";
 
 /** Adapts the typed dimension contract to the shared Combobox control. */
 export function DimensionPicker<T extends DimensionValue>({
@@ -38,7 +38,7 @@ export function DimensionPicker<T extends DimensionValue>({
   const byKey = new Map<string, DimensionMember<T>>();
   const choices: ComboboxOption[] = available.map((option) => {
     const member = { kind: "value" as const, value: option.value };
-    const id = memberKey(member);
+    const id = dimensionMemberKey(member);
     byKey.set(id, member);
     return {
       id,
@@ -49,7 +49,7 @@ export function DimensionPicker<T extends DimensionValue>({
   });
   if (filter.allowMissing) {
     const member = { kind: "missing" as const };
-    const id = memberKey(member);
+    const id = dimensionMemberKey(member);
     byKey.set(id, member);
     choices.push({ id, label: "Missing" });
   }
@@ -58,10 +58,13 @@ export function DimensionPicker<T extends DimensionValue>({
     return (
       <Combobox
         label={filter.label}
-        value={members.length ? memberKey(members[0]!) : allKey}
-        onChange={(id: string) =>
-          onChange(id === allKey ? { kind: "all" } : { kind: "include", members: [byKey.get(id)!] })
-        }
+        value={members.length ? dimensionMemberKey(members[0]!) : allKey}
+        onChange={(id: string) => {
+          if (id === allKey) return onChange({ kind: "all" });
+          const member = byKey.get(id);
+          invariant(member, `Unknown ${filter.label} option.`);
+          onChange({ kind: "include", members: [member] });
+        }}
         options={[{ id: allKey, label: "All" }, ...choices]}
         loading={loading}
         error={error}
@@ -74,14 +77,16 @@ export function DimensionPicker<T extends DimensionValue>({
   return (
     <Combobox
       label={filter.label}
-      values={members.map(memberKey)}
-      onChange={(ids: string[]) =>
-        onChange(
-          ids.length
-            ? { kind: "include", members: ids.map((id) => byKey.get(id)!) }
-            : { kind: "all" },
-        )
-      }
+      values={members.map(dimensionMemberKey)}
+      onChange={(ids: string[]) => {
+        if (!ids.length) return onChange({ kind: "all" });
+        const selected = ids.map((id) => {
+          const member = byKey.get(id);
+          invariant(member, `Unknown ${filter.label} option.`);
+          return member;
+        });
+        onChange({ kind: "include", members: selected });
+      }}
       options={choices}
       maxSelected={filter.maxSelected}
       loading={loading}

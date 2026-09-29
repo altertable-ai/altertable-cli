@@ -3,7 +3,7 @@ import {
   dimensionFilter,
   dimensionPredicate,
   parseDimensionSelection,
-  parseDimensionOptions,
+  parseFacetOptions,
   type DimensionSelection,
 } from "../src/core/dimension.ts";
 import { resolveViewInput } from "../src/react/view.ts";
@@ -99,14 +99,14 @@ test("facets accept bounded typed options and keep selected values valid when ab
     selection: "multiple",
     facet: { operation: "category-facet", input: (values) => ({ period: values.period }) },
   });
-  expect(parseDimensionOptions([{ value: "A", label: "Alpha", count: 0 }], facet)).toEqual([
+  expect(parseFacetOptions([{ value: "A", label: "Alpha", count: 0 }], facet)).toEqual([
     { value: "A", label: "Alpha", count: 0 },
   ]);
   expect(
     parseDimensionSelection({ kind: "include", members: [{ kind: "value", value: "A" }] }, facet),
   ).toEqual({ kind: "include", members: [{ kind: "value", value: "A" }] });
   expect(() =>
-    parseDimensionOptions(
+    parseFacetOptions(
       [
         { value: "A", label: "Alpha" },
         { value: "A", label: "Duplicate" },
@@ -114,7 +114,7 @@ test("facets accept bounded typed options and keep selected values valid when ab
       facet,
     ),
   ).toThrow("Duplicate");
-  expect(() => parseDimensionOptions([{ value: "A", label: "Alpha", count: -1 }], facet)).toThrow(
+  expect(() => parseFacetOptions([{ value: "A", label: "Alpha", count: -1 }], facet)).toThrow(
     "Invalid",
   );
   expect(() =>

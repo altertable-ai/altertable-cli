@@ -20,9 +20,9 @@ import { subscribeSearch, writeSearch } from "./search.ts";
 import { isEditingTarget, shortcuts, useShortcut } from "./shortcuts.ts";
 import { Tooltip } from "./Tooltip.tsx";
 import { ThemeToggle } from "./ThemeSelector.tsx";
-import "./PlayStory.css";
+import "./PresentStory.css";
 
-export type SummaryPoint = {
+export type StoryStep = {
   id: string;
   empty?: AboutEmpty;
   headline: string;
@@ -34,12 +34,9 @@ export type SummaryPoint = {
   queries?: DisclosedQuery[];
 };
 
-/** @deprecated Use SummaryPoint. */
-export type StoryStep = SummaryPoint;
-
-export type PresentSummaryProps = {
+export type PresentStoryProps = {
   title: string;
-  steps: SummaryPoint[];
+  steps: StoryStep[];
   empty?: AboutEmpty;
   scope?: ReactNode;
   dataContext: DataContext;
@@ -49,9 +46,6 @@ export type PresentSummaryProps = {
   headerActions?: ReactNode;
   footer?: ReactNode;
 } & Omit<ComponentPropsWithRef<"button">, "title">;
-
-/** @deprecated Use PresentSummaryProps. */
-export type PlayStoryProps = PresentSummaryProps;
 
 const stepKeys: Record<string, (index: number, last: number) => number> = {
   ArrowRight: (index) => index + 1,
@@ -67,7 +61,7 @@ const stepKeys: Record<string, (index: number, last: number) => number> = {
  * inspection uses `?about=`. `launcherProps` targets the outer span; `dialogProps` targets the
  * modal.
  */
-export function PresentSummary({
+export function PresentStory({
   title,
   steps,
   empty,
@@ -84,7 +78,7 @@ export function PresentSummary({
   disabled,
   ref,
   ...props
-}: PresentSummaryProps) {
+}: PresentStoryProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);
@@ -169,7 +163,7 @@ export function PresentSummary({
           ref={triggerRef}
           icon="present"
           variant="elevated"
-          label={props["aria-label"] ?? "Present data"}
+          label={props["aria-label"] ?? "Present story"}
           shortcut={shortcuts.playStory}
           tooltipAlign="end"
           className={className}
@@ -206,6 +200,7 @@ export function PresentSummary({
           <div className="altertable-present-shell">
             <header className="altertable-present-header">
               <div className="altertable-present-title">
+                <span className="altertable-present-brand">Story</span>
                 <strong>{title}</strong>
                 {scope && (
                   <>
@@ -219,7 +214,7 @@ export function PresentSummary({
               <div className="altertable-present-actions">
                 <span
                   className="altertable-present-count"
-                  aria-label={`Step ${index + 1} of ${steps.length}`}
+                  aria-label={`Finding ${index + 1} of ${steps.length}`}
                 >
                   {index + 1} / {steps.length}
                 </span>
@@ -272,7 +267,7 @@ export function PresentSummary({
                 </AboutData>
               </div>
             </div>
-            <nav className="altertable-present-nav" aria-label="Summary points">
+            <nav className="altertable-present-nav" aria-label="Story findings">
               <IconButton
                 icon="previous"
                 variant="ghost"
@@ -294,7 +289,7 @@ export function PresentSummary({
                   >
                     <button
                       type="button"
-                      aria-label={`Step ${itemIndex + 1}: ${item.headline}`}
+                      aria-label={`Finding ${itemIndex + 1}: ${item.headline}`}
                       aria-current={itemIndex === index ? "step" : undefined}
                       onClick={() => goTo(itemIndex)}
                     />
@@ -320,6 +315,3 @@ export function PresentSummary({
     </>
   );
 }
-
-/** @deprecated Use PresentSummary. */
-export const PlayStory = PresentSummary;

@@ -8,7 +8,7 @@ import {
 import { createDataClient } from "../src/client/index.ts";
 import { createDataHooks } from "../src/react/index.ts";
 import { displayedSnapshot } from "../src/core/data-view.ts";
-import { summaryPoints } from "../src/react/ui/summary.ts";
+import { storySteps } from "../src/react/ui/story.ts";
 import { resolveViewInput } from "../src/react/view.ts";
 import { dateRangeVariable } from "../src/react/ui/variables.ts";
 import { createDataContext } from "../src/react/ui/data-context.ts";
@@ -82,10 +82,10 @@ test("Present findings use the displayed input and require unique, supported evi
     visual: "12 actions",
     evidence: featureEvidence,
   };
-  expect(summaryPoints([finding], context)[0]?.queryNames).toEqual(["activity"]);
-  expect(() => summaryPoints([finding, finding], context)).toThrow("unique");
+  expect(storySteps([finding], context)[0]?.queryNames).toEqual(["activity"]);
+  expect(() => storySteps([finding, finding], context)).toThrow("unique");
   expect(() =>
-    summaryPoints([{ ...finding, evidence: { id: "missing", queryNames: ["unknown"] } }], context),
+    storySteps([{ ...finding, evidence: { id: "missing", queryNames: ["unknown"] } }], context),
   ).toThrow("Unknown query");
 });
 

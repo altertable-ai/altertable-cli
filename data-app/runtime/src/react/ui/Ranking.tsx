@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { formatCount } from "../../core/format.ts";
+import { invariant } from "../../core/invariant.ts";
 import { classNames } from "./classNames.ts";
 import "./Ranking.css";
 
@@ -11,8 +12,10 @@ export type RankingProps = {
 
 /** Ordered values scaled to the largest visible item, not shares of a whole. */
 export function Ranking({ items, formatValue = formatCount, className, ...props }: RankingProps) {
-  if (items.some((item) => !Number.isFinite(item.value) || item.value < 0))
-    throw new Error("Ranking values must be finite and nonnegative.");
+  invariant(
+    items.every((item) => Number.isFinite(item.value) && item.value >= 0),
+    "Ranking values must be finite and nonnegative.",
+  );
   const max = Math.max(0, ...items.map((item) => item.value));
   return (
     <ol {...props} className={classNames("altertable-ranking", className)}>

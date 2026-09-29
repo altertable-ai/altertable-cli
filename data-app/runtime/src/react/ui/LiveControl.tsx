@@ -1,4 +1,5 @@
 import type { ComponentPropsWithRef } from "react";
+import { invariant } from "../../core/invariant.ts";
 import {
   Button as AriaButton,
   ListBox,
@@ -37,7 +38,7 @@ export function LiveControl({
   ...props
 }: LiveControlProps) {
   const frequency = intervals.find((interval) => interval.seconds === intervalSeconds)?.description;
-  if (!frequency) throw new Error("LiveControl requires a supported update interval.");
+  invariant(frequency, "LiveControl requires a supported update interval.");
   return (
     <div className={classNames("altertable-live-control", className)} data-active={enabled}>
       <IconButton

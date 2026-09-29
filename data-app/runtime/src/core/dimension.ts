@@ -1,4 +1,5 @@
 import type { AppVariable, HistoryMode } from "./variables.ts";
+import { invariant } from "./invariant.ts";
 
 export type DimensionValue = string | number;
 export type DimensionMember<T extends DimensionValue = DimensionValue> =
@@ -26,8 +27,8 @@ export type DimensionVariable<T extends DimensionValue = DimensionValue> = Omit<
   describe: (selection: DimensionSelection<T>) => string;
 };
 
-const all: DimensionSelection<never> = { kind: "all" };
-const identity = (member: DimensionMember) =>
+const allSelection: DimensionSelection<never> = { kind: "all" };
+export const dimensionMemberKey = (member: DimensionMember) =>
   member.kind === "missing" ? "missing" : `value:${typeof member.value}:${member.value}`;
 
 export type DimensionFilterOptions<T extends DimensionValue> = {
@@ -49,37 +50,42 @@ export function dimensionFilter<const T extends DimensionValue>(
 ): DimensionVariable<T> {
   const { key, label, selection, valueType } = config;
   const options = config.options ?? [];
-  if (!!config.options === !!config.facet)
-    throw new Error("Choose fixed options or one facet operation.");
-  if (
-    !key ||
-    options.length > 200 ||
-    new Set(options.map((option) => identity({ kind: "value", value: option.value }))).size !==
-      options.length
-  )
-    throw new Error("Dimension options need a key, at most 200 distinct values.");
-  if (
-    options.some(
-      (option) =>
-        typeof option.value !== valueType ||
-        !option.label.trim() ||
-        (option.count !== undefined && (!Number.isSafeInteger(option.count) || option.count < 0)),
-    )
-  )
-    throw new Error("Dimension options need typed values, labels, and nonnegative counts.");
-  const allowed = new Set(
-    options.map((option) => identity({ kind: "value", value: option.value })),
+  invariant(!!config.options !== !!config.facet, "Choose fixed options or one facet operation.");
+  const optionKeys = options.map((option) =>
+    dimensionMemberKey({ kind: "value", value: option.value }),
   );
+  invariant(
+    !!key && options.length <= 200 && new Set(optionKeys).size === options.length,
+    "Dimension options need a key, at most 200 distinct values.",
+  );
+  invariant(
+    options.every(
+      (option) =>
+        typeof option.value === valueType &&
+        !!option.label.trim() &&
+        (option.count === undefined || (Number.isSafeInteger(option.count) && option.count >= 0)),
+    ),
+    "Dimension options need typed values, labels, and nonnegative counts.",
+  );
+  const allowed = new Set(optionKeys);
   const maxSelected = config.maxSelected ?? (selection === "single" ? 1 : 20);
-  if (
-    !Number.isInteger(maxSelected) ||
-    maxSelected < 1 ||
-    maxSelected > 50 ||
-    (selection === "single" && maxSelected !== 1)
-  )
-    throw new Error("Dimension selection limit is invalid.");
+  invariant(
+    Number.isInteger(maxSelected) &&
+      maxSelected >= 1 &&
+      maxSelected <= 50 &&
+      (selection !== "single" || maxSelected === 1),
+    "Dimension selection limit is invalid.",
+  );
   const allowMissing = config.allowMissing ?? false;
-  const defaultValue = all;
+  const defaultValue = allSelection;
+  function validMember(member: DimensionMember<T>): boolean {
+    if (member.kind === "missing") return allowMissing;
+    if (member.kind !== "value" || typeof member.value !== valueType) return false;
+    if (!config.facet) return allowed.has(dimensionMemberKey(member));
+    return typeof member.value === "number"
+      ? Number.isFinite(member.value)
+      : member.value.length <= 100;
+  }
   function valid(value: DimensionSelection<T>): boolean {
     if (!value || typeof value !== "object") return false;
     if (value.kind === "all") return true;
@@ -90,23 +96,9 @@ export function dimensionFilter<const T extends DimensionValue>(
       value.members.length > maxSelected
     )
       return false;
-    const ids = value.members.map(identity);
-    return (
-      new Set(ids).size === ids.length &&
-      value.members.every((member) =>
-        member.kind === "missing"
-          ? allowMissing
-          : member.kind === "value" &&
-            typeof member.value === valueType &&
-            (config.facet
-              ? typeof member.value === "number"
-                ? Number.isFinite(member.value)
-                : member.value.length <= 100
-              : allowed.has(identity(member))),
-      )
-    );
+    const ids = value.members.map(dimensionMemberKey);
+    return new Set(ids).size === ids.length && value.members.every(validMember);
   }
-  if (!valid(defaultValue)) throw new Error(`Invalid default for dimension ${key}.`);
   const encode = (value: DimensionSelection<T>) =>
     value.kind === "all"
       ? null
@@ -171,34 +163,32 @@ export function parseDimensionSelection<T extends DimensionValue>(
   value: unknown,
   filter: DimensionVariable<T>,
 ): DimensionSelection<T> {
-  if (!filter.valid(value as DimensionSelection<T>))
-    throw new Error(`Invalid ${filter.label} selection.`);
+  invariant(filter.valid(value as DimensionSelection<T>), `Invalid ${filter.label} selection.`);
   return value as DimensionSelection<T>;
 }
 
 /** Validate bounded facet results before showing them in a picker. */
-export function parseDimensionOptions<T extends DimensionValue>(
+export function parseFacetOptions<T extends DimensionValue>(
   value: unknown,
   filter: DimensionVariable<T>,
 ): DimensionOption<T>[] {
-  if (!Array.isArray(value) || value.length > 200)
-    throw new Error("Facet options exceed their bound.");
+  invariant(Array.isArray(value) && value.length <= 200, "Facet options exceed their bound.");
   const options: DimensionOption<T>[] = [];
   const seen = new Set<string>();
   for (const item of value) {
-    if (!item || typeof item !== "object") throw new Error("Invalid facet option.");
+    invariant(item && typeof item === "object", "Invalid facet option.");
     const option = item as DimensionOption<T>;
-    if (
-      typeof option.value !== filter.valueType ||
-      !filter.valid({ kind: "include", members: [{ kind: "value", value: option.value }] }) ||
-      typeof option.label !== "string" ||
-      !option.label.trim() ||
-      option.label.length > 100 ||
-      (option.count !== undefined && (!Number.isSafeInteger(option.count) || option.count < 0))
-    )
-      throw new Error("Invalid facet option.");
-    const id = identity({ kind: "value", value: option.value });
-    if (seen.has(id)) throw new Error("Duplicate facet option.");
+    invariant(
+      typeof option.value === filter.valueType &&
+        filter.valid({ kind: "include", members: [{ kind: "value", value: option.value }] }) &&
+        typeof option.label === "string" &&
+        !!option.label.trim() &&
+        option.label.length <= 100 &&
+        (option.count === undefined || (Number.isSafeInteger(option.count) && option.count >= 0)),
+      "Invalid facet option.",
+    );
+    const id = dimensionMemberKey({ kind: "value", value: option.value });
+    invariant(!seen.has(id), "Duplicate facet option.");
     seen.add(id);
     options.push(option);
   }
@@ -210,26 +200,28 @@ export function dimensionPredicate<
   T extends DimensionValue,
   const Columns extends readonly string[],
 >(column: Columns[number], selection: DimensionSelection<T>, allowedColumns: Columns): string {
-  if (
-    !allowedColumns.includes(column) ||
-    !/^[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*$/.test(column)
-  )
-    throw new Error("Invalid dimension column.");
+  invariant(
+    allowedColumns.includes(column) &&
+      /^[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*$/.test(column),
+    "Invalid dimension column.",
+  );
   if (selection.kind === "all") return "";
-  if (!selection.members.length) throw new Error("Empty dimension inclusion is invalid.");
+  invariant(selection.members.length > 0, "Empty dimension inclusion is invalid.");
   const values = selection.members.filter(
     (member): member is Extract<DimensionMember<T>, { kind: "value" }> => member.kind === "value",
   );
   const missing = selection.members.some((member) => member.kind === "missing");
   const literals = values.map(({ value }) => {
     if (typeof value === "number") {
-      if (!Number.isFinite(value)) throw new Error("Invalid numeric dimension value.");
+      invariant(Number.isFinite(value), "Invalid numeric dimension value.");
       return String(value);
     }
     const text = value as string;
     for (let index = 0; index < text.length; index++)
-      if (text.charCodeAt(index) < 32 || text.charCodeAt(index) === 127)
-        throw new Error("Invalid control character in dimension value.");
+      invariant(
+        text.charCodeAt(index) >= 32 && text.charCodeAt(index) !== 127,
+        "Invalid control character in dimension value.",
+      );
     return `'${text.replaceAll("'", "''")}'`;
   });
   const clauses = [

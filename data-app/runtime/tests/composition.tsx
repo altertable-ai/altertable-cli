@@ -16,7 +16,7 @@ import {
   GlossaryExplanation,
   MetricWidget,
   PeriodSummary,
-  PlayStory,
+  PresentStory,
   RefreshRegion,
   Sheet,
   Skeleton,
@@ -31,7 +31,7 @@ import {
   createDataContext,
   evidenceFor,
 } from "../src/react/ui/index.ts";
-import type { AppToolbarProps, PlayStoryProps } from "../src/react/ui/index.ts";
+import type { AppToolbarProps, PresentStoryProps } from "../src/react/ui/index.ts";
 import { defineDateRangeContract, defineQueryNames } from "../src/core/contract.ts";
 
 const toolbarProps = {
@@ -43,7 +43,7 @@ const storyProps = {
   steps: [],
   dataContext: null!,
   empty,
-} satisfies PlayStoryProps;
+} satisfies PresentStoryProps;
 const dataContext = defineDataContext({
   description: "Orders",
   glossary: { orders: { term: "Orders", definition: "Completed orders." } },
@@ -185,7 +185,7 @@ export function CompositionCheck() {
       <Sheet open={false} onOpenChange={() => {}} title="Details" className="sheet">
         Body
       </Sheet>
-      <PlayStory
+      <PresentStory
         {...storyProps}
         className="play"
         headerActions={<Button>Save</Button>}

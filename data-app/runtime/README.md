@@ -32,7 +32,7 @@ All of these APIs are exported from `/react`. Each component's stylesheet lives 
 | Bind filters to the URL | [variables](src/react/ui/variables.ts), [DateRangePicker](src/react/ui/DateRangePicker.tsx) | Combobox, PeriodSummary, Tabs, useViewTab |
 | Search a loaded collection | [searchItems](src/react/ui/searchItems.ts), [SearchMatch](src/react/ui/SearchMatch.tsx) | SearchField |
 | Explain context, glossary, and queries | [AboutData](src/react/ui/AboutData.tsx), [DataContext](src/react/ui/data-context.ts) | [GlossaryDefinition](src/react/ui/GlossaryDefinition.tsx), GlossaryExplanation, [defineDataIdentifiers](src/react/ui/data-identifiers.tsx) |
-| Summarize loaded findings in Present | [PresentSummary](src/react/ui/PlayStory.tsx) | SummaryPoint |
+| Present an evidence-backed story | [PresentStory](src/react/ui/PresentStory.tsx) | StoryFinding, StoryStep |
 | Build custom controls and overlays | [Button](src/react/ui/Button.tsx), [Sheet](src/react/ui/Sheet.tsx) | IconButton, Tooltip, HelpPopover, Kbd |
 
 ## Contracts
@@ -56,9 +56,9 @@ For app-authored charts, reveal exact values on hover and keyboard focus. If act
 
 `DataApp` owns the title, description, scope, header spacing, and request boundary. Its body starts with controls and exploration; a second `h1` emits a development warning. `defineTimeView` derives a URL date variable, picker, operation input, and displayed-period label from one `time` declaration. For an intentional fixed period, use `defineDataView` with an explicit `describeInput`.
 
-`DataApp.summary` is a callback over the **displayed snapshot**: `summary={({data, input, state}) => findings}`. It is unavailable until data is visible and retains the input that produced stale results. Return one to four findings with stable IDs, headline, visual, and required `evidence` from `context.evidence(...)` or a metric. Choose meaningful relationships and comparisons rather than repeating the page's KPI values. `SelectableBarChart` provides standard inspect-on-select behavior for daily charts.
+`DataApp.story` builds an evidence-backed narrative from the **displayed snapshot**: `story={({data, input, state}) => findings}`. It is unavailable until data is visible and retains the input that produced stale results. Return one to four consequential findings with stable IDs, a headline, a visual, and required `evidence` from `context.evidence(...)` or a metric. Choose relationships and comparisons that help a reader understand what matters, rather than repeating the page's KPI values. `SelectableBarChart` provides standard inspect-on-select behavior for daily charts.
 
-A categorical dimension is a `dimensionFilter({ key, label, valueType, selection, options, allowMissing })`. `filters: { interface: filter }` on a view generates its control and binds its URL selection. The operation input must preserve that named field or the view throws. On the server, call `parseDimensionSelection` in the input parser and `dimensionPredicate("allowlisted_column", input.interface, ["allowlisted_column"])` in SQL; selected values use centralized escaping, while missing emits `IS NULL` and All emits no predicate. The picker owns search, chips, reset, keyboard interaction, and the selected label. For changing options, `createDataHooks(...).defineFacetFilter({ ..., facet: { operation, input: (otherSelections) => facetInput } })` fetches a bounded operation with 60-second query caching and option loading/error UI. The app's facet input chooses which date and other filters affect counts. Selected values remain visible with a zero count if absent from a newer facet result.
+A categorical dimension is a `dimensionFilter({ key, label, valueType, selection, options, allowMissing })`. `filters: { interface: filter }` on a view generates its control and binds its URL selection. The operation input must preserve that named field or the view rejects the configuration. On the server, call `parseDimensionSelection` in the input parser and `dimensionPredicate("allowlisted_column", input.interface, ["allowlisted_column"])` in SQL; selected values use centralized escaping, while missing emits `IS NULL` and All emits no predicate. The Combobox picker owns search, reset, keyboard interaction, and selected values in its trigger. For changing options, `createDataHooks(...).defineFacetFilter({ ..., facet: { operation, input: (otherSelections) => facetInput } })` fetches a bounded operation with 60-second query caching and option loading/error UI. The app's facet input chooses which date and other filters affect counts. Selected values remain visible with a zero count if absent from a newer facet result.
 
 ## Ownership
 
@@ -199,7 +199,7 @@ Import `defineQueryNames` from `/contract` and the context/identifier factories 
 
 ## API migration
 
-- Replace `DataApp.story` and static `summary` objects with `summary={({ data, input, state }) => findings}`. Each finding must carry registered evidence.
+- Replace `DataApp.summary` with `story={({ data, input, state }) => findings}`. Use `StoryFinding` and `PresentStory` in place of `SummaryFinding` and `PresentSummary`. Each finding must carry registered evidence.
 - Views that previously inferred their date variable now declare `date: { variable: "period", input: (input) => input }`, or supply `describeInput` for a non-date view.
 - Numeric metrics use `value={count} format={{ kind: "count" }}`. Custom formatted JSX or strings use `content={...}` instead of `value`.
 - Supply `empty` to secondary `DataSection` requests or pass a bound `useView` result. A primary `DataApp` accepts it either from `useView` or as an explicit prop.

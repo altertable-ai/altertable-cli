@@ -1,3 +1,5 @@
+import { invariant } from "./invariant.ts";
+
 export type AppearanceSettings = {
   mode: "light" | "dark" | "system";
   baseColor: "neutral" | "slate" | "warm";
@@ -55,11 +57,10 @@ export function parseAppearance(value: unknown): AppearanceSettings {
       chartColors: [...defaults.chartColors],
       typography: { ...defaults.typography },
     };
-  if (
-    !record(value) ||
-    Object.keys(value).some(
-      (key) =>
-        ![
+  invariant(
+    record(value) &&
+      Object.keys(value).every((key) =>
+        [
           "mode",
           "baseColor",
           "accentColor",
@@ -70,34 +71,30 @@ export function parseAppearance(value: unknown): AppearanceSettings {
           "elevation",
           "typography",
         ].includes(key),
-    )
-  ) {
-    throw new Error("Invalid appearance settings.");
-  }
+      ),
+    "Invalid appearance settings.",
+  );
   const typography = value.typography;
-  if (
-    (value.mode !== undefined && !oneOf(value.mode, ["light", "dark", "system"])) ||
-    (value.baseColor !== undefined && !oneOf(value.baseColor, ["neutral", "slate", "warm"])) ||
-    (value.accentColor !== undefined && !color(value.accentColor)) ||
-    (value.darkAccentColor !== undefined && !color(value.darkAccentColor)) ||
-    (value.chartColors !== undefined &&
-      (!Array.isArray(value.chartColors) ||
-        value.chartColors.length < 1 ||
-        value.chartColors.length > 8 ||
-        !value.chartColors.every(color))) ||
-    (value.density !== undefined &&
-      !oneOf(value.density, ["compact", "comfortable", "spacious"])) ||
-    (value.cornerRadius !== undefined &&
-      !oneOf(value.cornerRadius, ["none", "small", "medium", "large"])) ||
-    (value.elevation !== undefined && !oneOf(value.elevation, ["flat", "subtle", "raised"])) ||
-    (typography !== undefined &&
-      (!record(typography) ||
-        Object.keys(typography).some((key) => key !== "body" && key !== "heading") ||
-        (typography.body !== undefined && !font(typography.body)) ||
-        (typography.heading !== undefined && !font(typography.heading))))
-  ) {
-    throw new Error("Invalid appearance settings.");
-  }
+  const validFields =
+    (value.mode === undefined || oneOf(value.mode, ["light", "dark", "system"])) &&
+    (value.baseColor === undefined || oneOf(value.baseColor, ["neutral", "slate", "warm"])) &&
+    (value.accentColor === undefined || color(value.accentColor)) &&
+    (value.darkAccentColor === undefined || color(value.darkAccentColor)) &&
+    (value.chartColors === undefined ||
+      (Array.isArray(value.chartColors) &&
+        value.chartColors.length >= 1 &&
+        value.chartColors.length <= 8 &&
+        value.chartColors.every(color))) &&
+    (value.density === undefined || oneOf(value.density, ["compact", "comfortable", "spacious"])) &&
+    (value.cornerRadius === undefined ||
+      oneOf(value.cornerRadius, ["none", "small", "medium", "large"])) &&
+    (value.elevation === undefined || oneOf(value.elevation, ["flat", "subtle", "raised"])) &&
+    (typography === undefined ||
+      (record(typography) &&
+        Object.keys(typography).every((key) => key === "body" || key === "heading") &&
+        (typography.body === undefined || font(typography.body)) &&
+        (typography.heading === undefined || font(typography.heading))));
+  invariant(validFields, "Invalid appearance settings.");
   return {
     mode: (value.mode ?? defaults.mode) as AppearanceSettings["mode"],
     baseColor: (value.baseColor ?? defaults.baseColor) as AppearanceSettings["baseColor"],

@@ -99,7 +99,7 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      summary={() => [
+      story={() => [
           {
             id: "orders",
             headline: "Orders increased",

@@ -5,7 +5,7 @@ import { Combobox } from "./ui/Combobox.tsx";
 import { DateRangePicker } from "./ui/DateRangePicker.tsx";
 import { DimensionPicker } from "./ui/DimensionPicker.tsx";
 import {
-  parseDimensionOptions,
+  parseFacetOptions,
   type DimensionSelection,
   type DimensionVariable,
 } from "../core/dimension.ts";
@@ -21,7 +21,7 @@ import type { ResolvedVariables } from "./view.ts";
 /** URL values resolve before facets; facet keys include their dependent inputs for cached, bounded loading. */
 export function useViewVariables<Variables extends VariableCollection>(
   definitions: Variables,
-  loadFacet?: (operation: string, input: unknown, signal: AbortSignal) => Promise<unknown>,
+  loadFacet: (operation: string, input: unknown, signal: AbortSignal) => Promise<unknown>,
 ) {
   const variables = useAppVariables(definitions);
   const resolved = {} as ResolvedVariables<Variables>;
@@ -36,7 +36,6 @@ export function useViewVariables<Variables extends VariableCollection>(
     (entry): entry is [string, DimensionVariable<any>] =>
       entry[1].kind === "dimension" && !!entry[1].facet,
   );
-  if (facets.length && !loadFacet) throw new Error("Facet dimensions need an operation loader.");
   const facetQueries = useQueries({
     queries: facets.map(([name, filter]) => {
       const facet = filter.facet!;
@@ -44,8 +43,8 @@ export function useViewVariables<Variables extends VariableCollection>(
       return {
         queryKey: ["dimension-facet", name, facet.operation, input],
         queryFn: ({ signal }: { signal: AbortSignal }) =>
-          loadFacet!(facet.operation, input, signal).then((result) =>
-            parseDimensionOptions(result, filter),
+          loadFacet(facet.operation, input, signal).then((result) =>
+            parseFacetOptions(result, filter),
           ),
         staleTime: 60_000,
         gcTime: 300_000,

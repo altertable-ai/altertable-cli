@@ -2,14 +2,14 @@ import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from
 import { createThemeController } from "../../core/appearance.ts";
 import type { DisclosedQuery } from "../../core/contract.ts";
 import type { DataAppConfig } from "../../core/config.ts";
-import { displayedSnapshot, type DisplayedSnapshot, type DataView } from "../../core/data-view.ts";
+import { displayedSnapshot, type DataView } from "../../core/data-view.ts";
 import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import { AppHeader } from "./AppHeader.tsx";
 import { AppLayout } from "./AppLayout.tsx";
 import { AppScope } from "./AppScope.tsx";
 import { AppToolbar, type AppToolbarProps } from "./AppToolbar.tsx";
 import type { DataContext } from "./data-context.ts";
-import { summaryPoints, type BoundSummary } from "./summary.ts";
+import { storySteps, type BoundStory } from "./story.ts";
 import { ThemeToggle } from "./ThemeSelector.tsx";
 import { VariableBar } from "./VariableBar.tsx";
 import { DataViewToast } from "./DataViewToast.tsx";
@@ -37,7 +37,6 @@ export type DataAppRequest<Data, Input> = {
   refresh?: AppToolbarProps["refresh"];
   empty?: Pick<EmptyStateProps, "title" | "description">;
   controls?: ReactNode;
-  displayedSnapshot?: DisplayedSnapshot<Data, Input>;
 };
 
 export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
@@ -45,7 +44,7 @@ export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
     | ({
         request: DataAppRequest<Data, Input>;
         /** Findings are always derived from the result currently visible to the reader. */
-        summary?: BoundSummary<Data, Input>;
+        story?: BoundStory<Data, Input>;
         children: (data: Data, displayedInput: Input) => ReactNode;
         loading?: ReactNode;
         empty?: Pick<EmptyStateProps, "title" | "description">;
@@ -62,7 +61,7 @@ export type DataAppProps<Data = unknown, Input = unknown> = DataAppBaseProps &
       ))
     | {
         request?: never;
-        summary?: never;
+        story?: never;
         children: ReactNode;
         queries?: DisclosedQuery[];
         refresh?: AppToolbarProps["refresh"];
@@ -95,10 +94,10 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
     if (import.meta.env?.DEV && bodyRef.current?.querySelector("h1"))
       console.warn("DataApp owns the page title. Use section headings (h2) in its body.");
   });
-  const snapshot = request?.displayedSnapshot ?? (request && displayedSnapshot(request.view));
-  const presentation =
-    request && props.summary && snapshot
-      ? { steps: summaryPoints(props.summary(snapshot), dataContext) }
+  const snapshot = request && displayedSnapshot(request.view);
+  const story =
+    request && props.story && snapshot
+      ? { steps: storySteps(props.story(snapshot), dataContext) }
       : undefined;
   const scope = (
     <AppScope
@@ -119,9 +118,9 @@ export function DataApp<Data, Input>(props: DataAppProps<Data, Input>) {
             <AppToolbar
               requestState={request?.view.kind}
               refresh={refresh ?? request?.refresh}
-              summary={
-                presentation && {
-                  ...presentation,
+              story={
+                story && {
+                  ...story,
                   title: config.title,
                   scope,
                   dataContext,

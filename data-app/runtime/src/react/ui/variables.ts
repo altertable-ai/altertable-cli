@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { today } from "@internationalized/date";
+import { invariant } from "../../core/invariant.ts";
 import { subscribeSearch, writeSearch } from "./search.ts";
 import type { DatePresetId, DateRange } from "../../core/date-range.ts";
 import {
@@ -115,7 +116,7 @@ export function useAppVariables<const Variables extends VariableCollection>(
         AppVariableValues<Variables>[typeof name]
       >;
       const value = next[name]!;
-      if (!variable.valid(value)) throw new Error(`Invalid value for variable ${name}.`);
+      invariant(variable.valid(value), `Invalid value for variable ${name}.`);
       Object.assign(changes, variable.write(value));
       if (!history && variable.history === "push") mode = "push";
     }

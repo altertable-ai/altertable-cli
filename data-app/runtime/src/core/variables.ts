@@ -1,6 +1,7 @@
 import { availableDatePresets, type DatePresetId, type DateRange } from "./date-range.ts";
 import type { DateRangeContract, DateRangeRequest } from "./contract.ts";
 import type { DimensionSelection, DimensionVariable } from "./dimension.ts";
+import { invariant } from "./invariant.ts";
 
 export type HistoryMode = "push" | "replace";
 
@@ -40,10 +41,14 @@ export function defineAppVariables<const Variables extends VariableCollection>(
   const owners = new Map<string, string>();
   for (const [name, variable] of Object.entries(variables)) {
     for (const key of variable.urlKeys) {
-      if (["view", "about", "tab", "present", "step"].includes(key))
-        throw new Error(`Variable ${name} uses reserved URL key: ${key}.`);
-      if (!key || owners.has(key))
-        throw new Error(`Variable ${name} has an empty or duplicate URL key: ${key}.`);
+      invariant(
+        !["view", "about", "tab", "present", "step"].includes(key),
+        `Variable ${name} uses reserved URL key: ${key}.`,
+      );
+      invariant(
+        !!key && !owners.has(key),
+        `Variable ${name} has an empty or duplicate URL key: ${key}.`,
+      );
       owners.set(key, name);
     }
   }
@@ -88,8 +93,10 @@ export function selectVariable({
   defaultValue: string;
   values?: readonly string[];
 }): AppVariable<string> {
-  if (values && !values.includes(defaultValue))
-    throw new Error(`Select variable ${key} must include its default value.`);
+  invariant(
+    !values || values.includes(defaultValue),
+    `Select variable ${key} must include its default value.`,
+  );
   const valid = (value: string) => typeof value === "string" && (!values || values.includes(value));
   return {
     kind: "select",
@@ -175,7 +182,7 @@ export function dateRangeVariable({
         // Invalid URL values fall back to the app default.
       }
     }
-    throw new Error(`Date variable ${key} is outside its available data range.`);
+    invariant(false, `Date variable ${key} is outside its available data range.`);
   }
   const same = (left: DateRangeSelection, right: DateRangeSelection) =>
     left.kind === right.kind &&
@@ -243,9 +250,13 @@ export function dateRangeVariable({
       ...(comparison ? { [comparisonKey]: value.comparison ?? null } : {}),
     }),
   };
-  if (defaultValue.comparison)
-    throw new Error(`Date variable ${key} comparison must be activated by the reader.`);
-  if (!variable.valid(defaultValue))
-    throw new Error(`Date variable ${key} has a default outside its available data range.`);
+  invariant(
+    !defaultValue.comparison,
+    `Date variable ${key} comparison must be activated by the reader.`,
+  );
+  invariant(
+    variable.valid(defaultValue),
+    `Date variable ${key} has a default outside its available data range.`,
+  );
   return variable;
 }

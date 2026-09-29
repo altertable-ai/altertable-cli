@@ -1,4 +1,5 @@
 import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
+import { invariant } from "../../core/invariant.ts";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
 import { DataPanel } from "./DataPanel.tsx";
 import { DataTable, DataTableEmptyRow, type DataTableSearch } from "./DataTable.tsx";
@@ -82,9 +83,10 @@ function TableWidgetContent<Row>({
   empty,
   ...props
 }: TableWidgetBaseProps<Row> & { rows: readonly Row[] }) {
-  if (pagination && (!Number.isSafeInteger(pagination.pageSize) || pagination.pageSize < 1)) {
-    throw new Error("TableWidget pagination.pageSize must be a positive integer.");
-  }
+  invariant(
+    !pagination || (Number.isSafeInteger(pagination.pageSize) && pagination.pageSize >= 1),
+    "TableWidget pagination.pageSize must be a positive integer.",
+  );
   const rowKeys = JSON.stringify(rows.map(rowKey));
   const [pageState, setPageState] = useState({ page: 0, rowKeys, searchValue: search?.value });
   if (pageState.rowKeys !== rowKeys || pageState.searchValue !== search?.value) {

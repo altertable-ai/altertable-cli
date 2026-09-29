@@ -74,7 +74,7 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
     expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());
     const paths = JSON.parse(result.stdout[0]!).files as string[];
-    expect(paths).toContain(".altertable/runtime/src/react/ui/PlayStory.tsx");
+    expect(paths).toContain(".altertable/runtime/src/react/ui/PresentStory.tsx");
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
     expect(paths).toContain("docs/data.md");

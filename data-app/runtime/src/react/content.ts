@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { DataReading, MetricReading, MetricValues } from "../core/reading.ts";
 import type { DateRangeRequest } from "../core/contract.ts";
+import { invariant } from "../core/invariant.ts";
 
 export type DataContentHelpers<Data> = {
   select: <Value>(select: (data: Data) => Value) => DataReading<Value>;
@@ -29,8 +30,10 @@ export function defineDataContent<Data, Input>(
         select: (select) => ({ loading: false, value: select(data) }),
         metric: (select) => {
           const values = select(data);
-          if (values.previous !== undefined && !options.date)
-            throw new Error("Metric comparisons require a view date binding.");
+          invariant(
+            values.previous === undefined || options.date,
+            "Metric comparisons require a view date binding.",
+          );
           return { loading: false, value: { ...values, period: options.date?.(input) } };
         },
       }),

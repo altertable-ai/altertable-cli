@@ -1,3 +1,4 @@
+import { invariant } from "../../core/invariant.ts";
 import "./data-identifiers.css";
 
 export type TableIdentifier = { catalog: string; schema: string; name: string };
@@ -26,7 +27,7 @@ function qualifiedName(definition: DataIdentifierDefinition): string {
 }
 
 function assertAlias(id: string) {
-  if (!id || id.includes(".")) throw new Error(`Invalid data identifier alias ${id}.`);
+  invariant(!!id && !id.includes("."), `Invalid data identifier alias ${id}.`);
 }
 
 /** Register exact source names once; returned JSX IDs are checked against this registry. */
@@ -44,7 +45,7 @@ export function defineDataIdentifiers<
   for (const [id, column] of Object.entries(columns)) {
     assertAlias(id);
     const table = tables[column.table];
-    if (!table) throw new Error(`Unknown table ${column.table} for column ${id}.`);
+    invariant(table, `Unknown table ${column.table} for column ${id}.`);
     definitions[`columns.${column.table}.${id}`] = {
       kind: "column",
       tableId: `tables.${column.table}`,
@@ -55,7 +56,7 @@ export function defineDataIdentifiers<
 
   function DataIdentifier({ id, display }: { id: Id; display?: "short" | "qualified" }) {
     const definition = definitions[id];
-    if (!definition) throw new Error(`Unknown data identifier ${id}.`);
+    invariant(definition, `Unknown data identifier ${id}.`);
     const qualified = qualifiedName(definition);
     const shown = display ?? (definition.kind === "table" ? "qualified" : "short");
     const table = definition.kind === "table" ? definition : definition.table;

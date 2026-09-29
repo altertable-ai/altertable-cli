@@ -79,6 +79,13 @@
   font-weight: 650;
   line-height: 24px;
 }
+.altertable-present-brand {
+  color: var(--at-accent, #4779dc);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .altertable-present-connector {
   color: var(--at-muted, #687078);
   font-weight: 400;

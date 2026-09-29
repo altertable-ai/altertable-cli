@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { DataAppError } from "../../client/index.ts";
+import { invariant } from "../../core/invariant.ts";
 import { Button } from "./Button.tsx";
 import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import { DataBoundary } from "./DataBoundary.tsx";
@@ -96,9 +97,9 @@ export function DataSection<Data, Input>({
   ...props
 }: DataSectionProps<Data, Input>) {
   const dataView = result?.view ?? view;
-  if (!dataView) throw new Error("DataSection needs a data view.");
+  invariant(dataView, "DataSection needs a data view.");
   const emptyState = empty ?? result?.empty;
-  if (!emptyState) throw new Error("DataSection needs an empty state.");
+  invariant(emptyState, "DataSection needs an empty state.");
   return (
     <DataBoundary
       {...props}
