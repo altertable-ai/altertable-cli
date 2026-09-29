@@ -10,7 +10,7 @@ import { createDataHooks, DataWidget } from "../src/react/index.ts";
 import { displayedSnapshot } from "../src/core/data-view.ts";
 import { storySteps } from "../src/react/ui/story.ts";
 import { resolveViewInput } from "../src/react/view.ts";
-import { dateRangeVariable } from "../src/react/ui/variables.ts";
+import { dateRangeVariable, textVariable } from "../src/react/ui/variables.ts";
 import { createDataContext } from "../src/react/ui/data-context.ts";
 import { ComparisonVisual } from "../src/react/ui/ComparisonVisual.tsx";
 import { VisualizationWidget } from "../src/react/ui/VisualizationWidget.tsx";
@@ -97,6 +97,36 @@ test("time view derives its control, input, and displayed period from one declar
   expect(timed.variables.period.kind).toBe("dateRange");
   expect(resolveViewInput(timed, { period: input })).toEqual(input);
   expect(timed.describeInput(input)).toContain("Mar 10–12, 2026");
+});
+
+test("time view composes other inputs without surrendering its period binding", () => {
+  const { defineTimeView: defineSearchView } = createDataHooks<{
+    search: DataOperation<{ period: DateRangeRequest; search: string }, Data>;
+  }>(createDataClient());
+  const search = textVariable({ key: "search" });
+  const timed = defineSearchView({
+    operation: "search",
+    time: { contract: calendar, defaultValue: { kind: "preset", id: "last-7" } },
+    variables: { search },
+    input: ({ period, search }) => ({ period, search }),
+    isEmpty: (data) => !data.rows.length,
+    empty: { title: "No actions" },
+  });
+  const input = calendar.request({ start: "2026-03-10", end: "2026-03-12" });
+  expect(resolveViewInput(timed, { period: input, search: "billing" })).toEqual({
+    period: input,
+    search: "billing",
+  });
+  expect(() =>
+    defineSearchView({
+      operation: "search",
+      time: { contract: calendar, defaultValue: { kind: "preset", id: "last-7" } },
+      variables: { period },
+      input: ({ period }) => ({ period, search: "" }),
+      isEmpty: () => false,
+      empty: { title: "Empty" },
+    }),
+  ).toThrow("owned by defineTimeView");
 });
 
 test("Present findings use the displayed input and require unique, supported evidence", () => {

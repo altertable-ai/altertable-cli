@@ -11,11 +11,16 @@ import {
   type DimensionFilterOptions,
   type DimensionOption,
   type DimensionValue,
-  type DimensionVariable,
 } from "../core/dimension.ts";
 import type { EmptyStateProps } from "./ui/EmptyState.tsx";
+import { invariant } from "../core/invariant.ts";
 import { defineDataContent, type DataContentState } from "./content.ts";
-import { describeViewInput, resolveViewInput, type DataViewDefinition } from "./view.ts";
+import {
+  describeViewInput,
+  resolveViewInput,
+  type DataViewDefinition,
+  type ResolvedVariables,
+} from "./view.ts";
 import { useViewVariables } from "./view-controls.tsx";
 
 /**
@@ -142,19 +147,27 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
    * Use defineDataView with describeInput for deliberately fixed-period views. */
   function defineTimeView<
     Name extends keyof Operations & string,
-    const Filters extends Record<string, DimensionVariable<any>> = {},
+    const Additional extends VariableCollection = {},
   >(definition: {
     operation: Name;
-    time: Omit<DateRangeVariableOptions, "key"> & { key?: string };
-    variables?: Filters;
+    time: Omit<DateRangeVariableOptions, "key">;
+    variables?: Additional;
+    input?: (
+      values: ResolvedVariables<{ period: ReturnType<typeof dateRangeVariable> } & Additional>,
+    ) => InputOf<Operations[Name]>;
     isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
     empty: Pick<EmptyStateProps, "title" | "description">;
   }) {
-    const period = dateRangeVariable({ ...definition.time, key: definition.time.key ?? "period" });
-    return defineDataView<Name, { period: typeof period } & Filters>({
+    invariant(
+      !definition.variables || !("period" in definition.variables),
+      "The period input is owned by defineTimeView.",
+    );
+    const period = dateRangeVariable({ ...definition.time, key: "period" });
+    return defineDataView<Name, { period: typeof period } & Additional>({
       operation: definition.operation,
-      variables: { period, ...definition.variables } as { period: typeof period } & Filters,
+      variables: { period, ...definition.variables } as { period: typeof period } & Additional,
       input: (values) => {
+        if (definition.input) return definition.input(values);
         if (!definition.variables || !Object.keys(definition.variables).length)
           return values.period as InputOf<Operations[Name]>;
         return { ...values } as InputOf<Operations[Name]>;

@@ -2,7 +2,7 @@
 
 Use `DataApp` for the title, description, scope, controls, and request boundary. Body content begins with the exploration. A second top-level heading triggers a development warning. `AppLayout` owns the outer gutter and page width.
 
-For time-based data, use `defineTimeView({ operation, time: { contract, defaultValue }, isEmpty, empty })`. The view generates the URL-backed date picker, operation input, and displayed-period label. For an intentional fixed reporting period, use `defineDataView` with `describeInput`.
+For time-based data, use `defineTimeView({ operation, time: { contract, defaultValue }, isEmpty, empty })`. The view generates the URL-backed `period` picker, operation input, and displayed-period label. Additional `variables` and an optional `input` mapper compose with that period. For an intentional fixed reporting period, use `defineDataView` with `describeInput`.
 
 Give most data apps a `story={({ data, input, state }) => [...]}` callback. Present uses the displayed snapshot, including the original input during refresh or failure. Author one to four consequential findings with stable IDs, evidence, and a comparative or relational visual. Prefer a concentration, split, shift, or meaningful co-occurrence over a repeated KPI. State that association is not causation where relevant. Each finding needs `evidence: context.evidence(...)` or a bound metric.
 
