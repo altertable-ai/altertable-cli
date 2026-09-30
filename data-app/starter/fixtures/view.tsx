@@ -1,3 +1,4 @@
+import "@altertable/data-app/react/styles.css";
 import { createDataClient } from "@altertable/data-app/client";
 import {
   createDataHooks,

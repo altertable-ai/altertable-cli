@@ -897,22 +897,11 @@
                   "repeatable": false,
                   "scope": "command",
                   "values": []
-                },
-                {
-                  "name": "watch-runtime",
-                  "aliases": [],
-                  "type": "boolean",
-                  "description": "Upgrade generated runtime on source changes and restart preview.",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
                 }
               ],
               "examples": [
                 "altertable app dev",
                 "altertable app dev --port 3022",
-                "altertable app dev --watch-runtime",
                 "altertable --profile staging app dev --dir ./my-app"
               ],
               "subcommands": []
@@ -984,7 +973,7 @@
             {
               "id": "altertable-app-upgrade",
               "command": "altertable app upgrade",
-              "description": "Update an unmodified data app runtime to the CLI's current version.",
+              "description": "Update the data app package to the CLI's tested version, migrating vendored apps.",
               "usage": [
                 "altertable app upgrade [options]"
               ],

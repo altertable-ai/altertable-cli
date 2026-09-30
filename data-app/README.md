@@ -1,10 +1,9 @@
 # Data app development
 
-`runtime/` is the private `@altertable/data-app` package. `starter/` is the actual getting-started application. `tests/` runs browser scenarios against the starter and its separate component fixtures.
-
-The [runtime API map](runtime/README.md) routes readers to public entries and UI source. The [contributor router](AGENTS.md) identifies source and checks for each change.
-
-The package separates React-free `core/`, `client/`, and `server/` source from `react/`, which owns hooks, the `DataApp` shell, and UI. Generated apps keep their question, SQL, validation, exploration context, and view in `src/`.
+`starter/` is the application copied by `altertable app create`. It pins the published
+[`@altertable/data-app`](https://github.com/altertable-ai/data-app) package and ships a frozen
+lockfile. Package source, API documentation, unit tests, and releases belong to that repository.
+`tests/` exercises the starter and component fixtures against the installed npm package.
 
 ## Develop
 
@@ -12,49 +11,62 @@ From the repository root, using Fish:
 
 ```fish
 bun install --cwd cli --frozen-lockfile
-bun run --cwd cli data-app:setup
-bun install --cwd data-app/runtime --frozen-lockfile
 bun install --cwd data-app/starter --frozen-lockfile
-./bin/altertable app dev --dir data-app/starter --watch-runtime
+./bin/altertable app dev --dir data-app/starter
 ```
 
-Use a configured profile for live data. `--watch-runtime` watches canonical runtime source, validates the installed copy, upgrades it, and restarts the app. Edit runtime source in `runtime/src/`; the starter's `.altertable/runtime/` is generated and ignored. The starter's connection check executes a bounded query before showing Connected.
+Use a configured profile for live data. The starter executes a bounded connection query before
+showing Connected. App queries, data context, views, and appearance remain app-owned.
 
 ## Ownership and distribution
 
-- `runtime/package.json` declares public exports and a `files` allowlist. Tests and development configuration live outside that list.
-- `runtime/.oxlintrc.json` checks runtime React code; `starter/.oxlintrc.json` ships with each new app so `app check` enforces React Compiler, hooks, and accessibility correctness rules on app-owned source.
-- Generated apps use package `#app/*` and `#config` imports. Oxlint's built-in `no-restricted-imports` rule rejects relative source imports without a custom plugin.
-- `cli/src/commands/app/lib/distribution.ts` declares the starter copy allowlist. `src/`, app configuration, lockfile, and authoring docs ship. Browser fixtures, tests, dependencies, and build outputs do not.
-- `createAppFiles` changes JSON identity fields and the lockfile root name. Application code reads `app.json`; source code has no template tokens.
-- `cli/scripts/package-data-app.ts` supplies the Bun build plugin. It replaces the source payload loader with literal file data. The npm bundle embeds this payload; native releases compile that same bundle. Installed CLIs never read this repository to create an app.
-- Generated apps commit `.altertable/runtime/` because it is a required `file:` dependency; only this repository's starter copy is ignored. Users own their generated `src/`, `app.json`, package manifest, and docs. The CLI owns `.altertable/runtime/` and records its source checksums. Public import paths remain `@altertable/data-app/...`.
+The CLI embeds only the starter allowlist in `cli/src/commands/app/lib/distribution.ts`.
+Both npm and native CLI builds can scaffold an app without reading this checkout or accessing
+the network. Installing the generated app needs registry access or a populated Bun cache.
+Generated projects commit their source, package manifest, and lockfile; they do not vendor runtime
+source. Public imports use `@altertable/data-app/...`.
 
-The runtime owns its implementation dependencies. The starter owns React, ReactDOM, and its authoring tools. When runtime dependencies change, refresh the starter lockfile after setup:
+The starter owns React, ReactDOM, and its authoring tools. The package owns its implementation
+dependencies. Its stylesheet is imported explicitly by the browser entry. The app's `AGENTS.md`
+points to the installed package guide and docs; dependency guides are not assumed to load automatically.
 
-```fish
-cd data-app/starter
-bun update @altertable/data-app --lockfile-only --ignore-scripts
-```
-
-Commit both project lockfiles when their respective dependencies change. Runtime code changes alone need no lockfile update. Keep exported API changes compatible with existing apps, or explain the required application migration explicitly.
+To adopt a package release, update its exact pin in both `starter/package.json` and
+`tests/package.json`, regenerate both lockfiles, and run the checks below. Never resolve `latest`
+during app creation. Develop package changes in the package repository; the CLI has no runtime
+source watcher.
 
 ## Upgrades
 
-`app upgrade` validates installed checksums before replacing managed files, including removal of obsolete runtime files. It preserves app source. Dependency changes trigger a targeted Bun lockfile update without installing packages or running lifecycle scripts. Missing peers can be seeded from the starter's pinned dependencies; incompatible new peer requirements stop with an actionable error. A failed update restores runtime, package manifest, and lockfile. Dependency resolution can require the network or a populated Bun cache. Restart running previews after an upgrade.
+`app upgrade` updates the app manifest and lockfile to the CLI's tested package version,
+preserving unrelated dependencies and app code. A newer installed package is not downgraded.
+Peer incompatibilities stop with an actionable error; missing peers are seeded from starter defaults.
+Registry upgrades resolve only the lockfile. Legacy migrations also install the frozen dependencies
+with lifecycle scripts disabled and run the app typecheck and contract/browser-boundary checks before
+removing the managed runtime. Failures restore
+the manifest, lockfile, migration edits, and the original installed dependencies. Restart running
+previews after an upgrade.
 
-The package is still private and bundled with the CLI. New generated apps use `@altertable/data-app` imports; the CLI upgrades the managed runtime files without changing app-owned source.
+For older generated apps using `file:.altertable/runtime`, upgrade first validates all managed
+checksums and refuses modified, added, or symlinked runtime files. It migrates local server helpers
+to `/server/bun`, imports the public stylesheet, updates vendored documentation links, and removes
+the runtime copy only after package resolution succeeds. Unsupported custom server imports or a
+custom browser entry need the indicated manual edit before retrying. Older custom stories must
+migrate from `StorySection`/`PlayStory` to `DataWidget`/`PresentStory` and explicit finding evidence
+before upgrading; see the [package migration guide](https://github.com/altertable-ai/data-app/blob/main/docs/react.md#migration-from-the-earlier-runtime).
 
 ## Verify
 
 ```fish
 bun run --cwd cli data-app:check
-cd data-app/tests
-bun install --frozen-lockfile
-bunx playwright install chromium
-bun run test
+bun install --cwd data-app/tests --frozen-lockfile
+bun run --cwd cli data-app:test:browser
+./scripts/verify.sh --quick
+./scripts/verify.sh
 ```
 
-Source checks cover every runtime module and its contract, transport, search, formatting, and public component composition tests. Starter checks cover types, lint, formatting, and a production build. Browser tests cover connection states, retry, stale success, context, theme persistence, and Present navigation at desktop and phone sizes.
-
-CLI tests cover distribution safety, creation, upgrades, dependency resolution, and rollback. Release smoke checks generate an app outside the checkout, install with a frozen lockfile, and run `app check` using the packaged CLI. The minimum CLI runtime compatibility job checks scaffolding only; building data apps uses the repository's current Bun toolchain.
+Install Playwright Chromium with `bunx playwright install chromium` from `data-app/tests/`
+if needed. Browser checks cover connection and request states, theme, context, and presentation
+at phone and desktop widths. CLI tests cover offline scaffolding, npm consumption, legacy migration,
+peer checks, and rollback. Release smoke checks create an app outside the checkout, install its
+frozen lockfile, and run `app check` with the packaged CLI. The minimum Bun compatibility job
+checks scaffolding only; app builds use the repository's current toolchain.

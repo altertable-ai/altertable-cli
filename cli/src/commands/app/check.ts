@@ -13,7 +13,7 @@ import {
   requireAppScripts,
   runAppCommand,
 } from "@/commands/app/lib/run.ts";
-import { currentRuntimeIntegrity, installedRuntimeIntegrity } from "@/commands/app/lib/runtime.ts";
+import { requirePublishedDataApp } from "@/commands/app/lib/package.ts";
 import projectCheckScript from "@/commands/app/lib/project-check.js.txt";
 
 type AppManifest = {
@@ -42,17 +42,8 @@ export const appCheckCommand = defineCommand({
     requireAppScripts(directory, ["format:check", "lint", "typecheck", "build"]);
     const manifest = await readManifest(directory);
     if (args.lakehouse) await checkAppScope(directory, execution.profile);
-    const installed = await installedRuntimeIntegrity(directory);
-    const current = currentRuntimeIntegrity();
-    if (
-      installed.version !== current.version ||
-      Object.entries(current.sha256).some(([name, checksum]) => installed.sha256[name] !== checksum)
-    ) {
-      throw new ConfigurationError(
-        `Data app runtime ${installed.version} is outdated. Run \`altertable app upgrade\`.`,
-      );
-    }
-    if ((await runAppCommand("install", directory)) !== 0) return { exitCode: EXIT_GENERIC };
+    await requirePublishedDataApp(directory);
+    if ((await runAppCommand("install-frozen", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("format:check", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("lint", directory)) !== 0) return { exitCode: EXIT_GENERIC };
     if ((await runAppCommand("typecheck", directory)) !== 0) return { exitCode: EXIT_GENERIC };

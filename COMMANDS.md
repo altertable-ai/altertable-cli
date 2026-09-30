@@ -425,7 +425,7 @@ altertable app create|dev|build|check|upgrade
 - `dev` — Preview a data app locally with lakehouse access.
 - `build` — Typecheck and build a data app without Altertable credentials.
 - `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
-- `upgrade` — Update an unmodified data app runtime to the CLI's current version.
+- `upgrade` — Update the data app package to the CLI's tested version, migrating vendored apps.
 
 **Examples**
 
@@ -484,14 +484,12 @@ altertable app dev [options]
 | --- | --- |
 | `--dir <DIR>` | App directory (default: current directory). |
 | `--port <PORT>` | Local dev server port (1–65535; default: app setting). |
-| `--watch-runtime` | Upgrade generated runtime on source changes and restart preview. |
 
 **Examples**
 
 ```bash
 altertable app dev
 altertable app dev --port 3022
-altertable app dev --watch-runtime
 altertable --profile staging app dev --dir ./my-app
 ```
 
@@ -544,7 +542,7 @@ altertable app check --lakehouse
 
 #### `altertable app upgrade`
 
-Update an unmodified data app runtime to the CLI's current version.
+Update the data app package to the CLI's tested version, migrating vendored apps.
 
 **Usage**
 

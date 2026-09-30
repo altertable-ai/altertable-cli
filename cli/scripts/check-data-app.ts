@@ -1,17 +1,11 @@
 import { join } from "node:path";
 import { dataAppDirectory } from "@/commands/app/lib/distribution.ts";
-import { setupDataApp } from "@/../scripts/package-data-app.ts";
 
-await setupDataApp();
-for (const project of ["runtime", "starter", "tests"]) {
+for (const project of ["starter", "tests"]) {
   const commands = [
     ["install", "--frozen-lockfile"],
     ...["typecheck", "lint", "format:check"].map((name) => ["run", name]),
-    ...(project === "runtime"
-      ? [["test", "tests"]]
-      : project === "starter"
-        ? [["run", "build"]]
-        : []),
+    ...(project === "starter" ? [["run", "build"]] : []),
   ];
   for (const args of commands) {
     const child = Bun.spawn([process.execPath, ...args], {

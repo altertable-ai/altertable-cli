@@ -4,7 +4,7 @@ import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { copyProcessEnv } from "@/lib/env.ts";
 
 export type AppScript = "typecheck" | "lint" | "format:check" | "dev" | "build";
-export type AppCommand = "install" | AppScript;
+export type AppCommand = "install" | "install-frozen" | AppScript;
 
 export function appDirectory(value: unknown): string {
   if (value !== undefined && (typeof value !== "string" || value.length === 0)) {
@@ -57,7 +57,12 @@ export async function runAppCommand(
   // command and supports `bun` calls inside the project's scripts.
   env.BUN_BE_BUN = "1";
 
-  const arguments_ = command === "install" ? ["install"] : ["run", command];
+  const arguments_ =
+    command === "install"
+      ? ["install"]
+      : command === "install-frozen"
+        ? ["install", "--frozen-lockfile"]
+        : ["run", command];
   const child = Bun.spawn([process.execPath, ...arguments_], {
     cwd: directory,
     env,

@@ -231,4 +231,4 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 
 ## Data apps
 
-The runnable starter and shared runtime live in [`data-app/`](data-app/README.md). That guide covers source ownership, the copy allowlist, CLI embedding, runtime upgrades, and browser tests.
+The runnable starter and package-consumer browser tests live in [`data-app/`](data-app/README.md). That guide covers starter embedding, npm package pins, legacy migration, and verification. Runtime development and releases belong to [the Data App repository](https://github.com/altertable-ai/data-app).

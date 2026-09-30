@@ -2,15 +2,13 @@
 
 | Change | Source and guidance | Focused check |
 | --- | --- | --- |
-| Runtime contract, transport, or formatting | `runtime/src/`; [API map](runtime/README.md#entry-points) | Runtime typecheck and `runtime/tests/` |
-| UI component or behavior | [UI map](runtime/README.md#find-ui-by-task); styles beside components | Runtime checks; relevant browser scenarios in `tests/` |
-| Generated app defaults or author guidance | `starter/`; [app authoring router](starter/AGENTS.md) | Starter checks and CLI app creation tests |
-| Copied files or runtime upgrades | `../cli/src/commands/app/lib/distribution.ts`, `../cli/src/commands/app/upgrade.ts` | Distribution and upgrade tests; packaged-app smoke |
+| Package contracts, transport, or UI | [Data App repository](https://github.com/altertable-ai/data-app) | Package repository checks |
+| Generated app defaults or author guidance | `starter/`; [app authoring router](starter/AGENTS.md) | Starter checks and CLI creation tests |
+| Scaffold distribution or package upgrades | `../cli/src/commands/app/lib/distribution.ts`, `../cli/src/commands/app/upgrade.ts` | Distribution, migration, and packaged-app tests |
+| Consumer integration or browser behavior | `tests/`, `starter/fixtures/` | Browser tests against the published package |
 
-See [development commands](README.md#develop). Run `bun run --cwd cli data-app:check` from the repository root for source checks. Run browser scenarios from `data-app/tests/` with `bun run test`.
-
-Keep `runtime/src/core/`, `client/`, and `server/` free of React and UI imports; the boundary test enforces this. `runtime/src/react/index.ts` exports the public React API; implementations live in focused modules beside `react/ui/`. Keep component styles beside their source. Source-specific SQL and metric definitions belong in apps.
-
-JSDoc should explain constraints, ownership, units, security boundaries, or surprising behavior. Let names and types describe obvious props and functions. Put task routing in the API map and app guides.
-
-Canonical `runtime/` is tracked. The repository starter's `.altertable/runtime/` is ignored and recreated by setup; generated user apps commit their vendored runtime. Runtime `package.json` lists distributed files, while the CLI distribution manifest lists starter files. Keep routing links valid in the generated artifact.
+See [development commands](README.md#develop). Keep SQL and metric definitions in app-owned source.
+Import only public package exports; local Bun serving uses `/server/bun`, and each browser entry
+imports `/react/styles.css`. Keep starter and browser-test package pins aligned, commit their
+lockfiles, and preserve documentation links to installed package docs. Do not copy runtime source
+into this repository or generated apps.

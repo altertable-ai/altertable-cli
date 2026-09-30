@@ -8,6 +8,20 @@ let directory: string;
 
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), "altertable-app-check-"));
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/core"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/server"), { recursive: true });
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/package.json"),
+    JSON.stringify({
+      name: "@altertable/data-app",
+      type: "module",
+      exports: {
+        "./appearance": "./dist/core/appearance.js",
+        "./server": "./dist/server/index.js",
+        "./server/bun": "./dist/server/local.js",
+      },
+    }),
+  );
 });
 afterEach(() => {
   rmSync(directory, { recursive: true, force: true });
@@ -16,8 +30,10 @@ afterEach(() => {
 describe("data app contract", () => {
   test("rejects unbounded or unchecked operations in the app process", async () => {
     mkdirSync(join(directory, "src"));
-    mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
-    mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
+    mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/core"), { recursive: true });
+    mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/server"), {
+      recursive: true,
+    });
     writeFileSync(
       join(directory, "app.json"),
       JSON.stringify({
@@ -26,7 +42,7 @@ describe("data app contract", () => {
       }),
     );
     writeFileSync(
-      join(directory, ".altertable/runtime/src/core/appearance.ts"),
+      join(directory, "node_modules/@altertable/data-app/dist/core/appearance.js"),
       "export function parseAppearance() {}",
     );
     writeFileSync(
@@ -85,11 +101,11 @@ describe("data app contract", () => {
 
 test("browser bundles reject value imports of operations but allow type imports", async () => {
   mkdirSync(join(directory, "src"));
-  mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
-  mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/core"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/server"), { recursive: true });
   writeFileSync(join(directory, "app.json"), JSON.stringify({ schemaVersion: 1, title: "Test" }));
   writeFileSync(
-    join(directory, ".altertable/runtime/src/core/appearance.ts"),
+    join(directory, "node_modules/@altertable/data-app/dist/core/appearance.js"),
     "export function parseAppearance() {}",
   );
   writeFileSync(
@@ -113,24 +129,24 @@ test("browser bundles reject value imports of operations but allow type imports"
   await checkAppProject(directory);
 });
 
-test("lakehouse checks execute every declared input through the current runtime layout", async () => {
+test("lakehouse checks execute every declared input through public package exports", async () => {
   mkdirSync(join(directory, "src"));
-  mkdirSync(join(directory, ".altertable/runtime/src/core"), { recursive: true });
-  mkdirSync(join(directory, ".altertable/runtime/src/server"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/core"), { recursive: true });
+  mkdirSync(join(directory, "node_modules/@altertable/data-app/dist/server"), { recursive: true });
   writeFileSync(
     join(directory, "app.json"),
     JSON.stringify({ schemaVersion: 1, title: "Live check" }),
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/core/appearance.ts"),
+    join(directory, "node_modules/@altertable/data-app/dist/core/appearance.js"),
     "export function parseAppearance() {}",
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/server/local.ts"),
+    join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
     "export function localLakehouse() { return {}; }",
   );
   writeFileSync(
-    join(directory, ".altertable/runtime/src/server/index.ts"),
+    join(directory, "node_modules/@altertable/data-app/dist/server/index.js"),
     `
     export function createDataHandler(operations) {
       return async (request) => {
@@ -157,3 +173,44 @@ test("lakehouse checks execute every declared input through the current runtime 
   await checkAppProject(directory, {});
   expect(readFileSync(join(directory, "executed.txt"), "utf8")).toBe("12");
 });
+
+test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
+  "browser bundles reject the published %s entry even without credential strings",
+  async (entry) => {
+    mkdirSync(join(directory, "src"));
+    writeFileSync(
+      join(directory, "app.json"),
+      JSON.stringify({ schemaVersion: 1, title: "Boundary" }),
+    );
+    writeFileSync(
+      join(directory, "node_modules/@altertable/data-app/dist/core/appearance.js"),
+      "export function parseAppearance() {}",
+    );
+    writeFileSync(
+      join(directory, "node_modules/@altertable/data-app/dist/server/index.js"),
+      "export const secretFreeHandler = 1;",
+    );
+    writeFileSync(
+      join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+      "export const secretFreeHandler = 1;",
+    );
+    writeFileSync(
+      join(directory, "src/operations.ts"),
+      "export const operations = { test: { checks: [{}], input: v => v, output: v => v, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+    );
+    writeFileSync(
+      join(directory, "src/index.html"),
+      '<script type="module" src="./main.ts"></script>',
+    );
+    writeFileSync(
+      join(directory, "src/main.ts"),
+      `import { secretFreeHandler } from "${entry}"; console.log(secretFreeHandler);`,
+    );
+    expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
+    writeFileSync(
+      join(directory, "src/main.ts"),
+      `import type { secretFreeHandler } from "${entry}"; console.log("browser safe");`,
+    );
+    await checkAppProject(directory);
+  },
+);

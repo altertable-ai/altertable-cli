@@ -3,12 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import { upgradeApp } from "@/commands/app/upgrade.ts";
-import {
-  currentRuntimeIntegrity,
-  installedRuntimeIntegrity,
-  readRuntimeSource,
-} from "@/commands/app/lib/runtime.ts";
+import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
 import { configSet, ensureProfileExists, setActiveProfile } from "@/lib/profile-store.ts";
 
 let home: string;
@@ -32,7 +27,7 @@ afterEach(() => {
 });
 
 describe("app create", () => {
-  test("creates a self-contained offline project when explicitly requested", async () => {
+  test("scaffolds a pinned package project without registry access", async () => {
     const directory = join(home, "product-pulse");
     const result = await runCommandWithTestRuntime([
       "app",
@@ -72,13 +67,20 @@ describe("app create", () => {
       scope: { organization: "Your organization", environment: "your environment" },
     });
     expect(readFileSync(join(directory, "bun.lock"), "utf8")).toContain('"name": "product-pulse"');
-    expect(await installedRuntimeIntegrity(directory)).toEqual(currentRuntimeIntegrity());
+    expect(
+      JSON.parse(readFileSync(join(directory, "package.json"), "utf8")).dependencies[
+        "@altertable/data-app"
+      ],
+    ).toBe(recommendedDataAppVersion());
+    expect(existsSync(join(directory, ".altertable/runtime"))).toBe(false);
     const paths = JSON.parse(result.stdout[0]!).files as string[];
-    expect(paths).toContain(".altertable/runtime/src/react/ui/PlayStory.tsx");
+    expect(paths.some((path) => path.startsWith(".altertable/"))).toBe(false);
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
     expect(paths).toContain("docs/data.md");
-    expect(paths).toContain(".altertable/runtime/README.md");
+    expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
+      "node_modules/@altertable/data-app/AGENTS.md",
+    );
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
       "Connectivity-only screen",
     );
@@ -88,19 +90,6 @@ describe("app create", () => {
     expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
       "connectivity screen is scaffolding, not an example analysis",
     );
-    expect(Bun.spawnSync(["git", "init", "--quiet"], { cwd: directory }).exitCode).toBe(0);
-    const ignored = Bun.spawnSync(
-      [
-        "git",
-        "-c",
-        "core.excludesFile=/dev/null",
-        "check-ignore",
-        "--no-index",
-        ".altertable/runtime/package.json",
-      ],
-      { cwd: directory },
-    );
-    expect(ignored.exitCode).toBe(1);
     expect(paths.some((path) => /tests|fixtures|node_modules|\.txt$/.test(path))).toBe(false);
   });
 
@@ -368,131 +357,30 @@ describe("app create", () => {
     expect(JSON.parse(result.stdout[0]!)).toMatchObject({ name: "agent-app", directory });
   });
 
-  test("upgrade preserves app-owned changes and refuses a modified runtime", async () => {
-    const directory = join(home, "upgrade-app");
+  test("upgrade reports the tested package version without changing a current app", async () => {
+    const directory = join(home, "current-app");
     await runCommandWithTestRuntime([
       "app",
       "create",
-      "upgrade-app",
+      "current-app",
       "--dir",
       directory,
       "--without-profile",
     ]);
     const operations = join(directory, "src/operations.ts");
     writeFileSync(operations, `${readFileSync(operations, "utf8")}\n// App-specific change.\n`);
-    const current = await runCommandWithTestRuntime(["app", "upgrade", "--dir", directory], {
-      debug: false,
-      json: false,
-      agent: false,
-    });
-    expect(current.stdout.join("\n")).toContain("already current");
-    expect(readFileSync(operations, "utf8")).toContain("App-specific change");
-
     for (const mode of [
       { debug: false, json: true, agent: false },
       { debug: false, json: false, agent: true },
     ]) {
-      const output = await runCommandWithTestRuntime(["app", "upgrade", "--dir", directory], mode);
-      expect(JSON.parse(output.stdout[0]!)).toEqual({
+      const result = await runCommandWithTestRuntime(["app", "upgrade", "--dir", directory], mode);
+      expect(JSON.parse(result.stdout[0]!)).toEqual({
         directory,
         upgraded: false,
-        runtimeVersion: currentRuntimeIntegrity().version,
+        runtimeVersion: recommendedDataAppVersion(),
         nextSteps: [],
       });
     }
-
-    const runtime = join(directory, ".altertable/runtime/src/server/index.ts");
-    writeFileSync(runtime, `${readFileSync(runtime, "utf8")}\n// Local edit.\n`);
-    expect(runCommandWithTestRuntime(["app", "upgrade", "--dir", directory])).rejects.toThrow(
-      "was modified",
-    );
-    expect(readFileSync(runtime, "utf8")).toContain("Local edit");
-  });
-
-  test("source watch upgrade updates integrity and stops on generated edits", async () => {
-    const directory = join(home, "watched-app");
-    await runCommandWithTestRuntime([
-      "app",
-      "create",
-      "watched-app",
-      "--dir",
-      directory,
-      "--without-profile",
-    ]);
-    const files = await readRuntimeSource();
-    files["src/core/format.ts"] += "\n// Changed source.\n";
-    expect(await upgradeApp(directory, { runtimeFiles: files })).toBe(true);
-    expect(
-      readFileSync(join(directory, ".altertable/runtime/src/core/format.ts"), "utf8"),
-    ).toContain("Changed source");
-    expect((await installedRuntimeIntegrity(directory)).sha256).toEqual(
-      currentRuntimeIntegrity(files).sha256,
-    );
-
-    const generated = join(directory, ".altertable/runtime/src/core/format.ts");
-    writeFileSync(generated, `${readFileSync(generated, "utf8")}\n// App edit.\n`);
-    expect(upgradeApp(directory, { runtimeFiles: await readRuntimeSource() })).rejects.toThrow(
-      "format.ts was modified",
-    );
-  });
-
-  test("invalid lockfile leaves the installed runtime unchanged", async () => {
-    const directory = join(home, "invalid-lock-app");
-    await runCommandWithTestRuntime([
-      "app",
-      "create",
-      "invalid-lock-app",
-      "--dir",
-      directory,
-      "--without-profile",
-    ]);
-    const integrityPath = join(directory, ".altertable/runtime/integrity.json");
-    const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
-    integrity.version = "0.1.0";
-    writeFileSync(integrityPath, `${JSON.stringify(integrity, null, 2)}\n`);
-    const runtimePath = join(directory, ".altertable/runtime/src/server/index.ts");
-    const beforeRuntime = readFileSync(runtimePath, "utf8");
-    const beforeIntegrity = readFileSync(integrityPath, "utf8");
-    const lockPath = join(directory, "bun.lock");
-    const validLock = readFileSync(lockPath, "utf8");
-    rmSync(lockPath);
-    expect(upgradeApp(directory)).rejects.toThrow("valid bun.lock");
-    expect(readFileSync(integrityPath, "utf8")).toBe(beforeIntegrity);
-    writeFileSync(lockPath, "{ invalid lockfile");
-
-    expect(upgradeApp(directory)).rejects.toThrow("valid bun.lock");
-    expect(readFileSync(runtimePath, "utf8")).toBe(beforeRuntime);
-    expect(readFileSync(integrityPath, "utf8")).toBe(beforeIntegrity);
-    writeFileSync(lockPath, validLock);
-    expect(await upgradeApp(directory)).toBe(true);
-  });
-
-  test("upgrade rolls back a failure after applying runtime files", async () => {
-    const directory = join(home, "rollback-app");
-    await runCommandWithTestRuntime([
-      "app",
-      "create",
-      "rollback-app",
-      "--dir",
-      directory,
-      "--without-profile",
-    ]);
-    const integrityPath = join(directory, ".altertable/runtime/integrity.json");
-    const integrity = JSON.parse(readFileSync(integrityPath, "utf8")) as { version: string };
-    integrity.version = "0.1.0";
-    writeFileSync(integrityPath, `${JSON.stringify(integrity, null, 2)}\n`);
-    const paths = [integrityPath, join(directory, "package.json"), join(directory, "bun.lock")];
-    const before = paths.map((path) => readFileSync(path, "utf8"));
-
-    expect(
-      upgradeApp(directory, {
-        afterApply(path) {
-          if (path === join(directory, ".altertable/runtime"))
-            throw new Error("Injected write failure");
-        },
-      }),
-    ).rejects.toThrow("Injected write failure");
-    expect(paths.map((path) => readFileSync(path, "utf8"))).toEqual(before);
-    expect(await upgradeApp(directory)).toBe(true);
+    expect(readFileSync(operations, "utf8")).toContain("App-specific change");
   });
 });
