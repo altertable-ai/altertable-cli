@@ -16,6 +16,8 @@ export type StoryFinding = {
   evidence: WidgetEvidence | MetricDefinition;
 };
 
+/** One to four findings with unique, nonempty IDs and registered evidence.
+ * Receives the displayed result and its original input during refresh or failure. */
 export type BoundStory<Data, Input> = (
   snapshot: DisplayedSnapshot<Data, Input>,
 ) => readonly StoryFinding[];

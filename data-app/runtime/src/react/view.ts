@@ -21,6 +21,7 @@ type DateVariableKey<Variables extends VariableCollection> = {
 
 export type ViewDate<Variables extends VariableCollection, Input> = {
   variable: DateVariableKey<Variables>;
+  /** Extract the selected range and comparison unchanged, including from nested inputs. */
   input: (input: Input) => DateRangeRequest;
 };
 
@@ -39,6 +40,7 @@ export type DataViewDefinition<
   variables: Variables;
   input: (values: ResolvedVariables<Variables>) => Input;
   bindings?: ViewBindings<Variables, Input>;
+  /** App-owned semantics: measured zero need not mean an empty result. */
   isEmpty: (data: Data) => boolean;
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (

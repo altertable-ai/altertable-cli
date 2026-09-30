@@ -14,6 +14,7 @@ import { Tooltip } from "./Tooltip.tsx";
 import "./TableWidget.css";
 
 export type TableWidgetColumn<Row> = {
+  /** Stable, nonempty identity; unique within this table. */
   id: string;
   header: ReactNode;
   type?: "number" | "datetime";
@@ -29,6 +30,7 @@ type TableWidgetBaseProps<Row> = {
   count?: number;
   description?: ReactNode;
   columns: readonly [TableWidgetColumn<Row>, ...TableWidgetColumn<Row>[]];
+  /** Unique, nonempty row identity. Numeric keys must be finite; 1 and "1" collide. */
   rowKey: (row: Row) => string | number;
   insight?: ReactNode;
   action?: ReactNode;
@@ -37,9 +39,15 @@ type TableWidgetBaseProps<Row> = {
   /** Valid result with no rows; the header remains visible. */
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (
-  | { limit: number; pagination?: never }
   | {
-      /** Page bounded rows after local search. Controls always occupy the bottom widget footer. */
+      /** Positive integer preview cap after search; disables pagination. */
+      limit: number;
+      pagination?: never;
+    }
+  | {
+      /** Local pagination after search: 10 rows by default, false shows all supplied rows.
+       * pageSize must be a positive integer. Counts refer only to supplied rows.
+       * The widget owns bottom-footer controls and shares the current page with inspection. */
       pagination?: { pageSize: number } | false;
       limit?: never;
     }

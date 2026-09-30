@@ -24,7 +24,9 @@ type DataWidgetBaseProps = {
   bodyPadding?: "inset" | "flush";
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
 
-/** A standard widget shell; a bound reading supplies loading, empty, and ready content. */
+/** Owns loading, empty content, actions, and inspection. Page and sheet mount the same
+ * body and footer; hold interactive child state above the widget to share it across mounts.
+ * A bound reading requires evidence; its child renderer runs only for nonempty ready data. */
 export type DataWidgetProps<Data = unknown> = DataWidgetBaseProps &
   (
     | {

@@ -124,6 +124,7 @@ test("time view composes other inputs without surrendering its period binding", 
     defineSearchView({
       operation: "search",
       time: { contract: calendar, defaultValue: { kind: "preset", id: "last-7" } },
+      // @ts-expect-error Deliberately bypass the reserved period type to test runtime validation.
       variables: { period },
       input: ({ period }) => ({ period, search: "" }),
       isEmpty: () => false,

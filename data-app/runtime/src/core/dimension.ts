@@ -36,13 +36,17 @@ export type DimensionFilterOptions<T extends DimensionValue> = {
   label: string;
   valueType: T extends number ? "number" : "string";
   selection: "single" | "multiple";
-  options?: readonly DimensionOption<T>[];
-  /** A bounded operation can supply current options and counts. Its input may use other view filters. */
-  facet?: { operation: string; input: (values: Record<string, unknown>) => unknown };
   allowMissing?: boolean;
   maxSelected?: number;
   history?: HistoryMode;
-};
+} & (
+  | { options: readonly DimensionOption<T>[]; facet?: never }
+  | {
+      /** A bounded operation supplies options and counts; input chooses other filters affecting counts. */
+      facet: { operation: string; input: (values: Record<string, unknown>) => unknown };
+      options?: never;
+    }
+);
 
 /** A bounded categorical filter. URL tags distinguish missing from literal "null". */
 export function dimensionFilter<const T extends DimensionValue>(

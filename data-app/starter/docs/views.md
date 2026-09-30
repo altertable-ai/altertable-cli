@@ -1,19 +1,9 @@
 # View authoring
 
-Use `DataApp` for the title, description, scope, controls, and request boundary. Body content begins with the exploration. A second top-level heading triggers a development warning. `AppLayout` owns the outer gutter and page width.
+[Runtime API map](../.altertable/runtime/README.md#find-ui-by-task) routes views, controls, widgets, and Story to their source contracts. Start with `DataApp` and `createDataHooks`; use the shared widgets and controls for standard interactions.
 
-For time-based data, use `defineTimeView({ operation, time: { contract, defaultValue }, isEmpty, empty })`. The view generates the URL-backed `period` picker, operation input, and displayed-period label. Additional `variables` and an optional `input` mapper compose with that period. For an intentional fixed reporting period, use `defineDataView` with `describeInput`.
+Choose useful dimensions and verify the source meaning of their values. The app defines emptiness: a measured zero and unavailable data have different meanings.
 
-Include a `story={({ data, input, state }) => [...]}` callback by default. Omit Story when the data cannot support a consequential, evidence-backed finding; do not invent one to fill the mode. Present uses the displayed snapshot, including the original input during refresh or failure. Author one to four consequential findings with stable IDs, evidence, and a comparative or relational visual. Prefer a concentration, split, shift, or meaningful co-occurrence over a repeated KPI. State that association is not causation where relevant. Each finding needs `evidence: context.evidence(...)` or a bound metric.
+Include Story when the data supports consequential, evidence-backed findings. Prefer a concentration, split, shift, or meaningful co-occurrence over repeated KPIs. Omit Story when there is no defensible finding, and describe association without claiming causation.
 
-Use `SelectableBarChart` when selecting a bar inspects a related detail. It handles exact value preview, keyboard navigation, persistent selection, and clearing. Keep the detail view tied to its controlled `selectedId`.
-
-For a custom visual, compose `DataWidget` with a bound `reading`, `isEmpty`, `empty`, and `evidence`. It supplies the same shell, loading state, and inspection as the standard visualization and table widgets. Put only the visual content in its child function.
-
-[Runtime API map](../.altertable/runtime/README.md#find-ui-by-task) lists the other components. A measured zero and unavailable data have different meanings; the app defines whether a result is empty. Check the finished app with live data at phone and desktop widths.
-
-For a categorical source dimension, define a `dimensionFilter` with fixed options or a typed `defineFacetFilter` operation, then put it in the view's `variables` record beside other inputs. `defineTimeView` accepts additional variables while generating the date input. The operation input parser calls `parseDimensionSelection`, and its SQL uses `dimensionPredicate` for the allowlisted source column. All, a literal value named `null`, and missing are distinct. Choose useful dimensions and verify the source meaning of each value.
-
-## Standard interaction ownership
-
-Use `TableWidget` for searchable tables with bottom pagination and `VisualizationWidget` for alternate views and inspection. Declare each visualization once; pass controlled selection to it so its page and inspection mounts agree. Multi-select `Combobox` calls declare `emptySelectionLabel`; dimension filters use `DimensionPicker`, which defines **All** and **No value** from the dimension contract. Reuse `Button`, `Checkbox`, and `SearchField` for app-owned controls so sizing, selection marks, focus, and accessibility stay consistent with runtime widgets.
+Check the finished app against live data at phone and desktop widths in both themes.

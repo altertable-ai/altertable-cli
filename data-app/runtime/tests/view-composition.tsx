@@ -100,3 +100,42 @@ dateRangeVariable({
   // @ts-expect-error Comparison is activated by the reader, never by the app default.
   defaultValue: { kind: "preset", id: "last-7", comparison: "previous" },
 });
+
+const { defineTimeView } = createDataHooks<{
+  nested: DataOperation<{ request: DateRangeRequest }, number>;
+  filtered: DataOperation<{ period: DateRangeRequest; search: string }, number>;
+}>(createDataClient());
+const time = {
+  contract: defineDateRangeContract({ maxRangeDays: 30, timeZone: "UTC" }),
+  defaultValue: { kind: "preset", id: "last-7" },
+} as const;
+// @ts-expect-error A nested input requires an explicit mapper rather than an implicit cast.
+defineTimeView({ operation: "nested", time, isEmpty: () => false, empty: { title: "Empty" } });
+defineTimeView({
+  operation: "nested",
+  time,
+  input: ({ period }) => ({ request: period }),
+  bindings: { period: (input) => input.request },
+  isEmpty: () => false,
+  empty: { title: "Empty" },
+});
+defineTimeView({
+  operation: "filtered",
+  time,
+  variables: { search: textVariable({ key: "search" }) },
+  isEmpty: () => false,
+  empty: { title: "Empty" },
+});
+
+import { dimensionFilter } from "../src/core/dimension.ts";
+// @ts-expect-error A dimension needs exactly one option source.
+dimensionFilter({ key: "source", label: "Source", valueType: "string", selection: "multiple" });
+// @ts-expect-error Fixed options and a facet operation cannot coexist.
+dimensionFilter({
+  key: "source",
+  label: "Source",
+  valueType: "string",
+  selection: "multiple",
+  options: [],
+  facet: { operation: "sources", input: () => ({}) },
+});

@@ -24,6 +24,17 @@ import {
 } from "./view.ts";
 import { useViewVariables } from "./view-controls.tsx";
 
+type TimeVariables<Additional extends VariableCollection> = {
+  period: ReturnType<typeof dateRangeVariable>;
+} & Additional;
+type TimeInput<Additional extends VariableCollection> = keyof Additional extends never
+  ? DateRangeRequest
+  : ResolvedVariables<TimeVariables<Additional>>;
+type TimeInputMapping<Additional extends VariableCollection, Input> =
+  TimeInput<Additional> extends Input
+    ? { input?: (values: ResolvedVariables<TimeVariables<Additional>>) => Input }
+    : { input: (values: ResolvedVariables<TimeVariables<Additional>>) => Input };
+
 /**
  * `placeholderData` may belong to an earlier input. Use `useDataView` to distinguish initial
  * loading, refreshes, and changed-input requests.
@@ -145,24 +156,26 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
   }
 
   /** One time declaration owns the URL picker, operation input, and displayed-period label.
+   * Without extra variables, the default input is the DateRangeRequest; with them it is
+   * { period, ...variables }. Other operation shapes require an input mapper.
+   * Mappers must preserve the period and dimension selections; bindings extract nested inputs.
    * Use defineDataView with describeInput for deliberately fixed-period views. */
   function defineTimeView<
     Name extends keyof Operations & string,
     const Additional extends VariableCollection = {},
-  >(definition: {
-    operation: Name;
-    time: Omit<DateRangeVariableOptions, "key">;
-    variables?: Additional;
-    input?: (
-      values: ResolvedVariables<{ period: ReturnType<typeof dateRangeVariable> } & Additional>,
-    ) => InputOf<Operations[Name]>;
-    bindings?: ViewBindings<
-      { period: ReturnType<typeof dateRangeVariable> } & Additional,
-      InputOf<Operations[Name]>
-    >;
-    isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
-    empty: Pick<EmptyStateProps, "title" | "description">;
-  }) {
+  >(
+    definition: {
+      operation: Name;
+      time: Omit<DateRangeVariableOptions, "key">;
+      variables?: Additional & { period?: never };
+      bindings?: ViewBindings<
+        { period: ReturnType<typeof dateRangeVariable> } & NoInfer<Additional>,
+        InputOf<Operations[Name]>
+      >;
+      isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
+      empty: Pick<EmptyStateProps, "title" | "description">;
+    } & TimeInputMapping<NoInfer<Additional>, InputOf<Operations[Name]>>,
+  ) {
     invariant(
       !definition.variables || !("period" in definition.variables),
       "The period input is owned by defineTimeView.",
@@ -192,7 +205,9 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     });
   }
 
-  /** Bind a facet source to a declared operation and its typed input. */
+  /** Bind a facet source to a declared operation and its typed input.
+   * Options are cached for 60 seconds; known values survive refreshes and errors.
+   * Selected values absent from a new result remain available with a zero count. */
   function defineFacetFilter<
     Name extends keyof Operations & string,
     const T extends DimensionValue,

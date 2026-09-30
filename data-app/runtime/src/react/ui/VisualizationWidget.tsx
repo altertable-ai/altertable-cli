@@ -22,6 +22,7 @@ type UnboundVisualizationWidgetProps = VisualizationWidgetBaseProps &
   ({ loading: true; visual?: never } | { loading?: false; visual: ReactNode });
 
 export type VisualizationWidgetView<Data> = {
+  /** Stable, nonempty identity; unique within this widget. */
   id: string;
   label: ReactNode;
   render: (data: Data) => ReactNode;
@@ -37,12 +38,15 @@ type BoundVisualizationWidgetBase<Data> = VisualizationWidgetBaseProps & {
   loading?: never;
 };
 
+/** The widget owns alternate-view selection and shares it with inspection.
+ * Custom chart interactions remain controlled by the caller, above both mounts. */
 export type VisualizationWidgetProps<Data = unknown> =
   | UnboundVisualizationWidgetProps
   | (BoundVisualizationWidgetBase<Data> & { children: (data: Data) => ReactNode; views?: never })
   | (BoundVisualizationWidgetBase<Data> & {
       views: readonly VisualizationWidgetView<Data>[];
       viewLabel: string;
+      /** An existing view ID; defaults to the first view. Validated while loading too. */
       initialView?: string;
       children?: never;
     });
