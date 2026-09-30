@@ -1,5 +1,7 @@
 import { useId, type ComponentPropsWithRef, type ReactNode } from "react";
 import { classNames } from "./classNames.ts";
+import { SearchInput } from "./SearchInput.tsx";
+import { Button } from "./Button.tsx";
 import { AppIcon } from "./icons.ts";
 import "./SearchField.css";
 
@@ -64,49 +66,50 @@ export function SearchField({
           {label}
         </label>
         <div className="altertable-search-row">
-          <div className="altertable-search-input-wrap">
-            <AppIcon name="search" size={17} />
-            <input
-              {...inputProps}
-              id={inputId}
-              type="search"
-              value={value}
-              placeholder={placeholder ?? "Search"}
-              enterKeyHint="search"
-              aria-busy={busy || undefined}
-              aria-describedby={
-                [descriptionId, statusId, inputProps?.["aria-describedby"]]
-                  .filter(Boolean)
-                  .join(" ") || undefined
+          <SearchInput
+            {...inputProps}
+            size={size}
+            id={inputId}
+            type="search"
+            value={value}
+            placeholder={placeholder ?? "Search"}
+            enterKeyHint="search"
+            aria-busy={busy || undefined}
+            aria-describedby={
+              [descriptionId, statusId, inputProps?.["aria-describedby"]]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
+            className={classNames("altertable-search-input", inputProps?.className)}
+            onChange={(event) => {
+              inputProps?.onChange?.(event);
+              if (!event.defaultPrevented) onChange(event.currentTarget.value);
+            }}
+            onKeyDown={(event) => {
+              inputProps?.onKeyDown?.(event);
+              if (!event.defaultPrevented && event.key === "Escape" && value !== resetValue) {
+                event.preventDefault();
+                onChange(resetValue);
               }
-              className={classNames("altertable-search-input", inputProps?.className)}
-              onChange={(event) => {
-                inputProps?.onChange?.(event);
-                if (!event.defaultPrevented) onChange(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                inputProps?.onKeyDown?.(event);
-                if (!event.defaultPrevented && event.key === "Escape" && value !== resetValue) {
-                  event.preventDefault();
-                  onChange(resetValue);
-                }
-              }}
-            />
-            {value !== resetValue && (
-              <button
-                {...clearButtonProps}
-                type="button"
-                className={classNames("altertable-search-clear", clearButtonProps?.className)}
-                aria-label={clearButtonProps?.["aria-label"] ?? `Clear ${label.toLowerCase()}`}
-                onClick={(event) => {
-                  clearButtonProps?.onClick?.(event);
-                  if (!event.defaultPrevented) onChange(resetValue);
-                }}
-              >
-                <AppIcon name="reset" size={16} />
-              </button>
-            )}
-          </div>
+            }}
+            endAction={
+              value !== resetValue && (
+                <Button
+                  {...clearButtonProps}
+                  variant="ghost"
+                  size="icon-compact"
+                  className={clearButtonProps?.className}
+                  aria-label={clearButtonProps?.["aria-label"] ?? `Clear ${label.toLowerCase()}`}
+                  onClick={(event) => {
+                    clearButtonProps?.onClick?.(event);
+                    if (!event.defaultPrevented) onChange(resetValue);
+                  }}
+                >
+                  <AppIcon name="reset" size={16} />
+                </Button>
+              )
+            }
+          />
           {children}
         </div>
         {description && (

@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { searchItems } from "../src/react/ui/searchItems.ts";
 import { SearchMatch } from "../src/react/ui/SearchMatch.tsx";
 import { ariaKeyShortcuts, shortcutLabel } from "../src/react/ui/shortcuts.ts";
+import { Combobox } from "../src/react/ui/Combobox.tsx";
+import { VisualizationWidget } from "../src/react/ui/VisualizationWidget.tsx";
 import { TableWidget } from "../src/react/ui/TableWidget.tsx";
 import { QueryList, formatSql } from "../src/react/ui/QueryList.tsx";
 import { DataSection } from "../src/react/ui/DataSection.tsx";
@@ -317,4 +319,98 @@ test("table pagination defaults to a bottom footer and supports complete and pre
   const preview = renderToStaticMarkup(<TableWidget {...props} limit={2} />);
   expect(preview).not.toContain("Item 3");
   expect(preview).not.toContain('aria-label="Table pages"');
+});
+
+test("pickers reject ambiguous selections and require explicit empty-selection meaning", () => {
+  const options = [{ id: "a", label: "Alpha" }];
+  const render = (props: Parameters<typeof Combobox>[0]) =>
+    renderToStaticMarkup(<Combobox {...props} />);
+  expect(() =>
+    render({ label: "Value", options: [...options, ...options], value: "a", onChange() {} }),
+  ).toThrow("unique");
+  expect(() => render({ label: "Value", options, value: "unknown", onChange() {} })).toThrow(
+    "available option IDs",
+  );
+  expect(() =>
+    render({ label: "Value", options, value: "a", resetValue: "unknown", onChange() {} }),
+  ).toThrow("resetValue");
+  expect(() =>
+    render({
+      label: "Value",
+      options,
+      values: ["a", "a"],
+      maxSelected: 2,
+      emptySelectionLabel: "All",
+      onChange() {},
+    }),
+  ).toThrow("unique");
+  expect(() =>
+    render({
+      label: "Value",
+      options,
+      values: [],
+      maxSelected: 0,
+      emptySelectionLabel: "All",
+      onChange() {},
+    }),
+  ).toThrow("positive integer");
+  expect(
+    render({
+      label: "Value",
+      options,
+      values: [],
+      maxSelected: 1,
+      emptySelectionLabel: "Choose a category",
+      onChange() {},
+    }),
+  ).toContain("Value: Choose a category");
+  expect(
+    render({ label: "Value", options: [], value: "a", loading: true, onChange() {} }),
+  ).toContain("Value: a");
+});
+
+test("table configurations reject duplicate identities and contradictory display rules", () => {
+  const props = {
+    title: "Rows",
+    columns: [
+      { id: "name", header: "Name", cell: (row: { id: string | number }) => row.id },
+    ] as const,
+    rows: [{ id: 1 }],
+    rowKey: (row: { id: string | number }) => row.id,
+    empty: { title: "No rows" },
+  };
+  expect(() =>
+    renderToStaticMarkup(<TableWidget {...props} rows={[{ id: 1 }, { id: "1" }]} />),
+  ).toThrow("row keys");
+  expect(() =>
+    renderToStaticMarkup(<TableWidget {...props} columns={[props.columns[0], props.columns[0]]} />),
+  ).toThrow("column IDs");
+  expect(() => renderToStaticMarkup(<TableWidget {...props} limit={0} />)).toThrow(
+    "positive integer",
+  );
+  expect(() =>
+    renderToStaticMarkup(<TableWidget {...props} pagination={{ pageSize: 1.5 }} />),
+  ).toThrow("positive integer");
+  // JavaScript callers must respect the same exclusivity as TypeScript callers.
+  const invalid = { ...props, limit: 1, pagination: { pageSize: 2 } };
+  // @ts-expect-error intentional invalid runtime configuration
+  expect(() => renderToStaticMarkup(<TableWidget {...invalid} />)).toThrow("mutually exclusive");
+});
+
+test("visualization view identities are validated even while data is loading", () => {
+  const props = {
+    title: "Views",
+    reading: { loading: true } as const,
+    isEmpty: (rows: string[]) => rows.length === 0,
+    empty: { title: "No rows" },
+    evidence: { id: "rows", queryNames: ["rows"] as [string] },
+    viewLabel: "View",
+  };
+  const view = { id: "chart", label: "Chart", render: () => null };
+  expect(() =>
+    renderToStaticMarkup(<VisualizationWidget {...props} views={[view, view]} />),
+  ).toThrow("unique");
+  expect(() =>
+    renderToStaticMarkup(<VisualizationWidget {...props} views={[view]} initialView="missing" />),
+  ).toThrow("Unknown widget tab");
 });

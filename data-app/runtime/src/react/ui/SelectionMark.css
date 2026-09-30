@@ -1,0 +1,23 @@
+.altertable-selection-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--at-muted, #687078);
+  border-radius: 4px;
+}
+.altertable-selection-mark[data-selected] {
+  border-color: var(--at-accent, #4779dc);
+  background: var(--at-accent, #4779dc);
+}
+.altertable-selection-mark[data-selected]::after {
+  width: 4px;
+  height: 7px;
+  margin-top: -2px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  content: "";
+  transform: rotate(45deg);
+}

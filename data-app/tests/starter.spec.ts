@@ -412,7 +412,7 @@ test("missing values share option styling and table inspection shares paging sta
     .evaluate((element) => getComputedStyle(element).borderRadius);
   expect(normalRadius).not.toBe("0px");
   await expect(options.filter({ hasText: "No value" })).toHaveCSS("border-radius", normalRadius);
-  await page.getByRole("textbox", { name: "Search interface values" }).press("Escape");
+  await page.getByRole("searchbox", { name: "Search interface values" }).press("Escape");
   const widget = page
     .locator(".altertable-data-widget")
     .filter({ has: page.getByRole("heading", { name: "Paginated orders" }) });

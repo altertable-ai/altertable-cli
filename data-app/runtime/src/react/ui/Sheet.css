@@ -95,28 +95,7 @@
   margin: -4px -8px 0 0;
 }
 .altertable-sheet-close {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--at-radius-control, 7px);
-  background: transparent;
   color: var(--at-muted, #687078);
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-}
-.altertable-sheet-close:hover {
-  background: var(--at-subtle, #f6f7f7);
-  color: var(--at-text, #202124);
-}
-.altertable-sheet-close:focus-visible {
-  outline: var(--at-focus-outline, 1px solid #687078);
-  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-sheet-body {
   min-height: 0;

@@ -9,6 +9,7 @@ import type { DataReading } from "../../core/reading.ts";
 import { formatCount, pluralize } from "../../core/format.ts";
 import { ContentSkeleton } from "./ContentSkeleton.tsx";
 import { AppIcon } from "./icons.ts";
+import { Button } from "./Button.tsx";
 import { Tooltip } from "./Tooltip.tsx";
 import "./TableWidget.css";
 
@@ -58,6 +59,27 @@ export type TableWidgetProps<Row> = TableWidgetBaseProps<Row> &
   );
 
 export function TableWidget<Row>(props: TableWidgetProps<Row>) {
+  const { pagination, limit, columns } = props;
+  invariant(
+    !pagination || (Number.isSafeInteger(pagination.pageSize) && pagination.pageSize >= 1),
+    "TableWidget pagination.pageSize must be a positive integer.",
+  );
+  invariant(
+    limit === undefined || pagination === undefined,
+    "TableWidget limit and pagination are mutually exclusive.",
+  );
+  invariant(
+    limit === undefined || (Number.isSafeInteger(limit) && limit >= 1),
+    "TableWidget limit must be a positive integer.",
+  );
+  const columnIds = columns.map((column) => column.id);
+  invariant(
+    columnIds.length > 0 &&
+      columnIds.every((id) => !!id.trim()) &&
+      new Set(columnIds).size === columnIds.length,
+    "TableWidget column IDs must be nonempty and unique.",
+  );
+
   if (props.reading) {
     const { reading, skeletonRows = 5, ...rest } = props;
     if (reading.loading)
@@ -83,14 +105,28 @@ function TableWidgetContent<Row>({
   empty,
   ...props
 }: TableWidgetBaseProps<Row> & { rows: readonly Row[] }) {
+  const keys = rows.map(rowKey);
   invariant(
-    !pagination || (Number.isSafeInteger(pagination.pageSize) && pagination.pageSize >= 1),
-    "TableWidget pagination.pageSize must be a positive integer.",
+    keys.every((key) => (typeof key === "string" ? !!key.trim() : Number.isFinite(key))) &&
+      new Set(keys.map(String)).size === keys.length,
+    "TableWidget row keys must be nonempty and unique.",
   );
-  const rowKeys = JSON.stringify(rows.map(rowKey));
-  const [pageState, setPageState] = useState({ page: 0, rowKeys, searchValue: search?.value });
-  if (pageState.rowKeys !== rowKeys || pageState.searchValue !== search?.value) {
-    setPageState({ page: 0, rowKeys, searchValue: search?.value });
+  const rowKeys = JSON.stringify(keys);
+
+  const pageSize =
+    pagination === false || limit !== undefined ? null : (pagination?.pageSize ?? 10);
+  const [pageState, setPageState] = useState({
+    page: 0,
+    rowKeys,
+    searchValue: search?.value,
+    pageSize,
+  });
+  if (
+    pageState.rowKeys !== rowKeys ||
+    pageState.searchValue !== search?.value ||
+    pageState.pageSize !== pageSize
+  ) {
+    setPageState({ page: 0, rowKeys, searchValue: search?.value, pageSize });
   }
   const hits = search
     ? searchItems(rows, search.value, {
@@ -99,8 +135,6 @@ function TableWidgetContent<Row>({
         fuzzyThreshold: search.fuzzyThreshold,
       })
     : rows.map((item) => ({ item, score: 0, matches: {} }));
-  const pageSize =
-    pagination === false || limit !== undefined ? null : (pagination?.pageSize ?? 10);
   const pageCount = pageSize ? Math.max(1, Math.ceil(hits.length / pageSize)) : 1;
   const page = Math.min(pageState.page, pageCount - 1);
   const start = pageSize ? page * pageSize : 0;
@@ -163,24 +197,28 @@ function TableWidgetContent<Row>({
           Page {page + 1} of {pageCount}
         </span>
         <Tooltip content="Previous page">
-          <button
-            type="button"
+          <Button
+            size="icon-compact"
             aria-label="Previous page"
             disabled={page === 0}
-            onClick={() => setPageState({ page: page - 1, rowKeys, searchValue: search?.value })}
+            onClick={() =>
+              setPageState({ page: page - 1, rowKeys, searchValue: search?.value, pageSize })
+            }
           >
             <AppIcon name="previousMonth" size={16} />
-          </button>
+          </Button>
         </Tooltip>
         <Tooltip content="Next page">
-          <button
-            type="button"
+          <Button
+            size="icon-compact"
             aria-label="Next page"
             disabled={page >= pageCount - 1}
-            onClick={() => setPageState({ page: page + 1, rowKeys, searchValue: search?.value })}
+            onClick={() =>
+              setPageState({ page: page + 1, rowKeys, searchValue: search?.value, pageSize })
+            }
           >
             <AppIcon name="nextMonth" size={16} />
-          </button>
+          </Button>
         </Tooltip>
       </span>
     </nav>

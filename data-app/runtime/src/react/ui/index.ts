@@ -162,6 +162,9 @@ export { PresentStory } from "./PresentStory.tsx";
 export type { PresentStoryProps } from "./PresentStory.tsx";
 export type { StoryFinding, BoundStory } from "./story.ts";
 
+export { Checkbox } from "./Checkbox.tsx";
+export type { CheckboxProps } from "./Checkbox.tsx";
+
 // Buttons, overlays, and icons
 export { AppIcon } from "./icons.ts";
 export type { AppIconName, AppIconProps } from "./icons.ts";

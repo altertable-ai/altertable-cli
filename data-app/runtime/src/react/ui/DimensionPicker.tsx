@@ -98,6 +98,7 @@ export function DimensionPicker<T extends DimensionValue>({
       options={choices}
       missingOption={missingOption}
       maxSelected={filter.maxSelected}
+      emptySelectionLabel="All"
       loading={loading}
       error={error}
       onRetry={onRetry}

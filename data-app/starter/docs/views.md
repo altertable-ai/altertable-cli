@@ -13,3 +13,7 @@ For a custom visual, compose `DataWidget` with a bound `reading`, `isEmpty`, `em
 [Runtime API map](../.altertable/runtime/README.md#find-ui-by-task) lists the other components. A measured zero and unavailable data have different meanings; the app defines whether a result is empty. Check the finished app with live data at phone and desktop widths.
 
 For a categorical source dimension, define a `dimensionFilter` with fixed options or a typed `defineFacetFilter` operation, then put it in the view's `variables` record beside other inputs. `defineTimeView` accepts additional variables while generating the date input. The operation input parser calls `parseDimensionSelection`, and its SQL uses `dimensionPredicate` for the allowlisted source column. All, a literal value named `null`, and missing are distinct. Choose useful dimensions and verify the source meaning of each value.
+
+## Standard interaction ownership
+
+Use `TableWidget` for searchable tables with bottom pagination and `VisualizationWidget` for alternate views and inspection. Declare each visualization once; pass controlled selection to it so its page and inspection mounts agree. Multi-select `Combobox` calls declare `emptySelectionLabel`; dimension filters use `DimensionPicker`, which defines **All** and **No value** from the dimension contract. Reuse `Button`, `Checkbox`, and `SearchField` for app-owned controls so sizing, selection marks, focus, and accessibility stay consistent with runtime widgets.

@@ -229,3 +229,15 @@ Import `defineQueryNames` from `/contract` and the context/identifier factories 
 - Supply `empty` to secondary `DataSection` requests or pass a bound `useView` result. A primary `DataApp` accepts it either from `useView` or as an explicit prop.
 - For alternate views of the same bound result, pass `views={[{ id, label, render }]}` and `viewLabel` to `VisualizationWidget`. Its required `isEmpty` and `empty` apply to the whole result; the widget owns selection. Use `WidgetViewTabs` directly only when views have independent empty states.
 - Variable URL keys cannot use `view`, `about`, `tab`, `present`, or `step`.
+
+### Constrained UI defaults
+
+Use the runtime widgets and controls for their standard interactions. `TableWidget` owns search, empty rows, and bottom pagination. `VisualizationWidget` owns its view selector and reuses the same visualization and controlled selection in inspection. Bind chart selection outside the rendered chart so the widget and sheet share it. No separate inspection renderer is needed.
+
+`Combobox` rejects duplicate or blank option IDs, unavailable ready selections, invalid reset IDs, and duplicate or excessive multi-selections. Multi-select calls must supply `emptySelectionLabel`; `DimensionPicker` defines its empty selection as **All**. Loading or failed facets may temporarily retain selected IDs while values are unavailable. Known options remain usable during loading and errors, with visible feedback and retry. An empty ready picker shows its no-match state. Disabled pickers cannot open; reaching `maxSelected` disables only unselected options.
+
+Table column IDs and row keys must be unique and nonempty. Numeric row keys must be finite; numeric and string equivalents count as duplicates. `limit` and `pagination` are mutually exclusive at both the type and runtime boundaries. Limits and page sizes must be positive integers. Visualization view IDs and their initial selection are validated even before data loads.
+
+`Button` owns action sizing, disabled treatment, and focus styling. `Checkbox` owns labeled checkbox semantics and uses the same selection mark as picker options. Shared search surfaces handle picker and page/table search; tooltips preserve existing descriptions and associate their content with the trigger. Keep the default layouts rather than rebuilding close, clear, retry, or paging controls in app source.
+
+The development gallery is served at `/gallery` by `data-app/tests/server.ts`. It includes loading, refresh failure, empty and disabled controls, selection limits, zero values, long labels, narrow containers, widget inspection, and theme switching. Run the browser suite to check these defaults at desktop and phone widths.

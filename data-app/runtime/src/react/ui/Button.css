@@ -45,7 +45,8 @@
 .altertable-button[data-variant="ghost"][data-open="true"] {
   background: var(--at-subtle, #f6f7f7);
 }
-.altertable-button:focus-visible {
+.altertable-button:focus-visible,
+.altertable-button[data-focus-visible] {
   outline: var(--at-focus-outline, 1px solid #687078);
   outline-offset: var(--at-focus-ring-offset, 2px);
 }
@@ -57,4 +58,18 @@
   .altertable-button {
     transition: none;
   }
+}
+
+.altertable-button[data-size="compact"] {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.altertable-button[data-size="icon-compact"] {
+  flex: none;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
 }

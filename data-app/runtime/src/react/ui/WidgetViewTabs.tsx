@@ -2,7 +2,7 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "./Tabs.tsx";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
 import { classNames } from "./classNames.ts";
-import { invariant } from "../../core/invariant.ts";
+import { validateWidgetViews } from "./widget-views.ts";
 import "./WidgetViewTabs.css";
 
 export type WidgetView = {
@@ -27,12 +27,7 @@ export function WidgetViewTabs<const Views extends readonly WidgetView[]>({
   className,
   ...props
 }: WidgetViewTabsProps<Views>) {
-  const ids = new Set(views.map((view) => view.id));
-  invariant(
-    ids.size === views.length && views.every((view) => !!view.id.trim()),
-    "Widget tab IDs must be nonempty and unique.",
-  );
-  invariant(ids.has(selectedKey), `Unknown widget tab: ${selectedKey}.`);
+  validateWidgetViews(views, selectedKey);
   return (
     <div {...props} className={classNames("altertable-widget-view-tabs", className)}>
       <Tabs selectedKey={selectedKey} onSelectionChange={(key) => onSelectionChange(String(key))}>

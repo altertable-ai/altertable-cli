@@ -25,6 +25,7 @@ import {
 import { classNames } from "./classNames.ts";
 import { AppIcon } from "./icons.ts";
 import { formatDateRange, pluralize } from "../../core/format.ts";
+import { Checkbox } from "./Checkbox.tsx";
 import "./DateRangePicker.css";
 
 import {
@@ -283,18 +284,14 @@ export function DateRangePicker({
                 )}
               </div>
               {comparison && (
-                <label className="altertable-date-range-compare">
-                  <input
-                    type="checkbox"
-                    checked={comparison.enabled}
-                    disabled={!comparison.range}
-                    onChange={(event) => comparison.onChange(event.target.checked)}
-                  />
-                  <span>
-                    Compare with previous period
-                    {comparison.range && <small>{formatDateRange(comparison.range)}</small>}
-                  </span>
-                </label>
+                <Checkbox
+                  className="altertable-date-range-compare"
+                  label="Compare with previous period"
+                  checked={comparison.enabled}
+                  disabled={!comparison.range}
+                  onChange={comparison.onChange}
+                  description={comparison.range && formatDateRange(comparison.range)}
+                />
               )}
             </div>
           </div>

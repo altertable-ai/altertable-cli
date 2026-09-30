@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useMergeRefs } from "@floating-ui/react";
 import { classNames } from "./classNames.ts";
+import { Button } from "./Button.tsx";
 import { AppIcon } from "./icons.ts";
 import { GradientScroll } from "./GradientScroll.tsx";
 import "./Sheet.css";
@@ -126,14 +127,15 @@ export function Sheet({
           </div>
           <div className="altertable-sheet-actions">
             {headerActions}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               className="altertable-sheet-close"
               aria-label="Close panel"
               onClick={() => onOpenChange(false)}
             >
               <AppIcon name="close" />
-            </button>
+            </Button>
           </div>
         </header>
         <GradientScroll className="altertable-sheet-body" fadeStart={false}>

@@ -4,6 +4,7 @@ import { DataWidget, type DataWidgetProps } from "./DataWidget.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
 import type { DataReading } from "../../core/reading.ts";
 import { ContentSkeleton, type ContentSkeletonProps } from "./ContentSkeleton.tsx";
+import { validateWidgetViews } from "./widget-views.ts";
 import { WidgetViewTabs } from "./WidgetViewTabs.tsx";
 import "./VisualizationWidget.css";
 
@@ -88,6 +89,7 @@ function VisualizationWidgetWithViews<Data>({
   initialView?: string;
 }) {
   const [selected, setSelected] = useState(initialView ?? views[0]?.id ?? "");
+  validateWidgetViews(views, selected);
   return (
     <DataWidget
       {...shell}

@@ -252,20 +252,7 @@
   border-top: 1px solid var(--at-border, #e3e6e8);
   cursor: pointer;
 }
-.altertable-date-range-compare:has(input:disabled) {
-  opacity: 0.5;
-  cursor: default;
-}
-.altertable-date-range-compare input {
-  margin: 2px 0 0;
-  accent-color: var(--at-accent, #4779dc);
-}
-.altertable-date-range-compare small {
-  display: block;
-  margin-top: 2px;
-  color: var(--at-muted, #687078);
-  font-size: 11px;
-}
+
 .altertable-date-range-popover .react-aria-RangeCalendar {
   width: max-content;
   max-width: calc(100vw - 32px);
