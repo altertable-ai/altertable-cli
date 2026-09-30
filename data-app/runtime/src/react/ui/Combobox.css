@@ -132,11 +132,6 @@
   padding-top: 4px;
   border-top: 1px solid var(--at-border, #e3e6e8);
 }
-.altertable-combobox-popover .react-aria-ListBoxItem[data-missing] {
-  margin-top: 4px;
-  border-top: 1px solid var(--at-border, #e3e6e8);
-  border-radius: 0;
-}
 .altertable-combobox-option-mark {
   display: grid;
   flex: none;

@@ -166,7 +166,6 @@ export function Combobox(props: ComboboxProps) {
                 <ListBoxItem
                   id={hit.item.id}
                   textValue={hit.item.label}
-                  data-missing={hit.item.id === missingOption?.id || undefined}
                   isDisabled={atLimit && !selected.has(hit.item.id)}
                 >
                   <span className="altertable-combobox-option-mark" aria-hidden="true" />
