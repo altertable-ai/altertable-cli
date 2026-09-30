@@ -5,7 +5,6 @@ import { isRecord } from "@/lib/object.ts";
 import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 
 export const dataAppPackage = "@altertable/data-app";
-export const legacyRuntimePath = ".altertable/runtime";
 
 type AppPackage = {
   dependencies?: Record<string, string>;
@@ -40,11 +39,6 @@ export async function readAppPackage(
 
 export async function requirePublishedDataApp(directory: string): Promise<void> {
   const { manifest } = await readAppPackage(directory);
-  if (manifest.dependencies?.[dataAppPackage] === `file:${legacyRuntimePath}`) {
-    throw new ConfigurationError(
-      "This app uses a vendored runtime. Run `altertable app upgrade` to migrate it to the published package.",
-    );
-  }
   const reference = manifest.dependencies?.[dataAppPackage];
   if (!reference || !/^[\d~^<>=*]/.test(reference)) {
     throw new ConfigurationError(

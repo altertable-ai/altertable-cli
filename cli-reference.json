@@ -973,7 +973,7 @@
             {
               "id": "altertable-app-upgrade",
               "command": "altertable app upgrade",
-              "description": "Update the data app package to the CLI's tested version, migrating vendored apps.",
+              "description": "Update the data app package to the CLI's tested version.",
               "usage": [
                 "altertable app upgrade [options]"
               ],

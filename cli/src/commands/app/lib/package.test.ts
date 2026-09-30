@@ -28,7 +28,7 @@ async function fixture(reference: string, lockedReference = reference, version =
 }
 
 test.each([
-  ["file:.altertable/runtime", "app upgrade"],
+  ["file:.altertable/runtime", "published"],
   ["file:../local-runtime", "published"],
   ["github:altertable-ai/data-app", "published"],
 ])("check rejects %s before installing or modifying the lockfile", async (reference, message) => {

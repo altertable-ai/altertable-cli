@@ -40,19 +40,9 @@ source watcher.
 `app upgrade` updates the app manifest and lockfile to the CLI's tested package version,
 preserving unrelated dependencies and app code. A newer installed package is not downgraded.
 Peer incompatibilities stop with an actionable error; missing peers are seeded from starter defaults.
-Registry upgrades resolve only the lockfile. Legacy migrations also install the frozen dependencies
-with lifecycle scripts disabled and run the app typecheck and contract/browser-boundary checks before
-removing the managed runtime. Failures restore
-the manifest, lockfile, migration edits, and the original installed dependencies. Restart running
-previews after an upgrade.
-
-For older generated apps using `file:.altertable/runtime`, upgrade first validates all managed
-checksums and refuses modified, added, or symlinked runtime files. It migrates local server helpers
-to `/server/bun`, imports the public stylesheet, updates vendored documentation links, and removes
-the runtime copy only after package resolution succeeds. Unsupported custom server imports or a
-custom browser entry need the indicated manual edit before retrying. Older custom stories must
-migrate from `StorySection`/`PlayStory` to `DataWidget`/`PresentStory` and explicit finding evidence
-before upgrading; see the [package migration guide](https://github.com/altertable-ai/data-app/blob/main/docs/react.md#migration-from-the-earlier-runtime).
+Upgrades resolve only the lockfile and restore the original manifest and lockfile if resolution
+fails. Restart running previews after an upgrade. Apps must already use the published package;
+`app upgrade` does not migrate local runtime copies or rewrite app source.
 
 ## Verify
 
@@ -66,7 +56,7 @@ bun run --cwd cli data-app:test:browser
 
 Install Playwright Chromium with `bunx playwright install chromium` from `data-app/tests/`
 if needed. Browser checks cover connection and request states, theme, context, and presentation
-at phone and desktop widths. CLI tests cover offline scaffolding, npm consumption, legacy migration,
-peer checks, and rollback. Release smoke checks create an app outside the checkout, install its
+at phone and desktop widths. CLI tests cover offline scaffolding, npm consumption, package upgrades,
+peer checks, and failed resolution. Release smoke checks create an app outside the checkout, install its
 frozen lockfile, and run `app check` with the packaged CLI. The minimum Bun compatibility job
 checks scaffolding only; app builds use the repository's current toolchain.

@@ -425,7 +425,7 @@ altertable app create|dev|build|check|upgrade
 - `dev` — Preview a data app locally with lakehouse access.
 - `build` — Typecheck and build a data app without Altertable credentials.
 - `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
-- `upgrade` — Update the data app package to the CLI's tested version, migrating vendored apps.
+- `upgrade` — Update the data app package to the CLI's tested version.
 
 **Examples**
 
@@ -542,7 +542,7 @@ altertable app check --lakehouse
 
 #### `altertable app upgrade`
 
-Update the data app package to the CLI's tested version, migrating vendored apps.
+Update the data app package to the CLI's tested version.
 
 **Usage**
 
