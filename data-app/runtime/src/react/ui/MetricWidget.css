@@ -76,3 +76,7 @@
   gap: 10px;
   min-width: 0;
 }
+
+.altertable-metric-value[data-unavailable] {
+  opacity: 0.6;
+}

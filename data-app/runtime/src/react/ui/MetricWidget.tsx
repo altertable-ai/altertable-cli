@@ -97,7 +97,12 @@ function MetricWidgetContent({
     ) : null;
   const reading = (
     <div className="altertable-metric-reading">
-      <strong className="altertable-metric-value">{shownValue}</strong>
+      <strong
+        className="altertable-metric-value"
+        data-unavailable={shownValue === "—" || undefined}
+      >
+        {shownValue}
+      </strong>
       {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
     </div>
   );
