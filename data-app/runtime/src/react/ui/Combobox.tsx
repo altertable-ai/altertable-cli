@@ -61,7 +61,7 @@ export function Combobox(props: ComboboxProps) {
     (id) => selectedOptions.find((option) => option.id === id)?.label ?? id,
   );
   const display = multiple ? labels.join(", ") || "All" : labels[0] || "All";
-  const matches = searchItems(options, search.trim(), {
+  const matches = searchItems(selectedOptions, search.trim(), {
     attributes: [
       { name: "label", getter: (option) => option.label },
       { name: "description", getter: (option) => option.description ?? "" },
@@ -94,19 +94,6 @@ export function Combobox(props: ComboboxProps) {
         props.onChange(id);
         setOpen(false);
       }
-    }
-  }
-
-  function toggleMissing() {
-    if (!missingOption) return;
-    if (multiple) {
-      const next = selected.has(missingOption.id)
-        ? chosen.filter((id) => id !== missingOption.id)
-        : [...chosen, missingOption.id];
-      if (next.length <= props.maxSelected) props.onChange(next);
-    } else {
-      props.onChange(missingOption.id);
-      setOpen(false);
     }
   }
 
@@ -179,6 +166,7 @@ export function Combobox(props: ComboboxProps) {
                 <ListBoxItem
                   id={hit.item.id}
                   textValue={hit.item.label}
+                  data-missing={hit.item.id === missingOption?.id || undefined}
                   isDisabled={atLimit && !selected.has(hit.item.id)}
                 >
                   <span className="altertable-combobox-option-mark" aria-hidden="true" />
@@ -196,22 +184,6 @@ export function Combobox(props: ComboboxProps) {
               )}
             </ListBox>
           </GradientScroll>
-          {missingOption && (
-            <div className="altertable-combobox-special">
-              <Button
-                onPress={toggleMissing}
-                isDisabled={atLimit && !selected.has(missingOption.id)}
-                aria-pressed={selected.has(missingOption.id)}
-                className="altertable-combobox-special-button"
-              >
-                <span className="altertable-combobox-special-mark" aria-hidden="true" />
-                <span>
-                  <span className="altertable-combobox-special-label">{missingOption.label}</span>
-                  <small>{missingOption.description}</small>
-                </span>
-              </Button>
-            </div>
-          )}
           {(canClear || (error && matches.length > 0)) && (
             <div className="altertable-combobox-actions">
               {canClear && <Button onPress={clear}>Clear filter</Button>}

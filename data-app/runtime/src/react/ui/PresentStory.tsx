@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { useMergeRefs } from "@floating-ui/react";
-import type { DisclosedQuery } from "../../core/contract.ts";
 import type { ThemeController } from "../../core/appearance.ts";
 import { AboutData, type AboutEmpty } from "./AboutData.tsx";
 import type { DataContext } from "./data-context.ts";
@@ -33,7 +32,6 @@ export type StoryStep = {
   queryNames?: string[];
   visual: ReactNode;
   visualKind?: "metric" | "chart";
-  queries?: DisclosedQuery[];
 };
 
 export type PresentStoryProps = {
@@ -254,12 +252,12 @@ export function PresentStory({
                     visual={step.visual}
                     visualKind={step.visualKind}
                     dataContext={dataContext}
+                    tab={step.glossaryIds?.length ? "glossary" : "queries"}
                     references={{
                       kind: "ids",
                       glossaryIds: step.glossaryIds,
                       queryNames: step.queryNames,
                     }}
-                    queries={step.queries ?? []}
                     tooltip="Explore this finding"
                     variant="outline"
                     portalRoot={dialog}

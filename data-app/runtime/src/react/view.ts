@@ -24,6 +24,11 @@ export type ViewDate<Variables extends VariableCollection, Input> = {
   input: (input: Input) => DateRangeRequest;
 };
 
+/** Read variable values from a custom operation input; omitted keys use top-level fields. */
+export type ViewBindings<Variables extends VariableCollection, Input> = Partial<{
+  [Key in keyof Variables]: (input: Input) => ResolvedVariables<Variables>[Key];
+}>;
+
 export type DataViewDefinition<
   Name extends string,
   Variables extends VariableCollection,
@@ -33,6 +38,7 @@ export type DataViewDefinition<
   operation: Name;
   variables: Variables;
   input: (values: ResolvedVariables<Variables>) => Input;
+  bindings?: ViewBindings<Variables, Input>;
   isEmpty: (data: Data) => boolean;
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (
@@ -42,6 +48,7 @@ export type DataViewDefinition<
 
 export function describeViewInput<Input>(definition: {
   variables: VariableCollection;
+  bindings?: Partial<Record<string, (input: Input) => unknown>>;
   date?: { variable: string; input: (input: Input) => DateRangeRequest };
   describeInput?: (input: Input) => string;
 }): (input: Input) => string {
@@ -59,8 +66,7 @@ export function describeViewInput<Input>(definition: {
       .filter(([, variable]) => variable.kind === "dimension")
       .map(([key, filter]) => {
         const dimension = filter as DimensionVariable<any>;
-        const selected =
-          input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
+        const selected = readViewBinding(definition, key, input);
         return dimension.valid(selected as never)
           ? `${dimension.label}: ${dimension.describe(selected as never)}`
           : null;
@@ -75,6 +81,7 @@ export function resolveViewInput<Variables extends VariableCollection, Input>(
     input: (values: ResolvedVariables<Variables>) => Input;
     date?: ViewDate<Variables, Input>;
     variables: Variables;
+    bindings?: ViewBindings<Variables, Input>;
   },
   values: ResolvedVariables<Variables>,
 ): Input {
@@ -82,8 +89,12 @@ export function resolveViewInput<Variables extends VariableCollection, Input>(
   if (definition.date) {
     const selected = values[definition.date.variable] as DateRangeRequest;
     const mapped = definition.date.input(input);
+    invariant(
+      mapped && mapped.range && "comparison" in mapped,
+      "The operation input must preserve the selected date range and comparison.",
+    );
     const sameRange = (a: DateRangeRequest["comparison"], b: DateRangeRequest["comparison"]) =>
-      a === null || b === null ? a === b : a.start === b.start && a.end === b.end;
+      a === b || (!!a && !!b && a.start === b.start && a.end === b.end);
     invariant(
       sameRange(selected.range, mapped.range) && sameRange(selected.comparison, mapped.comparison),
       "The operation input must preserve the selected date range and comparison.",
@@ -93,12 +104,21 @@ export function resolveViewInput<Variables extends VariableCollection, Input>(
     if (variable.kind !== "dimension") continue;
     const filter = variable as DimensionVariable<any>;
     const selected = values[key] as never;
-    const mapped =
-      input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
+    const mapped = readViewBinding(definition, key, input);
     invariant(
       filter.valid(mapped as never) && filter.same(selected, mapped as never),
       `The operation input must preserve the ${key} dimension selection.`,
     );
   }
   return input;
+}
+
+function readViewBinding<Input>(
+  definition: { bindings?: Partial<Record<string, (input: Input) => unknown>> },
+  key: string,
+  input: Input,
+): unknown {
+  const read = definition.bindings?.[key];
+  if (read) return read(input);
+  return input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
 }

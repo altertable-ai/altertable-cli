@@ -17,6 +17,9 @@ import { VisualizationWidget } from "../src/react/ui/VisualizationWidget.tsx";
 import { TableWidget } from "../src/react/ui/TableWidget.tsx";
 import { WidgetViewTabs } from "../src/react/ui/WidgetViewTabs.tsx";
 import type { DataOperation, DateRangeRequest } from "../src/core/contract.ts";
+import { dimensionFilter, type DimensionSelection } from "../src/core/dimension.ts";
+import { PresentStory } from "../src/react/ui/PresentStory.tsx";
+import { InspectionContext } from "../src/react/ui/InspectionContext.tsx";
 
 const names = defineQueryNames({ activity: "activity" });
 const context = createDataContext(names)({
@@ -151,6 +154,91 @@ test("Present findings use the displayed input and require unique, supported evi
   expect(() =>
     storySteps([{ ...finding, evidence: { id: "missing", queryNames: ["unknown"] } }], context),
   ).toThrow("Unknown query");
+});
+
+test("nested view inputs preserve dates and dimensions in validation and descriptions", () => {
+  const source = dimensionFilter<string>({
+    key: "source",
+    label: "Source",
+    valueType: "string",
+    selection: "multiple",
+    options: [{ value: "HTTP", label: "HTTP" }],
+  });
+  type Input = { request: DateRangeRequest; filters: { source: DimensionSelection<string> } };
+  const { defineTimeView } = createDataHooks<{ nested: DataOperation<Input, Data> }>(
+    createDataClient(),
+  );
+  const timed = defineTimeView({
+    operation: "nested",
+    time: { contract: calendar, defaultValue: { kind: "preset", id: "last-7" } },
+    variables: { source },
+    input: ({ period, source }) => ({ request: period, filters: { source } }),
+    bindings: { period: (input) => input.request, source: (input) => input.filters.source },
+    isEmpty: (data) => !data.rows.length,
+    empty: { title: "No actions" },
+  });
+  const period = calendar.request({ start: "2026-03-10", end: "2026-03-12" });
+  const selected: DimensionSelection<string> = {
+    kind: "include",
+    members: [{ kind: "value", value: "HTTP" }],
+  };
+  const input = resolveViewInput(timed, { period, source: selected });
+  expect(input).toEqual({ request: period, filters: { source: selected } });
+  expect(timed.describeInput(input)).toContain("Mar 10–12, 2026");
+  expect(timed.describeInput(input)).toContain("Source: HTTP");
+  expect(() => resolveViewInput({ ...timed, bindings: {} }, { period, source: selected })).toThrow(
+    "source dimension selection",
+  );
+  expect(() =>
+    resolveViewInput(
+      {
+        ...timed,
+        input: () => ({ request: period, filters: { source: { kind: "all" as const } } }),
+      },
+      { period, source: selected },
+    ),
+  ).toThrow("source dimension selection");
+  expect(() =>
+    resolveViewInput(
+      {
+        ...timed,
+        date: {
+          variable: "period",
+          input: (input) => (input as unknown as { period: DateRangeRequest }).period,
+        },
+      },
+      { period, source: selected },
+    ),
+  ).toThrow("selected date range");
+});
+
+test("story inspection inherits executed SQL and filters it to the finding evidence", () => {
+  const html = renderToStaticMarkup(
+    <InspectionContext.Provider
+      value={{
+        dataContext: context,
+        queries: [
+          { name: "activity", statement: "SELECT 42 AS story_evidence" },
+          { name: "unrelated", statement: "SELECT 99 AS unrelated_evidence" },
+        ],
+      }}
+    >
+      <PresentStory
+        title="Activity"
+        dataContext={context}
+        findings={[
+          {
+            id: "concentration",
+            headline: "Most activity occurred on one day",
+            visual: "42 actions",
+            evidence: featureEvidence,
+          },
+        ]}
+      />
+    </InspectionContext.Provider>,
+  );
+  expect(html).toContain("story_evidence");
+  expect(html).not.toContain("unrelated_evidence");
 });
 
 test("bound metrics share values, formatting, evidence and displayed comparison periods", () => {

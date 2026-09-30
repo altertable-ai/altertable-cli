@@ -5,6 +5,8 @@ import "./GradientScroll.css";
 
 export type GradientScrollProps = ComponentPropsWithRef<"div"> & {
   axis?: "vertical" | "horizontal";
+  /** Disable the start fade when sticky controls share the scrollport. */
+  fadeStart?: boolean;
 };
 
 type ScrollMetrics = Pick<
@@ -23,6 +25,7 @@ export function scrollFadeEdges(metrics: ScrollMetrics, axis: "vertical" | "hori
 /** Fades only scrollable edges; content, size, and scroll changes update the mask. */
 export function GradientScroll({
   axis = "vertical",
+  fadeStart = true,
   className,
   children,
   ref,
@@ -73,7 +76,7 @@ export function GradientScroll({
       ref={mergedRef}
       className={classNames("altertable-gradient-scroll", className)}
       data-axis={axis}
-      data-fade-start={edges.start ? "" : undefined}
+      data-fade-start={fadeStart && edges.start ? "" : undefined}
       data-fade-end={edges.end ? "" : undefined}
     >
       {children}

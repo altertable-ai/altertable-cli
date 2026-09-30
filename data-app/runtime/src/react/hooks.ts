@@ -20,6 +20,7 @@ import {
   resolveViewInput,
   type DataViewDefinition,
   type ResolvedVariables,
+  type ViewBindings,
 } from "./view.ts";
 import { useViewVariables } from "./view-controls.tsx";
 
@@ -155,6 +156,10 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     input?: (
       values: ResolvedVariables<{ period: ReturnType<typeof dateRangeVariable> } & Additional>,
     ) => InputOf<Operations[Name]>;
+    bindings?: ViewBindings<
+      { period: ReturnType<typeof dateRangeVariable> } & Additional,
+      InputOf<Operations[Name]>
+    >;
     isEmpty: (data: OutputOf<Operations[Name]>) => boolean;
     empty: Pick<EmptyStateProps, "title" | "description">;
   }) {
@@ -166,6 +171,7 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
     return defineDataView<Name, { period: typeof period } & Additional>({
       operation: definition.operation,
       variables: { period, ...definition.variables } as { period: typeof period } & Additional,
+      bindings: definition.bindings,
       input: (values) => {
         if (definition.input) return definition.input(values);
         if (!definition.variables || !Object.keys(definition.variables).length)
@@ -175,9 +181,11 @@ export function createDataHooks<Operations extends DataOperations>(client: DataC
       date: {
         variable: "period" as never,
         input: (input) =>
-          (input && typeof input === "object" && "period" in input
-            ? input.period
-            : input) as DateRangeRequest,
+          definition.bindings?.period
+            ? (definition.bindings.period(input) as DateRangeRequest)
+            : ((input && typeof input === "object" && "period" in input
+                ? input.period
+                : input) as DateRangeRequest),
       },
       isEmpty: definition.isEmpty,
       empty: definition.empty,

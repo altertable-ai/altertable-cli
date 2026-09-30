@@ -136,7 +136,9 @@ export function Sheet({
             </button>
           </div>
         </header>
-        <GradientScroll className="altertable-sheet-body">{children}</GradientScroll>
+        <GradientScroll className="altertable-sheet-body" fadeStart={false}>
+          {children}
+        </GradientScroll>
         {footer && <footer className="altertable-sheet-footer">{footer}</footer>}
       </div>
     </dialog>
