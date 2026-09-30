@@ -18,8 +18,8 @@
 }
 .altertable-glossary-definition-trigger:focus-visible {
   border-radius: 2px;
-  outline: 2px solid var(--at-accent, #405d47);
-  outline-offset: 2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-glossary-definition-popover {
   width: min(320px, calc(100vw - 24px));

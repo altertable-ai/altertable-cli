@@ -15,11 +15,11 @@
   text-align: left;
 }
 .altertable-combobox-trigger:hover {
-  border-color: color-mix(in srgb, var(--at-muted, #687078) 45%, var(--at-border, #e3e6e8));
+  border-color: var(--at-control-hover-border, #a6acb1);
 }
 .altertable-combobox-trigger[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: 2px;
+  border-color: var(--at-focus-color, #687078);
+  outline: none;
 }
 .altertable-combobox-trigger[data-disabled] {
   opacity: 0.5;
@@ -70,8 +70,8 @@
   font: inherit;
   outline: none;
 }
-.altertable-combobox-search:focus-visible {
-  border-color: var(--at-accent, #4779dc);
+.altertable-combobox-search:focus {
+  border-color: var(--at-focus-color, #687078);
 }
 .altertable-combobox-status {
   position: absolute;
@@ -112,8 +112,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-combobox-popover .react-aria-ListBoxItem[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: -2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-inset, -2px);
 }
 .altertable-combobox-popover .react-aria-ListBoxItem[data-disabled] {
   opacity: 0.45;
@@ -152,7 +152,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-combobox-special-button[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-combobox-special-button[data-disabled] {
   opacity: 0.45;
@@ -207,5 +208,6 @@
 }
 .altertable-combobox-actions .react-aria-Button[data-focus-visible],
 .altertable-combobox-empty .react-aria-Button[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }

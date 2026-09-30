@@ -1,0 +1,31 @@
+:root {
+  --at-focus-ring-width: 2px;
+  --at-focus-ring-offset: 2px;
+  --at-focus-ring-inset: -2px;
+}
+
+/* Native and React Aria controls share the same keyboard focus treatment. */
+[data-at-focus="ring"]:is(:focus-visible, [data-focus-visible]),
+[data-at-focus="inset"]:is(:focus-visible, [data-focus-visible]) {
+  outline: var(--at-focus-ring-width) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset);
+}
+[data-at-focus="inset"]:is(:focus-visible, [data-focus-visible]) {
+  outline-offset: var(--at-focus-ring-inset);
+}
+
+/* Apply to an existing 1px bordered control or its input group. */
+[data-at-focus="border"]:is(:focus-within, [data-focus-within], [data-focus-visible]) {
+  border-color: var(--at-focus-color, #687078);
+  outline: none;
+}
+[data-at-focus="border"] input:focus-visible {
+  outline: none;
+}
+
+@media (forced-colors: active) {
+  :root {
+    --at-focus-color: Highlight !important;
+    --at-focus-text: HighlightText !important;
+  }
+}

@@ -30,10 +30,10 @@
   color: var(--at-muted, #626b73);
 }
 .altertable-search-input-wrap:hover {
-  border-color: color-mix(in srgb, var(--at-muted, #687078) 45%, var(--at-border, #e3e6e8));
+  border-color: var(--at-control-hover-border, #a6acb1);
 }
 .altertable-search-input-wrap:focus-within {
-  border-color: var(--at-control-focus-border, var(--at-accent, #4779dc));
+  border-color: var(--at-focus-color, #687078);
 }
 .altertable-search[data-size="compact"] .altertable-search-input-wrap {
   width: min(100%, 300px);
@@ -87,8 +87,8 @@
   color: var(--at-text, #202124);
 }
 .altertable-search-clear:focus-visible {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: 1px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-search-description,
 .altertable-search-status {

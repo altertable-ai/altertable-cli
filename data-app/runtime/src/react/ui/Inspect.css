@@ -17,8 +17,8 @@
   color: var(--at-text, #202124);
 }
 .altertable-inspect-trigger:focus-visible {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: 2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 @media (hover: hover) and (pointer: fine) {
   :is(

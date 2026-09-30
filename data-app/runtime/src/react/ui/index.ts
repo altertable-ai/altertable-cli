@@ -1,3 +1,5 @@
+import "./Focus.css";
+
 // App shell and getting started
 export { DataApp } from "./DataApp.tsx";
 export type { DataAppProps, DataAppRequest } from "./DataApp.tsx";

@@ -22,8 +22,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-widget-disclosure > summary:focus-visible {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: 2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-widget-disclosure > summary svg {
   color: var(--at-muted, #687078);

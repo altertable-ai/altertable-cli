@@ -21,13 +21,13 @@
   transition: border-color 120ms ease;
 }
 .altertable-date-range .react-aria-Group[data-hovered] {
-  border-color: color-mix(in srgb, var(--at-muted, #687078) 45%, var(--at-border, #e3e6e8));
+  border-color: var(--at-control-hover-border, #a6acb1);
 }
 .altertable-variable-bar .altertable-date-range .react-aria-Group {
   box-shadow: var(--at-shadow-surface, none);
 }
 .altertable-date-range .react-aria-Group[data-focus-within] {
-  border-color: var(--at-control-focus-border, var(--at-accent, #4779dc));
+  border-color: var(--at-focus-color, #687078);
 }
 .altertable-date-range[data-invalid] .react-aria-Group,
 .altertable-date-range:has(.altertable-date-range-error) .react-aria-Group {
@@ -50,8 +50,8 @@
   color: var(--at-muted, #687078);
 }
 .altertable-date-range .react-aria-DateSegment[data-focused] {
-  background: var(--at-accent, #4779dc);
-  color: var(--at-on-accent, #fff);
+  background: var(--at-focus-color, #687078);
+  color: var(--at-focus-text, #fff);
 }
 .altertable-date-range .react-aria-Group > span[aria-hidden] {
   color: var(--at-muted, #687078);
@@ -88,7 +88,8 @@
   color: var(--at-text, #202124);
 }
 .altertable-date-range .react-aria-Group .react-aria-Button[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-date-range .altertable-date-range-reset {
   display: grid;
@@ -109,7 +110,8 @@
   color: var(--at-text, #202124);
 }
 .altertable-date-range .altertable-date-range-reset:focus-visible {
-  outline: 2px solid var(--at-accent, #4779dc);
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-date-range .altertable-date-range-reset + .react-aria-Button {
   margin-left: 0;
@@ -203,8 +205,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-date-range-popover .altertable-date-range-preset[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: -2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-inset, -2px);
 }
 .altertable-date-range-popover .altertable-date-range-preset[aria-current="true"] {
   background: var(--at-accent-subtle, #eaf0fb);
@@ -292,7 +294,8 @@
 }
 .altertable-date-range-popover
   .react-aria-Button:not(.altertable-date-range-preset)[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-date-range-popover
   .react-aria-Button:not(.altertable-date-range-preset)[data-disabled] {
@@ -376,8 +379,8 @@
   border-end-end-radius: var(--at-radius-control, 7px);
 }
 .altertable-date-range-popover .react-aria-CalendarCell[data-focus-visible] {
-  outline: 2px solid var(--at-accent, #4779dc);
-  outline-offset: -2px;
+  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline-offset: var(--at-focus-ring-inset, -2px);
 }
 .altertable-date-range-popover .react-aria-CalendarCell[data-disabled],
 .altertable-date-range-popover .react-aria-CalendarCell[data-unavailable] {
