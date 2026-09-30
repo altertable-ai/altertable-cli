@@ -1,5 +1,9 @@
 .altertable-live-control {
   display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+  flex: none;
   align-items: stretch;
   height: 36px;
   overflow: hidden;

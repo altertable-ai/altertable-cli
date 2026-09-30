@@ -2,8 +2,10 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: inherit;
-  font: inherit;
+  width: fit-content;
+  align-self: flex-start;
+  color: var(--at-muted, #687078);
+  font: 12px/1.4 var(--at-font, ui-sans-serif, system-ui, sans-serif);
   cursor: pointer;
 }
 .altertable-updated-at:hover {

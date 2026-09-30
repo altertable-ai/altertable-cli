@@ -45,7 +45,7 @@ export function GlossaryExplanation({
       tooltip="Explore this term"
       aria-label={props["aria-label"] ?? `Explore ${entry.term}`}
     >
-      <AppIcon name="inspect" size={15} />
+      <AppIcon name="openDetails" />
     </AboutData>
   );
 }

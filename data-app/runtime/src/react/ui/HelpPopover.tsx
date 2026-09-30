@@ -18,6 +18,7 @@ import {
 } from "@floating-ui/react";
 import { classNames } from "./classNames.ts";
 import "./HelpPopover.css";
+import "./Button.css";
 
 export type HelpPopoverTriggerProps = Omit<ComponentPropsWithRef<"button">, "children" | "type">;
 export type HelpPopoverPanelProps = Omit<ComponentPropsWithRef<"section">, "children" | "role">;
@@ -94,7 +95,9 @@ export function HelpPopover({
         })}
         ref={mergedTriggerRef}
         type="button"
-        className={classNames(triggerClassName, triggerProps?.className)}
+        className={classNames(triggerClassName ?? "altertable-button", triggerProps?.className)}
+        data-variant={triggerClassName ? undefined : "outline"}
+        data-size={triggerClassName ? undefined : "compact"}
         data-open={open}
       >
         {trigger}
