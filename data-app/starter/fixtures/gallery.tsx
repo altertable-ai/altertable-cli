@@ -216,7 +216,10 @@ function Gallery() {
                     id: "summary",
                     label: "Summary",
                     render: (items) => (
-                      <p>{items.reduce((sum, item) => sum + item.value, 0)} events this week</p>
+                      <p>
+                        {items.reduce((sum, item) => sum + item.value, 0)} events this week,
+                        concentrated on Monday and Wednesday. Tuesday had no recorded activity.
+                      </p>
                     ),
                   },
                 ]}

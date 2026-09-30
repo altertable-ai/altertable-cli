@@ -33,6 +33,7 @@
   min-width: max(var(--trigger-width), 240px);
   max-width: min(340px, calc(100vw - 24px));
   padding: 8px;
+  overflow: hidden;
   border: 1px solid var(--at-border, #e3e6e8);
   border-radius: var(--at-radius-surface, 12px);
   background: var(--at-surface, #fff);
@@ -55,7 +56,13 @@
 }
 .altertable-combobox-dialog .altertable-search-input-wrap:focus-within {
   outline: none;
-  border-bottom-color: var(--at-muted, #687078);
+  border-bottom-color: var(--at-border, #e3e6e8);
+}
+.altertable-combobox-dialog .altertable-search-input-wrap > svg {
+  opacity: 0.65;
+}
+.altertable-combobox-dialog .altertable-search-input-wrap:focus-within > svg {
+  opacity: 1;
 }
 .altertable-combobox-status {
   position: absolute;

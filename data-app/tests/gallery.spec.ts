@@ -91,7 +91,12 @@ test("gallery widget and inspection share selected bars and view changes", async
   ).toHaveAttribute("aria-pressed", "true");
   await sheet.getByRole("button", { name: "Wednesday: 8 events", exact: true }).click();
   await sheet.getByRole("tab", { name: "Summary", exact: true }).click();
-  await expect(sheet.getByText("20 events this week", { exact: true })).toBeVisible();
+  await expect(
+    sheet.getByText(
+      "20 events this week, concentrated on Monday and Wednesday. Tuesday had no recorded activity.",
+      { exact: true },
+    ),
+  ).toBeVisible();
   await sheet.getByRole("button", { name: "Close panel", exact: true }).click();
   await expect(sheet).not.toBeVisible();
   await expect(trigger).toBeFocused();
@@ -352,4 +357,10 @@ test("widgets keep inspection on headings and suppress unneeded empty chrome", a
     .locator(".altertable-search-input-wrap");
   await expect(search).toHaveCSS("border-top-width", "0px");
   await expect(search).toHaveCSS("border-bottom-width", "1px");
+  const divider = await search.evaluate((element) => getComputedStyle(element).borderBottomColor);
+  await expect(search.locator(":scope > svg")).toHaveCSS("opacity", "1");
+  await search.getByRole("searchbox").press("ArrowDown");
+  await expect(search).toHaveCSS("border-bottom-color", divider);
+  await expect(search.locator(":scope > svg")).toHaveCSS("opacity", "0.65");
+  await expect(page.locator(".altertable-combobox-popover")).toHaveCSS("overflow", "hidden");
 });
