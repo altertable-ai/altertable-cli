@@ -15,7 +15,7 @@
     "build": "bun build src/index.html --outdir=dist --production"
   },
   "dependencies": {
-    "@altertable/data-app": "0.59.1",
+    "@altertable/data-app": "0.61.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

@@ -79,7 +79,7 @@ test("an exact current pin is a no-op", async () => {
 test("failed resolution restores the manifest and lockfile", async () => {
   const directory = await fixture();
   await updateManifest(directory, (pkg) => {
-    pkg.dependencies[dataAppPackage] = "^0.59.1";
+    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -98,7 +98,7 @@ test("failed resolution restores the manifest and lockfile", async () => {
 test("a stale resolved lockfile restores the manifest and lockfile", async () => {
   const directory = await fixture();
   await updateManifest(directory, (pkg) => {
-    pkg.dependencies[dataAppPackage] = "^0.59.1";
+    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -134,7 +134,7 @@ test("missing peers use starter defaults while preserving custom scripts", async
 test("registry upgrades pin a compatible range and preserve unrelated dependencies and app files", async () => {
   const directory = await fixture();
   const pkg = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-  pkg.dependencies[dataAppPackage] = "^0.59.1";
+  pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
   pkg.dependencies.yaml = "2.9.0";
   pkg.scripts.custom = "echo user-owned";
   await writeFile(join(directory, "package.json"), JSON.stringify(pkg));
