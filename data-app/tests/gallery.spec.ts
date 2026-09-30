@@ -157,20 +157,23 @@ test("picker refresh and failure keep cached choices and retry in fixed slots", 
   const dialog = page.getByRole("dialog", { name: "Cycling categories options" });
   const option = dialog.getByRole("option", { name: "HTTP", exact: true });
   const input = dialog.getByRole("searchbox");
-  const initial = await option.boundingBox();
+  // The panel can reposition at viewport edges; cached choices stay fixed inside it.
+  const optionOffset = async () =>
+    (await option.boundingBox())!.y - (await dialog.boundingBox())!.y;
+  const initial = await optionOffset();
   await expect(dialog.locator(".altertable-search-input-spinner")).toBeVisible();
   await expect(input).toBeFocused();
-  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
   const hint = dialog.locator(".altertable-request-hint");
   await expect(hint).toHaveAttribute("data-state", "error");
   await expect(option).toBeEnabled();
-  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
   const message = await hint.locator(".altertable-request-hint-message").boundingBox();
   const retry = await hint.getByRole("button", { name: "Try again" }).boundingBox();
   expect(retry!.x - (message!.x + message!.width)).toBeLessThanOrEqual(8);
   await hint.getByRole("button", { name: "Try again" }).click();
   await expect(hint).toHaveCount(0);
-  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
 });
 
 test("widget refresh slots preserve data, geometry and inspection feedback", async ({ page }) => {

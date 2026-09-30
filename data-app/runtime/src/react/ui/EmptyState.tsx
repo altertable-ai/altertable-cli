@@ -17,8 +17,14 @@ export function EmptyState({ title, description, variant = "visual", className }
       aria-live="polite"
       aria-atomic="true"
     >
-      <strong>{title}</strong>
-      {description && <p>{description}</p>}
+      {description ? (
+        <>
+          <strong>{title}</strong>
+          <p>{description}</p>
+        </>
+      ) : (
+        <p>{title}</p>
+      )}
     </div>
   );
 }

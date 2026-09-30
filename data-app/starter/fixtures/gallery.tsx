@@ -7,7 +7,6 @@ import {
   Combobox,
   DataWidget,
   Grid,
-  MetricWidget,
   SearchField,
   SelectableBarChart,
   Stack,
@@ -264,19 +263,6 @@ function Gallery() {
                 <p>The last successful result remains visible.</p>
               </DataWidget>
             </Grid>
-            <div style={{ maxWidth: 320 }} data-testid="narrow-controls">
-              <Combobox
-                label="A deliberately long category label for narrow layouts"
-                options={options}
-                value="postgres"
-                onChange={() => {}}
-              />
-              <MetricWidget
-                label="A long metric label that wraps without overflowing its container"
-                value={0}
-                format={{ kind: "count" }}
-              />
-            </div>
           </Stack>
         </section>
         <GalleryCases />

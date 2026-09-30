@@ -60,7 +60,14 @@ export function WidgetStatusControl({ status }: { status?: WidgetStatus }) {
       role={kind === "error" ? "alert" : "status"}
       aria-atomic="true"
     >
-      {kind === "updating" && <span className="altertable-widget-status-shimmer">Refreshing</span>}
+      {kind === "updating" && (
+        <span className="altertable-widget-status-shimmer">
+          <span className="altertable-widget-status-base">Refreshing</span>
+          <span className="altertable-widget-status-sweep" aria-hidden="true">
+            <span data-text="Refreshing" />
+          </span>
+        </span>
+      )}
       {status?.kind === "error" && (
         <>
           <span className="altertable-widget-status-announcement">{message}</span>

@@ -199,7 +199,7 @@ function Case({ title, note, children }: { title: string; note?: string; childre
   return (
     <article className="gallery-case" data-frame={frame}>
       <header className="gallery-case-label">
-        <h3>{title}</h3>
+        <h3>{title.charAt(0).toUpperCase() + title.slice(1)}</h3>
         {note && <p className="gallery-note">{note}</p>}
       </header>
       <div className="gallery-stage" data-frame={frame}>
@@ -964,6 +964,29 @@ export function GalleryCases() {
         </Case>
       </Section>
       <Section id="layout" title="Layout, scrolling and constrained composition">
+        <Case title="Narrow filter and metric labels">
+          <div
+            style={{
+              maxWidth: 320,
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: "minmax(0, 1fr)",
+            }}
+            data-testid="narrow-controls"
+          >
+            <Combobox
+              label="A deliberately long category label for narrow layouts"
+              options={options}
+              value="postgres"
+              onChange={() => {}}
+            />
+            <MetricWidget
+              label="A long metric label that wraps without overflowing its container"
+              value={0}
+              format={{ kind: "count" }}
+            />
+          </div>
+        </Case>
         <Case title="Narrow widget with long title, description, count and action">
           <div style={{ maxWidth: 260 }}>
             <DataWidget
@@ -1011,7 +1034,6 @@ export function GalleryCases() {
                 "previousMonth",
                 "nextMonth",
                 "explore",
-                "inspect",
                 "info",
                 "openDetails",
                 "present",

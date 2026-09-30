@@ -18,7 +18,6 @@ import {
   LoaderCircle,
   Minus,
   Moon,
-  PanelRightOpen,
   Presentation,
   Radio,
   RotateCw,
@@ -40,7 +39,8 @@ const brandedIcons = {
   previousMonth: ChevronLeft,
   nextMonth: ChevronRight,
   explore: BookOpenText,
-  inspect: PanelRightOpen,
+  /** @deprecated Use openDetails for inspection triggers. */
+  inspect: ChevronRight,
   info: Info,
   openDetails: ChevronRight,
   present: Presentation,
