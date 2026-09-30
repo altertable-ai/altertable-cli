@@ -181,14 +181,19 @@ export function Combobox(props: ComboboxProps) {
                   textValue={hit.item.label}
                   isDisabled={atLimit && !selected.has(hit.item.id)}
                 >
-                  <span>
-                    <SearchMatch match={hit.matches.label} />
+                  <span className="altertable-combobox-option-mark" aria-hidden="true">
+                    {selected.has(hit.item.id) ? "✓" : ""}
                   </span>
-                  {hit.item.description && (
-                    <small>
-                      <SearchMatch match={hit.matches.description} />
-                    </small>
-                  )}
+                  <span className="altertable-combobox-option-content">
+                    <span>
+                      <SearchMatch match={hit.matches.label} />
+                    </span>
+                    {hit.item.description && (
+                      <small>
+                        <SearchMatch match={hit.matches.description} />
+                      </small>
+                    )}
+                  </span>
                 </ListBoxItem>
               )}
             </ListBox>
