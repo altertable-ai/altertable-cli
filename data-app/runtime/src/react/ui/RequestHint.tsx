@@ -30,6 +30,11 @@ export function RequestHint({
     >
       {active && (
         <>
+          {status.kind === "error" && status.onRetry && (
+            <Button variant="ghost" size="compact" onClick={status.onRetry}>
+              {retryLabel}
+            </Button>
+          )}
           <AppIcon
             name={status.kind === "error" ? "error" : "loading"}
             size={14}
@@ -38,11 +43,6 @@ export function RequestHint({
           <span className="altertable-request-hint-message" title={message}>
             {message}
           </span>
-          {status.kind === "error" && status.onRetry && (
-            <Button variant="ghost" size="compact" onClick={status.onRetry}>
-              {retryLabel}
-            </Button>
-          )}
         </>
       )}
     </div>

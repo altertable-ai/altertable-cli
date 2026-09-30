@@ -196,7 +196,7 @@ function TableWidgetContent<Row>({
       </DataTable>
     </>
   );
-  const pager = pageSize && hits.length > 0 && (
+  const pager = pageSize && pageCount > 1 && (
     <nav className="altertable-table-pagination" aria-label="Table pages">
       <span className="altertable-table-pagination-range">
         {formatCount(start + 1)}–{formatCount(start + visible.length)} of {formatCount(hits.length)}{" "}

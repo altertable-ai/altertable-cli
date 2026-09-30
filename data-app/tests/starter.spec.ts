@@ -223,9 +223,7 @@ test("table pages show bounded rows and reset when filtering changes", async ({ 
   await page.getByRole("searchbox", { name: "Search orders" }).fill("Order");
   await expect(pagination).toContainText("1–4 of 11 results");
   await page.getByRole("searchbox", { name: "Search orders" }).fill("Order 5");
-  await expect(pagination).toContainText("1–1 of 1 result");
-  await expect(pagination.getByRole("button", { name: "Previous page" })).toBeDisabled();
-  await expect(pagination.getByRole("button", { name: "Next page" })).toBeDisabled();
+  await expect(pagination).toHaveCount(0);
   await expect(table.getByText("Order 5")).toBeVisible();
 });
 

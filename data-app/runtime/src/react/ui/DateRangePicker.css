@@ -249,7 +249,6 @@
   gap: 9px;
   margin-top: 10px;
   padding: 10px 4px 2px;
-  border-top: 1px solid var(--at-border, #e3e6e8);
   cursor: pointer;
 }
 

@@ -110,9 +110,9 @@ function MetricWidgetContent({
   const feedback = <WidgetStatusControl status={status} />;
   const help = evidence ? (
     <AboutData
-      iconOnly
+      aria-label={`Explore ${label}`}
       variant="ghost"
-      className="altertable-inspect-trigger"
+      className="altertable-widget-heading-trigger"
       tooltip="Explore this metric"
       references={{
         kind: "ids",
@@ -132,17 +132,17 @@ function MetricWidgetContent({
       }
       visualKind="metric"
     >
+      {label}
       <AppIcon name="openDetails" />
     </AboutData>
   ) : null;
   return (
     <div {...props} className={classNames("altertable-metric-widget", className)}>
       <div className="altertable-metric-label">
-        <span>{label}</span>
+        <span>{help ?? label}</span>
         <div className="altertable-metric-help">
           {feedback}
           {action}
-          {help}
         </div>
       </div>
       {reading}

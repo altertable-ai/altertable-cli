@@ -101,9 +101,11 @@ export function SelectableBarChart({
           </button>
         ))}
       </div>
-      <p className="altertable-selectable-bars-help">
-        Select a bar to inspect its day. Use arrow keys to move; press Escape to clear.
-      </p>
+      {items.length > 0 && (
+        <p className="altertable-selectable-bars-help">
+          Select a bar to inspect its day. Use arrow keys to move; press Escape to clear.
+        </p>
+      )}
     </div>
   );
 }

@@ -43,9 +43,19 @@
 .altertable-combobox-dialog {
   outline: none;
 }
+/* Menu search uses the panel edge and a divider instead of a nested field surface. */
 .altertable-combobox-dialog .altertable-search-input-wrap {
-  width: 100%;
+  width: calc(100% + 16px);
+  margin: -8px -8px 8px;
+  padding: 0 18px;
   box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--at-border, #e3e6e8);
+  border-radius: 0;
+}
+.altertable-combobox-dialog .altertable-search-input-wrap:focus-within {
+  outline: none;
+  border-bottom-color: var(--at-muted, #687078);
 }
 .altertable-combobox-status {
   position: absolute;

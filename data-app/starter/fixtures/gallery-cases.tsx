@@ -732,7 +732,10 @@ export function GalleryCases() {
             )}
           </div>
         </Case>
-        <Case title="DataSection">
+        <Case
+          title="DataSection"
+          note="Opt-in inline notice above a local section’s retained content. Widget feedback belongs in its toolbar; page feedback belongs in page actions."
+        >
           <DataSection
             result={{ view: dataView, refetch: () => setRequest("ready") }}
             empty={empty}
@@ -745,7 +748,10 @@ export function GalleryCases() {
             )}
           </DataSection>
         </Case>
-        <Case title="Custom DataBoundary">
+        <Case
+          title="Custom DataBoundary"
+          note="Use for a local request boundary without a widget shell."
+        >
           <DataBoundary
             view={dataView}
             loading={<ContentSkeleton variant="panel" />}

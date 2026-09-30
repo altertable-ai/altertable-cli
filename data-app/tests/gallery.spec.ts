@@ -58,7 +58,7 @@ test("gallery preserves control defaults, status, and keyboard selection", async
     .toBe("0px");
   await search.fill("");
   await search.focus();
-  await expect(dialog.locator(".altertable-search-input-wrap")).toHaveCSS("outline-width", "1px");
+  await expect(dialog.locator(".altertable-search-input-wrap")).toHaveCSS("outline-style", "none");
   await search.press("ArrowDown");
   await expect(dialog.getByRole("option", { name: "HTTP", exact: true })).toBeFocused();
   await expect(dialog.getByRole("option", { name: "HTTP", exact: true })).toHaveCSS(
@@ -170,7 +170,8 @@ test("picker refresh and failure keep cached choices and retry in fixed slots", 
   expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
   const message = await hint.locator(".altertable-request-hint-message").boundingBox();
   const retry = await hint.getByRole("button", { name: "Try again" }).boundingBox();
-  expect(retry!.x - (message!.x + message!.width)).toBeLessThanOrEqual(8);
+  expect(message!.x - (retry!.x + retry!.width)).toBeGreaterThanOrEqual(0);
+  expect(message!.x - (retry!.x + retry!.width)).toBeLessThanOrEqual(30);
   await hint.getByRole("button", { name: "Try again" }).click();
   await expect(hint).toHaveCount(0);
   expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
@@ -303,7 +304,7 @@ test("widget toolbar owns shimmer, retry tooltip and stable action positions", a
     .filter({ has: page.getByRole("heading", { name: "Stable activity", exact: true }) });
   const toolbar = widget.locator(".altertable-data-widget-help");
   const status = toolbar.locator(":scope > .altertable-widget-status");
-  const inspect = toolbar.getByRole("button", { name: "Explore Stable activity" });
+  const inspect = widget.getByRole("button", { name: "Explore Stable activity" });
   const initial = await inspect.boundingBox();
   await page.getByRole("button", { name: "Widget updating", exact: true }).click();
   await expect(toolbar.getByRole("status")).toHaveText("Refreshing");
@@ -317,10 +318,38 @@ test("widget toolbar owns shimmer, retry tooltip and stable action positions", a
   expect(Math.abs((await inspect.boundingBox())!.x - initial!.x)).toBeLessThanOrEqual(1);
   const retry = status.getByRole("button", { name: "Retry", exact: true });
   await inspect.focus();
-  await inspect.press("Shift+Tab");
+  await inspect.press("Tab");
   await expect(retry).toBeFocused();
   await expect(page.getByRole("tooltip")).toContainText("Try again to refresh these results.");
   await page.screenshot({ path: `/tmp/runtime-toolbar-retry-${test.info().project.name}.png` });
   await retry.click();
   await expect(status).toHaveAttribute("data-state", "idle");
+});
+
+test("widgets keep inspection on headings and suppress unneeded empty chrome", async ({ page }) => {
+  await page.goto("/gallery");
+  const widget = page
+    .locator(".altertable-data-widget")
+    .filter({ has: page.getByRole("heading", { name: "Stable activity", exact: true }) });
+  const heading = widget.getByRole("heading", { name: "Stable activity", exact: true });
+  await expect(heading.getByRole("button", { name: "Explore Stable activity" })).toBeVisible();
+  await expect(
+    widget.locator(".altertable-data-widget-help .altertable-widget-heading-trigger"),
+  ).toHaveCount(0);
+  const table = page
+    .locator(".altertable-data-widget")
+    .filter({ has: page.getByRole("heading", { name: "Stable table", exact: true }) });
+  await expect(table.getByRole("navigation", { name: "Table pages" })).toHaveCount(0);
+  const emptyChart = page
+    .locator(".gallery-case")
+    .filter({ has: page.getByRole("heading", { name: "Empty chart", exact: true }) });
+  await expect(emptyChart.locator(".altertable-selectable-bars-help")).toHaveCount(0);
+  const error = page.locator('.altertable-status-panel[data-status="error"]').first();
+  await expect(error).toHaveCSS("border-top-width", "0px");
+  await page.getByRole("button", { name: "Resettable category: HTTP", exact: true }).click();
+  const search = page
+    .getByRole("dialog", { name: "Resettable category options" })
+    .locator(".altertable-search-input-wrap");
+  await expect(search).toHaveCSS("border-top-width", "0px");
+  await expect(search).toHaveCSS("border-bottom-width", "1px");
 });

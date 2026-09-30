@@ -48,3 +48,40 @@
     transition: none;
   }
 }
+
+/* Inspection lives on the heading; the toolbar is reserved for actions and status. */
+.altertable-button.altertable-widget-heading-trigger {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+}
+.altertable-widget-heading-trigger > svg {
+  display: inline-block;
+  margin-left: 4px;
+  vertical-align: -2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.altertable-widget-heading-trigger:hover > svg,
+.altertable-widget-heading-trigger:focus-visible > svg,
+.altertable-widget-heading-trigger[data-open="true"] > svg {
+  opacity: 1;
+}
+@media (hover: none) {
+  .altertable-widget-heading-trigger > svg {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-widget-heading-trigger > svg {
+    transition: none;
+  }
+}
