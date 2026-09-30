@@ -18,8 +18,8 @@
   border-color: var(--at-control-hover-border, #a6acb1);
 }
 .altertable-combobox-trigger[data-focus-visible] {
-  border-color: var(--at-focus-color, #687078);
-  outline: none;
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-combobox-trigger[data-disabled] {
   opacity: 0.5;
@@ -71,7 +71,8 @@
   outline: none;
 }
 .altertable-combobox-search:focus {
-  border-color: var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-combobox-status {
   position: absolute;
@@ -97,8 +98,7 @@
   outline: none;
   cursor: pointer;
 }
-.altertable-combobox-popover .react-aria-ListBoxItem small,
-.altertable-combobox-special-button small {
+.altertable-combobox-popover .react-aria-ListBoxItem small {
   display: block;
   color: var(--at-muted, #687078);
   font-size: 11px;
@@ -112,8 +112,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-combobox-popover .react-aria-ListBoxItem[data-focus-visible] {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
-  outline-offset: var(--at-focus-ring-inset, -2px);
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-combobox-popover .react-aria-ListBoxItem[data-disabled] {
   opacity: 0.45;
@@ -127,42 +127,16 @@
   display: block;
   margin-top: 6px;
 }
-.altertable-combobox-special,
 .altertable-combobox-actions {
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px solid var(--at-border, #e3e6e8);
 }
-.altertable-combobox-special-button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--at-radius-control, 7px);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
+.altertable-combobox-popover .react-aria-ListBoxItem[data-missing] {
+  margin-top: 4px;
+  border-top: 1px solid var(--at-border, #e3e6e8);
+  border-radius: 0;
 }
-.altertable-combobox-special-button[data-hovered],
-.altertable-combobox-special-button[data-focused] {
-  background: var(--at-subtle, #f6f7f7);
-}
-.altertable-combobox-special-button[data-focus-visible] {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
-  outline-offset: var(--at-focus-ring-offset, 2px);
-}
-.altertable-combobox-special-button[data-disabled] {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.altertable-combobox-special-label {
-  font-weight: 400;
-}
-.altertable-combobox-special-mark,
 .altertable-combobox-option-mark {
   display: grid;
   flex: none;
@@ -173,14 +147,12 @@
   border: 1px solid var(--at-muted, #687078);
   border-radius: 4px;
 }
-.altertable-combobox-special-button[aria-pressed="true"] .altertable-combobox-special-mark,
 .altertable-combobox-popover
   .react-aria-ListBoxItem[data-selected]
   .altertable-combobox-option-mark {
   border-color: var(--at-accent, #4779dc);
   background: var(--at-accent, #4779dc);
 }
-.altertable-combobox-special-button[aria-pressed="true"] .altertable-combobox-special-mark::after,
 .altertable-combobox-popover
   .react-aria-ListBoxItem[data-selected]
   .altertable-combobox-option-mark::after {
@@ -208,6 +180,6 @@
 }
 .altertable-combobox-actions .react-aria-Button[data-focus-visible],
 .altertable-combobox-empty .react-aria-Button[data-focus-visible] {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
   outline-offset: var(--at-focus-ring-offset, 2px);
 }

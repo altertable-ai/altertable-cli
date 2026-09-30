@@ -34,7 +34,7 @@
   color: var(--at-text, #202124);
 }
 .altertable-app-footer a:focus-visible {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
   outline-offset: var(--at-focus-ring-offset, 2px);
 }
 @media (max-width: 600px) {

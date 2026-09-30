@@ -33,7 +33,8 @@
   border-color: var(--at-control-hover-border, #a6acb1);
 }
 .altertable-search-input-wrap:focus-within {
-  border-color: var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-search[data-size="compact"] .altertable-search-input-wrap {
   width: min(100%, 300px);
@@ -87,7 +88,7 @@
   color: var(--at-text, #202124);
 }
 .altertable-search-clear:focus-visible {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
   outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-search-description,

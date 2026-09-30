@@ -57,11 +57,11 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-live-frequency > button[data-focus-visible] {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
-  outline-offset: var(--at-focus-ring-inset, -2px);
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-live-control .altertable-button:focus-visible {
-  outline-offset: var(--at-focus-ring-inset, -2px);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-live-frequency-popover {
   z-index: 1000;
@@ -89,8 +89,8 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-live-frequency-popover [role="option"][data-focus-visible] {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
-  outline-offset: var(--at-focus-ring-inset, -2px);
+  outline: var(--at-focus-outline, 1px solid #687078);
+  outline-offset: var(--at-focus-ring-inset, -1px);
 }
 .altertable-live-frequency-popover [role="option"][data-selected] {
   color: var(--at-accent, #4779dc);

@@ -58,21 +58,6 @@ A measured zero and unavailable data have different meanings. Metric readings us
 
 For app-authored charts, reveal exact values on hover and keyboard focus. If activating a bar changes a related detail, show the selected value near the chart, keep selection visually distinct from focus, and provide a clear action. Use `aria-pressed` for a toggleable bar and `:focus-visible` for its keyboard focus ring. A bar without a meaningful activation should remain a read-only mark.
 
-## Focus styling
-
-Focus uses a neutral, theme-aware color independently of the app accent. Selection keeps the accent color. Bordered inputs and filter triggers change their existing 1px border; other interactive elements use a 2px keyboard focus ring. Native controls and React Aria controls share these tokens and support forced-colors mode.
-
-| Token | Purpose |
-| --- | --- |
-| `--at-focus-color` | Focus border, ring, and focused date segment background. |
-| `--at-focus-text` | Text on a filled focus indicator. |
-| `--at-focus-ring-width` | Keyboard outline width, default `2px`. |
-| `--at-focus-ring-offset` | Outside outline spacing, default `2px`. |
-| `--at-focus-ring-inset` | Outline inside clipped options and cells, default `-2px`. |
-| `--at-control-hover-border` | Hover border for bordered controls. |
-
-For custom controls, use `data-at-focus="ring"` on buttons and links, `data-at-focus="inset"` on clipped options, or `data-at-focus="border"` on an existing 1px bordered input or input group. The border variant also responds to focus inside the group. The runtime stylesheet recognizes both native focus states and React Aria's focus attributes. Importing `@altertable/data-app/react` loads it. Keep a visible indicator when overriding these styles; do not use accent colors or independent outline sizes for focus.
-
 `DataApp` owns the title, description, scope, header spacing, and request boundary. Its body starts with controls and exploration; a second `h1` emits a development warning. `defineTimeView` derives a URL date variable named `period`, picker, operation input, and displayed-period label from one `time` declaration. Additional `variables` and an optional `input` mapper compose with that period; the runtime checks that the operation input preserves it. For an intentional fixed period, use `defineDataView` with an explicit `describeInput`.
 
 `DataApp.request` owns its empty state, controls, query disclosure, and refresh action. Do not repeat those as shell props. A standalone `DataApp` can still receive authored controls and content for setup views.

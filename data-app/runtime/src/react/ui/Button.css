@@ -46,7 +46,7 @@
   background: var(--at-subtle, #f6f7f7);
 }
 .altertable-button:focus-visible {
-  outline: var(--at-focus-ring-width, 2px) solid var(--at-focus-color, #687078);
+  outline: var(--at-focus-outline, 1px solid #687078);
   outline-offset: var(--at-focus-ring-offset, 2px);
 }
 .altertable-button:disabled {

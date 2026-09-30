@@ -211,7 +211,6 @@ export function applyAppearance(value: unknown): () => void {
       "--at-border": border,
       "--at-accent": accent,
       "--at-focus-color": muted,
-      "--at-focus-text": dark ? background : "#ffffff",
       "--at-control-hover-border": `color-mix(in srgb, ${muted} 45%, ${border})`,
       "--at-accent-hover": `color-mix(in srgb, ${accent} 80%, ${dark ? "white" : "black"})`,
       "--at-accent-subtle": `color-mix(in srgb, ${accent} ${dark ? 22 : 12}%, ${surfaceColor})`,
