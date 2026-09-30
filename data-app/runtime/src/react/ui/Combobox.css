@@ -117,8 +117,14 @@
   justify-content: flex-start;
 }
 
-.altertable-combobox-feedback {
-  margin: 6px 10px;
-  color: var(--at-muted, #687078);
-  font-size: 12px;
+.altertable-combobox-dialog > .altertable-request-hint {
+  margin: 4px 10px 0;
+}
+.altertable-combobox-skeletons {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+.altertable-combobox-skeletons > span {
+  height: 24px;
 }

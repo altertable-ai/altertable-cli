@@ -3,7 +3,7 @@ import { formatCount } from "../../core/format.ts";
 import type { DataReading } from "../../core/reading.ts";
 import { AboutData } from "./AboutData.tsx";
 import { AppIcon } from "./icons.ts";
-import { Button } from "./Button.tsx";
+import { RequestHint, type WidgetStatus } from "./RequestHint.tsx";
 import { classNames } from "./classNames.ts";
 import { ContentSkeleton, type ContentSkeletonProps } from "./ContentSkeleton.tsx";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
@@ -19,7 +19,8 @@ type DataWidgetBaseProps = {
   description?: ReactNode;
   evidence?: WidgetEvidence;
   action?: ReactNode;
-  status?: { kind: "updating" | "error"; message: string; onRetry?: () => void };
+  /** Reserved feedback slot; retain displayed content while refreshing or after failure. */
+  status?: WidgetStatus;
   footer?: ReactNode;
   bodyPadding?: "inset" | "flush";
 } & Omit<ComponentPropsWithRef<"section">, "about" | "title" | "children">;
@@ -78,7 +79,7 @@ function DataWidgetContent({
   const titleId = useId();
   const content = empty ? <EmptyState {...empty} /> : children;
   const visual = (
-    <WidgetContent bodyPadding={empty ? "flush" : bodyPadding} footer={footer}>
+    <WidgetContent bodyPadding={empty ? "flush" : bodyPadding} footer={footer} status={status}>
       {content}
     </WidgetContent>
   );
@@ -118,29 +119,6 @@ function DataWidgetContent({
             )}
           </h2>
           {description && <p>{description}</p>}
-          {status && (
-            <div
-              className="altertable-data-widget-status"
-              data-state={status.kind}
-              role={status.kind === "error" ? "alert" : "status"}
-            >
-              {status.kind === "error" ? (
-                <AppIcon name="error" size={14} />
-              ) : (
-                <AppIcon
-                  name="loading"
-                  size={14}
-                  className="altertable-data-widget-status-spinner"
-                />
-              )}
-              <span>{status.message}</span>
-              {status.onRetry && (
-                <Button variant="ghost" onClick={status.onRetry}>
-                  Retry
-                </Button>
-              )}
-            </div>
-          )}
         </div>
         {(help || action) && (
           <div className="altertable-data-widget-help">
@@ -158,15 +136,24 @@ function DataWidgetContent({
 function WidgetContent({
   bodyPadding,
   footer,
+  status,
   children,
 }: {
   bodyPadding: "inset" | "flush";
   footer?: ReactNode;
+  status?: WidgetStatus;
   children: ReactNode;
 }) {
   return (
     <>
-      <div className="altertable-data-widget-body" data-padding={bodyPadding}>
+      <div className="altertable-data-widget-feedback">
+        <RequestHint status={status} />
+      </div>
+      <div
+        className="altertable-data-widget-body"
+        data-padding={bodyPadding}
+        aria-busy={status?.kind === "updating" || undefined}
+      >
         {children}
       </div>
       {footer && <footer className="altertable-data-widget-footer">{footer}</footer>}

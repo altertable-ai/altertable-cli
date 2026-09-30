@@ -62,34 +62,12 @@
   background: transparent;
   padding: 0;
 }
-.altertable-data-widget-status {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  color: var(--at-muted, #687078);
-  font-size: 12px;
-  line-height: 1.4;
+
+.altertable-data-widget-feedback {
+  padding: 0 var(--at-layout-gap, 24px);
+  min-width: 0;
 }
-.altertable-data-widget-status[data-state="error"] svg {
-  color: var(--at-danger, #b42318);
-}
-.altertable-data-widget-status .altertable-button {
-  min-height: 28px;
-  padding: 0 6px;
-  font-size: 12px;
-}
-.altertable-data-widget-status-spinner {
-  animation: altertable-data-widget-spin 1s linear infinite;
-}
-@keyframes altertable-data-widget-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .altertable-data-widget-status-spinner {
-    animation: none;
-  }
+
+.altertable-data-widget-feedback + .altertable-data-widget-body {
+  padding-top: 0;
 }

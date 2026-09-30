@@ -1,4 +1,5 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
+import { RequestHint, type WidgetStatus } from "./RequestHint.tsx";
 import { AboutData } from "./AboutData.tsx";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
 import { AppIcon } from "./icons.ts";
@@ -18,6 +19,7 @@ type MetricWidgetBaseProps = {
   evidence?: WidgetEvidence;
   action?: ReactNode;
   insight?: ReactNode;
+  status?: WidgetStatus;
   visual?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "about" | "children">;
 
@@ -73,6 +75,7 @@ function MetricWidgetContent({
   evidence,
   action,
   insight,
+  status,
   visual,
   className,
   ...props
@@ -99,6 +102,7 @@ function MetricWidgetContent({
     </div>
   );
   const visualization = visual && <div className="altertable-metric-visual">{visual}</div>;
+  const feedback = <RequestHint status={status} />;
   const help = evidence ? (
     <AboutData
       iconOnly
@@ -117,6 +121,7 @@ function MetricWidgetContent({
       visual={
         <div className="altertable-metric-evidence">
           {reading}
+          {feedback}
           {visualization}
         </div>
       }
@@ -137,6 +142,7 @@ function MetricWidgetContent({
         )}
       </div>
       {reading}
+      {feedback}
       {description && <small className="altertable-metric-description">{description}</small>}
       {visualization}
       {insight && <div className="altertable-metric-insight">{insight}</div>}

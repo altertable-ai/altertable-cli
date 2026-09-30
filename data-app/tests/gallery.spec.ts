@@ -12,12 +12,13 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await expect(checkbox).toBeChecked();
   await checkbox.press("Tab");
   await page.keyboard.press("Shift+Tab");
-  await expect(page.locator(".altertable-checkbox")).toHaveCSS("outline-width", "1px");
+  await expect(page.locator(".altertable-checkbox").first()).toHaveCSS("outline-width", "1px");
   await page
     .getByRole("button", { name: "Loading categories: Choose categories", exact: true })
     .click();
   let dialog = page.getByRole("dialog", { name: "Loading categories options" });
-  await expect(dialog.getByText("Loading values…", { exact: true }).last()).toBeVisible();
+  await expect(dialog.locator(".altertable-combobox-skeletons")).toBeVisible();
+  await expect(dialog.locator(".altertable-search-input-spinner")).toBeVisible();
   await expect(dialog.getByRole("option")).toHaveCount(0);
   await dialog.getByRole("searchbox").press("Escape");
   await page.getByRole("button", { name: "Complete loading", exact: true }).click();
@@ -29,10 +30,12 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await dialog.getByRole("searchbox").press("Escape");
   await page.getByRole("button", { name: "Failed categories: HTTP", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Failed categories options" });
-  await expect(dialog.locator(".altertable-combobox-feedback")).toHaveText("Couldn’t load values");
+  await expect(dialog.locator(".altertable-request-hint-message")).toHaveText(
+    "Couldn’t load values",
+  );
   await expect(dialog.getByRole("option", { name: "Postgres", exact: true })).toBeEnabled();
   await dialog.getByRole("button", { name: "Try again" }).click();
-  await expect(dialog.locator(".altertable-combobox-feedback")).toHaveCount(0);
+  await expect(dialog.locator(".altertable-request-hint-message")).toHaveCount(0);
   await dialog.getByRole("searchbox").press("Escape");
   await page.getByRole("button", { name: "Categories: Choose categories", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Categories options" });
@@ -141,4 +144,130 @@ test("gallery uses shared defaults in both themes and narrow containers", async 
     });
   }
   expect(backgrounds[0]).not.toBe(backgrounds[1]);
+});
+
+test("picker refresh and failure keep cached choices and retry in fixed slots", async ({
+  page,
+}) => {
+  await page.goto("/gallery");
+  await page.getByRole("button", { name: "Start picker cycle", exact: true }).click();
+  await page.getByRole("button", { name: "Cycling categories: HTTP", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cycling categories options" });
+  const option = dialog.getByRole("option", { name: "HTTP", exact: true });
+  const input = dialog.getByRole("searchbox");
+  const initial = await option.boundingBox();
+  const bounds = await dialog.boundingBox();
+  await expect(dialog.locator(".altertable-search-input-spinner")).toBeVisible();
+  await expect(input).toBeFocused();
+  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+  const hint = dialog.locator(".altertable-request-hint");
+  await expect(hint).toHaveAttribute("data-state", "error");
+  await expect(option).toBeEnabled();
+  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs((await dialog.boundingBox())!.height - bounds!.height)).toBeLessThanOrEqual(1);
+  const message = await hint.locator(".altertable-request-hint-message").boundingBox();
+  const retry = await hint.getByRole("button", { name: "Try again" }).boundingBox();
+  expect(retry!.x - (message!.x + message!.width)).toBeLessThanOrEqual(8);
+  await hint.getByRole("button", { name: "Try again" }).click();
+  await expect(hint).toHaveAttribute("data-state", "idle");
+  expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
+});
+
+test("widget refresh slots preserve data, geometry and inspection feedback", async ({ page }) => {
+  await page.goto("/gallery");
+  const widget = page
+    .locator(".altertable-data-widget")
+    .filter({ has: page.getByRole("heading", { name: "Stable activity", exact: true }) });
+  const body = widget.locator(":scope > .altertable-data-widget-body");
+  const initial = await body.evaluate(
+    (element) => element.getBoundingClientRect().top + window.scrollY,
+  );
+  const bounds = await widget.boundingBox();
+  for (const button of [
+    "Widget updating",
+    "Widget failed",
+    "Long widget failure",
+    "Widget ready",
+  ]) {
+    await page.getByRole("button", { name: button, exact: true }).click();
+    expect(
+      Math.abs(
+        (await body.evaluate((element) => element.getBoundingClientRect().top + window.scrollY)) -
+          initial,
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(Math.abs((await widget.boundingBox())!.height - bounds!.height)).toBeLessThanOrEqual(1);
+    await expect(body).toContainText("42 events remain visible.");
+  }
+  await page.getByRole("button", { name: "Widget failed", exact: true }).click();
+  await widget.getByRole("button", { name: "Explore Stable activity" }).click();
+  const sheet = page.getByRole("dialog", { name: "Stable activity", exact: true });
+  await expect(sheet.getByRole("alert")).toContainText("Couldn’t refresh");
+  await sheet.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(sheet.locator(".altertable-request-hint")).toHaveAttribute("data-state", "idle");
+});
+
+test("gallery spans all UI families and handles empty, overflow and request recovery", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/gallery");
+  expect(await page.locator(".gallery-case").count()).toBeGreaterThanOrEqual(65);
+  await page.getByRole("button", { name: "Many categories: Category 100", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "Many categories options" });
+  await expect(picker.getByRole("option")).toHaveCount(100);
+  const scroll = picker.locator(".altertable-combobox-options");
+  expect(await scroll.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+    true,
+  );
+  await picker.getByRole("searchbox").fill("nonexistent");
+  await expect(picker.locator(".altertable-combobox-empty")).toHaveText("No matching values");
+  await picker.getByRole("searchbox").press("Escape");
+  const request = page.getByRole("region", { name: "Fixture request", exact: true });
+  await page.getByRole("button", { name: "loading", exact: true }).click();
+  await expect(request.locator(".altertable-content-skeleton")).toBeVisible();
+  await page.getByRole("button", { name: "error", exact: true }).click();
+  await request.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(request).toContainText("42 recorded events");
+  await page.getByRole("button", { name: "empty", exact: true }).click();
+  await expect(request.getByText("No records", { exact: true })).toBeVisible();
+  const dimensions = await page.evaluate(() => ({
+    width: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
+  expect(errors).toEqual([]);
+});
+
+test("gallery respects reduced motion and retry without cached data", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/gallery");
+  await page.getByRole("button", { name: "Refreshing categories: HTTP", exact: true }).click();
+  let dialog = page.getByRole("dialog", { name: "Refreshing categories options" });
+  await expect(dialog.locator(".altertable-search-input-spinner")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await dialog.getByRole("searchbox").press("Escape");
+  await page
+    .getByRole("button", { name: "No cached categories: Select categories", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", { name: "No cached categories options" });
+  await expect(dialog.getByRole("alert")).toContainText("Couldn’t load values");
+  await dialog.getByRole("button", { name: "Try again" }).click();
+  await expect(dialog.locator(".altertable-combobox-skeletons")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await expect(dialog.getByRole("option")).toHaveCount(3);
+  await dialog.getByRole("searchbox").press("Escape");
+  const title = page.getByText("Nothing to show yet", { exact: true });
+  const description = page.getByText("A description has quieter typography than its title.", {
+    exact: true,
+  });
+  expect(await title.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("600");
+  expect(
+    await title.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
+  ).toBeGreaterThan(
+    await description.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
+  );
 });

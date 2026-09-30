@@ -9,6 +9,8 @@ import {
 } from "react-aria-components";
 import { invariant } from "../../core/invariant.ts";
 import { PressButton as Button } from "./Button.tsx";
+import { Skeleton } from "./Skeleton.tsx";
+import { RequestHint } from "./RequestHint.tsx";
 import { SearchInput } from "./SearchInput.tsx";
 import { AppIcon } from "./icons.ts";
 import { GradientScroll } from "./GradientScroll.tsx";
@@ -163,6 +165,7 @@ export function Combobox(props: ComboboxProps) {
         <Dialog id={popupId} aria-label={`${label} options`} className="altertable-combobox-dialog">
           <SearchInput
             size="compact"
+            loading={loading}
             ref={searchRef}
             aria-label={`Search ${label.toLocaleLowerCase()} values`}
             aria-describedby={statusId}
@@ -175,15 +178,14 @@ export function Combobox(props: ComboboxProps) {
               listRef.current?.focus();
             }}
           />
-          <output id={statusId} className="altertable-combobox-status">
-            {feedback}
+          <output
+            id={statusId}
+            className="altertable-combobox-status"
+            aria-live={error ? "off" : "polite"}
+          >
+            {error ? `${matches.length} available values` : feedback}
             {atLimit ? `. Maximum of ${props.maxSelected} selections reached.` : ""}
           </output>
-          {(loading || error) && matches.length > 0 && (
-            <p className="altertable-combobox-feedback" aria-hidden="true">
-              {feedback}
-            </p>
-          )}
           <GradientScroll className="altertable-combobox-options">
             {matches.length > 0 ? (
               <ListBox
@@ -218,22 +220,27 @@ export function Combobox(props: ComboboxProps) {
                   </ListBoxItem>
                 )}
               </ListBox>
+            ) : loading && !error ? (
+              <div className="altertable-combobox-skeletons" aria-hidden="true">
+                {[0, 1, 2].map((row) => (
+                  <Skeleton key={row} />
+                ))}
+              </div>
             ) : (
-              <div className="altertable-combobox-empty">{feedback}</div>
+              <div className="altertable-combobox-empty">
+                {error ? "Values are unavailable" : feedback}
+              </div>
             )}
           </GradientScroll>
-          {(canClear || (error && onRetry)) && (
+          <RequestHint
+            status={error ? { kind: "error", message: "Couldn’t load values", onRetry } : undefined}
+            retryLabel="Try again"
+          />
+          {canClear && (
             <div className="altertable-combobox-actions">
-              {canClear && (
-                <Button variant="ghost" size="compact" onPress={clear}>
-                  Clear selection
-                </Button>
-              )}
-              {error && onRetry && (
-                <Button variant="ghost" size="compact" onPress={onRetry}>
-                  Try again
-                </Button>
-              )}
+              <Button variant="ghost" size="compact" onPress={clear}>
+                Clear selection
+              </Button>
             </div>
           )}
         </Dialog>

@@ -7,3 +7,5 @@ Choose useful dimensions and verify the source meaning of their values. The app 
 Include Story when the data supports consequential, evidence-backed findings. Prefer a concentration, split, shift, or meaningful co-occurrence over repeated KPIs. Omit Story when there is no defensible finding, and describe association without claiming causation.
 
 Check the finished app against live data at phone and desktop widths in both themes.
+
+Use bound widget readings for initial skeletons. For retained results, pass the widget’s `status` (`updating`, `error` with `onRetry`, or `idle`) instead of app-owned loading or failure markup. Pickers own their progress hint and adjacent retry slot; keep known options mounted during refresh.

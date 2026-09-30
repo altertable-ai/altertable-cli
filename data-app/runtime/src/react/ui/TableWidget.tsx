@@ -1,6 +1,7 @@
 import { useState, type ComponentPropsWithRef, type ReactNode } from "react";
 import { invariant } from "../../core/invariant.ts";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
+import type { WidgetStatus } from "./RequestHint.tsx";
 import { DataWidget } from "./DataWidget.tsx";
 import { DataTable, DataTableEmptyRow, type DataTableSearch } from "./DataTable.tsx";
 import type { EmptyStateProps } from "./EmptyState.tsx";
@@ -33,6 +34,7 @@ type TableWidgetBaseProps<Row> = {
   /** Unique, nonempty row identity. Numeric keys must be finite; 1 and "1" collide. */
   rowKey: (row: Row) => string | number;
   insight?: ReactNode;
+  status?: WidgetStatus;
   action?: ReactNode;
   evidence?: WidgetEvidence;
   search?: TableWidgetSearch<Row>;

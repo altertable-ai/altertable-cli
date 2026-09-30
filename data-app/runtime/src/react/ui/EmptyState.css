@@ -10,9 +10,9 @@
   text-align: center;
 }
 .altertable-empty-state strong {
-  color: var(--at-muted, #687078);
-  font-size: 12px;
-  font-weight: 450;
+  color: var(--at-text, #202124);
+  font-size: 13px;
+  font-weight: 600;
 }
 .altertable-empty-state p {
   max-width: 40ch;

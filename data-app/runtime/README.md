@@ -56,3 +56,11 @@ Use [createDataContext](src/react/ui/data-context.ts) for glossary, query, metri
 In a generated app, commit `.altertable/runtime/`, including `integrity.json`, with `package.json` and `bun.lock`. The package is a vendored `file:` dependency required by a fresh clone. Read these files to discover APIs; keep application customizations in the app's `src/`. `altertable app upgrade` replaces unmodified runtime files and verifies their checksums.
 
 In the CLI repository, edit the canonical `data-app/runtime/` package. Its sibling starter's `.altertable/runtime/` copy is ignored and recreated by `data-app:setup`.
+
+## Stable asynchronous feedback
+
+Widgets (`DataWidget`, `VisualizationWidget`, `TableWidget`, and `MetricWidget`) own a reserved feedback slot. Pass `status={{ kind: "updating" }}` while refreshing or `status={{ kind: "error", onRetry }}` after failure; omit status or use `kind: "idle"` for ready content. Default copy, indicator, retry adjacency, accessibility, truncation and reduced motion belong to the runtime. Optional `message` overrides the copy. Keep the last displayed content mounted. Initial loading uses the bound reading's skeleton. Widget inspection includes the same feedback slot.
+
+`Combobox` keeps known choices selectable during loading, shows progress in the search glyph's existing space, and groups failure and retry in a reserved row. With no known choices it renders skeleton rows. Apps supply asynchronous state and callbacks; they do not insert loading paragraphs or custom refresh banners.
+
+The development gallery at `/gallery` in `data-app/tests/server.ts` covers control variants, picker and widget transitions, formats, empty and extreme values, pagination, overflow, request recovery, dates, overlays and Story. Use its section links and state controls to review both themes and narrow layouts without a live source.

@@ -7,15 +7,22 @@ import "./SearchInput.css";
 export function SearchInput({
   size = "default",
   endAction,
+  loading = false,
   className,
   ...props
 }: Omit<ComponentPropsWithRef<"input">, "size" | "children"> & {
   size?: "default" | "compact";
   endAction?: ReactNode;
+  /** Replaces the search glyph in its existing space; input and results remain usable. */
+  loading?: boolean;
 }) {
   return (
     <div className="altertable-search-input-wrap" data-size={size}>
-      <AppIcon name="search" size={17} />
+      <AppIcon
+        name={loading ? "loading" : "search"}
+        size={17}
+        className={loading ? "altertable-search-input-spinner" : undefined}
+      />
       <input
         {...props}
         type="search"

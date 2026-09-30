@@ -1,3 +1,4 @@
+import { GalleryCases } from "./gallery-cases.tsx";
 import { useState } from "react";
 import {
   DataApp,
@@ -53,13 +54,35 @@ function Gallery() {
       description="Shared defaults, interaction states, and inspection. Use the footer to switch themes."
     >
       <Stack>
-        <section aria-label="Control states">
+        <nav className="gallery-navigation" aria-label="Gallery sections">
+          {[
+            "controls",
+            "widgets",
+            "buttons",
+            "picker-edges",
+            "refresh",
+            "metrics",
+            "tables",
+            "charts",
+            "requests",
+            "dates",
+            "empty-loading",
+            "overlays",
+            "chrome",
+            "layout",
+          ].map((id) => (
+            <a key={id} href={`#${id}`}>
+              {id.replaceAll("-", " ")}
+            </a>
+          ))}
+        </nav>
+        <section id="controls" aria-label="Control states">
           <Stack>
             <h2>Controls</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Button>Default button</Button>
               <Button variant="ghost" size="compact">
-                Compact action
+                Ghost action
               </Button>
               <Button disabled>Disabled action</Button>
               <Tooltip content="This describes the action">
@@ -132,7 +155,7 @@ function Gallery() {
             </div>
           </Stack>
         </section>
-        <section aria-label="Widget states">
+        <section id="widgets" aria-label="Widget states">
           <Stack>
             <h2>Widgets</h2>
             <Grid columns={2}>
@@ -223,6 +246,7 @@ function Gallery() {
             </div>
           </Stack>
         </section>
+        <GalleryCases />
       </Stack>
     </DataApp>
   );

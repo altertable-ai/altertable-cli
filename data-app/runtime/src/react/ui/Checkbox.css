@@ -5,6 +5,8 @@
   gap: 9px;
   border-radius: var(--at-radius-control, 7px);
   cursor: pointer;
+  font: 13px/1.4 var(--at-font, ui-sans-serif, system-ui, sans-serif);
+  color: var(--at-text, #202124);
 }
 .altertable-checkbox input {
   position: absolute;

@@ -1,0 +1,35 @@
+.altertable-request-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  min-width: 0;
+  color: var(--at-muted, #687078);
+  font: 12px/1.4 var(--at-font, ui-sans-serif, system-ui, sans-serif);
+}
+.altertable-request-hint > svg,
+.altertable-request-hint > button {
+  flex: none;
+}
+.altertable-request-hint-message {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.altertable-request-hint[data-state="error"] > svg {
+  color: var(--at-danger, #b42318);
+}
+.altertable-request-hint-spinner {
+  animation: altertable-request-hint-spin 900ms linear infinite;
+}
+@keyframes altertable-request-hint-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-request-hint-spinner {
+    animation: none;
+  }
+}

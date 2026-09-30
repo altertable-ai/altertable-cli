@@ -48,3 +48,20 @@
 .altertable-search-input::-webkit-search-cancel-button {
   display: none;
 }
+
+.altertable-search-input-wrap > svg {
+  flex: none;
+}
+.altertable-search-input-spinner {
+  animation: altertable-search-input-spin 900ms linear infinite;
+}
+@keyframes altertable-search-input-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-search-input-spinner {
+    animation: none;
+  }
+}

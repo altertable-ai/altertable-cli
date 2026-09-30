@@ -30,6 +30,7 @@ export type { GridItemProps } from "./GridItem.tsx";
 // Widgets and visualizations
 export type { WidgetEvidence } from "./WidgetEvidence.ts";
 export { DataWidget } from "./DataWidget.tsx";
+export type { WidgetStatus } from "./RequestHint.tsx";
 export type { DataWidgetProps } from "./DataWidget.tsx";
 export { VisualizationWidget } from "./VisualizationWidget.tsx";
 export type { VisualizationWidgetProps, VisualizationWidgetView } from "./VisualizationWidget.tsx";
