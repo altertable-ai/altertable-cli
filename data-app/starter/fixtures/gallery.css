@@ -6,32 +6,68 @@
   gap: 8px;
 }
 .gallery-navigation {
-  padding: 12px 0;
+  align-items: flex-start;
+  gap: 16px 28px;
+  padding: 16px 0 24px;
   border-bottom: 1px solid var(--at-border);
 }
-.gallery-navigation a {
+.gallery-navigation-group {
+  display: grid;
+  gap: 6px;
+}
+.gallery-navigation-group > span,
+.gallery-group {
   color: var(--at-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gallery-navigation-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gallery-navigation a {
+  color: var(--at-text);
   font-size: 12px;
-  padding: 4px 6px;
+}
+.gallery-section {
+  padding-top: 28px;
+  border-top: 1px solid var(--at-border);
+}
+.gallery-section-heading {
+  margin-bottom: 24px;
+}
+.gallery-section-heading h2 {
+  margin: 6px 0 8px;
 }
 .gallery-cases {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  gap: 20px;
+  gap: 32px 24px;
+  align-items: start;
+}
+.gallery-cases[data-frame="metric"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+}
+.gallery-cases:is([data-frame="page"], [data-frame="icons"]) {
+  grid-template-columns: minmax(0, 1fr);
 }
 .gallery-case {
   min-width: 0;
-  border: 1px solid var(--at-border);
-  border-radius: var(--at-radius-surface);
-  padding: 16px;
 }
-.gallery-case > h3 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 600;
+.gallery-case-label {
+  margin-bottom: 12px;
+}
+.gallery-case-label h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--at-muted);
 }
 .gallery-note {
-  margin: 0 0 12px;
+  margin: 6px 0 0;
   font-size: 12px;
   color: var(--at-muted);
   line-height: 1.5;
@@ -42,9 +78,31 @@
 .gallery-stage > * {
   max-width: 100%;
 }
+.gallery-stage[data-frame="controls"] > .altertable-stack {
+  align-items: start;
+  justify-items: start;
+}
+.gallery-stage[data-frame="content"] > .altertable-stack {
+  align-items: start;
+  justify-items: start;
+}
 .gallery-stage p {
   overflow-wrap: anywhere;
 }
+.gallery-icon-inventory {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px 24px;
+}
+.gallery-icon-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gallery-icon-entry code {
+  font-size: 12px;
+  color: var(--at-muted);
+}
 section[id] {
-  scroll-margin-top: 16px;
+  scroll-margin-top: 24px;
 }

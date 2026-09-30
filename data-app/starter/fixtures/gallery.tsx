@@ -51,34 +51,67 @@ function Gallery() {
     <DataApp
       config={config}
       dataContext={dataContext}
-      description="Shared defaults, interaction states, and inspection. Use the footer to switch themes."
+      description="Components in their app context. Gray captions describe each case; only the rendered component owns a surface. Use the index to compare states and the footer to switch themes."
     >
       <Stack>
         <nav className="gallery-navigation" aria-label="Gallery sections">
           {[
-            "controls",
-            "widgets",
-            "buttons",
-            "picker-edges",
-            "refresh",
-            "metrics",
-            "tables",
-            "charts",
-            "requests",
-            "dates",
-            "empty-loading",
-            "overlays",
-            "chrome",
-            "layout",
-          ].map((id) => (
-            <a key={id} href={`#${id}`}>
-              {id.replaceAll("-", " ")}
-            </a>
+            {
+              label: "Overview",
+              links: [
+                ["controls", "Quick controls"],
+                ["widgets", "Dashboard composition"],
+              ],
+            },
+            {
+              label: "Controls",
+              links: [
+                ["buttons", "Actions & search"],
+                ["picker-edges", "Filters"],
+                ["dates", "Dates & freshness"],
+              ],
+            },
+            {
+              label: "Data display",
+              links: [
+                ["metrics", "Metrics"],
+                ["tables", "Tables"],
+                ["charts", "Charts & collections"],
+              ],
+            },
+            {
+              label: "Request states",
+              links: [
+                ["refresh", "Refresh"],
+                ["requests", "Boundaries"],
+                ["empty-loading", "Empty & loading"],
+              ],
+            },
+            {
+              label: "App structure",
+              links: [
+                ["overlays", "Inspection & help"],
+                ["chrome", "Page chrome"],
+                ["layout", "Layout"],
+                ["icons", "Semantic icons"],
+              ],
+            },
+          ].map(({ label, links }) => (
+            <div className="gallery-navigation-group" key={label}>
+              <span>{label}</span>
+              <div className="gallery-navigation-links">
+                {links.map(([id, text]) => (
+                  <a key={id} href={`#${id}`}>
+                    {text}
+                  </a>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <section id="controls" aria-label="Control states">
           <Stack>
-            <h2>Controls</h2>
+            <h2>Quick controls</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Button>Default button</Button>
               <Button variant="ghost" size="compact">
@@ -157,7 +190,7 @@ function Gallery() {
         </section>
         <section id="widgets" aria-label="Widget states">
           <Stack>
-            <h2>Widgets</h2>
+            <h2>Dashboard composition</h2>
             <Grid columns={2}>
               <VisualizationWidget
                 title="Weekly activity"

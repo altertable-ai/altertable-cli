@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   AppHeader,
   AppScope,
@@ -114,20 +114,114 @@ const columns = [
   },
 ] as const;
 
+const sections: Record<string, { group: string; description: string; frame: string }> = {
+  buttons: {
+    group: "Controls",
+    description: "Shared actions, selection marks and search. Variants and sizes are independent.",
+    frame: "controls",
+  },
+  "picker-edges": {
+    group: "Controls",
+    description: "Filters in their toolbar footprint. Open each picker to review its popup states.",
+    frame: "controls",
+  },
+  dates: {
+    group: "Controls",
+    description: "Date filters, reporting periods and freshness in an app toolbar.",
+    frame: "controls",
+  },
+  metrics: {
+    group: "Data display",
+    description:
+      "KPI cards at dashboard column width. Missing readings and measured zero stay distinct.",
+    frame: "metric",
+  },
+  tables: {
+    group: "Data display",
+    description: "Record widgets with headers, bounded rows and bottom pagination.",
+    frame: "widget",
+  },
+  charts: {
+    group: "Data display",
+    description: "Visualizations inside the same widget shell used in apps.",
+    frame: "visual",
+  },
+  refresh: {
+    group: "Request states",
+    description:
+      "Replay refresh and failure. Data, titles and toolbar actions should stay in place.",
+    frame: "widget",
+  },
+  requests: {
+    group: "Request states",
+    description: "Page and section boundaries, including initial failure and retained results.",
+    frame: "content",
+  },
+  "empty-loading": {
+    group: "Request states",
+    description: "Empty content in its widget, and skeletons in the footprint they replace.",
+    frame: "widget",
+  },
+  overlays: {
+    group: "Context",
+    description: "Inspection, help, sheets and secondary views with the shared runtime controls.",
+    frame: "content",
+  },
+  chrome: {
+    group: "App structure",
+    description: "Page identity, toolbars, variables, notices and attribution at page width.",
+    frame: "page",
+  },
+  layout: {
+    group: "App structure",
+    description: "Constrained containers, responsive grids and scroll behavior.",
+    frame: "page",
+  },
+  icons: {
+    group: "Reference",
+    description:
+      "Every semantic icon with its API name. Compare meaning and visual consistency here.",
+    frame: "icons",
+  },
+};
+const FrameContext = createContext("content");
 function Case({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+  const frame = useContext(FrameContext);
+  const widget =
+    frame === "visual" ||
+    [
+      "Visual empty title and description",
+      "Long empty copy",
+      "Compact table empty",
+      "Comparison visual",
+      "Native table, numeric, share and timestamp",
+    ].includes(title);
   return (
-    <article className="gallery-case">
-      <h3>{title}</h3>
-      {note && <p className="gallery-note">{note}</p>}
-      <div className="gallery-stage">{children}</div>
+    <article className="gallery-case" data-frame={frame}>
+      <header className="gallery-case-label">
+        <h3>{title}</h3>
+        {note && <p className="gallery-note">{note}</p>}
+      </header>
+      <div className="gallery-stage" data-frame={frame}>
+        {widget ? <DataWidget title="Activity">{children}</DataWidget> : children}
+      </div>
     </article>
   );
 }
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  const section = sections[id]!;
   return (
-    <section id={id} aria-label={title}>
-      <h2>{title}</h2>
-      <div className="gallery-cases">{children}</div>
+    <section id={id} className="gallery-section" aria-label={title}>
+      <header className="gallery-section-heading">
+        <span className="gallery-group">{section.group}</span>
+        <h2>{title}</h2>
+        <p className="gallery-note">{section.description}</p>
+      </header>
+      <FrameContext.Provider value={section.frame}>
+        <div className="gallery-cases" data-frame={section.frame}>
+          {children}
+        </div>
+      </FrameContext.Provider>
     </section>
   );
 }
@@ -356,50 +450,50 @@ export function GalleryCases() {
           </Stack>
         </Case>
       </Section>
-      <Section id="refresh" title="Widget refresh transitions">
-        <Case
-          title="Reserved feedback slot"
-          note="The same widget moves between states. Its data and geometry stay fixed."
-        >
+      <Section id="dates" title="Dates, periods and freshness">
+        <Case title="Bounded date range and comparison">
+          <DateRangePicker
+            label="Gallery dates"
+            value={dates}
+            onChange={setDates}
+            minDate="2026-09-01"
+            maxDate="2026-09-30"
+            maxRangeDays={30}
+            timeZone="UTC"
+            comparison={{
+              enabled: comparison,
+              range: { start: "2026-09-17", end: "2026-09-23" },
+              onChange: setComparison,
+            }}
+          />
+        </Case>
+        <Case title="Unset and disabled dates">
+          <Stack>
+            <DateRangePicker label="Unset dates" value={null} onChange={() => {}} />
+            <DateRangePicker label="Disabled dates" value={dates} onChange={() => {}} isDisabled />
+          </Stack>
+        </Case>
+        <Case title="Calendar and rolling summaries">
+          <Stack>
+            <PeriodSummary period={period} comparison={{ kind: "previous" }} />
+            <PeriodSummary
+              period={{ kind: "rolling", amount: 24, unit: "hour", end: "2026-09-30T12:00:00Z" }}
+            />
+          </Stack>
+        </Case>
+        <Case title="Live controls and timestamp details">
           <div className="gallery-wrap">
-            <Button onClick={() => setStatus({ kind: "idle" })}>Widget ready</Button>
-            <Button onClick={() => setStatus({ kind: "updating" })}>Widget updating</Button>
-            <Button onClick={() => setStatus({ kind: "error" })}>Widget failed</Button>
-            <Button
-              onClick={() =>
-                setStatus({
-                  kind: "error",
-                  message:
-                    "A deliberately long refresh failure message should truncate instead of moving the body or hiding retry",
-                })
-              }
-            >
-              Long widget failure
-            </Button>
+            <LiveControl
+              enabled={live}
+              onChange={setLive}
+              intervalSeconds={interval}
+              onIntervalChange={setInterval}
+            />
+            <UpdatedAt timestamp={Date.parse("2026-09-30T12:00:00Z")} />
+            <DateTimeTooltip date={new Date("2026-09-30T12:00:00Z")} timeZone="UTC">
+              Exact UTC time
+            </DateTimeTooltip>
           </div>
-        </Case>
-        <Case title="Shared widget state">
-          <DataWidget title="Stable activity" status={widgetStatus} evidence={evidence}>
-            <p>42 events remain visible.</p>
-          </DataWidget>
-        </Case>
-        <Case title="Metric refresh">
-          <MetricWidget
-            label="Stable metric"
-            value={42}
-            format={{ kind: "count" }}
-            status={widgetStatus}
-          />
-        </Case>
-        <Case title="Table refresh">
-          <TableWidget
-            title="Stable table"
-            rows={[row]}
-            rowKey={(item) => item.id}
-            columns={columns}
-            status={widgetStatus}
-            empty={empty}
-          />
         </Case>
       </Section>
       <Section id="metrics" title="Metric formats and comparisons">
@@ -577,6 +671,52 @@ export function GalleryCases() {
           <Breakdown total={0} items={[{ id: "a", label: "Measured zero", value: 0 }]} />
         </Case>
       </Section>
+      <Section id="refresh" title="Widget refresh transitions">
+        <Case
+          title="Reserved feedback slot"
+          note="The same widget moves between states. Its data and geometry stay fixed."
+        >
+          <div className="gallery-wrap">
+            <Button onClick={() => setStatus({ kind: "idle" })}>Widget ready</Button>
+            <Button onClick={() => setStatus({ kind: "updating" })}>Widget updating</Button>
+            <Button onClick={() => setStatus({ kind: "error" })}>Widget failed</Button>
+            <Button
+              onClick={() =>
+                setStatus({
+                  kind: "error",
+                  message:
+                    "A deliberately long refresh failure message should truncate instead of moving the body or hiding retry",
+                })
+              }
+            >
+              Long widget failure
+            </Button>
+          </div>
+        </Case>
+        <Case title="Shared widget state">
+          <DataWidget title="Stable activity" status={widgetStatus} evidence={evidence}>
+            <p>42 events remain visible.</p>
+          </DataWidget>
+        </Case>
+        <Case title="Metric refresh">
+          <MetricWidget
+            label="Stable metric"
+            value={42}
+            format={{ kind: "count" }}
+            status={widgetStatus}
+          />
+        </Case>
+        <Case title="Table refresh">
+          <TableWidget
+            title="Stable table"
+            rows={[row]}
+            rowKey={(item) => item.id}
+            columns={columns}
+            status={widgetStatus}
+            empty={empty}
+          />
+        </Case>
+      </Section>
       <Section id="requests" title="Request boundaries and recovery">
         <Case
           title="All request states"
@@ -628,52 +768,6 @@ export function GalleryCases() {
           </RefreshRegion>
         </Case>
       </Section>
-      <Section id="dates" title="Dates, periods and freshness">
-        <Case title="Bounded date range and comparison">
-          <DateRangePicker
-            label="Gallery dates"
-            value={dates}
-            onChange={setDates}
-            minDate="2026-09-01"
-            maxDate="2026-09-30"
-            maxRangeDays={30}
-            timeZone="UTC"
-            comparison={{
-              enabled: comparison,
-              range: { start: "2026-09-17", end: "2026-09-23" },
-              onChange: setComparison,
-            }}
-          />
-        </Case>
-        <Case title="Unset and disabled dates">
-          <Stack>
-            <DateRangePicker label="Unset dates" value={null} onChange={() => {}} />
-            <DateRangePicker label="Disabled dates" value={dates} onChange={() => {}} isDisabled />
-          </Stack>
-        </Case>
-        <Case title="Calendar and rolling summaries">
-          <Stack>
-            <PeriodSummary period={period} comparison={{ kind: "previous" }} />
-            <PeriodSummary
-              period={{ kind: "rolling", amount: 24, unit: "hour", end: "2026-09-30T12:00:00Z" }}
-            />
-          </Stack>
-        </Case>
-        <Case title="Live controls and timestamp details">
-          <Stack>
-            <LiveControl
-              enabled={live}
-              onChange={setLive}
-              intervalSeconds={interval}
-              onIntervalChange={setInterval}
-            />
-            <UpdatedAt timestamp={Date.parse("2026-09-30T12:00:00Z")} />
-            <DateTimeTooltip date={new Date("2026-09-30T12:00:00Z")} timeZone="UTC">
-              Exact UTC time
-            </DateTimeTooltip>
-          </Stack>
-        </Case>
-      </Section>
       <Section id="empty-loading" title="Empty states, skeletons and status panels">
         <Case title="Visual empty title and description">
           <EmptyState
@@ -710,7 +804,7 @@ export function GalleryCases() {
       </Section>
       <Section id="overlays" title="Inspection, overlays and disclosures">
         <Case title="Glossary and SQL">
-          <Stack>
+          <div className="gallery-wrap">
             <GlossaryDefinition entry={glossary}>Activity definition</GlossaryDefinition>
             <GlossaryExplanation entry={glossary} queries={queries} />
             <AboutData
@@ -731,7 +825,7 @@ export function GalleryCases() {
             >
               Inspect unavailable evidence
             </AboutData>
-          </Stack>
+          </div>
         </Case>
         <Case title="Tooltip and help popover">
           <Stack>
@@ -868,48 +962,6 @@ export function GalleryCases() {
             <Button variant="ghost">Footer action</Button>
           </AppFooter>
         </Case>
-        <Case title="Semantic icon inventory">
-          <div className="gallery-wrap">
-            {(
-              [
-                "cancel",
-                "calendar",
-                "clock",
-                "check",
-                "disclosure",
-                "previousMonth",
-                "nextMonth",
-                "explore",
-                "inspect",
-                "info",
-                "openDetails",
-                "present",
-                "error",
-                "close",
-                "previous",
-                "next",
-                "lightTheme",
-                "darkTheme",
-                "live",
-                "loading",
-                "refresh",
-                "stop",
-                "reset",
-                "search",
-                "copy",
-                "sql",
-                "wrap",
-                "trendDown",
-                "trendFlat",
-                "trendUp",
-              ] satisfies AppIconName[]
-            ).map((name) => (
-              <span key={name} title={name}>
-                <AppIcon name={name} />
-              </span>
-            ))}
-          </div>
-        </Case>
       </Section>
       <Section id="layout" title="Layout, scrolling and constrained composition">
         <Case title="Narrow widget with long title, description, count and action">
@@ -944,6 +996,51 @@ export function GalleryCases() {
               <p key={i}>Scrollable line {i + 1}</p>
             ))}
           </GradientScroll>
+        </Case>
+      </Section>
+      <Section id="icons" title="Semantic icon inventory">
+        <Case title="Semantic icon inventory">
+          <div className="gallery-icon-inventory">
+            {(
+              [
+                "cancel",
+                "calendar",
+                "clock",
+                "check",
+                "disclosure",
+                "previousMonth",
+                "nextMonth",
+                "explore",
+                "inspect",
+                "info",
+                "openDetails",
+                "present",
+                "error",
+                "close",
+                "previous",
+                "next",
+                "lightTheme",
+                "darkTheme",
+                "live",
+                "loading",
+                "refresh",
+                "stop",
+                "reset",
+                "search",
+                "copy",
+                "sql",
+                "wrap",
+                "trendDown",
+                "trendFlat",
+                "trendUp",
+              ] satisfies AppIconName[]
+            ).map((name) => (
+              <span key={name} className="gallery-icon-entry">
+                <AppIcon name={name} />
+                <code>{name}</code>
+              </span>
+            ))}
+          </div>
         </Case>
       </Section>
     </>
