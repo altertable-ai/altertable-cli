@@ -36,10 +36,10 @@ type TableWidgetBaseProps<Row> = {
   /** Valid result with no rows; the header remains visible. */
   empty: Pick<EmptyStateProps, "title" | "description">;
 } & (
-  | { limit?: number; pagination?: never }
+  | { limit: number; pagination?: never }
   | {
-      /** Paginate the supplied, bounded rows after local search. */
-      pagination: { pageSize: number };
+      /** Page bounded rows after local search. Controls always occupy the bottom widget footer. */
+      pagination?: { pageSize: number } | false;
       limit?: never;
     }
 ) &
@@ -99,7 +99,8 @@ function TableWidgetContent<Row>({
         fuzzyThreshold: search.fuzzyThreshold,
       })
     : rows.map((item) => ({ item, score: 0, matches: {} }));
-  const pageSize = pagination?.pageSize ?? null;
+  const pageSize =
+    pagination === false || limit !== undefined ? null : (pagination?.pageSize ?? 10);
   const pageCount = pageSize ? Math.max(1, Math.ceil(hits.length / pageSize)) : 1;
   const page = Math.min(pageState.page, pageCount - 1);
   const start = pageSize ? page * pageSize : 0;
@@ -149,44 +150,40 @@ function TableWidgetContent<Row>({
           )}
         </tbody>
       </DataTable>
-      {pageSize && hits.length > 0 && (
-        <nav className="altertable-table-pagination" aria-label="Table pages">
-          <span className="altertable-table-pagination-range">
-            {formatCount(start + 1)}–{formatCount(start + visible.length)} of{" "}
-            {formatCount(hits.length)} {pluralize(hits.length, "result")}
-          </span>
-          <span className="altertable-table-pagination-controls">
-            <span>
-              Page {page + 1} of {pageCount}
-            </span>
-            <Tooltip content="Previous page">
-              <button
-                type="button"
-                aria-label="Previous page"
-                disabled={page === 0}
-                onClick={() =>
-                  setPageState({ page: page - 1, rowKeys, searchValue: search?.value })
-                }
-              >
-                <AppIcon name="previousMonth" size={16} />
-              </button>
-            </Tooltip>
-            <Tooltip content="Next page">
-              <button
-                type="button"
-                aria-label="Next page"
-                disabled={page >= pageCount - 1}
-                onClick={() =>
-                  setPageState({ page: page + 1, rowKeys, searchValue: search?.value })
-                }
-              >
-                <AppIcon name="nextMonth" size={16} />
-              </button>
-            </Tooltip>
-          </span>
-        </nav>
-      )}
     </>
+  );
+  const pager = pageSize && hits.length > 0 && (
+    <nav className="altertable-table-pagination" aria-label="Table pages">
+      <span className="altertable-table-pagination-range">
+        {formatCount(start + 1)}–{formatCount(start + visible.length)} of {formatCount(hits.length)}{" "}
+        {pluralize(hits.length, "result")}
+      </span>
+      <span className="altertable-table-pagination-controls">
+        <span>
+          Page {page + 1} of {pageCount}
+        </span>
+        <Tooltip content="Previous page">
+          <button
+            type="button"
+            aria-label="Previous page"
+            disabled={page === 0}
+            onClick={() => setPageState({ page: page - 1, rowKeys, searchValue: search?.value })}
+          >
+            <AppIcon name="previousMonth" size={16} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Next page">
+          <button
+            type="button"
+            aria-label="Next page"
+            disabled={page >= pageCount - 1}
+            onClick={() => setPageState({ page: page + 1, rowKeys, searchValue: search?.value })}
+          >
+            <AppIcon name="nextMonth" size={16} />
+          </button>
+        </Tooltip>
+      </span>
+    </nav>
   );
   return (
     <DataWidget
@@ -196,7 +193,14 @@ function TableWidgetContent<Row>({
       description={description}
       action={action}
       evidence={evidence}
-      footer={insight}
+      footer={
+        (pager || insight) && (
+          <>
+            {pager}
+            {insight}
+          </>
+        )
+      }
     >
       <div className="altertable-table-widget-content">{table}</div>
     </DataWidget>

@@ -8,6 +8,7 @@ import {
   dateRangeVariable,
   defineDataIdentifiers,
   ContentSkeleton,
+  Combobox,
   Grid,
   GridItem,
   GlossaryDefinition,
@@ -161,8 +162,23 @@ function Fixture() {
             <div>First narrow widget</div>
             <div>Second narrow widget</div>
           </Grid>
+          <Combobox
+            label="Interface"
+            options={[
+              { id: "http", label: "HTTP" },
+              { id: "postgres", label: "Postgres" },
+            ]}
+            missingOption={{
+              id: "missing",
+              label: "No value",
+              description: "Records without an interface value",
+            }}
+            value="http"
+            onChange={() => {}}
+          />
           <TableWidget
             title="Paginated orders"
+            evidence={{ id: "paginated-orders", glossaryIds: ["orders"] }}
             rows={Array.from({ length: 11 }, (_, index) => ({
               id: index + 1,
               name: `Order ${index + 1}`,

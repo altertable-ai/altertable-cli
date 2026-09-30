@@ -92,6 +92,13 @@ function MetricWidgetContent({
         Previous period unavailable
       </span>
     ) : null;
+  const reading = (
+    <div className="altertable-metric-reading">
+      <strong className="altertable-metric-value">{shownValue}</strong>
+      {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
+    </div>
+  );
+  const visualization = visual && <div className="altertable-metric-visual">{visual}</div>;
   const help = evidence ? (
     <AboutData
       iconOnly
@@ -109,11 +116,8 @@ function MetricWidgetContent({
       description={description}
       visual={
         <div className="altertable-metric-evidence">
-          <div className="altertable-metric-reading">
-            <strong className="altertable-metric-value">{shownValue}</strong>
-            {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
-          </div>
-          {visual}
+          {reading}
+          {visualization}
         </div>
       }
       visualKind="metric"
@@ -132,12 +136,9 @@ function MetricWidgetContent({
           </div>
         )}
       </div>
-      <div className="altertable-metric-reading">
-        <strong className="altertable-metric-value">{shownValue}</strong>
-        {shownTrend && <span className="altertable-metric-trend">{shownTrend}</span>}
-      </div>
+      {reading}
       {description && <small className="altertable-metric-description">{description}</small>}
-      {visual && <div className="altertable-metric-visual">{visual}</div>}
+      {visualization}
       {insight && <div className="altertable-metric-insight">{insight}</div>}
     </div>
   );

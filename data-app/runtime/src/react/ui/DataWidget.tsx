@@ -75,6 +75,11 @@ function DataWidgetContent({
 }: DataWidgetBaseProps & { empty?: Empty; children: ReactNode }) {
   const titleId = useId();
   const content = empty ? <EmptyState {...empty} /> : children;
+  const visual = (
+    <WidgetContent bodyPadding={empty ? "flush" : bodyPadding} footer={footer}>
+      {content}
+    </WidgetContent>
+  );
   const help = evidence && (
     <AboutData
       id={evidence.id}
@@ -90,7 +95,8 @@ function DataWidgetContent({
       shortcut={false}
       title={title}
       description={description}
-      visual={content}
+      visual={visual}
+      visualKind="widget"
     >
       <AppIcon name="openDetails" />
     </AboutData>
@@ -141,10 +147,27 @@ function DataWidgetContent({
           </div>
         )}
       </header>
-      <div className="altertable-data-widget-body" data-padding={empty ? "flush" : bodyPadding}>
-        {content}
+      {visual}
+    </section>
+  );
+}
+
+/** The page and inspection sheet render the same body and footer, with the same spacing. */
+function WidgetContent({
+  bodyPadding,
+  footer,
+  children,
+}: {
+  bodyPadding: "inset" | "flush";
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div className="altertable-data-widget-body" data-padding={bodyPadding}>
+        {children}
       </div>
       {footer && <footer className="altertable-data-widget-footer">{footer}</footer>}
-    </section>
+    </>
   );
 }

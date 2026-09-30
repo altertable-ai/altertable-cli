@@ -292,3 +292,29 @@ test("operation routes decode one path segment and client errors remain useful",
   });
   expect(DataAppError.name).toBe("DataAppError");
 });
+
+test("table pagination defaults to a bottom footer and supports complete and preview tables", () => {
+  const rows = Array.from({ length: 12 }, (_, id) => ({ id, name: `Item ${id + 1}` }));
+  const props = {
+    title: "Items",
+    columns: [
+      { id: "name", header: "Name", cell: (row: (typeof rows)[number]) => row.name },
+    ] as const,
+    rows,
+    rowKey: (row: (typeof rows)[number]) => row.id,
+    empty: { title: "No items" },
+  };
+  const paginated = renderToStaticMarkup(<TableWidget {...props} />);
+  expect(paginated).toContain("1–10 of 12 results");
+  expect(paginated).not.toContain("Item 11");
+  expect(paginated).toMatch(
+    /<footer class="altertable-data-widget-footer"><nav[^>]*aria-label="Table pages"/,
+  );
+  expect(paginated.indexOf("</table>")).toBeLessThan(paginated.indexOf('aria-label="Table pages"'));
+  const complete = renderToStaticMarkup(<TableWidget {...props} pagination={false} />);
+  expect(complete).toContain("Item 12");
+  expect(complete).not.toContain('aria-label="Table pages"');
+  const preview = renderToStaticMarkup(<TableWidget {...props} limit={2} />);
+  expect(preview).not.toContain("Item 3");
+  expect(preview).not.toContain('aria-label="Table pages"');
+});

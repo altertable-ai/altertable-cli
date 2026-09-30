@@ -115,7 +115,7 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   page,
 }) => {
   await page.goto("/components");
-  await page.getByRole("button", { name: "Present data", exact: true }).click();
+  await page.getByRole("button", { name: "Present story", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Orders increased" })).toBeVisible();
   await expect(page).toHaveURL(/present=1.*step=orders/);
   await page.keyboard.press("ArrowRight");
@@ -125,13 +125,13 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Switch to dark theme" }).click();
   await expect(dialog.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Explore", exact: true }).click();
+  await dialog.getByRole("button", { name: "Explore sources", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
-  await expect(page.getByText("No terms for this view")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Queries" }).click();
-  const queryEmpty = page.getByText("No SQL for this view");
-  await expect(queryEmpty).toBeVisible();
-  expect(await queryEmpty.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("450");
+  await expect(page.getByRole("region", { name: "Query notebook" })).toContainText(
+    "SELECT 1 AS connection_check",
+  );
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Close panel" })).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -381,22 +381,59 @@ test("initial loading keeps the grid shape without displaying snapshot values", 
   await expect(loading).toHaveCount(0);
 });
 
-test("story gives its main visual more room and stacks evidence on phones", async ({
+test("story gives its visual more room and stacks it below the finding on phones", async ({
   page,
 }, testInfo) => {
   await page.goto("/components");
-  const story = page.getByTestId("layout-story");
-  const lead = await story.locator(".altertable-story-section-lead").boundingBox();
-  const visual = await story.locator(".altertable-story-section-visual").boundingBox();
-  const support = await story.locator(".altertable-story-section-support").boundingBox();
-  expect(lead).not.toBeNull();
+  await page.getByRole("button", { name: "Present story", exact: true }).click();
+  const story = page.getByRole("dialog");
+  await expect(story.getByRole("heading", { name: "Orders increased" })).toBeVisible();
+  const copy = await story.locator(".altertable-present-copy").boundingBox();
+  const visual = await story.locator(".altertable-present-visual").boundingBox();
+  expect(copy).not.toBeNull();
   expect(visual).not.toBeNull();
-  expect(support).not.toBeNull();
-  expect(visual!.y).toBeGreaterThan(lead!.y);
   if (testInfo.project.name === "desktop") {
-    expect(visual!.width).toBeGreaterThan(support!.width);
-    expect(Math.round(visual!.y)).toBe(Math.round(support!.y));
+    expect(visual!.width).toBeGreaterThan(copy!.width);
+    expect(Math.round(visual!.y)).toBe(Math.round(copy!.y));
   } else {
-    expect(support!.y).toBeGreaterThanOrEqual(visual!.y + visual!.height);
+    expect(visual!.y).toBeGreaterThanOrEqual(copy!.y + copy!.height);
   }
+});
+
+test("missing values share option styling and table inspection shares paging state", async ({
+  page,
+}) => {
+  await page.goto("/components");
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  await page.getByRole("button", { name: "Interface: HTTP", exact: true }).click();
+  const options = page.getByRole("option");
+  const normalRadius = await options
+    .filter({ hasText: "Postgres" })
+    .evaluate((element) => getComputedStyle(element).borderRadius);
+  expect(normalRadius).not.toBe("0px");
+  await expect(options.filter({ hasText: "No value" })).toHaveCSS("border-radius", normalRadius);
+  await page.getByRole("textbox", { name: "Search interface values" }).press("Escape");
+  const widget = page
+    .locator(".altertable-data-widget")
+    .filter({ has: page.getByRole("heading", { name: "Paginated orders" }) });
+  await widget.getByRole("button", { name: "Next page" }).click();
+  const pageBody = widget.locator(":scope > .altertable-data-widget-body");
+  const pagePadding = await pageBody.evaluate((element) => getComputedStyle(element).padding);
+  await widget.getByRole("button", { name: "Explore Paginated orders" }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.getByRole("table").getByText("Order 5", { exact: true })).toBeVisible();
+  await expect(sheet.locator(".altertable-data-widget-body")).toHaveCSS("padding", pagePadding);
+  await expect(
+    sheet
+      .locator(".altertable-data-widget-footer")
+      .getByRole("navigation", { name: "Table pages" }),
+  ).toContainText("5–8 of 11 results");
+  await sheet.getByRole("button", { name: "Next page" }).click();
+  await expect(sheet.getByRole("table").getByText("Order 9", { exact: true })).toBeVisible();
+  await sheet.getByRole("button", { name: "Close panel", exact: true }).click();
+  await expect(
+    widget
+      .locator(":scope > .altertable-data-widget-footer")
+      .getByRole("navigation", { name: "Table pages" }),
+  ).toContainText("9–11 of 11 results");
 });

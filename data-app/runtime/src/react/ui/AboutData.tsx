@@ -40,7 +40,7 @@ export type AboutSubject = {
   title?: ReactNode;
   description?: ReactNode;
   visual?: ReactNode;
-  visualKind?: "metric" | "chart";
+  visualKind?: "metric" | "chart" | "widget";
   dataContext?: DataContext;
   references?:
     | { kind: "ids"; glossaryIds?: readonly string[]; queryNames?: readonly string[] }
