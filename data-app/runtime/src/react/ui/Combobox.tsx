@@ -17,16 +17,19 @@ import { SearchMatch } from "./SearchMatch.tsx";
 import { searchItems } from "./searchItems.ts";
 import "./Combobox.css";
 
+/** IDs are nonempty and unique across ordinary and missing options. */
 export type ComboboxOption = { id: string; label: string; description?: string };
 type SharedProps = {
   label: string;
   options: ComboboxOption[];
-  /** Null is a separate source state, not an ordinary category value. */
+  /** Separate source state, rendered last with a divider and the shared option component. */
   missingOption?: ComboboxOption;
   disabled?: boolean;
   placeholder?: string;
   emptyMessage?: string;
+  /** Known options remain selectable while refreshing; unavailable selected IDs are retained. */
   loading?: boolean;
+  /** Shows failure feedback without removing known options or unavailable selections. */
   error?: boolean;
   onRetry?: () => void;
 };
@@ -41,6 +44,7 @@ export type SingleComboboxProps = SharedProps & {
 export type MultiComboboxProps = SharedProps & {
   values: readonly string[];
   onChange: (values: string[]) => void;
+  /** Positive integer; at capacity, only unselected options are disabled. */
   maxSelected: number;
   /** Meaning of an empty selection belongs to the caller, e.g. All or Select a value. */
   emptySelectionLabel: string;
@@ -196,6 +200,7 @@ export function Combobox(props: ComboboxProps) {
                 {(hit) => (
                   <ListBoxItem
                     id={hit.item.id}
+                    data-missing={hit.item.id === missingOption?.id || undefined}
                     textValue={hit.item.label}
                     isDisabled={atLimit && !selected.has(hit.item.id)}
                   >

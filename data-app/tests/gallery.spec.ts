@@ -37,6 +37,23 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await page.getByRole("button", { name: "Categories: Choose categories", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Categories options" });
   const search = dialog.getByRole("searchbox");
+  const missing = dialog.getByRole("option", { name: "No value Records without a category value" });
+  await expect
+    .poll(() => missing.evaluate((element) => getComputedStyle(element, "::before").borderTopWidth))
+    .toBe("1px");
+  await expect(missing).toHaveCSS(
+    "border-radius",
+    await dialog
+      .getByRole("option", { name: "HTTP", exact: true })
+      .evaluate((element) => getComputedStyle(element).borderRadius),
+  );
+  await page.screenshot({ path: `/tmp/runtime-gallery-divider-${test.info().project.name}.png` });
+  await search.fill("No value");
+  await expect(dialog.getByRole("option")).toHaveCount(1);
+  await expect
+    .poll(() => missing.evaluate((element) => getComputedStyle(element, "::before").borderTopWidth))
+    .toBe("0px");
+  await search.fill("");
   await search.focus();
   await expect(dialog.locator(".altertable-search-input-wrap")).toHaveCSS("outline-width", "1px");
   await search.press("ArrowDown");

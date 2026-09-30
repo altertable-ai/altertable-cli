@@ -77,6 +77,19 @@
   font-size: 11px;
   font-weight: 400;
 }
+.altertable-combobox-popover .react-aria-ListBoxItem[data-missing]:not(:first-child) {
+  position: relative;
+  margin-top: 9px;
+}
+.altertable-combobox-popover .react-aria-ListBoxItem[data-missing]:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--at-border, #e3e6e8);
+  pointer-events: none;
+}
 .altertable-combobox-option-content {
   min-width: 0;
 }
