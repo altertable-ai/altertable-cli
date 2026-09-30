@@ -1,5 +1,5 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
-import { RequestHint, type WidgetStatus } from "./RequestHint.tsx";
+import { WidgetStatusControl, type WidgetStatus } from "./RequestHint.tsx";
 import { AboutData } from "./AboutData.tsx";
 import type { WidgetEvidence } from "./WidgetEvidence.ts";
 import { AppIcon } from "./icons.ts";
@@ -102,7 +102,7 @@ function MetricWidgetContent({
     </div>
   );
   const visualization = visual && <div className="altertable-metric-visual">{visual}</div>;
-  const feedback = <RequestHint status={status} />;
+  const feedback = <WidgetStatusControl status={status} />;
   const help = evidence ? (
     <AboutData
       iconOnly
@@ -117,11 +117,11 @@ function MetricWidgetContent({
       shortcut={false}
       id={evidence.id}
       title={label}
+      headerActions={feedback}
       description={description}
       visual={
         <div className="altertable-metric-evidence">
           {reading}
-          {feedback}
           {visualization}
         </div>
       }
@@ -134,15 +134,13 @@ function MetricWidgetContent({
     <div {...props} className={classNames("altertable-metric-widget", className)}>
       <div className="altertable-metric-label">
         <span>{label}</span>
-        {(action || help) && (
-          <div className="altertable-metric-help">
-            {action}
-            {help}
-          </div>
-        )}
+        <div className="altertable-metric-help">
+          {feedback}
+          {action}
+          {help}
+        </div>
       </div>
       {reading}
-      {feedback}
       {description && <small className="altertable-metric-description">{description}</small>}
       {visualization}
       {insight && <div className="altertable-metric-insight">{insight}</div>}

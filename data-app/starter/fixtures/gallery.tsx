@@ -82,7 +82,7 @@ function Gallery() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Button>Default button</Button>
               <Button variant="ghost" size="compact">
-                Ghost action
+                Compact ghost action
               </Button>
               <Button disabled>Disabled action</Button>
               <Tooltip content="This describes the action">

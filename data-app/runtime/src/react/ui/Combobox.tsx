@@ -136,6 +136,8 @@ export function Combobox(props: ComboboxProps) {
   function clear() {
     if (multiple) props.onChange([]);
     else if (props.resetValue !== undefined) props.onChange(props.resetValue);
+    setOpen(false);
+    setSearch("");
   }
 
   return (
@@ -232,10 +234,12 @@ export function Combobox(props: ComboboxProps) {
               </div>
             )}
           </GradientScroll>
-          <RequestHint
-            status={error ? { kind: "error", message: "Couldn’t load values", onRetry } : undefined}
-            retryLabel="Try again"
-          />
+          {error && (
+            <RequestHint
+              status={{ kind: "error", message: "Couldn’t load values", onRetry }}
+              retryLabel="Try again"
+            />
+          )}
           {canClear && (
             <div className="altertable-combobox-actions">
               <Button variant="ghost" size="compact" onPress={clear}>

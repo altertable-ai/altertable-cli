@@ -61,6 +61,7 @@ export type AboutDataProps = AboutSubject & {
   footer?: ReactNode;
   portalRoot?: RefObject<HTMLElement | null>;
   sheetProps?: SheetDialogProps;
+  headerActions?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Initial inspect tab. While open, the URL's `tab` parameter tracks selection. */
@@ -133,6 +134,7 @@ export function AboutData({
   footer,
   portalRoot,
   sheetProps,
+  headerActions,
   open: openProp,
   onOpenChange,
   tab,
@@ -269,6 +271,7 @@ export function AboutData({
         wide={!!visual && visualKind !== "metric"}
         returnFocus={triggerRef}
         footer={footer}
+        headerActions={headerActions}
       >
         {visual && (
           <div className="altertable-about-visual" data-kind={visualKind}>

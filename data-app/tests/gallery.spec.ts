@@ -70,6 +70,8 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await page.keyboard.press("Space");
   await expect(dialog.getByRole("option", { name: "Other", exact: true })).toBeDisabled();
   await dialog.getByRole("button", { name: "Clear selection" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "Categories: Choose categories", exact: true }).click();
   await expect(dialog.getByRole("option", { name: "Other", exact: true })).toBeEnabled();
   await search.fill("does not exist");
   await expect(dialog.getByText("No matching values", { exact: true }).last()).toBeVisible();
@@ -156,7 +158,6 @@ test("picker refresh and failure keep cached choices and retry in fixed slots", 
   const option = dialog.getByRole("option", { name: "HTTP", exact: true });
   const input = dialog.getByRole("searchbox");
   const initial = await option.boundingBox();
-  const bounds = await dialog.boundingBox();
   await expect(dialog.locator(".altertable-search-input-spinner")).toBeVisible();
   await expect(input).toBeFocused();
   expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
@@ -164,12 +165,11 @@ test("picker refresh and failure keep cached choices and retry in fixed slots", 
   await expect(hint).toHaveAttribute("data-state", "error");
   await expect(option).toBeEnabled();
   expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs((await dialog.boundingBox())!.height - bounds!.height)).toBeLessThanOrEqual(1);
   const message = await hint.locator(".altertable-request-hint-message").boundingBox();
   const retry = await hint.getByRole("button", { name: "Try again" }).boundingBox();
   expect(retry!.x - (message!.x + message!.width)).toBeLessThanOrEqual(8);
   await hint.getByRole("button", { name: "Try again" }).click();
-  await expect(hint).toHaveAttribute("data-state", "idle");
+  await expect(hint).toHaveCount(0);
   expect(Math.abs((await option.boundingBox())!.y - initial!.y)).toBeLessThanOrEqual(1);
 });
 
@@ -204,7 +204,7 @@ test("widget refresh slots preserve data, geometry and inspection feedback", asy
   const sheet = page.getByRole("dialog", { name: "Stable activity", exact: true });
   await expect(sheet.getByRole("alert")).toContainText("Couldn’t refresh");
   await sheet.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(sheet.locator(".altertable-request-hint")).toHaveAttribute("data-state", "idle");
+  await expect(sheet.locator(".altertable-widget-status")).toHaveAttribute("data-state", "idle");
 });
 
 test("gallery spans all UI families and handles empty, overflow and request recovery", async ({
@@ -270,4 +270,54 @@ test("gallery respects reduced motion and retry without cached data", async ({ p
   ).toBeGreaterThan(
     await description.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
   );
+});
+
+test("clear closes the picker and idle panels have no feedback gap", async ({ page }) => {
+  await page.goto("/gallery");
+  await page.getByRole("button", { name: "Resettable category: HTTP", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Resettable category options" });
+  await expect(dialog.locator(".altertable-request-hint")).toHaveCount(0);
+  await dialog.getByRole("option", { name: "Postgres", exact: true }).click();
+  await page.getByRole("button", { name: "Resettable category: Postgres", exact: true }).click();
+  await dialog.getByRole("button", { name: "Clear selection", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Resettable category: HTTP", exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Compact ghost action", exact: true }),
+  ).toHaveAttribute("data-variant", "ghost");
+  await expect(
+    page.getByRole("button", { name: "Compact ghost action", exact: true }),
+  ).toHaveAttribute("data-size", "compact");
+});
+
+test("widget toolbar owns shimmer, retry tooltip and stable action positions", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/gallery");
+  const widget = page
+    .locator(".altertable-data-widget")
+    .filter({ has: page.getByRole("heading", { name: "Stable activity", exact: true }) });
+  const toolbar = widget.locator(".altertable-data-widget-help");
+  const status = toolbar.locator(":scope > .altertable-widget-status");
+  const inspect = toolbar.getByRole("button", { name: "Explore Stable activity" });
+  const initial = await inspect.boundingBox();
+  await page.getByRole("button", { name: "Widget updating", exact: true }).click();
+  await expect(toolbar.getByRole("status")).toHaveText("Refreshing");
+  await expect(toolbar).toHaveCSS("opacity", "1");
+  await expect(status.locator("svg")).toHaveCount(0);
+  await expect(status.locator(".altertable-widget-status-shimmer")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await page.getByRole("button", { name: "Widget failed", exact: true }).click();
+  expect(Math.abs((await inspect.boundingBox())!.x - initial!.x)).toBeLessThanOrEqual(1);
+  const retry = status.getByRole("button", { name: "Retry", exact: true });
+  await inspect.focus();
+  await inspect.press("Shift+Tab");
+  await expect(retry).toBeFocused();
+  await expect(page.getByRole("tooltip")).toContainText("Try again to refresh these results.");
+  await page.screenshot({ path: `/tmp/runtime-toolbar-retry-${test.info().project.name}.png` });
+  await retry.click();
+  await expect(status).toHaveAttribute("data-state", "idle");
 });

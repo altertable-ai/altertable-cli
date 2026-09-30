@@ -9,6 +9,7 @@
 .altertable-data-widget-header {
   display: flex;
   align-items: flex-start;
+  min-height: 30px;
   justify-content: space-between;
   gap: var(--at-space-md, 16px);
   padding: var(--at-layout-gap, 24px) var(--at-layout-gap, 24px) 0;
@@ -61,13 +62,4 @@
   border-radius: 0;
   background: transparent;
   padding: 0;
-}
-
-.altertable-data-widget-feedback {
-  padding: 0 var(--at-layout-gap, 24px);
-  min-width: 0;
-}
-
-.altertable-data-widget-feedback + .altertable-data-widget-body {
-  padding-top: 0;
 }

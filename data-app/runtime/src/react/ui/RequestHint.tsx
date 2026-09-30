@@ -1,4 +1,5 @@
 import { AppIcon } from "./icons.ts";
+import { Tooltip } from "./Tooltip.tsx";
 import { Button } from "./Button.tsx";
 import "./RequestHint.css";
 
@@ -42,6 +43,40 @@ export function RequestHint({
               {retryLabel}
             </Button>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Fixed toolbar footprint preserves the title and action positions across request states. */
+export function WidgetStatusControl({ status }: { status?: WidgetStatus }) {
+  const kind = status?.kind ?? "idle";
+  const message = status?.kind === "error" ? (status.message ?? "Couldn’t refresh") : "Refreshing";
+  return (
+    <div
+      className="altertable-widget-status"
+      data-state={kind}
+      role={kind === "error" ? "alert" : "status"}
+      aria-atomic="true"
+    >
+      {kind === "updating" && <span className="altertable-widget-status-shimmer">Refreshing</span>}
+      {status?.kind === "error" && (
+        <>
+          <span className="altertable-widget-status-announcement">{message}</span>
+          <Tooltip
+            content={`${message}. ${status.onRetry ? "Try again to refresh these results." : "Refresh this view to try again."}`}
+          >
+            <Button
+              variant="ghost"
+              size="compact"
+              onClick={status.onRetry}
+              disabled={!status.onRetry}
+            >
+              <AppIcon name="error" size={14} />
+              Retry
+            </Button>
+          </Tooltip>
         </>
       )}
     </div>

@@ -33,6 +33,8 @@
     .altertable-metric-widget:focus-within .altertable-metric-help,
     .altertable-data-widget:hover .altertable-data-widget-help,
     .altertable-data-widget:focus-within .altertable-data-widget-help,
+    .altertable-metric-help:has(> .altertable-widget-status:not([data-state="idle"])),
+    .altertable-data-widget-help:has(> .altertable-widget-status:not([data-state="idle"])),
     .altertable-metric-help:has([data-open="true"]),
     .altertable-data-widget-help:has([data-open="true"])
   ) {

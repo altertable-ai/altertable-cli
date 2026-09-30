@@ -3,7 +3,7 @@ import { formatCount } from "../../core/format.ts";
 import type { DataReading } from "../../core/reading.ts";
 import { AboutData } from "./AboutData.tsx";
 import { AppIcon } from "./icons.ts";
-import { RequestHint, type WidgetStatus } from "./RequestHint.tsx";
+import { WidgetStatusControl, type WidgetStatus } from "./RequestHint.tsx";
 import { classNames } from "./classNames.ts";
 import { ContentSkeleton, type ContentSkeletonProps } from "./ContentSkeleton.tsx";
 import { EmptyState, type EmptyStateProps } from "./EmptyState.tsx";
@@ -97,6 +97,7 @@ function DataWidgetContent({
       tooltip="Explore this widget"
       shortcut={false}
       title={title}
+      headerActions={<WidgetStatusControl status={status} />}
       description={description}
       visual={visual}
       visualKind="widget"
@@ -120,12 +121,11 @@ function DataWidgetContent({
           </h2>
           {description && <p>{description}</p>}
         </div>
-        {(help || action) && (
-          <div className="altertable-data-widget-help">
-            {action}
-            {help}
-          </div>
-        )}
+        <div className="altertable-data-widget-help">
+          <WidgetStatusControl status={status} />
+          {action}
+          {help}
+        </div>
       </header>
       {visual}
     </section>
@@ -146,9 +146,6 @@ function WidgetContent({
 }) {
   return (
     <>
-      <div className="altertable-data-widget-feedback">
-        <RequestHint status={status} />
-      </div>
       <div
         className="altertable-data-widget-body"
         data-padding={bodyPadding}

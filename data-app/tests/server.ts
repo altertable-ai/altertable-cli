@@ -18,6 +18,8 @@ const handler = createDataHandler(operations, async () => ({
   },
 }));
 Bun.serve({
+  // Exercise the shipped UI without the development error overlay intercepting input.
+  development: false,
   hostname: "127.0.0.1",
   port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
   routes: { "/": starter, "/components": components, "/view": view, "/gallery": gallery },

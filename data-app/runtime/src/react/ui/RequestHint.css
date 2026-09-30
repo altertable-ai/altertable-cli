@@ -33,3 +33,52 @@
     animation: none;
   }
 }
+
+.altertable-widget-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 78px;
+  height: 30px;
+  color: var(--at-muted, #687078);
+  font: 12px/1.4 var(--at-font, ui-sans-serif, system-ui, sans-serif);
+}
+.altertable-widget-status .altertable-button {
+  gap: 5px;
+}
+.altertable-widget-status .altertable-button svg {
+  color: var(--at-danger, #b42318);
+}
+.altertable-widget-status-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.altertable-widget-status-shimmer {
+  background: linear-gradient(
+    110deg,
+    var(--at-muted, #687078) 25%,
+    var(--at-text, #202124) 45%,
+    var(--at-muted, #687078) 65%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: altertable-widget-status-shimmer 1.8s linear infinite;
+}
+@keyframes altertable-widget-status-shimmer {
+  to {
+    background-position: -250% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .altertable-widget-status-shimmer {
+    animation: none;
+    background: none;
+    color: var(--at-muted, #687078);
+  }
+}
