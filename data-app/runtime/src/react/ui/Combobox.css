@@ -68,11 +68,10 @@
   background: var(--at-surface, #fff);
   color: inherit;
   font: inherit;
+  outline: none;
 }
 .altertable-combobox-search:focus-visible {
   border-color: var(--at-accent, #4779dc);
-  outline: 1px solid var(--at-accent, #4779dc);
-  outline-offset: -2px;
 }
 .altertable-combobox-status {
   position: absolute;
