@@ -55,6 +55,6 @@ bunx playwright install chromium
 bun run test
 ```
 
-Source checks cover every runtime module and its contract, transport, search, formatting, and public component composition tests. Starter checks cover types, lint, formatting, and a production build. Browser tests cover connection states, retry, stale success, context, theme persistence, and Present navigation at desktop and phone sizes.
+Source checks cover every runtime module and its contract, transport, search, formatting, and public component composition tests. Starter checks cover types, lint, formatting, and a production build. Browser tests cover connection states, retry, stale success, context, theme persistence, and Present navigation at desktop and phone sizes. The `/gallery` development route exercises shared controls and widget states, including long labels, narrow layouts, keyboard focus, and shared inspection selections.
 
 CLI tests cover distribution safety, creation, upgrades, dependency resolution, and rollback. Release smoke checks generate an app outside the checkout, install with a frozen lockfile, and run `app check` using the packaged CLI. The minimum CLI runtime compatibility job checks scaffolding only; building data apps uses the repository's current Bun toolchain.
