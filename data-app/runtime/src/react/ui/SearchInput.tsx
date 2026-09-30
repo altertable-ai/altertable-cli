@@ -9,6 +9,7 @@ export function SearchInput({
   endAction,
   loading = false,
   className,
+  onKeyDown,
   ...props
 }: Omit<ComponentPropsWithRef<"input">, "size" | "children"> & {
   size?: "default" | "compact";
@@ -25,6 +26,16 @@ export function SearchInput({
       />
       <input
         {...props}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (!event.defaultPrevented && event.key === "Escape" && !event.currentTarget.value) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.blur();
+            // Keep keyboard dismissal within a modal menu after leaving its search field.
+            event.currentTarget.closest<HTMLElement>('[role="dialog"]')?.focus();
+          }
+        }}
         type="search"
         className={classNames("altertable-search-input", className)}
       />

@@ -17,7 +17,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.altertable-request-hint[data-state="error"] > svg {
+.altertable-request-hint[data-state="error"] .altertable-request-hint-copy > svg {
   color: var(--at-danger, #b42318);
 }
 .altertable-request-hint-spinner {
@@ -109,4 +109,14 @@
   .altertable-widget-status-base {
     opacity: 1;
   }
+}
+
+.altertable-request-hint-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.altertable-request-hint-copy > svg {
+  flex: none;
 }

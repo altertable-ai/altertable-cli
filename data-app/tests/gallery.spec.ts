@@ -21,6 +21,7 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await expect(dialog.locator(".altertable-search-input-spinner")).toBeVisible();
   await expect(dialog.getByRole("option")).toHaveCount(0);
   await dialog.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Complete loading", exact: true }).click();
   await page
     .getByRole("button", { name: "Loading categories: Choose categories", exact: true })
@@ -28,6 +29,7 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   dialog = page.getByRole("dialog", { name: "Loading categories options" });
   await expect(dialog.getByRole("option")).toHaveCount(3);
   await dialog.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Failed categories: HTTP", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Failed categories options" });
   await expect(dialog.locator(".altertable-request-hint-message")).toHaveText(
@@ -37,6 +39,7 @@ test("gallery preserves control defaults, status, and keyboard selection", async
   await dialog.getByRole("button", { name: "Try again" }).click();
   await expect(dialog.locator(".altertable-request-hint-message")).toHaveCount(0);
   await dialog.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Categories: Choose categories", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Categories options" });
   const search = dialog.getByRole("searchbox");
@@ -175,8 +178,11 @@ test("picker refresh and failure keep cached choices and retry in fixed slots", 
   expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
   const message = await hint.locator(".altertable-request-hint-message").boundingBox();
   const retry = await hint.getByRole("button", { name: "Try again" }).boundingBox();
-  expect(message!.x - (retry!.x + retry!.width)).toBeGreaterThanOrEqual(0);
-  expect(message!.x - (retry!.x + retry!.width)).toBeLessThanOrEqual(30);
+  expect(retry!.y).toBeGreaterThan(message!.y + message!.height);
+  const hintBox = await hint.boundingBox();
+  expect(
+    Math.abs(retry!.x + retry!.width / 2 - (hintBox!.x + hintBox!.width / 2)),
+  ).toBeLessThanOrEqual(1);
   await hint.getByRole("button", { name: "Try again" }).click();
   await expect(hint).toHaveCount(0);
   expect(Math.abs((await optionOffset()) - initial)).toBeLessThanOrEqual(1);
@@ -233,6 +239,7 @@ test("gallery spans all UI families and handles empty, overflow and request reco
   await picker.getByRole("searchbox").fill("nonexistent");
   await expect(picker.locator(".altertable-combobox-empty")).toHaveText("No matching values");
   await picker.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   const request = page.getByRole("region", { name: "Fixture request", exact: true });
   await page.getByRole("button", { name: "loading", exact: true }).click();
   await expect(request.locator(".altertable-content-skeleton")).toBeVisible();
@@ -259,6 +266,7 @@ test("gallery respects reduced motion and retry without cached data", async ({ p
     "none",
   );
   await dialog.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "No cached categories: Select categories", exact: true })
     .click();
@@ -269,6 +277,7 @@ test("gallery respects reduced motion and retry without cached data", async ({ p
   await expect(dialog.getByRole("button", { name: "Try again" })).toHaveCount(0);
   await expect(dialog.getByRole("option")).toHaveCount(3);
   await dialog.getByRole("searchbox").press("Escape");
+  await page.keyboard.press("Escape");
   const title = page.getByText("Nothing to show yet", { exact: true });
   const description = page.getByText("A description has quieter typography than its title.", {
     exact: true,
@@ -363,4 +372,25 @@ test("widgets keep inspection on headings and suppress unneeded empty chrome", a
   await expect(search).toHaveCSS("border-bottom-color", divider);
   await expect(search.locator(":scope > svg")).toHaveCSS("opacity", "0.65");
   await expect(page.locator(".altertable-combobox-popover")).toHaveCSS("overflow", "hidden");
+});
+
+test("menu search aligns labels and Escape blurs empty searches", async ({ page }) => {
+  await page.goto("/gallery");
+  const tableSearch = page.getByRole("searchbox", { name: "Search table records" });
+  await tableSearch.focus();
+  await tableSearch.press("Escape");
+  await expect(tableSearch).not.toBeFocused();
+  await page.getByRole("button", { name: "Resettable category: HTTP", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Resettable category options" });
+  const search = dialog.getByRole("searchbox");
+  await search.fill("HTTP");
+  const inputBox = await search.boundingBox();
+  const labelBox = await dialog.locator(".altertable-combobox-option-content").boundingBox();
+  expect(Math.abs(inputBox!.x - labelBox!.x)).toBeLessThanOrEqual(1);
+  await search.fill("");
+  await search.press("Escape");
+  await expect(search).not.toBeFocused();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 });
