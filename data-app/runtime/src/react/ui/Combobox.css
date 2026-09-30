@@ -167,17 +167,30 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 15px;
-  height: 15px;
-  border: 1px solid var(--at-border, #e3e6e8);
-  border-radius: 3px;
-  color: var(--at-accent, #4779dc);
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--at-muted, #687078);
+  border-radius: 4px;
 }
 .altertable-combobox-special-button[aria-pressed="true"] .altertable-combobox-special-mark,
 .altertable-combobox-popover
   .react-aria-ListBoxItem[data-selected]
   .altertable-combobox-option-mark {
   border-color: var(--at-accent, #4779dc);
+  background: var(--at-accent, #4779dc);
+}
+.altertable-combobox-special-button[aria-pressed="true"] .altertable-combobox-special-mark::after,
+.altertable-combobox-popover
+  .react-aria-ListBoxItem[data-selected]
+  .altertable-combobox-option-mark::after {
+  width: 4px;
+  height: 7px;
+  margin-top: -2px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  content: "";
+  transform: rotate(45deg);
 }
 .altertable-combobox-actions {
   display: flex;

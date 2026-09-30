@@ -181,9 +181,7 @@ export function Combobox(props: ComboboxProps) {
                   textValue={hit.item.label}
                   isDisabled={atLimit && !selected.has(hit.item.id)}
                 >
-                  <span className="altertable-combobox-option-mark" aria-hidden="true">
-                    {selected.has(hit.item.id) ? "✓" : ""}
-                  </span>
+                  <span className="altertable-combobox-option-mark" aria-hidden="true" />
                   <span className="altertable-combobox-option-content">
                     <span>
                       <SearchMatch match={hit.matches.label} />
@@ -206,9 +204,7 @@ export function Combobox(props: ComboboxProps) {
                 aria-pressed={selected.has(missingOption.id)}
                 className="altertable-combobox-special-button"
               >
-                <span className="altertable-combobox-special-mark" aria-hidden="true">
-                  {selected.has(missingOption.id) ? "✓" : ""}
-                </span>
+                <span className="altertable-combobox-special-mark" aria-hidden="true" />
                 <span>
                   <span className="altertable-combobox-special-label">{missingOption.label}</span>
                   <small>{missingOption.description}</small>

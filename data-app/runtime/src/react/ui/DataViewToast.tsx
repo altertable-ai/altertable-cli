@@ -11,8 +11,8 @@ export type DataViewToastProps<Data, Input> = {
   onRetry?: () => void;
 };
 
-/** One page-level refresh status. Updating waits briefly to avoid flashing on fast requests;
- * a failed update stays visible with its retry action until the view changes. */
+/** One page-level refresh status. Updating waits briefly; a failed refresh waits
+ * long enough to avoid interrupting the displayed result before showing retry. */
 export function DataViewToast<Data, Input>({
   view,
   message,
@@ -22,15 +22,20 @@ export function DataViewToast<Data, Input>({
   const [delay, setDelay] = useState({ kind: view.kind, elapsed: false });
   if (delay.kind !== view.kind) setDelay({ kind: view.kind, elapsed: false });
   useEffect(() => {
-    if (view.kind !== "updating") return;
-    const timer = window.setTimeout(() => setDelay({ kind: "updating", elapsed: true }), 450);
+    if (view.kind !== "updating" && view.kind !== "stale-error") return;
+    const kind = view.kind;
+    const timer = window.setTimeout(
+      () => setDelay({ kind, elapsed: true }),
+      kind === "stale-error" ? 3_000 : 450,
+    );
     return () => window.clearTimeout(timer);
   }, [view.kind]);
   const showUpdating = view.kind === "updating" && delay.kind === "updating" && delay.elapsed;
+  const showStaleError =
+    view.kind === "stale-error" && delay.kind === "stale-error" && delay.elapsed;
 
-  if (view.kind !== "stale-error" && (view.kind !== "updating" || !showUpdating) && !notice)
-    return null;
-  const failed = view.kind === "stale-error";
+  if (!showStaleError && !showUpdating && !notice) return null;
+  const failed = showStaleError;
   const showingUpdate = view.kind === "updating" && showUpdating;
   const detail = view.kind === "stale-error" || view.kind === "updating" ? view.message : undefined;
   const icon = failed ? "error" : showingUpdate ? "loading" : "live";
