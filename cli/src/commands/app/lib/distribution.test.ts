@@ -65,7 +65,7 @@ test("distribution rejects symlinks and development artifacts inside starter sou
   expect(readDataAppPayload(root)).rejects.toThrow("Development artifact");
 });
 
-test("authoring links resolve to app files or published package docs", async () => {
+test("app-owned authoring links resolve within the generated files", async () => {
   const files = createAppFiles(await readDataAppPayload(), {
     name: "docs-test",
     title: "Docs",
@@ -78,12 +78,9 @@ test("authoring links resolve to app files or published package docs", async () 
       const target = match[1]!.split("#")[0]!;
       if (!target || /^[a-z]+:\/\//i.test(target)) continue;
       const path = posix.normalize(posix.join(posix.dirname(name), target));
-      if (path.startsWith("node_modules/@altertable/data-app/")) {
-        expect(
-          await Bun.file(join(dataAppDirectory, "starter", path)).exists(),
-          `${name} links to missing ${path}`,
-        ).toBe(true);
-      } else expect(files[path], `${name} links to missing ${path}`).toBeDefined();
+      // Package documentation is validated after installation in the app creation test.
+      if (path.startsWith("node_modules/@altertable/data-app/")) continue;
+      expect(files[path], `${name} links to missing ${path}`).toBeDefined();
     }
   }
 });

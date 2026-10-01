@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
+import { readDataAppPayload } from "@/commands/app/lib/distribution.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
 import { configSet, ensureProfileExists, setActiveProfile } from "@/lib/profile-store.ts";
@@ -253,7 +254,7 @@ describe("app create", () => {
     });
   });
 
-  test("installs the generated app with its frozen lockfile and checks the project", async () => {
+  test("installs the generated app with its frozen lockfile and checks authoring links and the project", async () => {
     const directory = join(home, "first-check");
     await runCommandWithTestRuntime([
       "app",
@@ -269,6 +270,22 @@ describe("app create", () => {
       stderr: "pipe",
     });
     expect(install.exitCode).toBe(0);
+    expect(
+      JSON.parse(
+        readFileSync(join(directory, "node_modules/@altertable/data-app/package.json"), "utf8"),
+      ).version,
+    ).toBe(recommendedDataAppVersion());
+    const { starter } = await readDataAppPayload();
+    for (const name of Object.keys(starter)) {
+      if (!name.endsWith(".md")) continue;
+      const content = readFileSync(join(directory, name), "utf8");
+      for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+        const target = match[1]!.split("#")[0]!;
+        if (!target || /^[a-z]+:\/\//i.test(target)) continue;
+        const path = posix.normalize(posix.join(posix.dirname(name), target));
+        expect(existsSync(join(directory, path)), `${name} links to missing ${path}`).toBe(true);
+      }
+    }
     const result = await runCommandWithTestRuntime(["app", "check", "--dir", directory], {
       debug: false,
       json: false,
