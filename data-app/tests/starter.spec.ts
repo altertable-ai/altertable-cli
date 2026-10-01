@@ -115,7 +115,7 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   page,
 }) => {
   await page.goto("/components");
-  await page.getByRole("button", { name: "Present data", exact: true }).click();
+  await page.getByRole("button", { name: "Present story", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Orders increased" })).toBeVisible();
   await expect(page).toHaveURL(/present=1.*step=orders/);
   await page.keyboard.press("ArrowRight");
@@ -125,13 +125,14 @@ test("Present mode retains navigation, deep links, inspection, and theme switchi
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Switch to dark theme" }).click();
   await expect(dialog.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Explore", exact: true }).click();
+  await dialog.getByRole("button", { name: "Explore sources", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
-  await expect(page.getByText("No terms for this view")).toBeVisible();
+  await page.getByRole("tab", { name: "Glossary" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Glossary" })).toContainText(
+    "Completed orders grouped by customer_id.",
+  );
   await page.getByRole("tab", { name: "Queries" }).click();
-  const queryEmpty = page.getByText("No SQL for this view");
-  await expect(queryEmpty).toBeVisible();
-  expect(await queryEmpty.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("450");
+  await expect(page.getByText("SELECT 1 AS connection_check")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Close panel" })).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -146,7 +147,7 @@ test("data view keeps the last result visible when refresh fails", async ({
   await page.goto("/components");
   const error = page.getByRole("alert");
   await expect(error).toContainText("Couldn’t load results");
-  await expect(error).toContainText("The lakehouse isn’t responding.");
+  await expect(error).toContainText("The data request failed.");
   await expect(error.getByRole("button", { name: "Retry" })).toBeVisible();
   expect(
     await error.evaluate((element) => element.getBoundingClientRect().width),
@@ -161,10 +162,6 @@ test("data view keeps the last result visible when refresh fails", async ({
   await page.getByRole("button", { name: "Refresh data" }).click();
   await expect(page.getByText("Connection view ready")).toBeVisible();
   await expect(page.getByRole("alert")).toContainText(/Couldn’t refresh. Showing the last result/);
-  await expect(page.locator(".altertable-data-boundary-content")).toHaveAttribute(
-    "data-stale-error",
-    "true",
-  );
 });
 
 test("widget inspection inherits the page glossary and empty states", async ({ page }) => {
@@ -176,8 +173,8 @@ test("widget inspection inherits the page glossary and empty states", async ({ p
   await expect(page.getByRole("dialog")).toContainText("connection-check.sql");
   await expect(page.getByRole("region", { name: "Query notebook" })).toBeVisible();
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.getByRole("button", { name: "Copy all SQL" }).click();
-  await expect(page.getByRole("button", { name: "Copied all SQL" })).toBeVisible();
+  await page.getByRole("button", { name: "Copy all", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copied all", exact: true })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
     "-- connection-check.sql",
   );
@@ -358,14 +355,14 @@ test("initial loading keeps the grid shape without displaying snapshot values", 
   await expect(loading).toHaveCount(0);
 });
 
-test("story gives its main visual more room and stacks evidence on phones", async ({
+test("authored widget layout gives its main visual more room and stacks on phones", async ({
   page,
 }, testInfo) => {
   await page.goto("/components");
   const story = page.getByTestId("layout-story");
-  const lead = await story.locator(".altertable-story-section-lead").boundingBox();
-  const visual = await story.locator(".altertable-story-section-visual").boundingBox();
-  const support = await story.locator(".altertable-story-section-support").boundingBox();
+  const lead = await story.getByTestId("story-lead").boundingBox();
+  const visual = await story.getByTestId("story-visual").boundingBox();
+  const support = await story.getByTestId("story-support").boundingBox();
   expect(lead).not.toBeNull();
   expect(visual).not.toBeNull();
   expect(support).not.toBeNull();

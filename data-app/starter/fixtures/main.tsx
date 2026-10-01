@@ -1,8 +1,13 @@
+import "@altertable/data-app/react/styles.css";
 import { mountDataApp } from "@altertable/data-app/react";
 import { useState } from "react";
 import { createDataHooks } from "@altertable/data-app/react";
 import { createDataClient } from "@altertable/data-app/client";
-import { connectionCheck, defineDateRangeContract } from "@altertable/data-app/contract";
+import {
+  connectionCheck,
+  connectionQueryNames,
+  defineDateRangeContract,
+} from "@altertable/data-app/contract";
 import {
   DataApp,
   dateRangeVariable,
@@ -13,7 +18,7 @@ import {
   GlossaryDefinition,
   MetricWidget,
   Stack,
-  StorySection,
+  DataWidget,
   TableWidget,
   VisualizationWidget,
 } from "@altertable/data-app/react";
@@ -37,6 +42,7 @@ const identifiers = defineDataIdentifiers({
 });
 const { DataIdentifier } = identifiers;
 const dataContext = {
+  queryNames: connectionQueryNames,
   identifiers: identifiers.definitions,
   description: (
     <>
@@ -99,22 +105,20 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
-      story={{
-        steps: [
-          {
-            id: "orders",
-            headline: "Orders increased",
-            visual: <p>120 orders</p>,
-            glossaryIds: ["orders"],
-          },
-          {
-            id: "customers",
-            headline: "More returning customers",
-            visual: <p>80 customers</p>,
-            glossaryIds: [],
-          },
-        ],
-      }}
+      story={() => [
+        {
+          id: "orders",
+          headline: "Orders increased",
+          visual: <p>120 orders</p>,
+          evidence: { id: "orders", glossaryIds: ["orders"] },
+        },
+        {
+          id: "customers",
+          headline: "More returning customers",
+          visual: <p>80 customers</p>,
+          evidence: { id: "customers", queryNames: [connectionQueryNames.connection] },
+        },
+      ]}
     >
       {() => (
         <Stack data-testid="layout-stack">
@@ -140,20 +144,28 @@ function Fixture() {
               visual={<p>Feature reach</p>}
             />
           </Grid>
-          <StorySection
-            label="Order activity"
-            data-testid="layout-story"
-            lead={
-              <MetricWidget
-                label="Completed orders"
-                value={120}
-                format={{ kind: "count" }}
-                evidence={{ id: "orders", glossaryIds: ["orders"] }}
-              />
-            }
-            visual={<VisualizationWidget title="Orders over time" visual={<p>Daily orders</p>} />}
-            support={<VisualizationWidget title="Returning customers" visual={<p>80 customers</p>} />}
-          />
+          <DataWidget title="Order activity" data-testid="layout-story">
+            <Stack>
+              <div data-testid="story-lead">
+                <MetricWidget
+                  label="Completed orders"
+                  value={120}
+                  format={{ kind: "count" }}
+                  evidence={{ id: "orders", glossaryIds: ["orders"] }}
+                />
+              </div>
+              <Grid columns={3} minItemWidth="compact">
+                <GridItem span={2} data-testid="story-visual">
+                  <VisualizationWidget title="Orders over time" visual={<p>Daily orders</p>} />
+                </GridItem>
+                <VisualizationWidget
+                  title="Returning customers"
+                  data-testid="story-support"
+                  visual={<p>80 customers</p>}
+                />
+              </Grid>
+            </Stack>
+          </DataWidget>
           <Grid columns={2} data-testid="layout-grid">
             <div>Short panel</div>
             <div>

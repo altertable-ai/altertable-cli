@@ -13,18 +13,17 @@ altertable app dev
 ```
 
 The CLI prints the local URL. Use `altertable app dev --port 3022` to choose a port.
-CLI runtime contributors can use `altertable app dev --watch-runtime` to upgrade the generated runtime and restart the preview when runtime source changes. The watcher stops if a generated runtime file was edited.
 
 ## Author the app
 
-Start with the [authoring router](AGENTS.md) for data and view changes, or the [runtime API map](.altertable/runtime/README.md) to find components, hooks, and contracts.
+Start with the [authoring router](AGENTS.md) for data and view changes, or the [package authoring guide](node_modules/@altertable/data-app/docs/app-authoring.md) to find components, hooks, and contracts.
 
 ## Check and upgrade
 
 Run `altertable app check` to check the app locally. Use `altertable app check --lakehouse` to execute each operation's declared `checks` against the selected profile.
 
-After updating the CLI, run `altertable app upgrade` and check again.
+`altertable app upgrade` pins the package version tested with your CLI and updates the lockfile. It preserves app code and does not downgrade a newer installed package. Restart a running preview after upgrading.
 
 ## Version control
 
-Commit `.altertable/runtime/`, including its integrity record, together with `package.json` and `bun.lock`. It is a local package required by a fresh clone. Keep custom code in `src/` and use `altertable app upgrade` to replace the managed runtime.
+Commit app source, `package.json`, and `bun.lock`. A fresh clone installs `@altertable/data-app` from npm with `bun install --frozen-lockfile`; installation needs registry access or a populated Bun cache. Keep custom code in `src/`.

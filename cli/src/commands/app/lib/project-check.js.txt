@@ -7,7 +7,7 @@ const appFile = (path) => pathToFileURL(join(process.cwd(), path)).href;
 async function check() {
   const manifest = JSON.parse(await readFile("app.json", "utf8"));
   try {
-    const { parseAppearance } = await import(appFile(".altertable/runtime/src/core/appearance.ts"));
+    const { parseAppearance } = await import("@altertable/data-app/appearance");
     parseAppearance(manifest.appearance);
   } catch {
     throw new Error("app.json has invalid appearance settings.");
@@ -63,12 +63,15 @@ async function check() {
       plugins: [{
         name: "data-app-browser-boundary",
         setup(build) {
-          build.onLoad({ filter: /(?:operations|server|index|handler|local)\.[cm]?[jt]sx?$/ }, ({ path }) => {
+          build.onResolve({ filter: /^@altertable\/data-app\/server(?:\/|$)/ }, () => {
+            throw new Error("Browser code cannot import server transport. Use import type for server types.");
+          });
+          build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, ({ path }) => {
             const normalized = path.replaceAll("\\", "/");
             const root = process.cwd().replaceAll("\\", "/");
             if (normalized === `${root}/src/operations.ts` ||
                 normalized === `${root}/src/server.ts` ||
-                /(?:\.altertable\/runtime|node_modules\/@altertable\/data-app)\/src\/server\/(?:index|handler|local)\.ts$/.test(normalized)) {
+                /node_modules\/@altertable\/data-app\/(?:dist\/(?:server|local)\.js|src\/server\/[^/]+\.[jt]s)$/.test(normalized)) {
               throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
             }
           });
@@ -79,8 +82,8 @@ async function check() {
   }
 
   if (process.argv[1] !== "--lakehouse") return;
-  const { createDataHandler } = await import(appFile(".altertable/runtime/src/server/index.ts"));
-  const { localLakehouse } = await import(appFile(".altertable/runtime/src/server/local.ts"));
+  const { createDataHandler } = await import("@altertable/data-app/server");
+  const { localLakehouse } = await import("@altertable/data-app/server/bun");
   const handle = createDataHandler(operations, async () => ({
     lakehouse: localLakehouse(process.env),
     canDiscloseSql: true,

@@ -1,13 +1,14 @@
 import { afterEach, expect, test } from "bun:test";
-import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import {
   createAppFiles,
   dataAppDirectory,
   readDataAppPayload,
-  readRuntimeSource,
+  starterFiles,
 } from "@/commands/app/lib/distribution.ts";
+import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -16,12 +17,12 @@ afterEach(async () => {
   );
 });
 
-test("distribution is deterministic, source-based, and excludes development files", async () => {
+test("distribution embeds a deterministic starter with an exact package pin and no runtime", async () => {
   const payload = await readDataAppPayload();
   expect(await readDataAppPayload()).toEqual(payload);
-  expect(Object.keys(payload.runtime)).toContain("src/react/ui/PlayStory.tsx");
+  expect(Object.keys(payload)).toEqual(["starter"]);
   expect(Object.keys(payload.starter)).toContain("src/App.tsx");
-  for (const path of [...Object.keys(payload.runtime), ...Object.keys(payload.starter)]) {
+  for (const path of Object.keys(payload.starter)) {
     expect(path).not.toMatch(/(^|\/)(tests|fixtures|node_modules|dist|\.altertable)(\/|$)|\.txt$/);
   }
   const identity = {
@@ -34,53 +35,51 @@ test("distribution is deterministic, source-based, and excludes development file
     title: identity.title,
     scope: identity.scope,
   });
+  expect(JSON.parse(files["package.json"]!).dependencies["@altertable/data-app"]).toBe(
+    recommendedDataAppVersion(),
+  );
   expect(files["src/App.tsx"]).toBe(payload.starter["src/App.tsx"]);
-  expect(files["src/server.ts"]).toBe(payload.starter["src/server.ts"]);
-  expect(files[".oxlintrc.json"]).toBe(payload.starter[".oxlintrc.json"]);
+  expect(files["src/server.ts"]).toContain("@altertable/data-app/server/bun");
+  expect(files["src/main.tsx"]).toContain("@altertable/data-app/react/styles.css");
   expect(files["bun.lock"]).toContain('"name": "example"');
 });
 
-test("new runtime source files enter the payload without a manual inventory", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "runtime-distribution-"));
+async function fixture() {
+  const directory = await mkdtemp(join(tmpdir(), "starter-distribution-"));
   directories.push(directory);
-  await cp(join(dataAppDirectory, "runtime", "src"), join(directory, "src"), { recursive: true });
-  await writeFile(
-    join(directory, "package.json"),
-    JSON.stringify({ files: ["package.json", "src"] }),
-  );
-  await writeFile(join(directory, "src/new.ts"), "export const added = true;\n");
-  expect((await readRuntimeSource(directory))["src/new.ts"]).toContain("added");
-  await writeFile(join(directory, "src/new.test.ts"), "test artifact");
-  expect(readRuntimeSource(directory)).rejects.toThrow("Development artifact");
-});
+  for (const name of starterFiles)
+    await cp(join(dataAppDirectory, "starter", name), join(directory, name), { recursive: true });
+  return directory;
+}
 
-test("distribution rejects paths outside its source and symlinks", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "runtime-distribution-"));
-  directories.push(directory);
-  await writeFile(join(directory, "package.json"), JSON.stringify({ files: ["../secret"] }));
-  expect(readRuntimeSource(directory)).rejects.toThrow("Invalid distribution path");
-  await mkdir(join(directory, "src"));
-  await writeFile(join(directory, "package.json"), JSON.stringify({ files: ["src"] }));
+test("distribution rejects symlinks and development artifacts inside starter source", async () => {
+  const directory = await fixture();
   await symlink(join(directory, "package.json"), join(directory, "src/link.ts"));
-  expect(readRuntimeSource(directory)).rejects.toThrow("Symlink");
+  // The payload root owns a starter directory; keep its allowlist identical to production.
+  const root = await mkdtemp(join(tmpdir(), "starter-payload-"));
+  directories.push(root);
+  await cp(directory, join(root, "starter"), { recursive: true, dereference: false });
+  expect(readDataAppPayload(root)).rejects.toThrow("Symlink");
+  await rm(join(root, "starter/src/link.ts"));
+  await writeFile(join(root, "starter/src/probe.test.ts"), "test artifact");
+  expect(readDataAppPayload(root)).rejects.toThrow("Development artifact");
 });
 
-test("generated authoring routes and runtime API links resolve inside the shipped project", async () => {
-  const payload = await readDataAppPayload();
-  const files = createAppFiles(payload, {
-    name: "documentation-test",
-    title: "Documentation test",
+test("app-owned authoring links resolve within the generated files", async () => {
+  const files = createAppFiles(await readDataAppPayload(), {
+    name: "docs-test",
+    title: "Docs",
     scope: { organization: "Test", environment: "test" },
   });
-  expect(files["docs/data.md"]).toBeDefined();
-  expect(files["docs/views.md"]).toBeDefined();
-  expect(files[".altertable/runtime/README.md"]).toBeDefined();
+  expect(files["AGENTS.md"]).toContain("node_modules/@altertable/data-app/AGENTS.md");
   for (const [name, content] of Object.entries(files)) {
     if (!name.endsWith(".md")) continue;
     for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
       const target = match[1]!.split("#")[0]!;
       if (!target || /^[a-z]+:\/\//i.test(target)) continue;
       const path = posix.normalize(posix.join(posix.dirname(name), target));
+      // Package documentation is validated after installation in the app creation test.
+      if (path.startsWith("node_modules/@altertable/data-app/")) continue;
       expect(files[path], `${name} links to missing ${path}`).toBeDefined();
     }
   }

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,10 +17,8 @@ export const starterFiles = [
   ".oxlintrc.json",
   ".oxfmtrc.json",
 ] as const;
-export const runtimePath = ".altertable/runtime";
 export const dataAppDirectory = fileURLToPath(new URL("../../../../../data-app/", import.meta.url));
-export const runtimeSourceDirectory = join(dataAppDirectory, "runtime");
-export type DataAppPayload = { starter: Record<string, string>; runtime: Record<string, string> };
+export type DataAppPayload = { starter: Record<string, string> };
 
 function assertRelativePath(path: string): void {
   if (
@@ -56,39 +53,9 @@ async function readFiles(
   return files;
 }
 
-export async function readRuntimeSource(
-  directory = runtimeSourceDirectory,
-): Promise<Record<string, string>> {
-  const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8")) as {
-    files?: unknown;
-  };
-  if (!Array.isArray(manifest.files) || !manifest.files.every((file) => typeof file === "string")) {
-    throw new Error("Runtime package.json needs a files allowlist.");
-  }
-  return readFiles(directory, manifest.files);
-}
-
+/** Release builds embed only the starter; its runtime is installed from npm. */
 export async function readDataAppPayload(directory = dataAppDirectory): Promise<DataAppPayload> {
-  const [starter, runtime] = await Promise.all([
-    readFiles(join(directory, "starter"), starterFiles),
-    readRuntimeSource(join(directory, "runtime")),
-  ]);
-  return { starter, runtime };
-}
-
-export function runtimeIntegrity(files: Record<string, string>): {
-  version: string;
-  sha256: Record<string, string>;
-} {
-  return {
-    version: (JSON.parse(files["package.json"]!) as { version: string }).version,
-    sha256: Object.fromEntries(
-      Object.entries(files).map(([name, content]) => [
-        name,
-        createHash("sha256").update(content).digest("hex"),
-      ]),
-    ),
-  };
+  return { starter: await readFiles(join(directory, "starter"), starterFiles) };
 }
 
 export function createAppFiles(
@@ -102,7 +69,6 @@ export function createAppFiles(
   const files = { ...payload.starter };
   const packageJson = JSON.parse(files["package.json"]!);
   packageJson.name = identity.name;
-  packageJson.dependencies["@altertable/data-app"] = `file:${runtimePath}`;
   files["package.json"] = `${JSON.stringify(packageJson, null, 2)}\n`;
   const app = JSON.parse(files["app.json"]!);
   app.title = identity.title;
@@ -114,9 +80,5 @@ export function createAppFiles(
     `"name": ${oldName}`,
     `"name": ${JSON.stringify(identity.name)}`,
   );
-  for (const [name, content] of Object.entries(payload.runtime))
-    files[`${runtimePath}/${name}`] = content;
-  files[`${runtimePath}/integrity.json`] =
-    `${JSON.stringify(runtimeIntegrity(payload.runtime), null, 2)}\n`;
   return files;
 }
