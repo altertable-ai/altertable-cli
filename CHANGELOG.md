@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/altertable-ai/altertable-cli/compare/v1.8.0...v1.9.0) (2026-10-01)
+
+
+### Features
+
+* **apps:** package the data app runtime as an npm dependency ([#124](https://github.com/altertable-ai/altertable-cli/issues/124)) ([bd807c1](https://github.com/altertable-ai/altertable-cli/commit/bd807c1c7ab3c67840a722e55860528271487017))
+
+
+### Bug Fixes
+
+* **release:** include publication helper in recovery checkout ([#123](https://github.com/altertable-ai/altertable-cli/issues/123)) ([2a7b2dc](https://github.com/altertable-ai/altertable-cli/commit/2a7b2dc8588c8d53adb53efce1a6c1a5311ff2ca))
+* **release:** recover assetless v1.8.0 release ([#121](https://github.com/altertable-ai/altertable-cli/issues/121)) ([bdf930f](https://github.com/altertable-ai/altertable-cli/commit/bdf930fb2a224560ce8bff2fba509f97ad500e21))
+
 ## [1.8.0](https://github.com/altertable-ai/altertable-cli/compare/v1.7.0...v1.8.0) (2026-09-29)
 
 
