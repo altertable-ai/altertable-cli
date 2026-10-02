@@ -1,5 +1,4 @@
-import "@altertable/data-app/react/styles.css";
-import { mountDataApp } from "@altertable/data-app/react";
+import { injectDataAppStyles, mountDataApp } from "@altertable/data-app/react";
 import { useState } from "react";
 import { createDataHooks } from "@altertable/data-app/react";
 import { createDataClient } from "@altertable/data-app/client";
@@ -30,7 +29,7 @@ const { defineDataView, useView } = createDataHooks<{
 const config = {
   title: "Orders exploration",
   scope: { organization: "Acme", environment: "production" },
-  appearance: { mode: "light" },
+  appearance: { theme: "light" as const },
 };
 const identifiers = defineDataIdentifiers({
   tables: {
@@ -105,6 +104,10 @@ function Fixture() {
           </GridItem>
         </Grid>
       }
+      csvExport={() => ({
+        filename: "orders.csv",
+        tables: [{ name: "Orders", columns: ["Orders", "Customers"], rows: [[120, 80]] }],
+      })}
       story={() => [
         {
           id: "orders",
@@ -200,4 +203,5 @@ function Fixture() {
   );
 }
 
+injectDataAppStyles();
 mountDataApp({ config, component: Fixture });

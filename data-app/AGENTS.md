@@ -9,6 +9,6 @@
 
 See [development commands](README.md#develop). Keep SQL and metric definitions in app-owned source.
 Import only public package exports; local Bun serving uses `/server/bun`, and each browser entry
-imports `/react/styles.css`. Keep starter and browser-test package pins aligned, commit their
+calls `injectDataAppStyles()` before mounting. Keep starter and browser-test package pins aligned, commit their
 lockfiles, and preserve documentation links to installed package docs. Do not copy runtime source
 into this repository or generated apps.

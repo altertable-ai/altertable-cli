@@ -1,7 +1,7 @@
-import "@altertable/data-app/react/styles.css";
 import { createDataClient } from "@altertable/data-app/client";
 import {
   createDataHooks,
+  injectDataAppStyles,
   mountDataApp,
 } from "@altertable/data-app/react";
 import {
@@ -24,7 +24,7 @@ import {
 
 type Activity = { count: number; features: string[] };
 const config = {
-  appearance: { mode: "light" },
+  appearance: { theme: "light" as const },
   title: "Usage exploration",
   scope: { organization: "Acme", environment: "production" },
 };
@@ -98,8 +98,24 @@ function Fixture() {
       request={activity}
       dataContext={context}
       aboutEmpty={{ glossary: { title: "No definitions" }, queries: { title: "No SQL" } }}
+      story={({ data }) => [
+        context.finding({
+          id: "activity",
+          headline: `${data.count} recorded actions`,
+          visual: <p>{data.features.join(", ")}</p>,
+          evidence: { id: "activity", queryNames: ["activity"] },
+        }),
+      ]}
+      csvExport={({ data }) => ({
+        filename: "activity.csv",
+        tables: [
+          { name: "Actions", columns: ["Count"], rows: [[data.count]] },
+          { name: "Features", columns: ["Feature"], rows: data.features.map((feature) => [feature]) },
+        ],
+      })}
       {...content}
     />
   );
 }
+injectDataAppStyles();
 mountDataApp({ config, component: Fixture });

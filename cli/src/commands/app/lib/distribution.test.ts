@@ -40,7 +40,7 @@ test("distribution embeds a deterministic starter with an exact package pin and 
   );
   expect(files["src/App.tsx"]).toBe(payload.starter["src/App.tsx"]);
   expect(files["src/server.ts"]).toContain("@altertable/data-app/server/bun");
-  expect(files["src/main.tsx"]).toContain("@altertable/data-app/react/styles.css");
+  expect(files["src/main.tsx"]).toContain("injectDataAppStyles();");
   expect(files["bun.lock"]).toContain('"name": "example"');
 });
 

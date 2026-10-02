@@ -27,7 +27,7 @@ Generated projects commit their source, package manifest, and lockfile; they do 
 source. Public imports use `@altertable/data-app/...`.
 
 The starter owns React, ReactDOM, and its authoring tools. The package owns its implementation
-dependencies. Its stylesheet is imported explicitly by the browser entry. The app's `AGENTS.md`
+dependencies. The browser entry calls `injectDataAppStyles()` before mounting. The app's `AGENTS.md`
 points to the installed package guide and docs; dependency guides are not assumed to load automatically.
 
 To adopt a package release, update its exact pin in both `starter/package.json` and

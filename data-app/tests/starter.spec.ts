@@ -147,7 +147,7 @@ test("data view keeps the last result visible when refresh fails", async ({
   await page.goto("/components");
   const error = page.getByRole("alert");
   await expect(error).toContainText("Couldn’t load results");
-  await expect(error).toContainText("The data request failed.");
+  await expect(error).toContainText("The lakehouse isn’t responding.");
   await expect(error.getByRole("button", { name: "Retry" })).toBeVisible();
   expect(
     await error.evaluate((element) => element.getBoundingClientRect().width),
@@ -197,10 +197,12 @@ test("table pages show bounded rows and reset when filtering changes", async ({ 
   await page.getByRole("searchbox", { name: "Search orders" }).fill("Order");
   await expect(pagination).toContainText("1–4 of 11 results");
   await page.getByRole("searchbox", { name: "Search orders" }).fill("Order 5");
-  await expect(pagination).toContainText("1–1 of 1 result");
-  await expect(pagination.getByRole("button", { name: "Previous page" })).toBeDisabled();
-  await expect(pagination.getByRole("button", { name: "Next page" })).toBeDisabled();
+  await expect(pagination).toHaveCount(0);
   await expect(table.getByText("Order 5")).toBeVisible();
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Search orders" }).fill("");
+  await expect(pagination).toContainText("1–4 of 11 results");
+  await expect(pagination.getByRole("button", { name: "Previous page" })).toBeDisabled();
 });
 
 test("request progress appears before Refresh", async ({ page }) => {
