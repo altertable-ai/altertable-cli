@@ -3,7 +3,7 @@
   "title": "Getting started",
   "scope": { "organization": "Your organization", "environment": "your environment" },
   "appearance": {
-    "mode": "light",
+    "theme": "light",
     "baseColor": "neutral",
     "accentColor": "#405d47",
     "density": "comfortable",
