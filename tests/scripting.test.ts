@@ -146,6 +146,46 @@ describe("scriptable exit codes and JSON errors", () => {
     expect(result.exitCode).toBe(1);
   });
 
+  test.each([
+    ["before columns", [], 2],
+    ["after rows", ['[{"name":"id","type":"INTEGER"}]', '[1]'], 4],
+  ])("query errors %s fail without success output", async (_stage, precedingLines, lineNumber) => {
+    const message = 'Binder Error: Catalog "sandbox_denied" does not exist!';
+    await workspace.setupMockHttp([{
+      urlPattern: "/query", method: "POST", status: 200,
+      body: ['{"statement":"SELECT * FROM sandbox_denied.main.secret"}', ...precedingLines, JSON.stringify({ error: message })].join("\n"),
+    }]);
+
+    for (const flag of ["--agent", ""]) {
+      const result = await workspace.runCommand(`altertable ${flag} query "SELECT * FROM sandbox_denied.main.secret"`, {
+        env: { ALTERTABLE_LAKEHOUSE_USERNAME: "testuser", ALTERTABLE_LAKEHOUSE_PASSWORD: "testpass" },
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("sandbox_denied");
+      if (flag === "--agent") {
+        expect(JSON.parse(result.stderr)).toMatchObject({
+          code: "query_error", message, details: `Query stream line ${lineNumber}`,
+        });
+      }
+    }
+  });
+
+  test("an error column containing JSON remains successful query data", async () => {
+    await workspace.setupMockHttp([{
+      urlPattern: "/query", method: "POST", status: 200,
+      body: ['{"statement":"SELECT error FROM events"}', '[{"name":"error","type":"JSON"}]', '[{"error":"recorded failure"}]'].join("\n"),
+    }]);
+
+    const result = await workspace.runCommand('altertable --agent query "SELECT error FROM events"', {
+      env: { ALTERTABLE_LAKEHOUSE_USERNAME: "testuser", ALTERTABLE_LAKEHOUSE_PASSWORD: "testpass" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout).rows).toEqual([[{ error: "recorded failure" }]]);
+  });
+
   test.each(["login", "profile configure"])(
     "%s renders multiline configuration guidance without command examples",
     async (command) => {

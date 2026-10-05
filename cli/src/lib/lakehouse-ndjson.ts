@@ -1,4 +1,4 @@
-import { ParseError } from "@/lib/errors.ts";
+import { ParseError, QueryError } from "@/lib/errors.ts";
 import { readTextStreamLines } from "@/lib/stream-lines.ts";
 
 export type LakehouseQueryMetadata = {
@@ -93,14 +93,19 @@ function parseOptionalColumnsLine(
 }
 
 function parseRowLine(line: string, lineNumber: number): LakehouseRow {
+  let row: LakehouseRow;
   try {
-    return JSON.parse(line) as LakehouseRow;
+    row = JSON.parse(line) as LakehouseRow;
   } catch (error) {
     throw new ParseError(`Failed to parse query response at line ${lineNumber}.`, {
       details: line,
       cause: error,
     });
   }
+  if (!Array.isArray(row) && typeof row?.error === "string") {
+    throw new QueryError(row.error, { details: `Query stream line ${lineNumber}` });
+  }
+  return row;
 }
 
 function trimTrailingEmptyLines(lines: string[]): string[] {

@@ -12,6 +12,7 @@ import {
   HttpError,
   NetworkError,
   ParseError,
+  QueryError,
   TimeoutError,
   errorCodeFromError,
   getCliExitCode,
@@ -78,7 +79,7 @@ describe("errors", () => {
     expect(shouldShowCommandExamplesOnError(new ConfigurationError("Not configured."))).toBe(false);
   });
 
-  test("shouldShowCommandExamplesOnError is false for transport and HTTP errors", () => {
+  test("shouldShowCommandExamplesOnError is false for transport, HTTP and query errors", () => {
     expect(
       shouldShowCommandExamplesOnError(
         new HttpError({ status: 404, body: "", method: "GET", url: "/x" }),
@@ -87,6 +88,7 @@ describe("errors", () => {
     expect(shouldShowCommandExamplesOnError(new NetworkError())).toBe(false);
     expect(shouldShowCommandExamplesOnError(new TimeoutError())).toBe(false);
     expect(shouldShowCommandExamplesOnError(new ParseError("bad json"))).toBe(false);
+    expect(shouldShowCommandExamplesOnError(new QueryError("Binder Error"))).toBe(false);
   });
 });
 

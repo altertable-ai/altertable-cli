@@ -529,7 +529,7 @@ Human mode defaults management list/get output to tables unless `--format` is se
 | Code | Meaning                                    |
 | ---- | ------------------------------------------ |
 | `0`  | Success                                    |
-| `1`  | Unhealthy check or general CLI error       |
+| `1`  | Query failure, unhealthy check or general CLI error |
 | `2`  | Authentication failed (HTTP 401)           |
 | `3`  | Permission denied (HTTP 403)               |
 | `4`  | Not found (HTTP 404)                       |
@@ -553,6 +553,8 @@ if ! out=$(altertable --json profile show 2>err.json); then
 fi
 echo "$out" | jq .
 ```
+
+Lakehouse query errors returned inside an HTTP 200 NDJSON response exit `1`. With `--json` or `--agent`, they use `code: "query_error"` on stderr and leave stdout empty.
 
 Without `--json`, errors are printed as `[ERROR] …` lines on stderr.
 
