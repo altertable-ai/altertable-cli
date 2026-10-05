@@ -26,4 +26,4 @@ Run `altertable app check` to check the app locally. Use `altertable app check -
 
 ## Version control
 
-Commit app source, `package.json`, and `bun.lock`. A fresh clone installs `@altertable/data-app` from npm with `bun install --frozen-lockfile`; installation needs registry access or a populated Bun cache. Keep custom code in `src/`.
+Commit app source, `queries.json`, `variables.json`, `package.json`, and `bun.lock`. A fresh clone installs `@altertable/data-app` from npm with `bun install --frozen-lockfile`; installation needs registry access or a populated Bun cache. Keep custom code in `src/`.

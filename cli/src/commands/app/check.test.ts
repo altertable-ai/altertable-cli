@@ -214,3 +214,97 @@ test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
     await checkAppProject(directory);
   },
 );
+
+test("registered apps allow browser operations, reject SQL imports, and execute IDs in live checks", async () => {
+  mkdirSync(join(directory, "src"));
+  writeFileSync(
+    join(directory, "app.json"),
+    JSON.stringify({ schemaVersion: 1, title: "Registered" }),
+  );
+  const packageFile = join(directory, "node_modules/@altertable/data-app/package.json");
+  const manifest = JSON.parse(readFileSync(packageFile, "utf8"));
+  manifest.exports["./contract"] = "./dist/core/contract.js";
+  manifest.exports["./embed"] = "./dist/core/embed.js";
+  writeFileSync(packageFile, JSON.stringify(manifest));
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/dist/core/appearance.js"),
+    "export function parseAppearance() {}",
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/dist/core/contract.js"),
+    `
+    export function defineDataAppRegistration(registration) {
+      if (!Array.isArray(registration.variables)) throw new Error("Expected variable list");
+      return registration;
+    }
+  `,
+  );
+  writeFileSync(join(directory, "queries.json"), JSON.stringify({ count: "SELECT {{amount}}" }));
+  writeFileSync(
+    join(directory, "variables.json"),
+    JSON.stringify([{ name: "amount", type: "INTEGER", nullable: false, default: 1 }]),
+  );
+  writeFileSync(
+    join(directory, "src/operations.ts"),
+    `
+    export const operations = { counts: {
+      queryNames: { count: "count" }, checks: [{ amount: 1 }, { amount: 2 }],
+      input: value => value, output: value => value,
+      policy: { maxQueryRows: 1, maxDurationMs: 1000 },
+      run: ({ lakehouse }, values) => lakehouse.queryRegistered("count", values, { limit: 1, signal: new AbortController().signal }),
+    } };
+  `,
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/dist/server/index.js"),
+    `
+    export function createDataHandler(operations, authorize) {
+      return async request => {
+        const { lakehouse } = await authorize();
+        await operations.counts.run({ lakehouse }, await request.json());
+        return new Response("ok");
+      };
+    }
+  `,
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+    "export function localLakehouse() { return { queryAll: async () => ({ rows: [] }) }; }",
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app/dist/core/embed.js"),
+    `
+    import { appendFileSync } from "node:fs";
+    export function createRegisteredQueryHandler(registration, authorize) {
+      return async (query, { signal }) => {
+        if (registration.queries[query.operation] !== "SELECT {{amount}}") throw new Error("Missing registration");
+        await (await authorize()).queryAll("SELECT 1", { limit: query.limit, signal });
+        appendFileSync("executed.txt", String(query.variables.amount));
+        return { rows: [] };
+      };
+    }
+  `,
+  );
+  writeFileSync(
+    join(directory, "src/index.html"),
+    '<script type="module" src="./main.ts"></script>',
+  );
+  writeFileSync(
+    join(directory, "src/main.ts"),
+    'import { operations } from "./operations.ts"; console.log(operations);',
+  );
+  await checkAppProject(directory);
+  await checkAppProject(directory, {});
+  expect(readFileSync(join(directory, "executed.txt"), "utf8")).toBe("12");
+  writeFileSync(
+    join(directory, "src/main.ts"),
+    'import queries from "../queries.json"; console.log(queries);',
+  );
+  expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
+  writeFileSync(
+    join(directory, "src/main.ts"),
+    'import { operations } from "./operations.ts"; console.log(operations);',
+  );
+  writeFileSync(join(directory, "queries.json"), JSON.stringify({ other: "SELECT 1" }));
+  expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
+});

@@ -1,0 +1,1 @@
+{ "connection-check": "SELECT 1 AS connection_check" }

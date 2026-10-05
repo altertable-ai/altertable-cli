@@ -13,6 +13,19 @@ async function check() {
     throw new Error("app.json has invalid appearance settings.");
   }
 
+  let registration;
+  const hasQueries = await Bun.file("queries.json").exists();
+  const hasVariables = await Bun.file("variables.json").exists();
+  if (hasQueries || hasVariables) {
+    if (!hasQueries || !hasVariables) throw new Error("Registered apps need both queries.json and variables.json.");
+    const { defineDataAppRegistration } = await import("@altertable/data-app/contract");
+    if (!defineDataAppRegistration) throw new Error("Upgrade @altertable/data-app to a release supporting separate query registration.");
+    registration = defineDataAppRegistration({
+      queries: JSON.parse(await readFile("queries.json", "utf8")),
+      variables: JSON.parse(await readFile("variables.json", "utf8")),
+    });
+  }
+
   let operations;
   try {
     ({ operations } = await import(appFile("src/operations.ts")));
@@ -66,10 +79,11 @@ async function check() {
           build.onResolve({ filter: /^@altertable\/data-app\/server(?:\/|$)/ }, () => {
             throw new Error("Browser code cannot import server transport. Use import type for server types.");
           });
-          build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, ({ path }) => {
+          build.onLoad({ filter: /\.(?:[cm]?[jt]sx?|json)$/ }, ({ path }) => {
             const normalized = path.replaceAll("\\", "/");
             const root = process.cwd().replaceAll("\\", "/");
-            if (normalized === `${root}/src/operations.ts` ||
+            if ((!registration && normalized === `${root}/src/operations.ts`) ||
+                normalized === `${root}/queries.json` ||
                 normalized === `${root}/src/server.ts` ||
                 /node_modules\/@altertable\/data-app\/(?:dist\/(?:server|local)\.js|src\/server\/[^/]+\.[jt]s)$/.test(normalized)) {
               throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
@@ -81,11 +95,26 @@ async function check() {
     if (!bundle.success) throw new Error(`Client import boundary failed: ${bundle.logs.join("\n")}`);
   }
 
+  if (registration) {
+    for (const operation of Object.values(operations)) {
+      for (const id of Object.values(operation.queryNames ?? {})) {
+        if (!Object.hasOwn(registration.queries, id)) throw new Error(`Unregistered query: ${id}`);
+      }
+    }
+  }
+
   if (process.argv[1] !== "--lakehouse") return;
   const { createDataHandler } = await import("@altertable/data-app/server");
   const { localLakehouse } = await import("@altertable/data-app/server/bun");
+  const lakehouse = localLakehouse(process.env);
+  if (registration) {
+    const { createRegisteredQueryHandler } = await import("@altertable/data-app/embed");
+    const execute = createRegisteredQueryHandler(registration, async () => localLakehouse(process.env));
+    lakehouse.queryRegistered = (operation, variables, { limit, signal }) => execute({ operation, variables, limit }, { signal });
+    lakehouse.queryAll = async () => { throw new Error("Registered apps execute query IDs and values, not raw SQL."); };
+  }
   const handle = createDataHandler(operations, async () => ({
-    lakehouse: localLakehouse(process.env),
+    lakehouse,
     canDiscloseSql: true,
   }));
   for (const [name, operation] of Object.entries(operations)) {
