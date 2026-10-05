@@ -10,6 +10,8 @@ export const starterFiles = [
   "bunfig.toml",
   "tsconfig.json",
   "app.json",
+  "queries.json",
+  "variables.json",
   "README.md",
   "AGENTS.md",
   "docs",

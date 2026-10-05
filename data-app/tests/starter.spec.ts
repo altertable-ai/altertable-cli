@@ -11,23 +11,25 @@ test("connection succeeds only after a query, then offers next steps and a theme
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route("**/api/data/connection", async (route) => {
+  await page.route("**/api/query", async (route) => {
     await held;
     await route.continue();
   });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Checking connection…" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Connected", exact: true })).toHaveCount(0);
+  const app = page.frameLocator("iframe");
+  await expect(page.locator("iframe")).toHaveAttribute("sandbox", "allow-scripts");
+  await expect(app.getByRole("heading", { name: "Checking connection…" })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Connected", exact: true })).toHaveCount(0);
   release();
-  await expect(page.getByRole("heading", { name: "Connected", exact: true })).toBeVisible();
-  await expect(page.getByText("Choose a question", { exact: true })).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(app.getByRole("heading", { name: "Connected", exact: true })).toBeVisible();
+  await expect(app.getByText("Choose a question", { exact: true })).toBeVisible();
+  await expect(app.getByRole("table")).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath("starter-light.png"), fullPage: true });
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
-  await expect(page.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
+  await app.getByRole("button", { name: "Switch to dark theme" }).click();
+  await expect(app.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("starter-dark.png"), fullPage: true });
   await page.reload();
-  await expect(page.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Connected", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -39,22 +41,26 @@ test("failed checks offer retry and invalidate an earlier successful connection"
 }) => {
   await request.post("/__test/state", { data: "failure" });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Connection not verified" })).toBeVisible();
+  const app = page.frameLocator("iframe");
+  await expect(page.locator("iframe")).toHaveAttribute("sandbox", "allow-scripts");
+  await expect(app.getByRole("heading", { name: "Connection not verified" })).toBeVisible();
   await request.post("/__test/state", { data: "success" });
-  await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByRole("heading", { name: "Connected", exact: true })).toBeVisible();
+  await app.getByRole("button", { name: "Try again" }).click();
+  await expect(app.getByRole("heading", { name: "Connected", exact: true })).toBeVisible();
   await request.post("/__test/state", { data: "failure" });
-  await page.getByRole("button", { name: "Check connection", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Connection not verified" })).toBeVisible();
-  await expect(page.getByText(/An earlier query succeeded/)).toBeVisible();
+  await app.getByRole("button", { name: "Check connection", exact: true }).click();
+  await expect(app.getByRole("heading", { name: "Connection not verified" })).toBeVisible();
+  await expect(app.getByText(/An earlier query succeeded/)).toBeVisible();
 });
 
 test("About the data keeps exploration context and Glossary without Overview", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Explore data" }).click();
-  await expect(page.getByRole("tab", { name: "Glossary" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Overview" })).toHaveCount(0);
-  await expect(page.getByText(/runs a lightweight query/)).toBeVisible();
+  const app = page.frameLocator("iframe");
+  await expect(page.locator("iframe")).toHaveAttribute("sandbox", "allow-scripts");
+  await app.getByRole("button", { name: "Explore data" }).click();
+  await expect(app.getByRole("tab", { name: "Glossary" })).toBeVisible();
+  await expect(app.getByRole("tab", { name: "Overview" })).toHaveCount(0);
+  await expect(app.getByText(/runs a lightweight query/)).toBeVisible();
 });
 
 test("source identifiers retain exact table and column identity in About the data", async ({

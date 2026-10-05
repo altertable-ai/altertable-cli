@@ -16,7 +16,10 @@ bun install --cwd data-app/starter --frozen-lockfile
 ```
 
 Use a configured profile for live data. The starter executes a bounded connection query before
-showing Connected. App queries, data context, views, and appearance remain app-owned.
+showing Connected. App queries, data context, views, and appearance remain app-owned. SQL lives in
+`queries.json`; `variables.json` is a list with required name, type, nullable, and
+default fields. Browser operations use IDs and values through the iframe bridge.
+The Bun host resolves registration and uses the existing HTTP proxy.
 
 ## Ownership and distribution
 
