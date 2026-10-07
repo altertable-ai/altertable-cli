@@ -1,4 +1,4 @@
-import { GettingStarted } from "@altertable/data-app/react";
+import { GettingStarted } from "@altertable/data-app/react/ui";
 import { dataContext } from "#app/data-context.ts";
 import app from "#app/config.ts";
 
