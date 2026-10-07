@@ -79,7 +79,7 @@ describe("app create", () => {
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
     expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
-      "https://github.com/altertable-ai/data-app/blob/v0.66.0/AGENTS.md",
+      "https://github.com/altertable-ai/data-app/blob/main/examples/starter-local-data-app/AGENTS.md",
     );
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
       "Connectivity-only screen",

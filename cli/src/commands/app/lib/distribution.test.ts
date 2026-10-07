@@ -72,7 +72,7 @@ test("app-owned authoring links resolve within the generated files", async () =>
     scope: { organization: "Test", environment: "test" },
   });
   expect(files["AGENTS.md"]).toContain(
-    "https://github.com/altertable-ai/data-app/blob/v0.66.0/AGENTS.md",
+    "https://github.com/altertable-ai/data-app/blob/main/examples/starter-local-data-app/AGENTS.md",
   );
   for (const [name, content] of Object.entries(files)) {
     if (!name.endsWith(".md")) continue;
