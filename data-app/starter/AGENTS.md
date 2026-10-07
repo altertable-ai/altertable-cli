@@ -6,9 +6,9 @@ Read `node_modules/@altertable/data-app/AGENTS.md` and its [app authoring guide]
 
 | Task | App-owned files | Read next |
 | --- | --- | --- |
-| Connect a source, define a query, or change inputs | `app.json`, `src/operations.ts`, optional `src/variables.ts` | [Data and operation authoring](docs/data.md) |
-| Build a view, filters, request states, or Present steps | `src/App.tsx`, `src/styles.css` | [View authoring](docs/views.md) |
-| Explain the exploration or define terms | `src/data-context.ts` or `.tsx` | [Data guidance](docs/data.md), [context APIs](node_modules/@altertable/data-app/docs/react.md#find-ui-by-task) |
+| Connect a source, define a query, or change inputs | `app.json`, `src/operations.ts`, optional `src/variables.ts` | [Data and operation authoring](node_modules/@altertable/data-app/docs/contract.md) |
+| Build a view, filters, request states, or Present steps | `src/App.tsx`, `src/styles.css` | [View authoring](node_modules/@altertable/data-app/docs/views.md) |
+| Explain the exploration or define terms | `src/data-context.ts` or `.tsx` | [Data context](node_modules/@altertable/data-app/docs/data-context.md) |
 | Change title, scope, or brand | `app.json` | [Config and appearance APIs](node_modules/@altertable/data-app/docs/app-authoring.md) |
 | Find a component, hook, or parser | Read the installed package docs | [Package authoring guide](node_modules/@altertable/data-app/docs/app-authoring.md) |
 | Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](node_modules/@altertable/data-app/docs/server.md) |

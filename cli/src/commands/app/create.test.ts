@@ -78,7 +78,7 @@ describe("app create", () => {
     expect(paths.some((path) => path.startsWith(".altertable/"))).toBe(false);
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
-    expect(paths).toContain("docs/data.md");
+    expect(paths.some((path) => path.startsWith("docs/"))).toBe(false);
     expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
       "node_modules/@altertable/data-app/AGENTS.md",
     );
