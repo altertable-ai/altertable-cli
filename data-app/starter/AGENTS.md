@@ -1,18 +1,5 @@
 # Build this data app
 
-Inspect source data, time coverage and existing definitions before choosing an exploration. For broad questions, investigate complementary angles. Build conclusions from observed results; do not present association as cause. Keep copy concise and relevant to the reader.
+Read and follow the [data app authoring instructions](https://github.com/altertable-ai/data-app/blob/v0.66.0/AGENTS.md) before changing this app.
 
-Read `node_modules/@altertable/data-app/AGENTS.md` and its [app authoring guide](node_modules/@altertable/data-app/docs/app-authoring.md) before changing the app. Run `bun install --frozen-lockfile` if the package is not installed.
-
-| Task | App-owned files | Read next |
-| --- | --- | --- |
-| Connect a source, define a query, or change inputs | `app.json`, `src/operations.ts`, optional `src/variables.ts` | [Data and operation authoring](node_modules/@altertable/data-app/docs/contract.md) |
-| Build a view, filters, request states, or Present steps | `src/App.tsx`, `src/styles.css` | [View authoring](node_modules/@altertable/data-app/docs/views.md) |
-| Explain the exploration or define terms | `src/data-context.ts` or `.tsx` | [Data context](node_modules/@altertable/data-app/docs/data-context.md) |
-| Change title, scope, or brand | `app.json` | [Config and appearance APIs](node_modules/@altertable/data-app/docs/app-authoring.md) |
-| Find a component, hook, or parser | Read the installed package docs | [Package authoring guide](node_modules/@altertable/data-app/docs/app-authoring.md) |
-| Replace the local server with hosting | `src/server.ts` | [Server authorization boundary](node_modules/@altertable/data-app/docs/server.md) |
-
-Edit app-owned source and use public package APIs. Do not edit installed package files. The generated connectivity screen is scaffolding, not an example analysis.
-
-Run `altertable app check --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.
+See [README.md](README.md) for CLI setup, checks, and upgrades.
