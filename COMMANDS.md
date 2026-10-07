@@ -411,12 +411,12 @@ altertable --json doctor
 
 ### `altertable app`
 
-Create, develop, check, build, and upgrade data apps.
+Create, develop, check, build, upgrade, and publish data apps.
 
 **Usage**
 
 ```bash
-altertable app create|dev|build|check|upgrade
+altertable app create|dev|build|check|upgrade|validate|publish|update
 ```
 
 **Subcommands**
@@ -426,6 +426,9 @@ altertable app create|dev|build|check|upgrade
 - `build` — Typecheck and build a data app without Altertable credentials.
 - `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
 - `upgrade` — Update the data app package to the CLI's tested version.
+- `validate` — Type-check and bundle a remote data app from files without saving.
+- `publish` — Create a remote data app from files.
+- `update` — Update a remote data app from files. Omitted fields are left unchanged.
 
 **Examples**
 
@@ -435,6 +438,9 @@ altertable app dev
 altertable app check
 altertable app build
 altertable app upgrade
+altertable app validate --file index.tsx --queries queries.json
+altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json
+altertable app update APP-1 --file index.tsx
 ```
 
 #### `altertable app create`
@@ -561,6 +567,91 @@ altertable app upgrade [options]
 ```bash
 altertable app upgrade
 altertable app upgrade --dir ./my-app
+```
+
+#### `altertable app validate`
+
+Type-check and bundle a remote data app from files without saving.
+
+**Usage**
+
+```bash
+altertable app validate [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
+| `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
+| `--variables <VARIABLES>` | Path to variables JSON array. Defaults to no variables. |
+
+**Examples**
+
+```bash
+altertable app validate --file index.tsx --queries queries.json
+altertable app validate --file index.tsx --queries queries.json --variables variables.json
+```
+
+#### `altertable app publish`
+
+Create a remote data app from files.
+
+**Usage**
+
+```bash
+altertable app publish [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--title <TITLE>` | Title of the data app. Required. |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
+| `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
+| `--variables <VARIABLES>` | Path to variables JSON array. Defaults to no variables. |
+| `--description <DESCRIPTION>` | Optional description of the data app. |
+
+**Examples**
+
+```bash
+altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json
+altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json --variables variables.json
+```
+
+#### `altertable app update`
+
+Update a remote data app from files. Omitted fields are left unchanged.
+
+**Usage**
+
+```bash
+altertable app update [options] <SLUG>
+```
+
+**Arguments**
+
+| Argument | Description |
+| --- | --- |
+| `<SLUG>` | Data app slug to update (e.g. APP-1). Required. |
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `--title <TITLE>` | New title of the data app. |
+| `--file <FILE>` | Path to replacement single-file React source (index.tsx). |
+| `--queries <QUERIES>` | Path to queries JSON. Replaces the full set when provided. |
+| `--variables <VARIABLES>` | Path to variables JSON. Replaces the full set when provided. |
+| `--description <DESCRIPTION>` | New description of the data app. |
+
+**Examples**
+
+```bash
+altertable app update APP-1 --file index.tsx
+altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json
 ```
 
 ### `altertable update`
