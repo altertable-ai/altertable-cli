@@ -12,7 +12,7 @@ import {
 export const appDevCommand = defineCommand({
   metadata: {
     name: "dev",
-    description: "Preview a data app locally with lakehouse access.",
+    description: "Preview a local data app with lakehouse access.",
     examples: [
       "altertable app dev",
       "altertable app dev --port 3022",

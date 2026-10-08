@@ -12,4 +12,4 @@ Inspect catalogs, time coverage, and existing definitions before selecting the e
 
 [Execute named queries](../node_modules/@altertable/data-app/docs/contract.md) and [bind evidence](../node_modules/@altertable/data-app/docs/react.md#bind-evidence) using the runtime contracts. Prefer a date variable for ongoing questions; choose a fixed period for deliberate historical explorations.
 
-`app check --lakehouse` verifies declared operations and known profile scope. Environment-only credentials may not identify an organization; verify source identity during discovery when that metadata is unavailable.
+`app lint --lakehouse` verifies declared operations and known profile scope. Environment-only credentials may not identify an organization; verify source identity during discovery when that metadata is unavailable.

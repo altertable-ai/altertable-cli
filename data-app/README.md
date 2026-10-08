@@ -58,5 +58,5 @@ Install Playwright Chromium with `bunx playwright install chromium` from `data-a
 if needed. Browser checks cover connection and request states, theme, context, and presentation
 at phone and desktop widths. CLI tests cover offline scaffolding, npm consumption, package upgrades,
 peer checks, and failed resolution. Release smoke checks create an app outside the checkout, install its
-frozen lockfile, and run `app check` with the packaged CLI. The minimum Bun compatibility job
+frozen lockfile, and run `app lint` with the packaged CLI. The minimum Bun compatibility job
 checks scaffolding only; app builds use the repository's current toolchain.

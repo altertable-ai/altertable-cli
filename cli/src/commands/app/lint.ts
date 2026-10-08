@@ -22,12 +22,12 @@ type AppManifest = {
   appearance?: unknown;
 };
 
-export const appCheckCommand = defineCommand({
+export const appLintCommand = defineCommand({
   metadata: {
-    name: "check",
+    name: "lint",
     description:
-      "Validate a data app's format, lint, types, contracts, build, and client credential boundary.",
-    examples: ["altertable app check", "altertable app check --lakehouse"],
+      "Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.",
+    examples: ["altertable app lint", "altertable app lint --lakehouse"],
   },
   args: {
     dir: { type: "string", description: "App directory (default: current directory)." },

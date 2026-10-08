@@ -15,4 +15,4 @@ Read `node_modules/@altertable/data-app/AGENTS.md` and its [app authoring guide]
 
 Edit app-owned source and use public package APIs. Do not edit installed package files. The generated connectivity screen is scaffolding, not an example analysis.
 
-Run `altertable app check --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.
+Run `altertable app lint --lakehouse` with the matching profile, then inspect the exploration at phone and desktop widths. Verify that its findings and interactions answer the user's question.

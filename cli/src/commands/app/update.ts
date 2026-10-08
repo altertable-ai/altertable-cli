@@ -17,7 +17,7 @@ import {
 export const appUpdateCommand = defineCommand({
   metadata: {
     name: "update",
-    description: "Update a remote data app from files. Omitted fields are left unchanged.",
+    description: "Update a data app from files. Omitted fields are left unchanged.",
     examples: [
       "altertable app update APP-1 --file index.tsx",
       "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json",
@@ -49,7 +49,7 @@ export const appUpdateCommand = defineCommand({
   },
   async run({ args, execution, sink }) {
     const env = requireManagementPlane(execution.profile, {
-      requirement: "Updating a remote data app requires the management API",
+      requirement: "Updating a data app requires the management API",
     });
     const slug = stringArg(args, "slug");
     const body = await updatePayload(args);

@@ -17,7 +17,7 @@ import {
 export const appUpgradeCommand = defineCommand({
   metadata: {
     name: "upgrade",
-    description: "Update the data app package to the CLI's tested version.",
+    description: "Update a local data app's package to the CLI's tested version.",
     examples: ["altertable app upgrade", "altertable app upgrade --dir ./my-app"],
   },
   args: { dir: { type: "string", description: "App directory (default: current directory)." } },
@@ -36,7 +36,7 @@ export const appUpgradeCommand = defineCommand({
         runtimeVersion: version,
         nextSteps: upgraded
           ? [
-              "Run `altertable app check` in the app directory.",
+              "Run `altertable app lint` in the app directory.",
               "Restart any running `altertable app dev` server.",
             ]
           : [],
@@ -44,7 +44,7 @@ export const appUpgradeCommand = defineCommand({
     } else {
       sink.writeHuman(
         upgraded
-          ? `Updated data app package to ${version}. Run \`altertable app check\`, then restart any running \`altertable app dev\` server.`
+          ? `Updated data app package to ${version}. Run \`altertable app lint\`, then restart any running \`altertable app dev\` server.`
           : `Data app package ${version} is already current.`,
       );
     }

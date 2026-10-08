@@ -15,7 +15,7 @@ import {
 export const appPublishCommand = defineCommand({
   metadata: {
     name: "publish",
-    description: "Create a remote data app from files.",
+    description: "Create a data app from files.",
     examples: [
       "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json",
       "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json --variables variables.json",
@@ -44,7 +44,7 @@ export const appPublishCommand = defineCommand({
   },
   async run({ args, execution, sink }) {
     const env = requireManagementPlane(execution.profile, {
-      requirement: "Publishing a remote data app requires the management API",
+      requirement: "Publishing a data app requires the management API",
     });
     const title = stringArg(args, "title");
     const response = parseApiJson(

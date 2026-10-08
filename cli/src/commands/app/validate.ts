@@ -17,7 +17,7 @@ import {
 export const appValidateCommand = defineCommand({
   metadata: {
     name: "validate",
-    description: "Type-check and bundle a remote data app from files without saving.",
+    description: "Type-check and bundle a data app from files without saving.",
     examples: [
       "altertable app validate --file index.tsx --queries queries.json",
       "altertable app validate --file index.tsx --queries queries.json --variables variables.json",
@@ -44,7 +44,7 @@ export const appValidateCommand = defineCommand({
   },
   async run({ args, execution, sink }) {
     const env = requireManagementPlane(execution.profile, {
-      requirement: "Validating a remote data app requires the management API",
+      requirement: "Validating a data app requires the management API",
     });
     const indexTsx = await readRequiredFile(stringArg(args, "file"), "source");
     const queries = await readQueriesFile(stringArg(args, "queries"));

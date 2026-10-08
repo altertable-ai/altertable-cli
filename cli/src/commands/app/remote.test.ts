@@ -109,7 +109,7 @@ describe("app validate", () => {
 });
 
 describe("app publish", () => {
-  test("creates a remote data app from files", async () => {
+  test("creates a data app from files", async () => {
     const { file, queries, variables } = writeAppFiles();
     workspace.writeMocks([
       {

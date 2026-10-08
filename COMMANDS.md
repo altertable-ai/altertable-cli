@@ -411,31 +411,31 @@ altertable --json doctor
 
 ### `altertable app`
 
-Create, develop, check, build, upgrade, and publish data apps.
+Create, develop, lint, build, and upgrade local data apps; validate, publish, and update data apps.
 
 **Usage**
 
 ```bash
-altertable app create|dev|build|check|upgrade|validate|publish|update
+altertable app create|dev|build|lint|upgrade|validate|publish|update
 ```
 
 **Subcommands**
 
-- `create` — Create a data app project with a live connection check.
-- `dev` — Preview a data app locally with lakehouse access.
-- `build` — Typecheck and build a data app without Altertable credentials.
-- `check` — Validate a data app's format, lint, types, contracts, build, and client credential boundary.
-- `upgrade` — Update the data app package to the CLI's tested version.
-- `validate` — Type-check and bundle a remote data app from files without saving.
-- `publish` — Create a remote data app from files.
-- `update` — Update a remote data app from files. Omitted fields are left unchanged.
+- `create` — Create a local data app project with a live connection check.
+- `dev` — Preview a local data app with lakehouse access.
+- `build` — Typecheck and build a local data app without Altertable credentials.
+- `lint` — Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
+- `upgrade` — Update a local data app's package to the CLI's tested version.
+- `validate` — Type-check and bundle a data app from files without saving.
+- `publish` — Create a data app from files.
+- `update` — Update a data app from files. Omitted fields are left unchanged.
 
 **Examples**
 
 ```bash
 altertable app create my-app
 altertable app dev
-altertable app check
+altertable app lint
 altertable app build
 altertable app upgrade
 altertable app validate --file index.tsx --queries queries.json
@@ -445,7 +445,7 @@ altertable app update APP-1 --file index.tsx
 
 #### `altertable app create`
 
-Create a data app project with a live connection check.
+Create a local data app project with a live connection check.
 
 **Usage**
 
@@ -476,7 +476,7 @@ altertable --profile production app create product-pulse
 
 #### `altertable app dev`
 
-Preview a data app locally with lakehouse access.
+Preview a local data app with lakehouse access.
 
 **Usage**
 
@@ -501,7 +501,7 @@ altertable --profile staging app dev --dir ./my-app
 
 #### `altertable app build`
 
-Typecheck and build a data app without Altertable credentials.
+Typecheck and build a local data app without Altertable credentials.
 
 **Usage**
 
@@ -522,14 +522,14 @@ altertable app build
 altertable app build --dir ./my-app
 ```
 
-#### `altertable app check`
+#### `altertable app lint`
 
-Validate a data app's format, lint, types, contracts, build, and client credential boundary.
+Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
 
 **Usage**
 
 ```bash
-altertable app check [options]
+altertable app lint [options]
 ```
 
 **Options**
@@ -542,13 +542,13 @@ altertable app check [options]
 **Examples**
 
 ```bash
-altertable app check
-altertable app check --lakehouse
+altertable app lint
+altertable app lint --lakehouse
 ```
 
 #### `altertable app upgrade`
 
-Update the data app package to the CLI's tested version.
+Update a local data app's package to the CLI's tested version.
 
 **Usage**
 
@@ -571,7 +571,7 @@ altertable app upgrade --dir ./my-app
 
 #### `altertable app validate`
 
-Type-check and bundle a remote data app from files without saving.
+Type-check and bundle a data app from files without saving.
 
 **Usage**
 
@@ -596,7 +596,7 @@ altertable app validate --file index.tsx --queries queries.json --variables vari
 
 #### `altertable app publish`
 
-Create a remote data app from files.
+Create a data app from files.
 
 **Usage**
 
@@ -623,7 +623,7 @@ altertable app publish --title 'Revenue explorer' --file index.tsx --queries que
 
 #### `altertable app update`
 
-Update a remote data app from files. Omitted fields are left unchanged.
+Update a data app from files. Omitted fields are left unchanged.
 
 **Usage**
 
