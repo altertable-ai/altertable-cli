@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/altertable-ai/altertable-cli/compare/v1.9.1...v1.10.0) (2026-10-08)
+
+
+### Features
+
+* **data-app:** add commands to validate, publish, and update data apps from files ([#131](https://github.com/altertable-ai/altertable-cli/issues/131)) ([439444b](https://github.com/altertable-ai/altertable-cli/commit/439444bd4fa41035ad489d5943336380b68460f7))
+
+
+### Bug Fixes
+
+* **data-app:** upgrade CLI starter and fixtures to v0.66.0 ([#130](https://github.com/altertable-ai/altertable-cli/issues/130)) ([503ed70](https://github.com/altertable-ai/altertable-cli/commit/503ed702af198e5d20ab0c0482604975a4c76b1a))
+
 ## [1.9.1](https://github.com/altertable-ai/altertable-cli/compare/v1.9.0...v1.9.1) (2026-10-02)
 
 ### Changed
