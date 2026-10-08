@@ -312,7 +312,7 @@ test("grid spans respond to their container at phone, tablet, and desktop widths
       .getByTestId("spanned-grid")
       .evaluate((element) => getComputedStyle(element).gap);
     expect(gap).toBe(`${Math.max(16, Math.min(24, width * 0.025))}px`);
-    const peers = await page.getByTestId("peer-grid").locator(":scope > div").all();
+    const peers = await page.getByTestId("peer-grid").locator(":scope > *").all();
     const firstPeer = await peers[0]!.boundingBox();
     const lastPeer = await peers[2]!.boundingBox();
     expect(primary).not.toBeNull();
@@ -349,8 +349,8 @@ test("initial loading keeps the grid shape without displaying snapshot values", 
   });
   await page.goto("/components");
   const loading = page.getByTestId("loading-skeleton-grid");
-  await expect(loading.locator(".altertable-content-skeleton")).toHaveCount(2);
-  await expect(loading.locator(".altertable-content-skeleton-row")).toHaveCount(8);
+  await expect(loading.locator(".fixture-loading-content")).toHaveCount(2);
+  await expect(loading.locator(".altertable-skeleton")).toHaveCount(8);
   await expect(page.getByText("Connection view ready")).toHaveCount(0);
   release();
   await expect(page.getByText("Connection view ready")).toBeVisible();

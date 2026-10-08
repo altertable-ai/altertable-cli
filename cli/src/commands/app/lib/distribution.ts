@@ -12,7 +12,6 @@ export const starterFiles = [
   "app.json",
   "README.md",
   "AGENTS.md",
-  "docs",
   ".gitignore",
   ".oxlintrc.json",
   ".oxfmtrc.json",
