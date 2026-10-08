@@ -422,7 +422,7 @@ altertable app create|dev|build|lint|upgrade|validate|publish|update
 **Subcommands**
 
 - `create` — Create a local data app project with a live connection check.
-- `dev` — Preview a local data app with lakehouse access.
+- `dev` — Preview a data app locally with lakehouse access.
 - `build` — Typecheck and build a local data app without Altertable credentials.
 - `lint` — Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
 - `upgrade` — Update a local data app's package to the CLI's tested version.
@@ -476,7 +476,7 @@ altertable --profile production app create product-pulse
 
 #### `altertable app dev`
 
-Preview a local data app with lakehouse access.
+Preview a data app locally with lakehouse access.
 
 **Usage**
 

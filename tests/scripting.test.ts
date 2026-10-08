@@ -61,7 +61,7 @@ describe("scriptable exit codes and JSON errors", () => {
     const human = await workspace.runCommand("altertable app");
     expect(human.exitCode).toBe(0);
     expect(human.stderr).toBe("");
-    expect(human.stdout).toContain("altertable app create|dev|build|check|upgrade");
+    expect(human.stdout).toContain("altertable app create|dev|build|lint|upgrade");
     expect(human.stdout).toContain("Use altertable app <command> --help");
 
     const structured = await workspace.runCommand("altertable --json app");

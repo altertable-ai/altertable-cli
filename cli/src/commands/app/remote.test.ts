@@ -181,7 +181,11 @@ describe("app update", () => {
   });
 
   test("requires at least one field to change", async () => {
-    expect(runCommandWithTestRuntime(["app", "update", "APP-1"])).rejects.toThrow(
+    const error = await runCommandWithTestRuntime(["app", "update", "APP-1"]).catch(
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
       "Provide at least one of --title, --description, --file, --queries, or --variables.",
     );
   });

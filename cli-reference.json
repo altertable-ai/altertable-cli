@@ -874,7 +874,7 @@
             {
               "id": "altertable-app-dev",
               "command": "altertable app dev",
-              "description": "Preview a local data app with lakehouse access.",
+              "description": "Preview a data app locally with lakehouse access.",
               "usage": [
                 "altertable app dev [options]"
               ],
