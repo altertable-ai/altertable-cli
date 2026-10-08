@@ -28,10 +28,9 @@ describe("renderAltertableUsage", () => {
   test("groups root commands before global flags in a custom help panel", async () => {
     const usage = await renderAltertableUsage(buildMainCommand());
 
-    expect(usage).toContain(
-      `Altertable CLI v${VERSION} • Query and manage your data platform from the`,
+    expect(usage.replace(/\s+/g, " ")).toContain(
+      `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
     );
-    expect(usage).toContain("terminal.");
     expect(usage).toContain("Usage\n    altertable <command> [flags]");
     expect(usage).toContain("\n  Commands\n");
     expect(usage).toContain("\n  Commands\n    Platform\n");
