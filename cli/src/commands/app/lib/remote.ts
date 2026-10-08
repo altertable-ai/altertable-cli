@@ -3,14 +3,12 @@ import { CliError, EXIT_VALIDATION } from "@/lib/errors.ts";
 import type { HttpRequest } from "@/lib/http-request.ts";
 
 export type DataAppQuery = { id: string; sql: string };
-export type DataAppVariable = Record<string, unknown>;
 
 export type RemoteDataAppPayload = {
   title?: string;
   description?: string;
   index_tsx?: string;
   queries?: DataAppQuery[];
-  variables?: DataAppVariable[];
 };
 
 export type ValidationDiagnostic = {
@@ -72,32 +70,8 @@ export function parseQueries(value: unknown): DataAppQuery[] {
   throw new CliError("queries must be a JSON object or an array of {id, sql}.");
 }
 
-export function parseVariables(value: unknown): DataAppVariable[] {
-  if (!Array.isArray(value)) {
-    throw new CliError("variables must be a JSON array.");
-  }
-  return value.map((entry, index) => {
-    if (typeof entry !== "object" || entry === null) {
-      throw new CliError(`variables[${index}] must be an object.`);
-    }
-    const variable = { ...(entry as Record<string, unknown>) };
-    if (variable.default === undefined && variable.value !== undefined) {
-      variable.default = variable.value;
-      delete variable.value;
-    }
-    return variable;
-  });
-}
-
 export async function readQueriesFile(path: string): Promise<DataAppQuery[]> {
   return parseQueries(await readJsonFile(path, "queries"));
-}
-
-export async function readVariablesFile(path: string | undefined): Promise<DataAppVariable[]> {
-  if (path === undefined) {
-    return [];
-  }
-  return parseVariables(await readJsonFile(path, "variables"));
 }
 
 export function buildDataAppHttpRequest(

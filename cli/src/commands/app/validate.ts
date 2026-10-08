@@ -1,4 +1,4 @@
-import { optionalStringArg, stringArg } from "@/lib/args.ts";
+import { stringArg } from "@/lib/args.ts";
 import { requireManagementPlane } from "@/lib/auth.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -9,7 +9,6 @@ import {
   formatValidationSummary,
   readQueriesFile,
   readRequiredFile,
-  readVariablesFile,
   validationExitCode,
   type ValidateDataAppResponse,
 } from "@/commands/app/lib/remote.ts";
@@ -18,10 +17,7 @@ export const appValidateCommand = defineCommand({
   metadata: {
     name: "validate",
     description: "Type-check and bundle a data app from files without saving.",
-    examples: [
-      "altertable app validate --file index.tsx --queries queries.json",
-      "altertable app validate --file index.tsx --queries queries.json --variables variables.json",
-    ],
+    examples: ["altertable app validate --file index.tsx --queries queries.json"],
   },
   args: {
     file: {
@@ -36,11 +32,6 @@ export const appValidateCommand = defineCommand({
       required: true,
       completion: "file",
     },
-    variables: {
-      type: "string",
-      description: "Path to variables JSON array. Defaults to no variables.",
-      completion: "file",
-    },
   },
   async run({ args, execution, sink }) {
     const env = requireManagementPlane(execution.profile, {
@@ -48,13 +39,11 @@ export const appValidateCommand = defineCommand({
     });
     const indexTsx = await readRequiredFile(stringArg(args, "file"), "source");
     const queries = await readQueriesFile(stringArg(args, "queries"));
-    const variables = await readVariablesFile(optionalStringArg(args, "variables"));
     const response = parseApiJson(
       await sendHttp(
         buildDataAppHttpRequest(env, "POST", "/data_apps/validate", {
           index_tsx: indexTsx,
           queries,
-          variables,
         }),
         execution,
       ),

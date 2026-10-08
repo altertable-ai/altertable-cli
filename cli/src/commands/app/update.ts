@@ -9,7 +9,6 @@ import {
   buildDataAppHttpRequest,
   readQueriesFile,
   readRequiredFile,
-  readVariablesFile,
   type RemoteDataAppPayload,
   type PublishedDataApp,
 } from "@/commands/app/lib/remote.ts";
@@ -40,11 +39,6 @@ export const appUpdateCommand = defineCommand({
       description: "Path to queries JSON. Replaces the full set when provided.",
       completion: "file",
     },
-    variables: {
-      type: "string",
-      description: "Path to variables JSON. Replaces the full set when provided.",
-      completion: "file",
-    },
     description: { type: "string", description: "New description of the data app." },
   },
   async run({ args, execution, sink }) {
@@ -54,9 +48,7 @@ export const appUpdateCommand = defineCommand({
     const slug = stringArg(args, "slug");
     const body = await updatePayload(args);
     if (Object.keys(body).length === 0) {
-      throw new CliError(
-        "Provide at least one of --title, --description, --file, --queries, or --variables.",
-      );
+      throw new CliError("Provide at least one of --title, --description, --file, or --queries.");
     }
     const response = parseApiJson(
       await sendHttp(buildDataAppHttpRequest(env, "PATCH", `/data_apps/${slug}`, body), execution),
@@ -79,11 +71,9 @@ async function updatePayload(args: Record<string, unknown>): Promise<RemoteDataA
   const description = optionalStringArg(args, "description");
   const file = optionalStringArg(args, "file");
   const queries = optionalStringArg(args, "queries");
-  const variables = optionalStringArg(args, "variables");
   if (title !== undefined) body.title = title;
   if (description !== undefined) body.description = description;
   if (file !== undefined) body.index_tsx = await readRequiredFile(file, "source");
   if (queries !== undefined) body.queries = await readQueriesFile(queries);
-  if (variables !== undefined) body.variables = await readVariablesFile(variables);
   return body;
 }
