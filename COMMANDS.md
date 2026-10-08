@@ -585,13 +585,11 @@ altertable app validate [options]
 | --- | --- |
 | `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
 | `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
-| `--variables <VARIABLES>` | Path to variables JSON array. Defaults to no variables. |
 
 **Examples**
 
 ```bash
 altertable app validate --file index.tsx --queries queries.json
-altertable app validate --file index.tsx --queries queries.json --variables variables.json
 ```
 
 #### `altertable app publish`
@@ -611,14 +609,12 @@ altertable app publish [options]
 | `--title <TITLE>` | Title of the data app. Required. |
 | `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
 | `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
-| `--variables <VARIABLES>` | Path to variables JSON array. Defaults to no variables. |
 | `--description <DESCRIPTION>` | Optional description of the data app. |
 
 **Examples**
 
 ```bash
 altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json
-altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json --variables variables.json
 ```
 
 #### `altertable app update`
@@ -644,7 +640,6 @@ altertable app update [options] <SLUG>
 | `--title <TITLE>` | New title of the data app. |
 | `--file <FILE>` | Path to replacement single-file React source (index.tsx). |
 | `--queries <QUERIES>` | Path to queries JSON. Replaces the full set when provided. |
-| `--variables <VARIABLES>` | Path to variables JSON. Replaces the full set when provided. |
 | `--description <DESCRIPTION>` | New description of the data app. |
 
 **Examples**
