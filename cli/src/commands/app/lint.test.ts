@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkAppProject, checkClientBundle } from "@/commands/app/check.ts";
+import { checkAppProject, checkClientBundle } from "@/commands/app/lint.ts";
 
 let directory: string;
 

@@ -20,7 +20,7 @@ Start with the [authoring router](AGENTS.md) for data and view changes, or the [
 
 ## Check and upgrade
 
-Run `altertable app check` to check the app locally. Use `altertable app check --lakehouse` to execute each operation's declared `checks` against the selected profile.
+Run `altertable app lint` to check the app locally. Use `altertable app lint --lakehouse` to execute each operation's declared `checks` against the selected profile.
 
 `altertable app upgrade` pins the package version tested with your CLI and updates the lockfile. It preserves app code and does not downgrade a newer installed package. Restart a running preview after upgrading.
 

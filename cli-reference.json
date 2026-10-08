@@ -803,9 +803,9 @@
         {
           "id": "altertable-app",
           "command": "altertable app",
-          "description": "Create, develop, check, build, and upgrade data apps.",
+          "description": "Create, develop, lint, build, and upgrade local data apps; validate, publish, and update data apps.",
           "usage": [
-            "altertable app create|dev|build|check|upgrade"
+            "altertable app create|dev|build|lint|upgrade|validate|publish|update"
           ],
           "aliases": [],
           "arguments": [],
@@ -813,15 +813,18 @@
           "examples": [
             "altertable app create my-app",
             "altertable app dev",
-            "altertable app check",
+            "altertable app lint",
             "altertable app build",
-            "altertable app upgrade"
+            "altertable app upgrade",
+            "altertable app validate --file index.tsx --queries queries.json",
+            "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json",
+            "altertable app update APP-1 --file index.tsx"
           ],
           "subcommands": [
             {
               "id": "altertable-app-create",
               "command": "altertable app create",
-              "description": "Create a data app project with a live connection check.",
+              "description": "Create a local data app project with a live connection check.",
               "usage": [
                 "altertable app create [options] <NAME>"
               ],
@@ -909,7 +912,7 @@
             {
               "id": "altertable-app-build",
               "command": "altertable app build",
-              "description": "Typecheck and build a data app without Altertable credentials.",
+              "description": "Typecheck and build a local data app without Altertable credentials.",
               "usage": [
                 "altertable app build [options]"
               ],
@@ -934,11 +937,11 @@
               "subcommands": []
             },
             {
-              "id": "altertable-app-check",
-              "command": "altertable app check",
-              "description": "Validate a data app's format, lint, types, contracts, build, and client credential boundary.",
+              "id": "altertable-app-lint",
+              "command": "altertable app lint",
+              "description": "Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.",
               "usage": [
-                "altertable app check [options]"
+                "altertable app lint [options]"
               ],
               "aliases": [],
               "arguments": [],
@@ -965,15 +968,15 @@
                 }
               ],
               "examples": [
-                "altertable app check",
-                "altertable app check --lakehouse"
+                "altertable app lint",
+                "altertable app lint --lakehouse"
               ],
               "subcommands": []
             },
             {
               "id": "altertable-app-upgrade",
               "command": "altertable app upgrade",
-              "description": "Update the data app package to the CLI's tested version.",
+              "description": "Update a local data app's package to the CLI's tested version.",
               "usage": [
                 "altertable app upgrade [options]"
               ],
@@ -994,6 +997,167 @@
               "examples": [
                 "altertable app upgrade",
                 "altertable app upgrade --dir ./my-app"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-validate",
+              "command": "altertable app validate",
+              "description": "Type-check and bundle a data app from files without saving.",
+              "usage": [
+                "altertable app validate [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "file",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to the single-file React source (index.tsx).",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "queries",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app validate --file index.tsx --queries queries.json"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-publish",
+              "command": "altertable app publish",
+              "description": "Create a data app from files.",
+              "usage": [
+                "altertable app publish [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "title",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Title of the data app.",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "file",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to the single-file React source (index.tsx).",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "queries",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "description",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Optional description of the data app.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json"
+              ],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-app-update",
+              "command": "altertable app update",
+              "description": "Update a data app from files. Omitted fields are left unchanged.",
+              "usage": [
+                "altertable app update [options] <SLUG>"
+              ],
+              "aliases": [],
+              "arguments": [
+                {
+                  "name": "slug",
+                  "aliases": [],
+                  "type": "positional",
+                  "description": "Data app slug to update (e.g. APP-1).",
+                  "required": true,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "positionalCompletion": "freeform"
+                }
+              ],
+              "options": [
+                {
+                  "name": "title",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "New title of the data app.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "file",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to replacement single-file React source (index.tsx).",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "queries",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to queries JSON. Replaces the full set when provided.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "description",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "New description of the data app.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                }
+              ],
+              "examples": [
+                "altertable app update APP-1 --file index.tsx",
+                "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json"
               ],
               "subcommands": []
             }

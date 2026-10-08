@@ -49,7 +49,7 @@ describe("app create", () => {
         "Set organization and environment in app.json.",
         "Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.",
         "altertable app dev",
-        "altertable app check --lakehouse",
+        "altertable app lint --lakehouse",
         "altertable app build",
       ],
     });
@@ -119,7 +119,7 @@ describe("app create", () => {
       organizationSlug: "altertable",
       nextSteps: [
         "altertable --profile altertable_production app dev",
-        "altertable --profile altertable_production app check",
+        "altertable --profile altertable_production app lint",
         "altertable --profile altertable_production app build",
       ],
     });
@@ -282,7 +282,7 @@ describe("app create", () => {
         expect(existsSync(join(directory, path)), `${name} links to missing ${path}`).toBe(true);
       }
     }
-    const result = await runCommandWithTestRuntime(["app", "check", "--dir", directory], {
+    const result = await runCommandWithTestRuntime(["app", "lint", "--dir", directory], {
       debug: false,
       json: false,
       agent: false,

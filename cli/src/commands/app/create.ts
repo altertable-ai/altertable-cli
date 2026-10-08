@@ -10,7 +10,7 @@ import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 export const appCreateCommand = defineCommand({
   metadata: {
     name: "create",
-    description: "Create a data app project with a live connection check.",
+    description: "Create a local data app project with a live connection check.",
     examples: [
       "altertable app create product-pulse",
       "altertable app create product-pulse --dir ./apps/product-pulse",
@@ -84,14 +84,14 @@ export const appCreateCommand = defineCommand({
     }
 
     const nextSteps = profileName
-      ? ["app dev", "app check", "app build"].map(
+      ? ["app dev", "app lint", "app build"].map(
           (command) => `altertable --profile ${profileName} ${command}`,
         )
       : [
           "Set organization and environment in app.json.",
           "Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.",
           "altertable app dev",
-          "altertable app check --lakehouse",
+          "altertable app lint --lakehouse",
           "altertable app build",
         ];
     const result = {

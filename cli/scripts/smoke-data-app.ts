@@ -39,7 +39,7 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
       ],
       app,
     );
-    await run([...command, "app", "check", "--dir", app], directory);
+    await run([...command, "app", "lint", "--dir", app], directory);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

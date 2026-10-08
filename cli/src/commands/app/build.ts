@@ -11,7 +11,7 @@ import {
 export const appBuildCommand = defineCommand({
   metadata: {
     name: "build",
-    description: "Typecheck and build a data app without Altertable credentials.",
+    description: "Typecheck and build a local data app without Altertable credentials.",
     examples: ["altertable app build", "altertable app build --dir ./my-app"],
   },
   args: {
