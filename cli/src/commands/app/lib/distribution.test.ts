@@ -71,7 +71,9 @@ test("app-owned authoring links resolve within the generated files", async () =>
     title: "Docs",
     scope: { organization: "Test", environment: "test" },
   });
-  expect(files["AGENTS.md"]).toContain("node_modules/@altertable/data-app/AGENTS.md");
+  expect(files["AGENTS.md"]).toContain(
+    "https://github.com/altertable-ai/data-app/blob/main/examples/starter-local-data-app/AGENTS.md",
+  );
   for (const [name, content] of Object.entries(files)) {
     if (!name.endsWith(".md")) continue;
     for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {

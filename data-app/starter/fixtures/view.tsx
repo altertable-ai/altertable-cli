@@ -1,8 +1,15 @@
 import { createDataClient } from "@altertable/data-app/client";
 import {
   createDataHooks,
+  DataApp,
+  DataSection,
+  Grid,
+  GridItem,
   injectDataAppStyles,
+  MetricWidget,
   mountDataApp,
+  Stack,
+  VisualizationWidget,
 } from "@altertable/data-app/react";
 import {
   defineDateRangeContract,
@@ -11,14 +18,8 @@ import {
   type DateRangeRequest,
 } from "@altertable/data-app/contract";
 import {
-  DataApp,
-  Grid,
-  GridItem,
-  Stack,
-  MetricWidget,
-  VisualizationWidget,
-  dateRangeVariable,
   createDataContext,
+  dateRangeVariable,
   defineDataIdentifiers,
 } from "@altertable/data-app/react";
 
@@ -40,17 +41,9 @@ const period = dateRangeVariable({
   comparison: true,
   defaultValue: { kind: "dates", start: "2026-03-10", end: "2026-03-12" },
 });
-const { defineDataView, useView } = createDataHooks<{
+const { defineDataView } = createDataHooks<{
   activity: DataOperation<DateRangeRequest, Activity>;
 }>(createDataClient());
-const activityView = defineDataView({
-  operation: "activity",
-  variables: { period },
-  input: ({ period }) => period,
-  date: { variable: "period", input: (input) => input },
-  isEmpty: (data) => data.features.length === 0,
-  empty: { title: "No activity in this range", description: "Choose another range." },
-});
 const identifiers = defineDataIdentifiers({
   tables: { events: { catalog: "product", schema: "analytics", name: "events" } },
   columns: {},
@@ -66,55 +59,67 @@ const context = createDataContext(defineQueryNames({ activity: "activity" }))({
     actions: { term: "Actions", definition: "Recorded product actions.", queryNames: ["activity"] },
   },
 });
-const actions = context.metric({ id: "actions", glossaryId: "actions", format: { kind: "count" } });
-const activityEvidence = context.evidence({ id: "activity", queryNames: ["activity"] });
-const content = activityView.content((state) => (
+const activityView = defineDataView({
+  dataContext: context,
+  operation: "activity",
+  variables: { period },
+  input: ({ period }) => period,
+  date: { variable: "period", input: (input) => input },
+  describeInput: (input) => period.describeInput(input),
+  isEmpty: (data) => data.features.length === 0,
+  emptyFallback: { title: "No activity in this range", description: "Choose another range." },
+});
+const features = activityView.dataset({
+  name: "Features",
+  select: (data) => data.features,
+  rowKey: (feature) => feature,
+  columns: { feature: { value: (feature) => feature } },
+  evidence: { id: "activity", queryNames: ["activity"] },
+  emptyFallback: { title: "No features" },
+});
+const actions = activityView.metric(
+  { id: "actions", glossaryId: "actions", format: { kind: "count" } },
+  (data) => ({ current: data.count }),
+);
+const content = activityView.content((source) => (
   <Stack data-testid="shared-content">
-    <p>{state.loading ? "Loading activity…" : `Results for ${period.describeInput(state.input)}`}</p>
+    <p>{source.loading ? "Loading activity…" : `Results for ${source.scope.value}`}</p>
     <Grid columns={3} minItemWidth="compact" data-testid="shared-grid">
       <GridItem span={2} data-testid="shared-primary">
         <VisualizationWidget
           title="Activity across product features and organizations"
-          evidence={activityEvidence}
-          reading={state.select((data) => data.features)}
-          isEmpty={(items) => items.length === 0}
-          empty={{ title: "No features" }}
-          skeleton={{ variant: "ranking", rows: 3 }}
+          dataset={features}
+          source={source}
         >
-          {(features) => <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul>}
+          {(rows) => <ul>{rows.map((feature) => <li key={feature}>{feature}</li>)}</ul>}
         </VisualizationWidget>
       </GridItem>
       <GridItem data-testid="shared-support">
-        <MetricWidget metric={actions} reading={state.metric((data) => ({ current: data.count }))} />
+        <MetricWidget metric={actions} source={source} />
       </GridItem>
     </Grid>
   </Stack>
 ));
 function Fixture() {
-  const activity = useView(activityView);
   return (
     <DataApp
       config={config}
-      request={activity}
-      dataContext={context}
-      aboutEmpty={{ glossary: { title: "No definitions" }, queries: { title: "No SQL" } }}
-      story={({ data }) => [
-        context.finding({
+      view={activityView}
+      datasets={[features]}
+      story={(source) => {
+        const reading = actions.read(source);
+        return [
+          {
           id: "activity",
-          headline: `${data.count} recorded actions`,
-          visual: <p>{data.features.join(", ")}</p>,
-          evidence: { id: "activity", queryNames: ["activity"] },
-        }),
-      ]}
-      csvExport={({ data }) => ({
-        filename: "activity.csv",
-        tables: [
-          { name: "Actions", columns: ["Count"], rows: [[data.count]] },
-          { name: "Features", columns: ["Feature"], rows: data.features.map((feature) => [feature]) },
-        ],
-      })}
-      {...content}
-    />
+          headline: `${reading.value.current} recorded actions`,
+          visual: <MetricWidget metric={actions} source={source} />,
+          evidence: actions,
+        },
+        ];
+      }}
+    >
+      <DataSection content={content} />
+    </DataApp>
   );
 }
 injectDataAppStyles();

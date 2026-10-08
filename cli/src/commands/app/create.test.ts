@@ -78,18 +78,14 @@ describe("app create", () => {
     expect(paths.some((path) => path.startsWith(".altertable/"))).toBe(false);
     expect(paths).toContain("src/App.tsx");
     expect(paths).toContain(".oxlintrc.json");
-    expect(paths).toContain("docs/data.md");
     expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
-      "node_modules/@altertable/data-app/AGENTS.md",
+      "https://github.com/altertable-ai/data-app/blob/main/examples/starter-local-data-app/AGENTS.md",
     );
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain(
       "Connectivity-only screen",
     );
     expect(readFileSync(join(directory, "src/operations.ts"), "utf8")).toContain(
       "supplies no analytical result",
-    );
-    expect(readFileSync(join(directory, "AGENTS.md"), "utf8")).toContain(
-      "connectivity screen is scaffolding, not an example analysis",
     );
     expect(paths.some((path) => /tests|fixtures|node_modules|\.txt$/.test(path))).toBe(false);
   });
