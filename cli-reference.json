@@ -1029,21 +1029,10 @@
                   "repeatable": false,
                   "scope": "command",
                   "values": []
-                },
-                {
-                  "name": "variables",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to variables JSON array. Defaults to no variables.",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
                 }
               ],
               "examples": [
-                "altertable app validate --file index.tsx --queries queries.json",
-                "altertable app validate --file index.tsx --queries queries.json --variables variables.json"
+                "altertable app validate --file index.tsx --queries queries.json"
               ],
               "subcommands": []
             },
@@ -1088,16 +1077,6 @@
                   "values": []
                 },
                 {
-                  "name": "variables",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to variables JSON array. Defaults to no variables.",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
                   "name": "description",
                   "aliases": [],
                   "type": "string",
@@ -1109,8 +1088,7 @@
                 }
               ],
               "examples": [
-                "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json",
-                "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json --variables variables.json"
+                "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json"
               ],
               "subcommands": []
             },
@@ -1161,16 +1139,6 @@
                   "aliases": [],
                   "type": "string",
                   "description": "Path to queries JSON. Replaces the full set when provided.",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
-                  "name": "variables",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to variables JSON. Replaces the full set when provided.",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",
