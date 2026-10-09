@@ -1,3 +1,4 @@
+import { app, calendar, operations } from "./activity.ts";
 import { createDataClient } from "@altertable/data-app/client";
 import {
   createDataHooks,
@@ -11,39 +12,20 @@ import {
   Stack,
   VisualizationWidget,
 } from "@altertable/data-app/react";
-import {
-  defineDateRangeContract,
-  defineQueryNames,
-  type DataOperation,
-  type DateRangeRequest,
-} from "@altertable/data-app/contract";
+import { defineQueryNames } from "@altertable/data-app/contract";
 import {
   createDataContext,
   dateRangeVariable,
   defineDataIdentifiers,
 } from "@altertable/data-app/react";
 
-type Activity = { count: number; features: string[] };
-const config = {
-  appearance: { theme: "light" as const },
-  title: "Usage exploration",
-  scope: { organization: "Acme", environment: "production" },
-};
-const calendar = defineDateRangeContract({
-  minDate: "2026-01-01",
-  maxDate: "2026-03-31",
-  maxRangeDays: 31,
-  timeZone: "UTC",
-});
 const period = dateRangeVariable({
   key: "period",
   contract: calendar,
   comparison: true,
   defaultValue: { kind: "dates", start: "2026-03-10", end: "2026-03-12" },
 });
-const { defineDataView } = createDataHooks<{
-  activity: DataOperation<DateRangeRequest, Activity>;
-}>(createDataClient());
+const { defineDataView } = createDataHooks(createDataClient<typeof operations>());
 const identifiers = defineDataIdentifiers({
   tables: { events: { catalog: "product", schema: "analytics", name: "events" } },
   columns: {},
@@ -91,7 +73,13 @@ const content = activityView.content((source) => (
           dataset={features}
           source={source}
         >
-          {(rows) => <ul>{rows.map((feature) => <li key={feature}>{feature}</li>)}</ul>}
+          {(rows) => (
+            <ul>
+              {rows.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+          )}
         </VisualizationWidget>
       </GridItem>
       <GridItem data-testid="shared-support">
@@ -103,18 +91,17 @@ const content = activityView.content((source) => (
 function Fixture() {
   return (
     <DataApp
-      config={config}
       view={activityView}
       datasets={[features]}
       story={(source) => {
         const reading = actions.read(source);
         return [
           {
-          id: "activity",
-          headline: `${reading.value.current} recorded actions`,
-          visual: <MetricWidget metric={actions} source={source} />,
-          evidence: actions,
-        },
+            id: "activity",
+            headline: `${reading.value.current} recorded actions`,
+            visual: <MetricWidget metric={actions} source={source} />,
+            evidence: actions,
+          },
         ];
       }}
     >
@@ -123,4 +110,4 @@ function Fixture() {
   );
 }
 injectDataAppStyles();
-mountDataApp({ config, component: Fixture });
+mountDataApp({ app, component: Fixture });
