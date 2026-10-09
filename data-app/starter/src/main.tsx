@@ -3,4 +3,4 @@ import { App } from "#app/App.tsx";
 import app from "#app/config.ts";
 
 injectDataAppStyles();
-mountDataApp({ config: app, component: App });
+mountDataApp({ app, component: App });

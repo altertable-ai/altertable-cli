@@ -156,7 +156,9 @@ describe("app create", () => {
       organization: "Cousteau",
       environment: "production",
     });
-    expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).toContain("config={app}");
+    expect(readFileSync(join(directory, "src/main.tsx"), "utf8")).toContain(
+      "mountDataApp({ app, component: App })",
+    );
     expect(readFileSync(join(directory, "src/App.tsx"), "utf8")).not.toContain("{{APP_TITLE}}");
   });
 
