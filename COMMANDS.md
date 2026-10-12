@@ -426,9 +426,9 @@ altertable app create|dev|build|lint|upgrade|validate|publish|update
 - `build` — Typecheck and build a local data app without Altertable credentials.
 - `lint` — Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
 - `upgrade` — Update a local data app's package to the CLI's tested version.
-- `validate` — Type-check and bundle a data app from files without saving.
-- `publish` — Create a data app from files.
-- `update` — Update a data app from files. Omitted fields are left unchanged.
+- `validate` — Type-check and bundle a data app from source without saving.
+- `publish` — Create a data app from source.
+- `update` — Update a data app from source. Omitted fields are left unchanged.
 
 **Examples**
 
@@ -438,8 +438,8 @@ altertable app dev
 altertable app lint
 altertable app build
 altertable app upgrade
-altertable app validate --file index.tsx --queries queries.json
-altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json
+altertable app validate --file index.tsx
+altertable app publish --title 'Revenue explorer' --file index.tsx
 altertable app update APP-1 --file index.tsx
 ```
 
@@ -571,7 +571,7 @@ altertable app upgrade --dir ./my-app
 
 #### `altertable app validate`
 
-Type-check and bundle a data app from files without saving.
+Type-check and bundle a data app from source without saving.
 
 **Usage**
 
@@ -583,18 +583,17 @@ altertable app validate [options]
 
 | Option | Description |
 | --- | --- |
-| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
-| `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp. Required. |
 
 **Examples**
 
 ```bash
-altertable app validate --file index.tsx --queries queries.json
+altertable app validate --file index.tsx
 ```
 
 #### `altertable app publish`
 
-Create a data app from files.
+Create a data app from source.
 
 **Usage**
 
@@ -607,19 +606,18 @@ altertable app publish [options]
 | Option | Description |
 | --- | --- |
 | `--title <TITLE>` | Title of the data app. Required. |
-| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
-| `--queries <QUERIES>` | Path to queries JSON (object of id → SQL, or [{id, sql}]). Required. |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp. Required. |
 | `--description <DESCRIPTION>` | Optional description of the data app. |
 
 **Examples**
 
 ```bash
-altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json
+altertable app publish --title 'Revenue explorer' --file index.tsx
 ```
 
 #### `altertable app update`
 
-Update a data app from files. Omitted fields are left unchanged.
+Update a data app from source. Omitted fields are left unchanged.
 
 **Usage**
 
@@ -638,15 +636,14 @@ altertable app update [options] <SLUG>
 | Option | Description |
 | --- | --- |
 | `--title <TITLE>` | New title of the data app. |
-| `--file <FILE>` | Path to replacement single-file React source (index.tsx). |
-| `--queries <QUERIES>` | Path to queries JSON. Replaces the full set when provided. |
+| `--file <FILE>` | Path to replacement single-file React source (index.tsx). Replaces the queries with those the file declares. |
 | `--description <DESCRIPTION>` | New description of the data app. |
 
 **Examples**
 
 ```bash
 altertable app update APP-1 --file index.tsx
-altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json
+altertable app update APP-1 --title 'Revenue explorer' --file index.tsx
 ```
 
 ### `altertable update`
