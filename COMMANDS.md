@@ -583,7 +583,7 @@ altertable app validate [options]
 
 | Option | Description |
 | --- | --- |
-| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp. Required. |
 
 **Examples**
 
@@ -606,7 +606,7 @@ altertable app publish [options]
 | Option | Description |
 | --- | --- |
 | `--title <TITLE>` | Title of the data app. Required. |
-| `--file <FILE>` | Path to the single-file React source (index.tsx). Required. |
+| `--file <FILE>` | Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp. Required. |
 | `--description <DESCRIPTION>` | Optional description of the data app. |
 
 **Examples**
@@ -636,7 +636,7 @@ altertable app update [options] <SLUG>
 | Option | Description |
 | --- | --- |
 | `--title <TITLE>` | New title of the data app. |
-| `--file <FILE>` | Path to replacement single-file React source (index.tsx). |
+| `--file <FILE>` | Path to replacement single-file React source (index.tsx). Replaces the queries with those the file declares. |
 | `--description <DESCRIPTION>` | New description of the data app. |
 
 **Examples**
