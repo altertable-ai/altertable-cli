@@ -7,7 +7,6 @@ import { sendHttp } from "@/lib/http-request.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import {
   buildDataAppHttpRequest,
-  readQueriesFile,
   readRequiredFile,
   type RemoteDataAppPayload,
   type PublishedDataApp,
@@ -16,10 +15,10 @@ import {
 export const appUpdateCommand = defineCommand({
   metadata: {
     name: "update",
-    description: "Update a data app from files. Omitted fields are left unchanged.",
+    description: "Update a data app from source. Omitted fields are left unchanged.",
     examples: [
       "altertable app update APP-1 --file index.tsx",
-      "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json",
+      "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx",
     ],
   },
   args: {
@@ -31,12 +30,8 @@ export const appUpdateCommand = defineCommand({
     title: { type: "string", description: "New title of the data app." },
     file: {
       type: "string",
-      description: "Path to replacement single-file React source (index.tsx).",
-      completion: "file",
-    },
-    queries: {
-      type: "string",
-      description: "Path to queries JSON. Replaces the full set when provided.",
+      description:
+        "Path to replacement single-file React source (index.tsx). Replaces the queries with those the file declares.",
       completion: "file",
     },
     description: { type: "string", description: "New description of the data app." },
@@ -48,7 +43,7 @@ export const appUpdateCommand = defineCommand({
     const slug = stringArg(args, "slug");
     const body = await updatePayload(args);
     if (Object.keys(body).length === 0) {
-      throw new CliError("Provide at least one of --title, --description, --file, or --queries.");
+      throw new CliError("Provide at least one of --title, --description, or --file.");
     }
     const response = parseApiJson(
       await sendHttp(buildDataAppHttpRequest(env, "PATCH", `/data_apps/${slug}`, body), execution),
@@ -70,10 +65,8 @@ async function updatePayload(args: Record<string, unknown>): Promise<RemoteDataA
   const title = optionalStringArg(args, "title");
   const description = optionalStringArg(args, "description");
   const file = optionalStringArg(args, "file");
-  const queries = optionalStringArg(args, "queries");
   if (title !== undefined) body.title = title;
   if (description !== undefined) body.description = description;
   if (file !== undefined) body.index_tsx = await readRequiredFile(file, "source");
-  if (queries !== undefined) body.queries = await readQueriesFile(queries);
   return body;
 }

@@ -7,7 +7,6 @@ import { parseApiJson } from "@/lib/parse-api-json.ts";
 import {
   buildDataAppHttpRequest,
   formatValidationSummary,
-  readQueriesFile,
   readRequiredFile,
   validationExitCode,
   type ValidateDataAppResponse,
@@ -16,19 +15,14 @@ import {
 export const appValidateCommand = defineCommand({
   metadata: {
     name: "validate",
-    description: "Type-check and bundle a data app from files without saving.",
-    examples: ["altertable app validate --file index.tsx --queries queries.json"],
+    description: "Type-check and bundle a data app from source without saving.",
+    examples: ["altertable app validate --file index.tsx"],
   },
   args: {
     file: {
       type: "string",
-      description: "Path to the single-file React source (index.tsx).",
-      required: true,
-      completion: "file",
-    },
-    queries: {
-      type: "string",
-      description: "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+      description:
+        "Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp.",
       required: true,
       completion: "file",
     },
@@ -38,12 +32,10 @@ export const appValidateCommand = defineCommand({
       requirement: "Validating a data app requires the management API",
     });
     const indexTsx = await readRequiredFile(stringArg(args, "file"), "source");
-    const queries = await readQueriesFile(stringArg(args, "queries"));
     const response = parseApiJson(
       await sendHttp(
         buildDataAppHttpRequest(env, "POST", "/data_apps/validate", {
           index_tsx: indexTsx,
-          queries,
         }),
         execution,
       ),
