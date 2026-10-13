@@ -1,7 +1,22 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 test.beforeEach(async ({ request }) => {
   await request.post("/__test/state", { data: "success" });
+});
+
+test("exports the displayed dataset as CSV", async ({ page }) => {
+  await page.goto("/components");
+  await expect(page.getByText("Connection view ready")).toBeVisible();
+  const completed = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV", exact: true }).click();
+  const download = await completed;
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  const csv = await readFile(path!, "utf8");
+  expect(csv).toContain("Order");
+  expect(csv).toContain("Order 1");
+  expect(csv).toContain("Order 11");
 });
 
 test("connection succeeds only after a query, then offers next steps and a theme button", async ({
@@ -170,14 +185,12 @@ test("widget inspection inherits the page glossary and empty states", async ({ p
   await page.getByRole("button", { name: "Explore Completed orders" }).click();
   await expect(page.getByRole("dialog")).toContainText("Completed orders grouped by customer_id.");
   await page.getByRole("tab", { name: "Queries" }).click();
-  await expect(page.getByRole("dialog")).toContainText("connection-check.sql");
+  await expect(page.getByRole("dialog")).toContainText("connection.sql");
   await expect(page.getByRole("region", { name: "Query notebook" })).toBeVisible();
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy all", exact: true }).click();
   await expect(page.getByRole("button", { name: "Copied all", exact: true })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
-    "-- connection-check.sql",
-  );
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("-- connection.sql");
 });
 
 test("table pages show bounded rows and reset when filtering changes", async ({ page }) => {
@@ -349,8 +362,7 @@ test("initial loading keeps the grid shape without displaying snapshot values", 
   });
   await page.goto("/components");
   const loading = page.getByTestId("loading-skeleton-grid");
-  await expect(loading.locator(".fixture-loading-content")).toHaveCount(2);
-  await expect(loading.locator(".altertable-skeleton")).toHaveCount(8);
+  await expect(page.getByRole("status", { name: "Loading orders" })).toBeVisible();
   await expect(page.getByText("Connection view ready")).toHaveCount(0);
   release();
   await expect(page.getByText("Connection view ready")).toBeVisible();

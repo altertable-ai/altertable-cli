@@ -1,9 +1,6 @@
+import { defineDataApp } from "@altertable/data-app";
 import { createDataClient } from "@altertable/data-app/client";
-import {
-  connectionCheck,
-  connectionQueryNames,
-  defineDateRangeContract,
-} from "@altertable/data-app/contract";
+import { connectionCheck, defineDateRangeContract } from "@altertable/data-app/contract";
 import {
   createDataContext,
   createDataHooks,
@@ -30,15 +27,16 @@ import {
 import type { DataReading } from "@altertable/data-app/react/ui";
 import { useState } from "react";
 
-const { defineDataView } = createDataHooks<{
-  connection: ReturnType<typeof connectionCheck>;
-}>(createDataClient());
-
-const config = {
+const app = defineDataApp({
   title: "Orders exploration",
+  description: "Completed orders in production.",
   scope: { organization: "Acme", environment: "production" },
-  appearance: { theme: "light" as const },
-};
+  appearance: { theme: "light" },
+  queries: { connection: { statement: "SELECT 1 AS connection_check", params: {} } },
+});
+const operations = { connection: connectionCheck(app.queries) };
+const connectionQueryNames = operations.connection.queryNames;
+const { defineDataView } = createDataHooks(createDataClient<typeof operations>());
 const identifiers = defineDataIdentifiers({
   tables: {
     orders: { catalog: "commerce", schema: "sales", name: "orders" },
@@ -116,24 +114,26 @@ type ConnectionSource = {
 const content = connectionView.content((source) => {
   if (source.loading)
     return (
-      <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
-        <GridItem span={2}>
-          <div className="fixture-loading-content">
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-          </div>
-        </GridItem>
-        <GridItem>
-          <div className="fixture-loading-content">
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-          </div>
-        </GridItem>
-      </Grid>
+      <output aria-label="Loading orders" style={{ display: "block" }}>
+        <Grid columns={3} minItemWidth="compact" data-testid="loading-skeleton-grid">
+          <GridItem span={2}>
+            <div className="fixture-loading-content">
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+            </div>
+          </GridItem>
+          <GridItem>
+            <div className="fixture-loading-content">
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+              <Skeleton style={{ display: "block", height: 16 }} />
+            </div>
+          </GridItem>
+        </Grid>
+      </output>
     );
   return <FixtureContent source={source} />;
 });
@@ -213,7 +213,6 @@ function FixtureContent({ source }: { source: ConnectionSource }) {
 function Fixture() {
   return (
     <DataApp
-      config={config}
       description="Completed orders in production."
       view={connectionView}
       datasets={[orderDataset]}
@@ -242,4 +241,4 @@ function Fixture() {
 }
 
 injectDataAppStyles();
-mountDataApp({ config, component: Fixture });
+mountDataApp({ app, component: Fixture });

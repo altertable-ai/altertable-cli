@@ -1,14 +1,27 @@
 import starter from "../starter/src/index.html";
 import view from "../starter/fixtures/view.html";
 import components from "../starter/fixtures/index.html";
+import { operations as activityOperations } from "../starter/fixtures/activity.ts";
 import { createDataHandler } from "@altertable/data-app/server";
 import { DataSourceError } from "@altertable/data-app/contract";
 import { operations } from "../starter/src/operations.ts";
 let fail = false;
-const handler = createDataHandler(operations, async () => ({
+const handler = createDataHandler({ ...operations, ...activityOperations }, async () => ({
   canDiscloseSql: true,
   lakehouse: {
     async queryAll(statement, options) {
+      if (statement.startsWith("SELECT 120 AS count")) {
+        if (!options.params?.start || !options.params.end)
+          throw new Error("Missing activity params");
+        if (fail) throw new DataSourceError("unavailable");
+        return {
+          columns: [{ name: "count" }, { name: "feature" }],
+          rows: [
+            [120, "Queries"],
+            [120, "Insights"],
+          ],
+        };
+      }
       if (statement !== "SELECT 1 AS connection_check" || options.limit !== 1)
         throw new Error("Unexpected connection query");
       if (fail) throw new DataSourceError("unavailable");
