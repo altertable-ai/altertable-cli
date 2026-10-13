@@ -6,7 +6,6 @@ import { sendHttp } from "@/lib/http-request.ts";
 import { parseApiJson } from "@/lib/parse-api-json.ts";
 import {
   buildDataAppHttpRequest,
-  readQueriesFile,
   readRequiredFile,
   type PublishedDataApp,
 } from "@/commands/app/lib/remote.ts";
@@ -14,22 +13,15 @@ import {
 export const appPublishCommand = defineCommand({
   metadata: {
     name: "publish",
-    description: "Create a data app from files.",
-    examples: [
-      "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json",
-    ],
+    description: "Create a data app from source.",
+    examples: ["altertable app publish --title 'Revenue explorer' --file index.tsx"],
   },
   args: {
     title: { type: "string", description: "Title of the data app.", required: true },
     file: {
       type: "string",
-      description: "Path to the single-file React source (index.tsx).",
-      required: true,
-      completion: "file",
-    },
-    queries: {
-      type: "string",
-      description: "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+      description:
+        "Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp.",
       required: true,
       completion: "file",
     },
@@ -45,7 +37,6 @@ export const appPublishCommand = defineCommand({
         buildDataAppHttpRequest(env, "POST", "/data_apps", {
           title,
           index_tsx: await readRequiredFile(stringArg(args, "file"), "source"),
-          queries: await readQueriesFile(stringArg(args, "queries")),
           description: optionalStringArg(args, "description"),
         }),
         execution,

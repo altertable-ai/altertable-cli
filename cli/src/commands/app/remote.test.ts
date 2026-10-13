@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { parseQueries } from "@/commands/app/lib/remote.ts";
 import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
 import {
   createLakehouseTestWorkspace,
@@ -24,29 +23,13 @@ afterEach(() => {
 
 const INDEX_TSX = "export default function App() { return <div>Hello</div>; }\n";
 
-function writeAppFiles() {
-  const file = workspace.writeFile("index.tsx", INDEX_TSX);
-  const queries = workspace.writeFile(
-    "queries.json",
-    JSON.stringify({ "top-stories": "SELECT id FROM stories" }),
-  );
-  return { file, queries };
+function writeAppFile() {
+  return workspace.writeFile("index.tsx", INDEX_TSX);
 }
-
-describe("remote query files", () => {
-  test("accepts an id-to-sql object and a REST query array", () => {
-    expect(parseQueries({ "top-stories": "SELECT 1" })).toEqual([
-      { id: "top-stories", sql: "SELECT 1" },
-    ]);
-    expect(parseQueries([{ id: "top-stories", sql: "SELECT 1" }])).toEqual([
-      { id: "top-stories", sql: "SELECT 1" },
-    ]);
-  });
-});
 
 describe("app validate", () => {
   test("posts the source from disk and exits non-zero when the API returns errors", async () => {
-    const { file, queries } = writeAppFiles();
+    const file = writeAppFile();
     workspace.writeMocks([
       {
         urlPattern: "/data_apps/validate",
@@ -58,10 +41,11 @@ describe("app validate", () => {
       },
     ]);
 
-    const result = await runCommandWithTestRuntime(
-      ["app", "validate", "--file", file, "--queries", queries],
-      { debug: false, json: true, agent: false },
-    );
+    const result = await runCommandWithTestRuntime(["app", "validate", "--file", file], {
+      debug: false,
+      json: true,
+      agent: false,
+    });
 
     expect(result.exitCode).toBe(6);
     expect(JSON.parse(result.stdout[0]!)).toEqual({
@@ -70,12 +54,11 @@ describe("app validate", () => {
     });
     expect(JSON.parse(workspace.readPayloads()[0]!)).toEqual({
       index_tsx: INDEX_TSX,
-      queries: [{ id: "top-stories", sql: "SELECT id FROM stories" }],
     });
   });
 
   test("reports a valid app", async () => {
-    const { file, queries } = writeAppFiles();
+    const file = writeAppFile();
     workspace.writeMocks([
       {
         urlPattern: "/data_apps/validate",
@@ -84,10 +67,11 @@ describe("app validate", () => {
       },
     ]);
 
-    const result = await runCommandWithTestRuntime(
-      ["app", "validate", "--file", file, "--queries", queries],
-      { debug: false, json: false, agent: false },
-    );
+    const result = await runCommandWithTestRuntime(["app", "validate", "--file", file], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout.join("\n")).toContain("Data app is valid.");
@@ -95,8 +79,8 @@ describe("app validate", () => {
 });
 
 describe("app publish", () => {
-  test("creates a data app from files", async () => {
-    const { file, queries } = writeAppFiles();
+  test("creates a data app from source", async () => {
+    const file = writeAppFile();
     workspace.writeMocks([
       {
         urlPattern: "/environments/env-1/data_apps",
@@ -112,7 +96,7 @@ describe("app publish", () => {
     ]);
 
     const result = await runCommandWithTestRuntime(
-      ["app", "publish", "--title", "Revenue explorer", "--file", file, "--queries", queries],
+      ["app", "publish", "--title", "Revenue explorer", "--file", file],
       { debug: false, json: true, agent: false },
     );
 
@@ -130,7 +114,7 @@ describe("app publish", () => {
 
 describe("app update", () => {
   test("patches only the provided fields", async () => {
-    const { file } = writeAppFiles();
+    const file = writeAppFile();
     workspace.writeMocks([
       {
         urlPattern: "/data_apps/APP-1",
@@ -161,7 +145,7 @@ describe("app update", () => {
     );
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      "Provide at least one of --title, --description, --file, or --queries.",
+      "Provide at least one of --title, --description, or --file.",
     );
   });
 });

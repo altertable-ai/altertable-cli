@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "1.10.0",
+  "cliVersion": "1.10.1",
   "globalOptions": [
     {
       "name": "help",
@@ -816,8 +816,8 @@
             "altertable app lint",
             "altertable app build",
             "altertable app upgrade",
-            "altertable app validate --file index.tsx --queries queries.json",
-            "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json",
+            "altertable app validate --file index.tsx",
+            "altertable app publish --title 'Revenue explorer' --file index.tsx",
             "altertable app update APP-1 --file index.tsx"
           ],
           "subcommands": [
@@ -1003,7 +1003,7 @@
             {
               "id": "altertable-app-validate",
               "command": "altertable app validate",
-              "description": "Type-check and bundle a data app from files without saving.",
+              "description": "Type-check and bundle a data app from source without saving.",
               "usage": [
                 "altertable app validate [options]"
               ],
@@ -1014,17 +1014,7 @@
                   "name": "file",
                   "aliases": [],
                   "type": "string",
-                  "description": "Path to the single-file React source (index.tsx).",
-                  "required": true,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
-                  "name": "queries",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+                  "description": "Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp.",
                   "required": true,
                   "repeatable": false,
                   "scope": "command",
@@ -1032,14 +1022,14 @@
                 }
               ],
               "examples": [
-                "altertable app validate --file index.tsx --queries queries.json"
+                "altertable app validate --file index.tsx"
               ],
               "subcommands": []
             },
             {
               "id": "altertable-app-publish",
               "command": "altertable app publish",
-              "description": "Create a data app from files.",
+              "description": "Create a data app from source.",
               "usage": [
                 "altertable app publish [options]"
               ],
@@ -1060,17 +1050,7 @@
                   "name": "file",
                   "aliases": [],
                   "type": "string",
-                  "description": "Path to the single-file React source (index.tsx).",
-                  "required": true,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
-                  "name": "queries",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to queries JSON (object of id → SQL, or [{id, sql}]).",
+                  "description": "Path to the single-file React source (index.tsx). Queries are declared in the file via defineDataApp.",
                   "required": true,
                   "repeatable": false,
                   "scope": "command",
@@ -1088,14 +1068,14 @@
                 }
               ],
               "examples": [
-                "altertable app publish --title 'Revenue explorer' --file index.tsx --queries queries.json"
+                "altertable app publish --title 'Revenue explorer' --file index.tsx"
               ],
               "subcommands": []
             },
             {
               "id": "altertable-app-update",
               "command": "altertable app update",
-              "description": "Update a data app from files. Omitted fields are left unchanged.",
+              "description": "Update a data app from source. Omitted fields are left unchanged.",
               "usage": [
                 "altertable app update [options] <SLUG>"
               ],
@@ -1128,17 +1108,7 @@
                   "name": "file",
                   "aliases": [],
                   "type": "string",
-                  "description": "Path to replacement single-file React source (index.tsx).",
-                  "required": false,
-                  "repeatable": false,
-                  "scope": "command",
-                  "values": []
-                },
-                {
-                  "name": "queries",
-                  "aliases": [],
-                  "type": "string",
-                  "description": "Path to queries JSON. Replaces the full set when provided.",
+                  "description": "Path to replacement single-file React source (index.tsx). Replaces the queries with those the file declares.",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",
@@ -1157,7 +1127,7 @@
               ],
               "examples": [
                 "altertable app update APP-1 --file index.tsx",
-                "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx --queries queries.json"
+                "altertable app update APP-1 --title 'Revenue explorer' --file index.tsx"
               ],
               "subcommands": []
             }
