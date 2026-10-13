@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.11.0](https://github.com/altertable-ai/altertable-cli/compare/v1.10.1...v1.11.0) (2026-10-13)
+
+
+### Features
+
+* **apps:** migrate local apps to data-app 0.68.0 ([#136](https://github.com/altertable-ai/altertable-cli/issues/136)) ([c2cf6c5](https://github.com/altertable-ai/altertable-cli/commit/c2cf6c58c8fa00bc11d24462e3a82157a7e971a3))
+
 ## [1.10.1](https://github.com/altertable-ai/altertable-cli/compare/v1.10.0...v1.10.1) (2026-10-12)
 
 
