@@ -1,3 +1,6 @@
+import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
+import { span } from "@/ui/document.ts";
+import { renderDisplayText } from "@/ui/terminal/styles.ts";
 import { VERSION } from "@/version.ts";
 import { asCliArgString } from "@/lib/cli-args.ts";
 import { writeCommandOutput } from "@/lib/command-output.ts";
@@ -119,16 +122,72 @@ export async function executeUpdateCommand(
     return;
   }
 
-  sink.writeMetadata([`Updating altertable to ${result.latest_version}`]);
+  if (!sink.json) {
+    sink.writeMetadata([formatUpdateAnnouncement(result)]);
+  }
   const installed = await dependencies.installCliUpdate(result.latest_version, {
     stdio: sink.json ? "pipe" : "inherit",
   });
   await writeCommandOutput(
     {
-      kind: "ack",
+      kind: "normalized",
       data: installed,
-      metadataMessage: `altertable ${installed.verified_version} installed.`,
+      humanText: formatInstalledUpdate(result, installed.verified_version),
     },
     sink,
   );
+}
+
+function formatUpdateAnnouncement(result: UpdateCheckResult): string {
+  if (result.update_available) {
+    return renderDisplayText([
+      span("Altertable CLI ", "strong"),
+      span(`v${result.latest_version}`, "accent"),
+      span(" is out! You're on "),
+      span(`v${result.current_version}`, "string"),
+    ]);
+  }
+
+  if (compareVersions(result.latest_version, result.current_version) === 0) {
+    return renderDisplayText([
+      span("Reinstalling Altertable CLI ", "strong"),
+      span(`v${result.current_version}`, "accent"),
+      span("."),
+    ]);
+  }
+
+  return renderDisplayText([
+    span("Downgrading Altertable CLI to ", "strong"),
+    span(`v${result.latest_version}`, "accent"),
+    span(". You're on "),
+    span(`v${result.current_version}`, "string"),
+  ]);
+}
+
+function formatInstalledUpdate(result: UpdateCheckResult, installedVersion: string): string {
+  const repositoryUrl = `https://github.com/${CLI_PACKAGE_METADATA.repositorySlug}`;
+  const version = `v${normalizeVersion(installedVersion)}`;
+  const currentVersion = `v${normalizeVersion(result.current_version)}`;
+  const comparison = compareVersions(installedVersion, result.current_version);
+  let outcome = "Reinstalled.";
+  if (comparison > 0) {
+    outcome = "Upgraded.";
+  } else if (comparison < 0) {
+    outcome = "Downgraded.";
+  }
+  const lines = [
+    outcome,
+    "",
+    `Release notes for Altertable CLI ${version}:`,
+    "",
+    renderDisplayText([span(`  ${repositoryUrl}/releases/tag/${version}`, "accent")]),
+    "",
+    "Report any bugs:",
+    "",
+    `  ${repositoryUrl}/issues`,
+  ];
+  if (comparison !== 0) {
+    lines.push("", "Commit log:", "", `  ${repositoryUrl}/compare/${currentVersion}...${version}`);
+  }
+  return lines.join("\n");
 }
