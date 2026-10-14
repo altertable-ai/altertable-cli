@@ -45,6 +45,7 @@
     "knip": "knip --no-config-hints",
     "knip:production": "knip --production --no-config-hints",
     "data-app:check": "bun run scripts/check-data-app.ts",
+    "data-app:test:file-preview": "bun test ./scripts/test-file-preview.ts",
     "data-app:test:browser": "cd ../data-app/tests && bun run test"
   },
   "dependencies": {

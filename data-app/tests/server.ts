@@ -30,6 +30,8 @@ const handler = createDataHandler({ ...operations, ...activityOperations }, asyn
   },
 }));
 Bun.serve({
+  // Exercise the shipped UI without Bun's development error overlay intercepting browser input.
+  development: false,
   hostname: "127.0.0.1",
   port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
   routes: { "/": starter, "/components": components, "/view": view },

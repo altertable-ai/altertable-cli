@@ -179,4 +179,27 @@ describe("app commands", () => {
     expect(build.exitCode).toBe(1);
     expect(existsSync(join(directory, "build.json"))).toBe(false);
   });
+
+  test("dev validates a single file before preparing its preview", async () => {
+    const file = workspace.writeFile(
+      "index.tsx",
+      `import { defineDataApp } from "@altertable/data-app"; defineDataApp({ scope: { organization: "acme", environment: "staging" } });`,
+    );
+    async function failure(args: string[]): Promise<unknown> {
+      return runAppCommand(["app", "dev", ...args]).catch((error: unknown) => error);
+    }
+    function message(text: string) {
+      return { message: expect.stringContaining(text) };
+    }
+
+    expect(await failure(["--file", file])).toMatchObject(message("data app file scope"));
+    expect(await failure(["--dir", directory, "--file", file])).toMatchObject(
+      message("either --dir or --file"),
+    );
+    expect(await failure(["--file", ""])).toMatchObject(message("--file requires a file path"));
+    expect(await failure(["--file", join(directory, "missing.tsx")])).toMatchObject(
+      message("Could not read source"),
+    );
+    expect(await failure(["--file", directory])).toMatchObject(message("Could not read source"));
+  });
 });

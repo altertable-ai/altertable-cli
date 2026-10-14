@@ -17,10 +17,15 @@ afterEach(async () => {
   );
 });
 
-test("distribution embeds a deterministic starter with an exact package pin and no runtime", async () => {
+test("distribution embeds deterministic app templates without vendoring the package runtime", async () => {
   const payload = await readDataAppPayload();
   expect(await readDataAppPayload()).toEqual(payload);
-  expect(Object.keys(payload)).toEqual(["starter"]);
+  expect(Object.keys(payload)).toEqual(["starter", "filePreview"]);
+  expect(Object.keys(payload.filePreview)).toEqual(["server.ts"]);
+  expect(payload.filePreview["server.ts"]).toContain("serveAppFile");
+  expect(() =>
+    new Bun.Transpiler({ loader: "ts" }).transformSync(payload.filePreview["server.ts"]!),
+  ).not.toThrow();
   expect(Object.keys(payload.starter)).toContain("src/App.tsx");
   for (const path of Object.keys(payload.starter)) {
     expect(path).not.toMatch(/(^|\/)(tests|fixtures|node_modules|dist|\.altertable)(\/|$)|\.txt$/);

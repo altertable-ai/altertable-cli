@@ -17,7 +17,10 @@ export const starterFiles = [
   ".oxfmtrc.json",
 ] as const;
 export const dataAppDirectory = fileURLToPath(new URL("../../../../../data-app/", import.meta.url));
-export type DataAppPayload = { starter: Record<string, string> };
+export type DataAppPayload = {
+  starter: Record<string, string>;
+  filePreview: Record<string, string>;
+};
 
 function assertRelativePath(path: string): void {
   if (
@@ -52,9 +55,12 @@ async function readFiles(
   return files;
 }
 
-/** Release builds embed only the starter; its runtime is installed from npm. */
+/** Release builds embed the app starter and preview launcher; package runtimes come from npm. */
 export async function readDataAppPayload(directory = dataAppDirectory): Promise<DataAppPayload> {
-  return { starter: await readFiles(join(directory, "starter"), starterFiles) };
+  return {
+    starter: await readFiles(join(directory, "starter"), starterFiles),
+    filePreview: await readFiles(join(directory, "file-preview"), ["server.ts"]),
+  };
 }
 
 export function createAppFiles(

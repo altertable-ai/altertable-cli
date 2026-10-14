@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { ConfigurationError, HttpError } from "@/lib/errors.ts";
+import { runAppProcess } from "@/commands/app/lib/run.ts";
+import { ConfigurationError, HttpError, EXIT_GENERIC } from "@/lib/errors.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { sendHttpStream } from "@/lib/http-request.ts";
 
@@ -60,4 +61,21 @@ export function startAppDevProxy(
     },
     stop: () => server.stop(true),
   };
+}
+
+/** The preview child gets only loopback access; the CLI owns credentials and proxy cleanup. */
+export async function runAppPreview(
+  args: readonly string[],
+  directory: string,
+  execution: ExecutionContext,
+  environment: Record<string, string> = {},
+  run: typeof runAppProcess = runAppProcess,
+): Promise<number> {
+  const proxy = startAppDevProxy(execution);
+  try {
+    const exitCode = await run(args, directory, { ...environment, ...proxy.environment });
+    return exitCode === 0 ? 0 : EXIT_GENERIC;
+  } finally {
+    await proxy.stop();
+  }
 }

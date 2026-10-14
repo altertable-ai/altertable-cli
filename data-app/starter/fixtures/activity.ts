@@ -25,16 +25,7 @@ export const operations = {
     policy: { maxQueryRows: 10, maxDurationMs: 30_000, maxResponseBytes: 1_000_000 },
     checks: [{ range: { start: "2026-03-10", end: "2026-03-12" }, comparison: null }],
     input: calendar.parseRequest,
-    output(value: unknown): Activity {
-      if (!value || typeof value !== "object") throw new Error("Invalid activity result");
-      const result = value as { count?: unknown; features?: unknown };
-      if (!Array.isArray(result.features)) throw new Error("Invalid activity features");
-      return {
-        count: parseCount(result.count),
-        features: result.features.map((feature) => parseLabel(feature)),
-      };
-    },
-    async run({ query }, input) {
+    async run({ query }, input): Promise<Activity> {
       const result = await query(
         "activity",
         { start: input.range.start, end: input.range.end },

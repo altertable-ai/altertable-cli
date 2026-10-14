@@ -813,6 +813,7 @@
           "examples": [
             "altertable app create my-app",
             "altertable app dev",
+            "altertable app dev --file index.tsx",
             "altertable app lint",
             "altertable app build",
             "altertable app upgrade",
@@ -874,7 +875,7 @@
             {
               "id": "altertable-app-dev",
               "command": "altertable app dev",
-              "description": "Preview a data app locally with lakehouse access.",
+              "description": "Preview a local data app directory, or a single-file data app, with lakehouse access.",
               "usage": [
                 "altertable app dev [options]"
               ],
@@ -892,10 +893,20 @@
                   "values": []
                 },
                 {
+                  "name": "file",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Path to a single-file React data app (index.tsx) to preview instead of --dir.",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
                   "name": "port",
                   "aliases": [],
                   "type": "string",
-                  "description": "Local dev server port (1–65535; default: app setting).",
+                  "description": "Local dev server port (1–65535; default: app setting, or 25837 for --file).",
                   "required": false,
                   "repeatable": false,
                   "scope": "command",
@@ -905,7 +916,8 @@
               "examples": [
                 "altertable app dev",
                 "altertable app dev --port 3022",
-                "altertable --profile staging app dev --dir ./my-app"
+                "altertable --profile staging app dev --dir ./my-app",
+                "altertable app dev --file ./index.tsx"
               ],
               "subcommands": []
             },

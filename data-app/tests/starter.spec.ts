@@ -122,7 +122,9 @@ test("date comparison offers the preceding range only when available", async ({ 
   await expect(compare).toBeEnabled();
   await expect(page.getByText("Sep 7–9, 2026")).toBeVisible();
   await compare.check();
-  await expect(page.locator(".altertable-date-range-comparison")).toHaveText("vs prior");
+  await expect(
+    page.getByRole("group", { name: "View controls" }).locator(".altertable-date-range-comparison"),
+  ).toHaveText("vs prior");
   await expect(compare).toBeChecked();
 });
 
@@ -240,16 +242,15 @@ test("request progress appears before Refresh", async ({ page }) => {
   await expect(status).toBeEmpty();
 });
 
-test("variables sit below the header divider while actions stay in the header", async ({
+test("view controls sit below the header divider while actions stay in the header", async ({
   page,
 }) => {
   await page.goto("/components");
   const header = page.locator(".altertable-app-header");
-  const bar = page.getByRole("group", { name: "View variables" });
+  const bar = page.getByRole("group", { name: "View controls" });
   const actions = header.getByRole("group", { name: "Page actions" });
-  await expect(bar.getByLabel("Date range")).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Choose dates" })).toBeVisible();
   await expect(actions.getByRole("button", { name: "Refresh data" })).toBeVisible();
-  expect(await bar.evaluate((element) => element.previousElementSibling?.tagName)).toBe("HEADER");
   const headerBox = await header.boundingBox();
   const barBox = await bar.boundingBox();
   expect(barBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);

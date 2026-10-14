@@ -391,6 +391,21 @@ altertable query cancel <query-uuid> --session-id <uuid>
 altertable append status <append-id>
 ```
 
+### Data apps
+
+Create a local project, then preview it with the selected lakehouse profile:
+
+```fish
+altertable app create my-app
+altertable app dev --dir ./my-app
+altertable app dev --file ./index.tsx --port 3022
+```
+
+`--file` previews a hosted single-file React app with automatic reloads, using the CLI's tested
+`@altertable/data-app` 0.69.0 runtime. Its literal `defineDataApp` scope must match the selected
+profile. Use `--profile` to choose the profile; `--file` and `--dir` are mutually exclusive.
+See the [data app guide](data-app/README.md) for authoring, checks, and package upgrade migrations.
+
 ### Management
 
 Product-level commands stay at the top level. The full management REST surface is available via `altertable api` (HTTP invoker):

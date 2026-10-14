@@ -65,6 +65,7 @@ if [[ "${QUICK}" == true ]]; then
 fi
 
 cd "${REPO_ROOT}/cli"
+run_step "data app file preview" bun run data-app:test:file-preview
 run_step "data app browser tests" bun run data-app:test:browser
 run_step "build" bun run build
 run_step "pack:check" bun run pack:check

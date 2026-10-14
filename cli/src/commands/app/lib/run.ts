@@ -45,25 +45,34 @@ export function requireAppScripts(directory: string, required: readonly AppScrip
 export async function runAppCommand(
   command: AppCommand,
   directory: string,
-  appEnvironment?: Record<string, string>,
+  additionalEnvironment?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<number> {
+  const bunArgs =
+    command === "install"
+      ? ["install"]
+      : command === "install-frozen"
+        ? ["install", "--frozen-lockfile"]
+        : ["run", command];
+  return runAppProcess(bunArgs, directory, additionalEnvironment, signal);
+}
+
+export async function runAppProcess(
+  bunArgs: readonly string[],
+  directory: string,
+  additionalEnvironment?: Record<string, string>,
   signal?: AbortSignal,
 ): Promise<number> {
   const env = copyProcessEnv();
   for (const key of Object.keys(env)) {
     if (key.startsWith("ALTERTABLE_")) delete env[key];
   }
-  Object.assign(env, appEnvironment);
+  Object.assign(env, additionalEnvironment);
   // Native CLI executables contain Bun. This makes the executable run Bun's
   // command and supports `bun` calls inside the project's scripts.
   env.BUN_BE_BUN = "1";
 
-  const arguments_ =
-    command === "install"
-      ? ["install"]
-      : command === "install-frozen"
-        ? ["install", "--frozen-lockfile"]
-        : ["run", command];
-  const child = Bun.spawn([process.execPath, ...arguments_], {
+  const child = Bun.spawn([process.execPath, ...bunArgs], {
     cwd: directory,
     env,
     stdin: "inherit",
