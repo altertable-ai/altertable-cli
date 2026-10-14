@@ -767,7 +767,7 @@ export function verifyInstalledCliVersion(
   expectedVersion: string,
   command = "altertable",
   spawnImpl: SpawnSyncImpl = spawnSync,
-  description = "Installed altertable",
+  description = "Installed Altertable CLI",
 ): string {
   const result = spawnImpl(command, ["--version"], { encoding: "utf8" });
   if (result.error) {
@@ -810,7 +810,7 @@ function replaceFileAtomically(targetPath: string, replacementPath: string): voi
       }
     }
     rmSync(replacementPath, { force: true });
-    throw new CliError("Unable to replace the altertable binary.", {
+    throw new CliError("Unable to replace the Altertable CLI binary.", {
       cause: error,
       details: `Backup path: ${backupPath}`,
     });
@@ -893,7 +893,7 @@ export async function installGitHubBinaryRelease(
             release.version,
             tempPath,
             options.spawnImpl,
-            "Downloaded altertable",
+            "Downloaded Altertable CLI",
           );
     replaceFileAtomically(targetPath, tempPath);
 
@@ -1108,7 +1108,7 @@ function writeAutomaticUpdateNotice(sink: OutputSink, latestVersion: string): vo
   sink.writeMetadata([
     "",
     renderDisplayText([
-      span(`Update available: altertable ${latestVersion} (current ${VERSION}).`, "subtle"),
+      span(`Update available: Altertable CLI ${latestVersion} (current ${VERSION}).`, "subtle"),
     ]),
     renderDisplayText([
       span(`Run ${recommendedInstallCommand(latestVersion)} to install it.`, "subtle"),
@@ -1160,7 +1160,7 @@ export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: st
     if (comparison < 0) {
       return [
         renderDisplayText([
-          span(`Target version v${target} is older than installed altertable v${current}.`),
+          span(`Target version v${target} is older than installed Altertable CLI v${current}.`),
         ]),
         renderDisplayText([
           span("Run "),
@@ -1177,7 +1177,7 @@ export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: st
   if (!result.update_available) {
     return renderDisplayText([
       span("Congrats!", "success"),
-      span(" You're already on the latest version of altertable "),
+      span(" You're already on the latest version of Altertable CLI "),
       span(`(which is v${normalizeVersion(result.current_version)})`, "subtle"),
     ]);
   }
@@ -1185,7 +1185,7 @@ export function formatUpdateResult(result: UpdateCheckResult, targetVersion?: st
   return [
     renderDisplayText([
       span(
-        `A new version of altertable is available: v${normalizeVersion(result.latest_version)} `,
+        `A new version of Altertable CLI is available: v${normalizeVersion(result.latest_version)} `,
       ),
       span(`(current v${normalizeVersion(result.current_version)})`, "subtle"),
     ]),
