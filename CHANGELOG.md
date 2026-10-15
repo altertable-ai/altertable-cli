@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
+- Include a starter server example for previewing single-file data apps with the Bun preview API.
+
 - Make CLI updates easier to scan with styled version summaries, explicit upgrade/reinstall/downgrade messages, and release notes, issue, and commit-log links.
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
