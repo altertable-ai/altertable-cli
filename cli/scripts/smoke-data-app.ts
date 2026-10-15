@@ -9,6 +9,8 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
   let upstream: Bun.Server<undefined> | undefined;
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (key.startsWith("ALTERTABLE_")) delete env[key];
+  // App scripts stream their own output and require human mode.
+  env.ALTERTABLE_AGENT_MODE = "0";
   env.ALTERTABLE_CONFIG_HOME = join(directory, "config");
   async function run(arguments_: string[], cwd: string): Promise<void> {
     const child = Bun.spawn(arguments_, { cwd, env, stdout: "pipe", stderr: "pipe" });

@@ -34,7 +34,7 @@ export async function smokeNpmBundle(arguments_ = Bun.argv.slice(2)): Promise<vo
     throw new Error(`npm bundle returned an invalid version: ${version}.`);
   }
 
-  const help = await runBundle(bundlePath, ["--help"]);
+  const help = await runBundle(bundlePath, ["--no-agent", "--help"]);
   if (!help.includes("Altertable CLI") || !help.includes("Commands")) {
     throw new Error("npm bundle help output is incomplete.");
   }

@@ -53,6 +53,11 @@ const ROOT_ARGS = defineArguments({
     description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
     flagScope: "global",
   },
+  "no-agent": {
+    type: "boolean",
+    description: "Disable agent mode, including automatic detection",
+    flagScope: "global",
+  },
   "no-color": {
     type: "boolean",
     description: "Disable terminal colors and styling",

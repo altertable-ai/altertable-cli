@@ -59,6 +59,16 @@
       "values": []
     },
     {
+      "name": "no-agent",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Disable agent mode, including automatic detection",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
       "name": "no-color",
       "aliases": [],
       "type": "boolean",
