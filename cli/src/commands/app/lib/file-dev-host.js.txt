@@ -1,0 +1,128 @@
+import {
+  attachDataAppBridge,
+  createNavigationHandler,
+  createSqlQueryHandler,
+} from "@altertable/data-app/embed";
+import {
+  createMessageRouter,
+  defineMessageRoute,
+  navigationUpdateRoute,
+  sqlQueryRoute,
+  DataSourceError,
+} from "@altertable/data-app/contract";
+
+const status = document.querySelector("#status");
+const iframe = document.querySelector("#app");
+const themeQuery = matchMedia("(prefers-color-scheme: dark)");
+
+function presentation() {
+  return { surface: "standalone", theme: themeQuery.matches ? "dark" : "light" };
+}
+
+const fileRoute = defineMessageRoute({
+  input(value) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      typeof value.filename !== "string" ||
+      !(value.blob instanceof Blob)
+    ) {
+      throw new Error("Invalid export.");
+    }
+    return { filename: value.filename, blob: value.blob };
+  },
+  output(value) {
+    if (value !== null) throw new Error("Invalid export response.");
+    return null;
+  },
+});
+
+function download(file) {
+  const url = URL.createObjectURL(file.blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
+}
+
+const router = createMessageRouter(
+  {
+    "data:sql": sqlQueryRoute,
+    "navigation:update": navigationUpdateRoute,
+    "export:csv": fileRoute,
+    "export:zip": fileRoute,
+  },
+  {
+    "navigation:update": createNavigationHandler(),
+    "data:sql": createSqlQueryHandler(async () => ({
+      async queryAll(statement, { limit, signal, params }) {
+        const response = await fetch("/api/sql", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            statement,
+            limit,
+            ...(params === undefined ? {} : { params }),
+          }),
+          signal,
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new DataSourceError(body.reason ?? "unavailable");
+        }
+        return response.json();
+      },
+    })),
+    "export:csv": download,
+    "export:zip": download,
+  },
+);
+
+let host;
+let generation = 0;
+
+function showStatus(message) {
+  status.hidden = false;
+  status.textContent = message;
+}
+
+async function mount() {
+  const current = ++generation;
+  host?.dispose();
+  host = undefined;
+  iframe.hidden = true;
+  showStatus("Loading data app...");
+  const response = await fetch("/bundle.js", { cache: "no-store" });
+  if (current !== generation) return;
+  if (!response.ok) {
+    showStatus(await response.text());
+    return;
+  }
+  host = attachDataAppBridge({
+    iframe,
+    source: { type: "bundle", javascript: await response.text() },
+    presentation: presentation(),
+    onMessage: router.dispatch,
+    onStatusChange(value) {
+      if (current !== generation) return;
+      const ready = value === "ready";
+      iframe.hidden = !ready;
+      if (value === "failed") showStatus("Could not load the data app.");
+      if (ready) status.hidden = true;
+    },
+  });
+}
+
+themeQuery.addEventListener("change", () => {
+  host?.setPresentation(presentation());
+});
+await mount();
+
+const reload = new EventSource("/__dev/reload");
+reload.addEventListener("message", () => {
+  void mount();
+});
