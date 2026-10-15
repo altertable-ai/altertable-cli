@@ -244,6 +244,7 @@ describe("renderAltertableUsage", () => {
       "debug",
       "json",
       "agent",
+      "no-agent",
       "no-color",
       "profile",
       "connect-timeout",

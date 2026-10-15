@@ -13,6 +13,7 @@ Altertable CLI v1.11.0 • Query and manage your data platform from the terminal
 | `-d, --debug` | Enable debug output |
 | `--json` | Machine-readable JSON output |
 | `--agent` | Agent-friendly preset: structured JSON output, no pager or terminal styling |
+| `--no-agent` | Disable agent mode, including automatic detection |
 | `--no-color` | Disable terminal colors and styling |
 | `--profile <PROFILE>` | Use a named profile for this command only |
 | `--connect-timeout <CONNECT-TIMEOUT>` | HTTP connect timeout in seconds (default 5) |

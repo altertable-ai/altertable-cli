@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { isJsonOutput, setCliContext } from "@/context.ts";
-import { mergeGlobalFlagsFromArgs, parseGlobalOutputFlags } from "@/lib/global-flags.ts";
+import {
+  AGENT_ENV_VARIABLES,
+  mergeGlobalFlagsFromArgs,
+  parseGlobalOutputFlags,
+} from "@/lib/global-flags.ts";
 import {
   createCliRuntime,
   getOutputSink,
@@ -30,13 +34,10 @@ describe("parseGlobalOutputFlags", () => {
   });
 
   test("isolates non-throwing output flags for early error rendering", () => {
-    const context = parseGlobalOutputFlags([
-      "query",
-      "SELECT 1",
-      "--connect-timeout",
-      "nope",
-      "--json",
-    ]);
+    const context = parseGlobalOutputFlags(
+      ["query", "SELECT 1", "--connect-timeout", "nope", "--json"],
+      { env: {}, stdoutIsTTY: false },
+    );
 
     expect(context).toEqual({
       debug: false,
@@ -91,5 +92,56 @@ describe("agent output preset", () => {
     expect(isJsonOutput()).toBe(true);
     expect(getOutputSink().json).toBe(true);
     refreshCliRuntimeContext({ debug: false, json: false, agent: false });
+  });
+});
+
+describe("automatic agent mode", () => {
+  for (const marker of AGENT_ENV_VARIABLES) {
+    test(`detects ${marker} only outside a terminal`, () => {
+      const env = { [marker]: "1" };
+      expect(parseGlobalOutputFlags([], { env, stdoutIsTTY: false }).agent).toBe(true);
+      expect(parseGlobalOutputFlags([], { env, stdoutIsTTY: true }).agent).toBe(false);
+    });
+  }
+  test("leaves ordinary pipes and empty markers alone", () => {
+    expect(parseGlobalOutputFlags([], { env: {}, stdoutIsTTY: false }).agent).toBe(false);
+    expect(parseGlobalOutputFlags([], { env: { AI_AGENT: "" }, stdoutIsTTY: false }).agent).toBe(
+      false,
+    );
+  });
+  test("preserves explicit output formats", () => {
+    for (const flags of [["--json"], ["--format", "csv"], ["--format=markdown"]]) {
+      expect(
+        parseGlobalOutputFlags(flags, { env: { AI_AGENT: "1" }, stdoutIsTTY: false }).agent,
+      ).toBe(false);
+    }
+  });
+  test("applies flags before environment overrides and detection", () => {
+    for (const value of ["1", "true", "0", "false"]) {
+      const environment = {
+        env: { AI_AGENT: "1", ALTERTABLE_AGENT_MODE: value },
+        stdoutIsTTY: true,
+      };
+      expect(parseGlobalOutputFlags([], environment).agent).toBe(value === "1" || value === "true");
+      expect(parseGlobalOutputFlags(["--agent"], environment).agent).toBe(true);
+      expect(parseGlobalOutputFlags(["--agent", "--no-agent"], environment).agent).toBe(false);
+    }
+  });
+  test("ignores flags after the option separator", () => {
+    expect(
+      parseGlobalOutputFlags(["--", "--no-agent"], { env: { AI_AGENT: "1" }, stdoutIsTTY: false })
+        .agent,
+    ).toBe(true);
+  });
+  test("preserves detection when merging parsed flags", () => {
+    expect(mergeGlobalFlagsFromArgs({ debug: false, json: false, agent: true }, {}).agent).toBe(
+      true,
+    );
+    expect(
+      mergeGlobalFlagsFromArgs(
+        { debug: false, json: false, agent: true },
+        { agent: true, "no-agent": true },
+      ).agent,
+    ).toBe(false);
   });
 });

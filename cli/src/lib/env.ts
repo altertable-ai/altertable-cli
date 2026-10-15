@@ -57,6 +57,7 @@ function invalidValue(name: string, value: string, expectation: string): Configu
 }
 
 const ENV_SCHEMA = {
+  ALTERTABLE_AGENT_MODE: { parse: booleanValue },
   ALTERTABLE_ALLOW_INSECURE_HTTP: { parse: booleanValue },
   ALTERTABLE_API_BASE: { parse: optional },
   ALTERTABLE_API_KEY: { parse: optional, secret: true },
