@@ -32,7 +32,6 @@ async function check() {
       !/^[a-z][a-z0-9-]*$/.test(name) ||
       !operation ||
       typeof operation.input !== "function" ||
-      typeof operation.output !== "function" ||
       typeof operation.run !== "function" ||
       !Array.isArray(operation.checks) ||
       !operation.checks.length ||
@@ -44,7 +43,7 @@ async function check() {
         (!Number.isInteger(operation.policy.maxResponseBytes) ||
           operation.policy.maxResponseBytes < 1))
     ) {
-      throw new Error(`Operation "${name}" needs input and output parsers, check inputs, and limits.`);
+      throw new Error(`Operation "${name}" needs an input parser, a run function, check inputs, and limits.`);
     }
     for (const input of operation.checks) {
       try {

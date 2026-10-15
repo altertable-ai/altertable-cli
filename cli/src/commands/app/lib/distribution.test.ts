@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
@@ -59,10 +60,10 @@ test("distribution rejects symlinks and development artifacts inside starter sou
   const root = await mkdtemp(join(tmpdir(), "starter-payload-"));
   directories.push(root);
   await cp(directory, join(root, "starter"), { recursive: true, dereference: false });
-  expect(readDataAppPayload(root)).rejects.toThrow("Symlink");
+  await rejects(readDataAppPayload(root), /Symlink/);
   await rm(join(root, "starter/src/link.ts"));
   await writeFile(join(root, "starter/src/probe.test.ts"), "test artifact");
-  expect(readDataAppPayload(root)).rejects.toThrow("Development artifact");
+  await rejects(readDataAppPayload(root), /Development artifact/);
 });
 
 test("app-owned authoring links resolve within the generated files", async () => {
