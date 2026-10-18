@@ -44,11 +44,7 @@ Upgrades resolve only the lockfile and restore the original manifest and lockfil
 fails. Restart running previews after an upgrade. Apps must already use the published package;
 `app upgrade` does not migrate local runtime copies or rewrite app source.
 
-Version 0.69.0 removes operation `output` parsers: validate and return query results inside `run`.
-Version 0.70.0 requires typed query declarations: replace untyped parameters with scalar descriptors
-(for example, `{ type: "string" }`), declare each result alias in `projections`, and consume decoded
-`result.rows` records instead of positional arrays. After `app upgrade`, migrate existing app source and
-run `app lint`.
+After `app upgrade`, migrate existing app source and run `app lint`.
 
 ## Verify
 
