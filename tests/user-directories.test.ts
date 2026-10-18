@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const cliPath = join(dirname(fileURLToPath(import.meta.url)), "../cli/src/cli.ts");
+const cliPath =
+  process.env.ALTERTABLE_TEST_CLI_PATH ??
+  join(dirname(fileURLToPath(import.meta.url)), "../cli/src/cli.ts");
 let root: string;
 let project: string;
 let home: string;
@@ -142,7 +144,10 @@ test("completion and profile storage share the XDG config root", async () => {
 if (process.platform === "win32") {
   test("PowerShell without HOME stores credentials under USERPROFILE", async () => {
     delete environment.HOME;
-    expect((await configure()).exitCode).toBe(0);
+    const saved = await configure();
+    expect(saved.exitCode).toBe(0);
+    expect(saved.stderr).toContain("Windows ACLs are not validated");
+    expect(saved.stderr).not.toContain("chmod 600");
     expect(await Bun.file(join(home, ".config", "altertable", "credentials")).text()).toContain(
       "atm_directory_test",
     );

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Read Windows file-backed credentials without treating Unix mode bits as Windows ACL permissions, and report the file backend’s protection accurately.
+
+- Resolve configuration and credential storage from the OS home directory when `HOME` is missing, and reject relative directory settings for stored profiles and shell-completion installation.
+
 ### Changed
 
 - Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
