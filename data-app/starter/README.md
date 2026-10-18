@@ -22,7 +22,7 @@ Start with the [authoring router](AGENTS.md) for data and view changes, or the [
 
 Run `altertable app lint` to check the app locally. Use `altertable app lint --lakehouse` to execute each operation's declared `checks` against the selected profile.
 
-`altertable app upgrade` pins the package version tested with your CLI and updates the lockfile. It preserves app code and does not downgrade a newer installed package. Restart a running preview after upgrading.
+`altertable app upgrade` pins the package version tested with your CLI and updates the lockfile. It preserves app code and does not downgrade a newer installed package. Version 0.70.0 requires typed query parameters and projections, with decoded record rows; migrate existing query declarations after upgrading. Restart a running preview after upgrading.
 
 ## Version control
 
