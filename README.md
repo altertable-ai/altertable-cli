@@ -234,22 +234,12 @@ Rules for updating credentials:
 
 ### Profiles
 
-Configuration and file-backed credentials use `ALTERTABLE_CONFIG_HOME` when set, otherwise
-`$XDG_CONFIG_HOME/altertable`, otherwise `.config/altertable` inside the user's home directory.
-The home directory comes from `HOME` or the operating system when `HOME` is unset or empty
-(including `USERPROFILE` on Windows). Selected directory settings must be absolute;
-relative paths are rejected rather than resolved inside the current project. Shell completion
-uses the same home and XDG directory rules, including `XDG_DATA_HOME` for Bash and Zsh.
+Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
+`$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
+be absolute. If `HOME` is unset or empty, the CLI uses the operating system's home directory.
 
-macOS uses Keychain when available; the fallback credential file is plaintext. On Unix,
-the file is created with mode `0600`. Windows access is governed by filesystem ACLs;
-The CLI does not validate Windows ACLs; Unix permission bits do not establish Windows
-access protection. Keep the chosen config
-directory private and outside repositories or synced folders.
-
-If an older version created `.config/altertable` inside a project, reauthenticate after upgrading.
-The CLI does not import project-local credentials automatically. Revoke exposed credentials
-and remove accidentally tracked credential files from version control.
+Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
+Keep the configuration directory private.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 

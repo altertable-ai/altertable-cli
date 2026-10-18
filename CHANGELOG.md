@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Read Windows file-backed credentials without treating Unix mode bits as Windows ACL permissions, and report the file backend’s protection accurately.
+- Keep profiles and credentials in the user's home directory when `HOME` is unset, and reject relative config and shell-completion directory settings.
+- Read file-backed credentials on Windows without applying Unix permission checks.
 
-- Resolve configuration and credential storage from the OS home directory when `HOME` is missing, and reject relative directory settings for stored profiles and shell-completion installation.
+If credentials were saved inside a project, sign in again after upgrading and revoke any exposed credentials.
 
 ### Changed
 

@@ -111,8 +111,11 @@ describe("config", () => {
   });
 });
 
-for (const home of [undefined, ""]) {
-  test(`uses the OS home directory when HOME is ${home === undefined ? "unset" : "empty"}`, () => {
+for (const { name, value } of [
+  { name: "unset", value: undefined },
+  { name: "empty", value: "" },
+]) {
+  test(`uses the OS home directory when HOME is ${name}`, () => {
     const previous = {
       HOME: process.env.HOME,
       XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
@@ -121,8 +124,8 @@ for (const home of [undefined, ""]) {
     try {
       delete process.env.ALTERTABLE_CONFIG_HOME;
       delete process.env.XDG_CONFIG_HOME;
-      if (home === undefined) delete process.env.HOME;
-      else process.env.HOME = home;
+      if (value === undefined) delete process.env.HOME;
+      else process.env.HOME = value;
       expect(configDir()).toBe(join(homedir(), ".config", "altertable"));
     } finally {
       for (const [name, value] of Object.entries(previous)) {
