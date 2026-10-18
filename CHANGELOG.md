@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.12.0](https://github.com/altertable-ai/altertable-cli/compare/v1.11.0...v1.12.0) (2026-10-18)
+
+
+### Features
+
+* **app:** update data app examples to 0.69.0 ([#144](https://github.com/altertable-ai/altertable-cli/issues/144)) ([6d2b52e](https://github.com/altertable-ai/altertable-cli/commit/6d2b52e3c2c336a00cfac83df4a02bd58498f2ec))
+* **app:** update data-app consumers to 0.70.0 ([#146](https://github.com/altertable-ai/altertable-cli/issues/146)) ([60c8d26](https://github.com/altertable-ai/altertable-cli/commit/60c8d26793aceeef4515b101f85a012937da7319))
+* **cli:** automatically detect coding agents ([#145](https://github.com/altertable-ai/altertable-cli/issues/145)) ([6049d7e](https://github.com/altertable-ai/altertable-cli/commit/6049d7e86ef2578cb2aa30c1b437cebd66ad5491))
+* **update:** clarify installation progress and release guidance ([#142](https://github.com/altertable-ai/altertable-cli/issues/142)) ([bf8ac8e](https://github.com/altertable-ai/altertable-cli/commit/bf8ac8e8de75ad4b9ab7b8623d1e5bd478244511))
+
 ## [1.11.0](https://github.com/altertable-ai/altertable-cli/compare/v1.10.1...v1.11.0) (2026-10-13)
 
 
