@@ -5,7 +5,7 @@
     "": {
       "name": "data-app-browser-tests",
       "dependencies": {
-        "@altertable/data-app": "0.68.0",
+        "@altertable/data-app": "0.70.0",
       },
       "devDependencies": {
         "@playwright/test": "1.63.0",
@@ -16,7 +16,9 @@
     },
   },
   "packages": {
-    "@altertable/data-app": ["@altertable/data-app@0.68.0", "", { "dependencies": { "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.0", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.48.0", "react-aria-components": "1.21.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-xH5XPFo9EGxaMMd38UTHHpIElynaSd/1OnxtG42bD8/ecAXCKFOk24/ECB8BRGQptWYplc3auMYQHlJUgXBFYg=="],
+    "@altertable/data-app": ["@altertable/data-app@0.70.0", "", { "dependencies": { "@altertable/lakehouse": "0.4.1", "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.0", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.48.0", "react-aria-components": "1.21.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-tfrzwRP4rGnnMM1Ddu0BYwl1q0c3KegIeBEHf4e/iK/EkTfFIHGw+5Mp7SqS+kmsPR7TpNFbWhCVeAYGH1f0xw=="],
+
+    "@altertable/lakehouse": ["@altertable/lakehouse@0.4.1", "", {}, "sha512-m7d15cWt+WUGW7lVw2KYGD+Se8MzO25G7SWSuFd+OasBxWmOJNa2IrgvOHGVEbnZ+kexTUy9NjAGQ69sG4V91w=="],
 
     "@floating-ui/core": ["@floating-ui/core@1.8.0", "", { "dependencies": { "@floating-ui/utils": "^0.2.12" } }, "sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ=="],
 

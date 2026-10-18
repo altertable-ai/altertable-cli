@@ -30,6 +30,7 @@ const handler = createDataHandler({ ...operations, ...activityOperations }, asyn
   },
 }));
 Bun.serve({
+  development: false,
   hostname: "127.0.0.1",
   port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
   routes: { "/": starter, "/components": components, "/view": view },
