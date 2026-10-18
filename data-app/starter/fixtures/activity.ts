@@ -1,5 +1,5 @@
 import { defineDataApp } from "@altertable/data-app";
-import { defineDateRangeContract, parseCount, parseLabel } from "@altertable/data-app/contract";
+import { defineDateRangeContract } from "@altertable/data-app/contract";
 
 type Activity = { count: number; features: string[] };
 export const app = defineDataApp({
@@ -10,7 +10,8 @@ export const app = defineDataApp({
   queries: {
     activity: {
       statement: "SELECT 120 AS count, 'Queries' AS feature WHERE $start <= $end",
-      params: { start: {}, end: {} },
+      params: { start: { type: "string" }, end: { type: "string" } },
+      projections: { count: { type: "number" }, feature: { type: "string" } },
     },
   },
 });
@@ -31,9 +32,11 @@ export const operations = {
         { start: input.range.start, end: input.range.end },
         { limit: 10 },
       );
+      const firstRow = result.rows[0];
+      if (!firstRow) throw new Error("Activity query returned no rows.");
       return {
-        count: parseCount(result.rows[0]?.[0]),
-        features: result.rows.map((row) => parseLabel(row[1])),
+        count: firstRow.count,
+        features: result.rows.map((row) => row.feature),
       };
     },
   }),

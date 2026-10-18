@@ -32,7 +32,13 @@ const app = defineDataApp({
   description: "Completed orders in production.",
   scope: { organization: "Acme", environment: "production" },
   appearance: { theme: "light" },
-  queries: { connection: { statement: "SELECT 1 AS connection_check", params: {} } },
+  queries: {
+    connection: {
+      statement: "SELECT 1 AS connection_check",
+      params: {},
+      projections: { connection_check: { type: "number" } },
+    },
+  },
 });
 const operations = { connection: connectionCheck(app.queries) };
 const connectionQueryNames = operations.connection.queryNames;
