@@ -5,6 +5,13 @@ import { isRecord } from "@/lib/object.ts";
 import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 
 export const dataAppPackage = "@altertable/data-app";
+export const dataAppPackages = [
+  dataAppPackage,
+  "@altertable/data-app-react",
+  "@altertable/data-app-embed",
+  "@altertable/data-app-bun",
+  "@altertable/data-app-worker",
+] as const;
 
 type AppPackage = {
   dependencies?: Record<string, string>;
@@ -28,7 +35,10 @@ export async function readAppPackage(
     if (
       !isRecord(manifest) ||
       !isRecord(manifest.dependencies) ||
-      Object.values(manifest.dependencies).some((value) => typeof value !== "string")
+      Object.values(manifest.dependencies).some((value) => typeof value !== "string") ||
+      (manifest.devDependencies !== undefined &&
+        (!isRecord(manifest.devDependencies) ||
+          Object.values(manifest.devDependencies).some((value) => typeof value !== "string")))
     )
       throw new Error();
     return { source, manifest: manifest as AppPackage };
@@ -51,12 +61,21 @@ export async function requirePublishedDataApp(directory: string): Promise<void> 
   } catch {
     throw new ConfigurationError(`Cannot read a valid bun.lock in ${directory}.`);
   }
-  const { packages } = readAppLock(lock, directory, reference);
-  const version = lockedVersion(packages, dataAppPackage);
-  if (!version || !Bun.semver.satisfies(version, reference)) {
-    throw new ConfigurationError(
-      "bun.lock does not resolve the declared data app package. Run bun install before checking.",
-    );
+  let version: string | undefined;
+  for (const name of dataAppPackages) {
+    const declared = manifest.dependencies?.[name] ?? manifest.devDependencies?.[name];
+    if (declared === undefined) continue;
+    if (!/^[\d~^<>=*]/.test(declared))
+      throw new ConfigurationError(`package.json needs a published ${name} version or range.`);
+    const { packages } = readAppLock(lock, directory, declared, name);
+    const resolved = lockedVersion(packages, name);
+    if (!resolved || !Bun.semver.satisfies(resolved, declared))
+      throw new ConfigurationError(
+        `bun.lock does not resolve the declared ${name} package. Run bun install before checking.`,
+      );
+    if (version && resolved !== version)
+      throw new ConfigurationError("Data app packages must resolve to the same version.");
+    version = resolved;
   }
 }
 
@@ -64,6 +83,7 @@ export function readAppLock(
   source: string,
   directory: string,
   reference?: string,
+  name = dataAppPackage,
 ): {
   packages: Record<string, unknown>;
 } {
@@ -71,12 +91,16 @@ export function readAppLock(
     const value = parseJsonc(source);
     const workspaces = isRecord(value) && value.workspaces;
     const root = isRecord(workspaces) && workspaces[""];
-    const dependencies = isRecord(root) && root.dependencies;
+    const dependencies = isRecord(root) &&
+      isRecord(root.dependencies) && {
+        ...(isRecord(root.devDependencies) ? root.devDependencies : {}),
+        ...root.dependencies,
+      };
     if (
       !isRecord(value) ||
       !isRecord(value.packages) ||
       !isRecord(dependencies) ||
-      (reference !== undefined && dependencies[dataAppPackage] !== reference)
+      (reference !== undefined && dependencies[name] !== reference)
     )
       throw new Error();
     return { packages: value.packages };
@@ -96,24 +120,29 @@ export function lockedVersion(packages: Record<string, unknown>, name: string): 
     : undefined;
 }
 
-export function recommendedDataAppPeers(): Record<string, string> {
+export function recommendedDataAppPeers(
+  names: readonly string[] = dataAppPackages,
+): Record<string, string> {
   const { packages } = readAppLock(
     dataAppPayload.starter["bun.lock"]!,
     "CLI starter",
     recommendedDataAppVersion(),
   );
-  const entry = packages[dataAppPackage];
-  const metadata =
-    Array.isArray(entry) &&
-    entry.find((value) => isRecord(value) && isRecord(value.peerDependencies));
-  if (
-    !isRecord(metadata) ||
-    !isRecord(metadata.peerDependencies) ||
-    Object.values(metadata.peerDependencies).some((value) => typeof value !== "string")
-  ) {
-    throw new ConfigurationError("The CLI starter lockfile needs data app peer dependencies.");
+  const peers: Record<string, string> = {};
+  for (const name of names) {
+    const entry = packages[name];
+    if (!Array.isArray(entry)) continue;
+    const metadata = entry.find((value) => isRecord(value) && isRecord(value.peerDependencies));
+    if (!isRecord(metadata) || !isRecord(metadata.peerDependencies)) continue;
+    for (const [peer, range] of Object.entries(metadata.peerDependencies)) {
+      if (typeof range !== "string")
+        throw new ConfigurationError(
+          "The CLI starter lockfile has invalid data app peer dependencies.",
+        );
+      peers[peer] = range;
+    }
   }
-  return metadata.peerDependencies as Record<string, string>;
+  return peers;
 }
 
 function parseJsonc(source: string): unknown {

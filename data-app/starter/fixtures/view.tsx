@@ -11,13 +11,13 @@ import {
   mountDataApp,
   Stack,
   VisualizationWidget,
-} from "@altertable/data-app/react";
+} from "@altertable/data-app-react";
 import { defineQueryNames } from "@altertable/data-app/contract";
 import {
   createDataContext,
   dateRangeVariable,
   defineDataIdentifiers,
-} from "@altertable/data-app/react";
+} from "@altertable/data-app-react";
 
 const period = dateRangeVariable({
   key: "period",

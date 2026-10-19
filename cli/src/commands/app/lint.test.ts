@@ -18,9 +18,34 @@ beforeEach(() => {
       exports: {
         "./appearance": "./dist/core/appearance.js",
         "./server": "./dist/server/index.js",
-        "./server/bun": "./dist/server/local.js",
       },
     }),
+  );
+  mkdirSync(join(directory, "node_modules/@altertable/data-app-bun/dist"), { recursive: true });
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-bun/package.json"),
+    JSON.stringify({
+      name: "@altertable/data-app-bun",
+      type: "module",
+      exports: {
+        ".": "./dist/index.js",
+        "./preview": "./dist/index.js",
+        "./reload": "./dist/index.js",
+      },
+    }),
+  );
+  mkdirSync(join(directory, "node_modules/@altertable/data-app-worker/dist"), { recursive: true });
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-worker/package.json"),
+    JSON.stringify({
+      name: "@altertable/data-app-worker",
+      type: "module",
+      exports: { ".": "./dist/index.js" },
+    }),
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-worker/dist/index.js"),
+    "export const secretFreeHandler = 1;",
   );
 });
 afterEach(() => {
@@ -142,7 +167,7 @@ test("lakehouse checks execute every declared input through public package expor
     "export function parseAppearance() {}",
   );
   writeFileSync(
-    join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+    join(directory, "node_modules/@altertable/data-app-bun/dist/index.js"),
     "export function localLakehouse() { return {}; }",
   );
   writeFileSync(
@@ -174,7 +199,13 @@ test("lakehouse checks execute every declared input through public package expor
   expect(readFileSync(join(directory, "executed.txt"), "utf8")).toBe("12");
 });
 
-test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
+test.each([
+  "@altertable/data-app/server",
+  "@altertable/data-app-bun",
+  "@altertable/data-app-bun/preview",
+  "@altertable/data-app-bun/reload",
+  "@altertable/data-app-worker",
+])(
   "browser bundles reject the published %s entry even without credential strings",
   async (entry) => {
     mkdirSync(join(directory, "src"));
@@ -191,7 +222,7 @@ test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
       "export const secretFreeHandler = 1;",
     );
     writeFileSync(
-      join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+      join(directory, "node_modules/@altertable/data-app-bun/dist/index.js"),
       "export const secretFreeHandler = 1;",
     );
     writeFileSync(

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Generate data apps with the split core, React, and Bun packages at 0.71.0; keep declared data-app packages aligned during upgrades.
+
 - Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
 - Include a starter server example for previewing single-file data apps with the Bun preview API.
 
