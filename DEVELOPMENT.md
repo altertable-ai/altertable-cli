@@ -19,6 +19,8 @@ bun run format
 bun run format:check
 bun run test                  # Bun CLI unit tests, no watch
 bun run test:watch
+bun run knip                  # unused code, exports, and dependencies
+bun run knip:production       # production reachability
 bun run check                 # canonical quick gate, including consumer checks
 bun run check:package         # full gate, browser tests and packed consumer smoke
 ```
