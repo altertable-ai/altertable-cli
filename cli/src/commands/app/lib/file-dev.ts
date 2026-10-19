@@ -1,8 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import serverScript from "@/commands/app/lib/file-dev-server.ts.txt";
-import hostPage from "@/commands/app/lib/file-dev-host.html.txt";
-import hostScript from "@/commands/app/lib/file-dev-host.js.txt";
 import { readDeclaredAppScope } from "@/commands/app/lib/declared-app.ts";
 import { startAppDevProxy } from "@/commands/app/lib/dev-proxy.ts";
 import { createAppFiles } from "@/commands/app/lib/distribution.ts";
@@ -75,7 +73,5 @@ function runtimeFiles(): Record<string, string> {
     "bun.lock": starter["bun.lock"]!,
     "bunfig.toml": starter["bunfig.toml"]!,
     "server.ts": serverScript,
-    "host.html": hostPage,
-    "host.js": hostScript,
   };
 }

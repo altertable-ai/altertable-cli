@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -9,6 +9,8 @@ import {
   writeFileDevRuntime,
 } from "@/commands/app/lib/file-dev.ts";
 import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
+import { dataAppDirectory } from "@/commands/app/lib/distribution.ts";
+import { startAppDevProxy } from "@/commands/app/lib/dev-proxy.ts";
 import { EXIT_GENERIC } from "@/lib/errors.ts";
 import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { FROM_ENV_PSEUDOPROFILE_NAME } from "@/lib/profile-store.ts";
@@ -151,7 +153,12 @@ test("serves a single file and forwards same-origin SQL from the preview server"
   const runtime = join(root, "runtime");
   const appFile = join(root, "index.tsx");
   await writeFileDevRuntime(runtime);
-  await writePackageStubs(runtime);
+  await symlink(join(dataAppDirectory, "starter/node_modules"), join(runtime, "node_modules"));
+  const queries: unknown[] = [];
+  const proxy = startAppDevProxy({} as ExecutionContext, async (request) => {
+    queries.push(JSON.parse(request.body as string));
+    return new Response('{"query_id":"q1"}\n[{"name":"value","type":"INTEGER"}]\n[1]\n').body!;
+  });
   await writeFile(appFile, appSource("Preview"));
 
   const stderr: string[] = [];
@@ -160,13 +167,14 @@ test("serves a single file and forwards same-origin SQL from the preview server"
     env: {
       ...process.env,
       ALTERTABLE_APP_FILE: appFile,
-      ALTERTABLE_DATA_PROXY_TOKEN: "secret-token-value",
+      ...proxy.environment,
       PORT: "0",
     },
     stdout: "pipe",
     stderr: "pipe",
   });
   processes.push(child);
+  void child.exited.finally(() => proxy.stop());
   drain(child.stderr, stderr);
   const url = await readServerUrl(child, stderr);
   const origin = url.slice(0, -1);
@@ -180,7 +188,7 @@ test("serves a single file and forwards same-origin SQL from the preview server"
 
   const bundle = await (await fetch(`${url}bundle.js`)).text();
   expect(bundle).toContain("Preview");
-  expect(bundle).not.toContain("secret-token-value");
+  expect(bundle).not.toContain(proxy.environment.ALTERTABLE_DATA_PROXY_TOKEN);
 
   const accepted = await query(
     JSON.stringify({ statement: "select 1", limit: 1, params: { groupName: "Alpha" } }),
@@ -188,14 +196,17 @@ test("serves a single file and forwards same-origin SQL from the preview server"
   );
   expect(accepted.status).toBe(200);
   expect(await accepted.json()).toEqual({
-    columns: [{ name: "statement" }, { name: "limit" }],
-    rows: [["select 1", 1]],
-    queryId: "Alpha",
+    columns: [{ name: "value", type: "INTEGER" }],
+    rows: [[1]],
+    queryId: "q1",
   });
 
-  const rejected = await query(JSON.stringify({ statement: "fail", limit: 1 }));
-  expect(rejected.status).toBe(502);
-  expect(await rejected.json()).toEqual({ reason: "query_rejected" });
+  expect(queries).toEqual([
+    expect.objectContaining({
+      statement: "select 1",
+      params: { groupName: "Alpha" },
+    }),
+  ]);
   expect((await query("{")).status).toBe(400);
   expect((await query(JSON.stringify({ statement: "select 1", limit: 0 }))).status).toBe(400);
   expect((await fetch(`${url}missing`)).status).toBe(404);
@@ -208,15 +219,17 @@ test("serves a single file and forwards same-origin SQL from the preview server"
   expect(rebound.status).toBe(403);
 
   await writeFile(appFile, appSource("Updated"));
-  await Bun.sleep(100);
+  await Bun.sleep(500);
   expect(await (await fetch(`${url}bundle.js`)).text()).toContain("Updated");
 
-  const reload = await fetch(`${url}__dev/reload`);
+  const reload = await fetch(`${url}reload`);
   const reader = reload.body?.getReader();
   expect(reader).toBeDefined();
+  expect(await readUntil(reader!, "event: ready")).toContain("event: ready");
   await writeFile(appFile, appSource("Reloaded"));
-  const events = await readUntil(reader!, "reload");
-  expect(events).toContain("reload");
+  const events = await readUntil(reader!, "data:");
+  expect(events).toContain("data:");
+  expect(await (await fetch(`${url}bundle.js`)).text()).toContain("Reloaded");
   await reader?.cancel();
 }, 15_000);
 
@@ -233,88 +246,6 @@ export function View() {
   return <p>{app.title}</p>;
 }
 `;
-}
-
-async function writePackageStubs(runtime: string): Promise<void> {
-  const dataApp = join(runtime, "node_modules/@altertable/data-app");
-  const react = join(runtime, "node_modules/react");
-  await mkdir(join(dataApp, "server"), { recursive: true });
-  await mkdir(react, { recursive: true });
-  await writeFile(
-    join(dataApp, "package.json"),
-    JSON.stringify({ name: "@altertable/data-app", version: "0.0.0", type: "module" }),
-  );
-  await writeFile(
-    join(dataApp, "index.js"),
-    "export function defineDataApp(config) { return config; }\n",
-  );
-  await writeFile(
-    join(dataApp, "server/bun.js"),
-    `import { DataSourceError } from "../contract.js";
-export function localLakehouse() {
-  return {
-    async queryAll(statement, options) {
-      if (statement === "fail") throw new DataSourceError("query_rejected");
-      return {
-        columns: [{ name: "statement" }, { name: "limit" }],
-        rows: [[statement, options.limit]],
-        queryId: options.params?.groupName ?? "q1",
-      };
-    },
-  };
-}
-`,
-  );
-  await writeFile(
-    join(dataApp, "embed.js"),
-    `export function attachDataAppBridge() { return { dispose() {}, setPresentation() {} }; }
-export function createNavigationHandler() { return () => null; }
-export function createSqlQueryHandler(authorize) { return authorize; }
-`,
-  );
-  await writeFile(
-    join(dataApp, "contract.js"),
-    `export function createMessageRouter() { return { dispatch() {} }; }
-export function defineMessageRoute(route) { return route; }
-export const navigationUpdateRoute = {};
-export const sqlQueryRoute = {
-  input(value) {
-    if (typeof value?.statement !== "string" || !(value.limit >= 1)) throw new Error("Invalid SQL query.");
-    return value;
-  },
-};
-const brand = Symbol.for("@altertable/data-app/DataSourceError");
-export class DataSourceError extends Error {
-  [brand] = true;
-  static [Symbol.hasInstance](value) {
-    return value instanceof Error && value[brand] === true;
-  }
-  constructor(reason) {
-    super(reason);
-    this.reason = reason;
-  }
-}
-`,
-  );
-  await writeFile(
-    join(react, "package.json"),
-    JSON.stringify({
-      name: "react",
-      type: "module",
-      exports: {
-        "./jsx-runtime": "./jsx-runtime.js",
-        "./jsx-dev-runtime": "./jsx-dev-runtime.js",
-      },
-    }),
-  );
-  await writeFile(
-    join(react, "jsx-runtime.js"),
-    'export function jsx(type, props, key) { return { type, props, key }; }\nexport const jsxs = jsx;\nexport const Fragment = "Fragment";\n',
-  );
-  await writeFile(
-    join(react, "jsx-dev-runtime.js"),
-    'export function jsxDEV(type, props, key) { return { type, props, key }; }\nexport const Fragment = "Fragment";\n',
-  );
 }
 
 function drain(stream: ReadableStream<Uint8Array>, chunks: string[]): void {

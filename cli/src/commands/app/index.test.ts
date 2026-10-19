@@ -183,7 +183,8 @@ describe("app commands", () => {
   test("dev validates a single file before preparing its preview", async () => {
     const file = workspace.writeFile(
       "index.tsx",
-      `defineDataApp({ scope: { organization: "acme", environment: "staging" } });`,
+      `import { defineDataApp } from "@altertable/data-app";
+defineDataApp({ scope: { organization: "acme", environment: "staging" } });`,
     );
     async function failure(args: string[]): Promise<unknown> {
       return runAppCommand(["app", "dev", ...args]).catch((error: unknown) => error);

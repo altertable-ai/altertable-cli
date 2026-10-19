@@ -114,7 +114,7 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
       "@altertable/data-app-react",
       "@altertable/data-app-bun",
     ]) {
-      if (manifest.dependencies?.[name] !== "0.71.0")
+      if (manifest.dependencies?.[name] !== "0.72.0")
         throw new Error(`Packaged starter must pin ${name} to the tested release`);
     }
     for (const name of ["@altertable/data-app-embed", "@altertable/data-app-worker"]) {

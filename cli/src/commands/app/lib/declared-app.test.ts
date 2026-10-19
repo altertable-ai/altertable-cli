@@ -1,87 +1,50 @@
 import { expect, test } from "bun:test";
 import { readDeclaredAppScope } from "@/commands/app/lib/declared-app.ts";
 
-const hostedApp = `
-import { defineDataApp } from "@altertable/data-app";
-const dataApp = defineDataApp({
-  title: "Sample counts",
-  description: "Explore sample counts by group.",
-  scope: { organization: "demo", environment: "sample" },
-  queries: {
-    sampleCountsByGroup: {
-      statement: \`
-SELECT '{' AS brace, \${groupName} AS group_name
-WHERE $groupName = '' OR group_name = $groupName\`,
-      params: { groupName: { defaultValue: "" } },
-    },
-  },
-});
-`;
+const factoryImport = 'import { defineDataApp as define } from "@altertable/data-app";';
 
-const acmeScope = `defineDataApp({ scope: { organization: "acme", environment: "production" } });`;
+function app(config: string): string {
+  return `${factoryImport}\nconst app = define(${config});`;
+}
 
-test("reads a literal scope from a single-file data app", () => {
-  expect(readDeclaredAppScope(hostedApp)).toEqual({
-    organization: "demo",
-    environment: "sample",
-  });
+test("reads scope through the published extractor, including import aliases and TSX", () => {
   expect(
-    readDeclaredAppScope(`
-      const sample = "defineDataApp({ scope: { organization: \\"nope\\", environment: \\"nope\\" } })";
-      // defineDataApp({ scope: { organization: "nope", environment: "nope" } })
-      export const app = defineDataApp({
-        queries: { counts: { statement: "select 1", params: {} } },
-        scope: {
-          organization: "acme",
-          environment: "production",
-        },
-      });
-    `),
-  ).toEqual({ organization: "acme", environment: "production" });
-  expect(
-    readDeclaredAppScope(
-      "defineDataApp({ scope: { organization : 'O\\'Brien', environment: \"prod\\\"east\" } })",
-    ),
-  ).toEqual({ organization: "O'Brien", environment: 'prod"east' });
-});
-
-test("reads the scope past JSX text, regular expressions, and escapes", () => {
-  expect(
-    readDeclaredAppScope(
-      `function Hint(): JSX.Element { return <p>Don't panic</p>; }\n${acmeScope}`,
-    ),
-  ).toEqual({ organization: "acme", environment: "production" });
-  expect(readDeclaredAppScope(`const quote = /"[}']/g;\n${acmeScope}`)).toEqual({
-    organization: "acme",
-    environment: "production",
-  });
-  expect(
-    readDeclaredAppScope(
-      `defineDataApp({ scope: { organization: "\\u0041cme", environment: "\\x70rod" } })`,
-    ),
-  ).toEqual({ organization: "Acme", environment: "prod" });
-  expect(
-    readDeclaredAppScope(
-      `const total = 4 / 2; defineDataApp({ title: \`\${total} / \${"}"}\`, scope: { organization: "acme", environment: "production" } as const })`,
-    ),
+    readDeclaredAppScope(`${app(`{
+      scope: { organization: "acme", environment: "production" },
+      queries: { counts: { statement: \`SELECT '{' AS brace\`, params: {} } },
+    } as const`)}
+    function View() { return <p>Don't panic</p>; }`),
   ).toEqual({ organization: "acme", environment: "production" });
 });
 
-test("requires a literal defineDataApp scope", () => {
-  expect(() => readDeclaredAppScope("export const app = 1;")).toThrow("defineDataApp");
-  expect(() => readDeclaredAppScope("defineDataApp(config)")).toThrow("object literal");
-  expect(() => readDeclaredAppScope("defineDataApp({ title: 'App', queries: {} })")).toThrow(
-    "scope.organization",
-  );
-  expect(() =>
+test("validates scope shape after extraction", () => {
+  for (const config of [
+    "{}",
+    "{ scope: null }",
+    "{ scope: [] }",
+    '{ scope: { organization: 1, environment: "production" } }',
+    '{ scope: { organization: "acme" } }',
+    '{ scope: { organization: "acme", environment: " " } }',
+  ]) {
+    expect(() => readDeclaredAppScope(app(config))).toThrow("scope.organization");
+  }
+});
+
+test("reports extractor diagnostics for invalid declarations without executing source", () => {
+  for (const source of [
+    "export const app = 1;",
+    "function defineDataApp(value) { return value; } defineDataApp({ scope: {} });",
+    app("config"),
+    app("{ scope }"),
+    app('{ scope: { organization: "acme" + suffix, environment: "production" } }'),
+    app("{ scope: {"),
+  ]) {
+    expect(() => readDeclaredAppScope(source)).toThrow("Could not extract the data app manifest.");
+  }
+  expect(
     readDeclaredAppScope(
-      "const scope = { organization: 'acme', environment: 'production' }; defineDataApp({ scope })",
+      `throw new Error("must not execute");\n${app('{ scope: { organization: "acme", environment: "production" } }')}`,
     ),
-  ).toThrow("scope.organization");
-  expect(() =>
-    readDeclaredAppScope(
-      "defineDataApp({ scope: { organization: 'acme' + suffix, environment: 'production' } })",
-    ),
-  ).toThrow("scope.organization");
-  expect(() => readDeclaredAppScope("defineDataApp({ scope: {")).toThrow("could not be parsed");
+  ).toEqual({ organization: "acme", environment: "production" });
+  expect(() => readDeclaredAppScope(`${factoryImport}\nconst app = define(config);`)).toThrow("2:");
 });

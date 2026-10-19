@@ -28,6 +28,8 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 ### Changed
 
+- Use the published 0.72.0 manifest extractor and Bun preview server for single-file data app development; align starter and browser-test packages at 0.72.0.
+
 - Generate data apps with the split core, React, and Bun packages at 0.71.0; keep declared data-app packages aligned during upgrades.
 
 - Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
