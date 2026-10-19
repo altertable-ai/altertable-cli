@@ -1,5 +1,3 @@
-import { defineCommand, type Command } from '@/lib/command.ts';
-import { optionalStringArg } from '@/lib/args.ts';
 import {
   formatCompletionScript,
   formatInstallMessage,
@@ -8,6 +6,8 @@ import {
   SUPPORTED_SHELLS,
   type GetRootCommand,
 } from '@/commands/completion/lib/completion.ts';
+import { optionalStringArg } from '@/lib/args.ts';
+import { defineCommand, type Command } from '@/lib/command.ts';
 
 export function createInstallCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({

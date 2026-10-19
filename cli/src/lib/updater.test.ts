@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { createHash } from 'node:crypto';
 import {
   mkdirSync,
   mkdtempSync,
@@ -10,22 +11,22 @@ import {
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+
 import { buildMainCommand } from '@/cli.ts';
 import {
   executeUpdateCommand,
   type UpdateCommandDependencies,
   updateCommand,
 } from '@/commands/update/index.ts';
-import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
-import { VERSION } from '@/version.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
 import {
   executeCommand,
   resolveCommandSelection,
 } from '@/lib/command-parser.ts';
 import { configFile, kvSet } from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
 import { resolveProcessExecutablePath } from '@/lib/executable-path.ts';
+import { createCliRuntime } from '@/lib/runtime.ts';
+import { UpdaterConfig } from '@/lib/updater-config.ts';
 import {
   checkForUpdate,
   compareVersions,
@@ -49,9 +50,9 @@ import {
   shouldRunAutomaticUpdateCheck,
   verifySha256,
 } from '@/lib/updater.ts';
-import { UpdaterConfig } from '@/lib/updater-config.ts';
-import { createCliRuntime } from '@/lib/runtime.ts';
+import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
+import { VERSION } from '@/version.ts';
 
 let testHome = '';
 const packageJsonPath = resolve(import.meta.dir, '../../package.json');

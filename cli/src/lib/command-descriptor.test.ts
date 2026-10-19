@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+
 import { buildMainCommand } from '@/cli.ts';
 import { buildCompletionSpecFromDescriptor } from '@/commands/completion/lib/spec.ts';
-import { defineCommand } from '@/lib/command.ts';
 import {
   resolveCommandDescriptor,
   validateCommandDescriptor,
@@ -10,6 +10,7 @@ import {
   type CommandDescriptor,
   type ResolvedCommandMetadata,
 } from '@/lib/command-descriptor.ts';
+import { defineCommand } from '@/lib/command.ts';
 import {
   buildStructuredHelpFromDescriptor,
   renderAltertableUsageFromDescriptor,

@@ -1,7 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { configFile, kvSet } from '@/lib/config.ts';
 import { parseLakehouseQueryResponse } from '@/lib/lakehouse-ndjson.ts';
 import {
@@ -16,13 +17,13 @@ import {
   truncateTextMiddle,
 } from '@/lib/query-format.ts';
 import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
-import { getVisibleTextWidth } from '@/ui/terminal/styles.ts';
 import {
   forceTerminalColorForTests,
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
 } from '@/test-utils/terminal.ts';
+import { getVisibleTextWidth } from '@/ui/terminal/styles.ts';
 
 let terminalState: TerminalTestState | undefined;
 

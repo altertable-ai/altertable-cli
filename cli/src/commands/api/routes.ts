@@ -1,6 +1,3 @@
-import { optionalStringArg } from '@/lib/args.ts';
-import { defineCommand } from '@/lib/command.ts';
-import { writeCommandOutput } from '@/lib/command-output.ts';
 import {
   apiOperationDetails,
   apiOperationsJson,
@@ -10,6 +7,9 @@ import {
   formatApiOperationDetails,
   formatApiRoutes,
 } from '@/commands/api/lib/render.ts';
+import { optionalStringArg } from '@/lib/args.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
 
 export const apiRouteCommand = defineCommand({

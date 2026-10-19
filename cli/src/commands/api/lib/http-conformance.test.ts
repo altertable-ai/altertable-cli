@@ -1,10 +1,11 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
-import { setCliContext } from '@/context.ts';
+import { join } from 'node:path';
+
 import { executeApiHttp, resolveApiHttp } from '@/commands/api/lib/http.ts';
+import { setCliContext } from '@/context.ts';
+import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
 import { createExecutionContext } from '@/lib/execution-context.ts';
 import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
 import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';

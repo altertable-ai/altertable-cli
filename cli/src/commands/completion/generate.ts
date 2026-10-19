@@ -1,11 +1,11 @@
-import { defineCommand, type Command } from '@/lib/command.ts';
-import { stringArg } from '@/lib/args.ts';
 import {
   formatCompletionScript,
   resolveShell,
   SUPPORTED_SHELLS,
   type GetRootCommand,
 } from '@/commands/completion/lib/completion.ts';
+import { stringArg } from '@/lib/args.ts';
+import { defineCommand, type Command } from '@/lib/command.ts';
 
 export function createGenerateCommand(getRootCommand: GetRootCommand): Command {
   return defineCommand({

@@ -1,10 +1,11 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { setCliContext } from '@/context.ts';
 import { createCliSession } from '@/lib/cli-session.ts';
 import { configureRunSet } from '@/lib/profile-configure-core.ts';
-import { setCliContext } from '@/context.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
 

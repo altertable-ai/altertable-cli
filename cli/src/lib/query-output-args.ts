@@ -2,11 +2,6 @@ import { asCliArgString } from '@/lib/cli-args.ts';
 import { defineArguments } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
 import {
-  isApiNativeQueryFormat,
-  parseQueryResultFormat,
-  type QueryResultFormat,
-} from '@/lib/query-output.ts';
-import {
   resolvePagerOptions,
   type PagerMode,
   type PagerOptions,
@@ -15,6 +10,11 @@ import {
   defaultDisplayOptions,
   type QueryDisplayOptions,
 } from '@/lib/query-format.ts';
+import {
+  isApiNativeQueryFormat,
+  parseQueryResultFormat,
+  type QueryResultFormat,
+} from '@/lib/query-output.ts';
 import { isQueryLayout, QUERY_LAYOUT_OPTIONS } from '@/ui/layouts/query.ts';
 
 const MIN_MAX_COLUMN_WIDTH = 8;

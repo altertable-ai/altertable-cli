@@ -1,5 +1,5 @@
-import { parseApiJson } from '@/lib/parse-api-json.ts';
 import { isRecord } from '@/lib/object.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
 import { redactSensitiveJsonValue } from '@/lib/redact.ts';
 import {
   renderTabularOutput,

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import {
   EARLY_BOOTSTRAP_EXITS,
   HELP_FLAGS,

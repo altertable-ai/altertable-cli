@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { dataAppPayload } from '@/commands/app/lib/payload.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
 import { isRecord } from '@/lib/object.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
 
 export const dataAppPackage = '@altertable/data-app';
 export const dataAppPackages = [

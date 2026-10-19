@@ -1,3 +1,5 @@
+import { stdin as input, stderr as output } from 'node:process';
+
 import {
   confirm as clackConfirm,
   isCancel,
@@ -5,7 +7,7 @@ import {
   select as clackSelect,
   text as clackText,
 } from '@clack/prompts';
-import { stdin as input, stderr as output } from 'node:process';
+
 import { CliError } from '@/lib/errors.ts';
 import { ensurePromptColorAlignment } from '@/ui/terminal/styles.ts';
 

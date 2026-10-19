@@ -1,3 +1,4 @@
+import { aliasFlagToken } from '@/lib/command-descriptor.ts';
 import {
   commandArgumentValues,
   resolveCommandValue,
@@ -7,12 +8,11 @@ import {
   type CommandMetadata,
   type CommandRunResult,
 } from '@/lib/command.ts';
-import { aliasFlagToken } from '@/lib/command-descriptor.ts';
+import { EXIT_SUCCESS } from '@/lib/errors.ts';
 import {
   createExecutionContext,
   type ExecutionContext,
 } from '@/lib/execution-context.ts';
-import { EXIT_SUCCESS } from '@/lib/errors.ts';
 import { getCliRuntime } from '@/lib/runtime.ts';
 
 type ParsedArgumentValue = string | boolean | string[] | undefined;

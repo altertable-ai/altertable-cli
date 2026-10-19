@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+
 import { CliError, ParseError } from '@/lib/errors.ts';
 
 const BODY_METHOD_NAMES = ['POST', 'PATCH', 'PUT'] as const;

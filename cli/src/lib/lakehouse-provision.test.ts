@@ -6,8 +6,9 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { setCliContext } from '@/context.ts';
 import { configGet, configSet } from '@/lib/config.ts';
 import { createExecutionContext } from '@/lib/execution-context.ts';

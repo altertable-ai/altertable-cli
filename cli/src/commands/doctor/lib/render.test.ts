@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { formatDoctorReport } from '@/commands/doctor/lib/render.ts';
 
 describe('formatDoctorReport', () => {

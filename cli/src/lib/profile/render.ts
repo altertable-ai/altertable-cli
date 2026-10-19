@@ -1,3 +1,9 @@
+import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
+import {
+  buildConfigureShowData,
+  type ProfileInspect,
+  type ProfileSummary,
+} from '@/lib/profile/model.ts';
 import {
   buildProfileInspectResultView,
   buildProfileListView,
@@ -5,12 +11,6 @@ import {
   configureAuthenticationRows,
   type ProfileStatusResult,
 } from '@/lib/profile/views.ts';
-import {
-  buildConfigureShowData,
-  type ProfileInspect,
-  type ProfileSummary,
-} from '@/lib/profile/model.ts';
-import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
 import { renderDocumentText, renderRows } from '@/ui/renderers/terminal.ts';
 import {
   nestedIndent,

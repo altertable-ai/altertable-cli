@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+
+import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ request }) => {
   await request.post('/__test/state', { data: 'success' });

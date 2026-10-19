@@ -1,13 +1,14 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { setCliContext, getCliContext } from '@/context.ts';
+import { createExecutionContext } from '@/lib/execution-context.ts';
 import { configureRunSet } from '@/lib/profile-configure-core.ts';
 import { configureVerify } from '@/lib/profile-status.ts';
-import { setCliContext, getCliContext } from '@/context.ts';
 import { createCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
-import { createExecutionContext } from '@/lib/execution-context.ts';
 
 let testHome = '';
 let mockFile = '';

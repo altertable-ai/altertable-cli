@@ -7,24 +7,25 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { configGet } from '@/lib/config.ts';
 import { HttpError } from '@/lib/errors.ts';
 import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
-import { secretGet, secretSet } from '@/lib/secrets.ts';
 import {
   getActiveProfileName,
   profileExists,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
 import { createEmptyProfile, updateProfile } from '@/lib/profile/model.ts';
+import { secretGet, secretSet } from '@/lib/secrets.ts';
 import {
   createCliTestHarness,
   runCommandWithTestRuntime,
 } from '@/test-utils/cli.ts';
-import { delay } from '@/test-utils/time.ts';
 import { forceNoTerminalColorForTests } from '@/test-utils/terminal.ts';
+import { delay } from '@/test-utils/time.ts';
 
 const DEFAULT_WHOAMI = {
   principal: {

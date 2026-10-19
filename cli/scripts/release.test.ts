@@ -2,6 +2,29 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+
+import { NPM_BUNDLE_PATH } from '@/../scripts/npm-bundle.ts';
+import {
+  githubReleasePublishCommand,
+  githubReleaseUploadCommand,
+  assertTrustedPublishingEnvironment,
+  MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
+  npmPublicationRequired,
+  parsePackageIdentity,
+  parseNpmVersionLookup,
+  releaseAssetNames,
+  readReleaseAssetPaths,
+  SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
+} from '@/../scripts/publish-release.ts';
+import {
+  RELEASE_BUNDLE_ASSET,
+  RELEASE_CHECKSUMS_ASSET,
+  RELEASE_CLI_REFERENCE_ASSET,
+  RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
+  RELEASE_METADATA_ASSET,
+  RELEASE_TARGETS,
+  releaseCiMatrix,
+} from '@/../scripts/release-manifest.ts';
 import {
   assertReleaseTag,
   assertToolchain,
@@ -19,30 +42,8 @@ import {
   SUPPORTED_BUN_RUNTIME_RANGE,
   writeReleaseMetadata,
 } from '@/../scripts/release.ts';
-import { NPM_BUNDLE_PATH } from '@/../scripts/npm-bundle.ts';
-import {
-  githubReleasePublishCommand,
-  githubReleaseUploadCommand,
-  assertTrustedPublishingEnvironment,
-  MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
-  npmPublicationRequired,
-  parsePackageIdentity,
-  parseNpmVersionLookup,
-  releaseAssetNames,
-  readReleaseAssetPaths,
-  SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
-} from '@/../scripts/publish-release.ts';
 import { UpdaterConfig } from '@/lib/updater-config.ts';
 import { releaseAssetName } from '@/lib/updater.ts';
-import {
-  RELEASE_BUNDLE_ASSET,
-  RELEASE_CHECKSUMS_ASSET,
-  RELEASE_CLI_REFERENCE_ASSET,
-  RELEASE_CLI_REFERENCE_SCHEMA_ASSET,
-  RELEASE_METADATA_ASSET,
-  RELEASE_TARGETS,
-  releaseCiMatrix,
-} from '@/../scripts/release-manifest.ts';
 import { VERSION } from '@/version.ts';
 
 const temporaryDirectories: string[] = [];

@@ -1,10 +1,10 @@
 import { configGet } from '@/lib/config.ts';
 import { CliError } from '@/lib/errors.ts';
 import type { ExecutionContext } from '@/lib/execution-context.ts';
+import { sendHttp, type HttpRequest } from '@/lib/http-request.ts';
 import { buildLakehouseVerifyRequest } from '@/lib/lakehouse/query.ts';
 import type { WhoamiResponse } from '@/lib/management/model.ts';
 import { formatWhoamiPrincipalLine } from '@/lib/management/render.ts';
-import { sendHttp, type HttpRequest } from '@/lib/http-request.ts';
 import { formatProgressStatus, startProgress } from '@/lib/progress.ts';
 
 export type ConfigureAuthPlane = 'management' | 'lakehouse';

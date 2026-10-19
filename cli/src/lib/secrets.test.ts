@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { chmodSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createFakeKeychain } from '@/test-utils/keychain.ts';
+import { join } from 'node:path';
+
+import { credentialsFile } from '@/lib/config.ts';
 import { getProfileId } from '@/lib/profile-store.ts';
 import {
   createSecretStore,
@@ -10,7 +11,7 @@ import {
   secretGet,
   secretSet,
 } from '@/lib/secrets.ts';
-import { credentialsFile } from '@/lib/config.ts';
+import { createFakeKeychain } from '@/test-utils/keychain.ts';
 
 let testHome = '';
 

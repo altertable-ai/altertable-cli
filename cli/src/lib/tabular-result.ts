@@ -1,11 +1,11 @@
 import { CliError } from '@/lib/errors.ts';
-import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
 import {
   defaultDisplayOptions,
   getQueryColumnNames,
   renderQueryHumanOutput,
   renderQueryMarkdown,
 } from '@/lib/query-format.ts';
+import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
 
 export type ManagementOutputFormat = 'json' | 'table' | 'csv' | 'markdown';
 

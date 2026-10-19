@@ -1,12 +1,13 @@
 import { join } from 'node:path';
-import { defineCommand } from '@/lib/command.ts';
-import { EXIT_GENERIC } from '@/lib/errors.ts';
+
 import {
   appDirectory,
   assertAppOutputMode,
   requireAppScripts,
   runAppCommand,
 } from '@/commands/app/lib/run.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { EXIT_GENERIC } from '@/lib/errors.ts';
 
 export const appBuildCommand = defineCommand({
   metadata: {

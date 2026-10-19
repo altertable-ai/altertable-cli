@@ -1,28 +1,29 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { setCliContext } from '@/context.ts';
 import { ParseError, QueryError } from '@/lib/errors.ts';
+import { createExecutionContext } from '@/lib/execution-context.ts';
+import { httpSendStream, resolveReadTimeoutMs } from '@/lib/http.ts';
+import {
+  parseLakehouseQueryResponse,
+  parseLakehouseQueryStream,
+  type LakehouseRow,
+} from '@/lib/lakehouse-ndjson.ts';
+import {
+  buildLakehouseQueryRequest,
+  executeLakehouseQuery,
+  executeLakehouseQueryBytes,
+} from '@/lib/lakehouse/query.ts';
+import { getQueryColumnNames } from '@/lib/query-format.ts';
 import {
   csvEscapeCell,
   renderQueryCsv,
   renderQueryJson,
   renderQueryOutputText,
 } from '@/lib/query-output.ts';
-import {
-  parseLakehouseQueryResponse,
-  parseLakehouseQueryStream,
-  type LakehouseRow,
-} from '@/lib/lakehouse-ndjson.ts';
-import { getQueryColumnNames } from '@/lib/query-format.ts';
-import { httpSendStream, resolveReadTimeoutMs } from '@/lib/http.ts';
-import { createExecutionContext } from '@/lib/execution-context.ts';
-import {
-  buildLakehouseQueryRequest,
-  executeLakehouseQuery,
-  executeLakehouseQueryBytes,
-} from '@/lib/lakehouse/query.ts';
 import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
 
 const SAMPLE_NDJSON = [

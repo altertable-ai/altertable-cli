@@ -1,7 +1,7 @@
-import { requireManagementPlane } from '@/lib/auth.ts';
 import { buildCatalogCreateRequest } from '@/commands/catalogs/lib/requests.ts';
-import { defineCommand } from '@/lib/command.ts';
+import { requireManagementPlane } from '@/lib/auth.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
 
 export const catalogsCreateCommand = defineCommand({

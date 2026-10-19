@@ -1,12 +1,13 @@
+import {
+  getQueryDefaultMaxColumnWidth,
+  getQueryDefaultLayout,
+} from '@/lib/config.ts';
 import type {
   LakehouseColumn,
   LakehouseQueryResult,
   LakehouseRow,
 } from '@/lib/lakehouse-ndjson.ts';
-import {
-  getQueryDefaultMaxColumnWidth,
-  getQueryDefaultLayout,
-} from '@/lib/config.ts';
+import { pluralizeLabel } from '@/lib/pluralize.ts';
 import {
   getColumnTypeMap,
   isTimestampValue,
@@ -15,7 +16,6 @@ import {
   type ColumnTypeMap,
   type QueryDataType,
 } from '@/lib/query-column-types.ts';
-import { pluralizeLabel } from '@/lib/pluralize.ts';
 import {
   redactPasswordFieldInText,
   redactSensitiveJsonText,
@@ -24,6 +24,8 @@ import {
   formatRelativeTimestamp,
   formatTimestampWithRelative,
 } from '@/lib/relative-time.ts';
+import { span, type DisplayTextStyle } from '@/ui/document.ts';
+import type { QueryLayout } from '@/ui/layouts/query.ts';
 import {
   getTerminalWidth,
   getVisibleTextWidth,
@@ -33,8 +35,6 @@ import {
   truncateTerminalText,
   type TerminalTextAlignment,
 } from '@/ui/terminal/styles.ts';
-import type { QueryLayout } from '@/ui/layouts/query.ts';
-import { span, type DisplayTextStyle } from '@/ui/document.ts';
 
 const DEFAULT_MAX_COLUMN_WIDTH = 32;
 const TABLE_CELL_PADDING = 1;

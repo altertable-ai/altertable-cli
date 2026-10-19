@@ -1,6 +1,6 @@
-import { getOpenapiSpecJson, getOpenapiSpecYaml } from '@/lib/openapi-spec.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { getOpenapiSpecJson, getOpenapiSpecYaml } from '@/lib/openapi-spec.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
 
 export const apiSpecCommand = defineCommand({

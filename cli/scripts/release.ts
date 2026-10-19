@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, rename, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { smokeDataApp } from '@/../scripts/smoke-data-app.ts';
-import packageJson from '../package.json' with { type: 'json' };
+
+import { CLI_REFERENCE_SCHEMA_VERSION } from '@/../scripts/command-reference.ts';
 import {
   buildNpmBundle,
   NPM_BUNDLE_OPTIONS,
   NPM_BUNDLE_PATH,
 } from '@/../scripts/npm-bundle.ts';
-import { VERSION } from '@/version.ts';
 import {
   findReleaseTargetByBunTarget,
   findReleaseTargetByPlatform,
@@ -21,7 +20,10 @@ import {
   releaseCiMatrix,
   type ReleaseTarget,
 } from '@/../scripts/release-manifest.ts';
-import { CLI_REFERENCE_SCHEMA_VERSION } from '@/../scripts/command-reference.ts';
+import { smokeDataApp } from '@/../scripts/smoke-data-app.ts';
+import { VERSION } from '@/version.ts';
+
+import packageJson from '../package.json' with { type: 'json' };
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 3;
 export const SUPPORTED_BUN_RUNTIME_RANGE = '>=1.1.0';

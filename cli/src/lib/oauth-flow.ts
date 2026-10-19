@@ -1,12 +1,14 @@
-import * as oauth from 'oauth4webapi';
-import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { httpSend } from '@/lib/http.ts';
+import { createServer } from 'node:http';
+
+import * as oauth from 'oauth4webapi';
+
+import { readEnv } from '@/lib/env.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
+import { httpSend } from '@/lib/http.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
 import { span } from '@/ui/document.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';
-import type { OutputSink } from '@/lib/runtime.ts';
-import { readEnv } from '@/lib/env.ts';
 
 const LOGIN_TIMEOUT_MS = 180_000;
 

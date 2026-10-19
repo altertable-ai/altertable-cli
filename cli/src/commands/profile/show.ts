@@ -1,12 +1,12 @@
-import { inspectProfile } from '@/lib/profile/model.ts';
-import { formatProfileInspectResult } from '@/lib/profile/render.ts';
-import { profileInspectToJson } from '@/lib/profile/views.ts';
 import {
   existingProfileName,
   profileShowTargetName,
 } from '@/commands/profile/lib/profile.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { inspectProfile } from '@/lib/profile/model.ts';
+import { formatProfileInspectResult } from '@/lib/profile/render.ts';
+import { profileInspectToJson } from '@/lib/profile/views.ts';
 
 export const profileShowCommand = defineCommand({
   metadata: {

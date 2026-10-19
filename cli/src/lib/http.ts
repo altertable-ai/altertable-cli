@@ -1,6 +1,7 @@
 import { appendFileSync } from 'node:fs';
+
 import { getCliContext, getConnectTimeoutMs } from '@/context.ts';
-import { USER_AGENT } from '@/version.ts';
+import { readEnv } from '@/lib/env.ts';
 import {
   CliError,
   HttpError,
@@ -8,24 +9,24 @@ import {
   TimeoutError,
   type AuthPlane,
 } from '@/lib/errors.ts';
+import {
+  delayBeforeHttpRetry,
+  MAX_RETRY_ATTEMPTS,
+  shouldRetryHttpRequest,
+} from '@/lib/http-retry.ts';
 import { logDebug, logWarn } from '@/lib/log.ts';
-import { getOutputSink } from '@/lib/runtime.ts';
 import {
   redactResponseBodyForDebug,
   redactSensitiveJsonString,
   redactSensitiveJsonValue,
   truncateBodySnippet,
 } from '@/lib/redact.ts';
-import {
-  delayBeforeHttpRetry,
-  MAX_RETRY_ATTEMPTS,
-  shouldRetryHttpRequest,
-} from '@/lib/http-retry.ts';
+import { getOutputSink } from '@/lib/runtime.ts';
 import {
   DEFAULT_READ_TIMEOUT_MS,
   STREAM_READ_TIMEOUT_MS,
 } from '@/lib/transport-defaults.ts';
-import { readEnv } from '@/lib/env.ts';
+import { USER_AGENT } from '@/version.ts';
 
 export type HttpSendOptions = {
   method: string;

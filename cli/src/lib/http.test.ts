@@ -1,7 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { setCliContext } from '@/context.ts';
 import {
   CliError,
@@ -9,6 +10,11 @@ import {
   NetworkError,
   TimeoutError,
 } from '@/lib/errors.ts';
+import {
+  computeRetryDelayMs,
+  isRetryableMethod,
+  parseRetryAfterMs,
+} from '@/lib/http-retry.ts';
 import {
   buildFetchInit,
   getSharedDispatcher,
@@ -20,11 +26,6 @@ import {
   resolveReadTimeoutMs,
   shouldIgnoreSslErrors,
 } from '@/lib/http.ts';
-import {
-  computeRetryDelayMs,
-  isRetryableMethod,
-  parseRetryAfterMs,
-} from '@/lib/http-retry.ts';
 import { redactResponseBodyForDebug } from '@/lib/redact.ts';
 import { delay } from '@/test-utils/time.ts';
 

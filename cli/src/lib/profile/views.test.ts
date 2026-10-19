@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import type { ProfileInspect, ProfileSummary } from '@/lib/profile/model.ts';
 import {
   buildProfileInspectView,

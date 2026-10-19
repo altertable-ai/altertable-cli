@@ -1,7 +1,9 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { configSet } from '@/lib/config.ts';
 import {
   buildConfigureShowData,
   configureCredentialStatus,
@@ -13,7 +15,6 @@ import {
   formatConfigureSessionSummary,
 } from '@/lib/profile/render.ts';
 import { secretSet } from '@/lib/secrets.ts';
-import { configSet } from '@/lib/config.ts';
 
 const profileName = 'default';
 

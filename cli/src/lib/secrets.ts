@@ -1,10 +1,11 @@
 import type { SpawnSyncOptions } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, statSync } from 'node:fs';
+
 import { credentialsFile, kvGet, kvSet, kvUnset } from '@/lib/config.ts';
+import { readEnv } from '@/lib/env.ts';
 import { CliError } from '@/lib/errors.ts';
 import { logWarn } from '@/lib/log.ts';
-import { readEnv } from '@/lib/env.ts';
 import {
   assertSafeProfileName,
   ensureProfileId,

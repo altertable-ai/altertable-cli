@@ -1,14 +1,14 @@
-import { optionalStringArg, stringArg } from '@/lib/args.ts';
-import { requireManagementPlane } from '@/lib/auth.ts';
-import { defineCommand } from '@/lib/command.ts';
-import { writeCommandOutput } from '@/lib/command-output.ts';
-import { sendHttp } from '@/lib/http-request.ts';
-import { parseApiJson } from '@/lib/parse-api-json.ts';
 import {
   buildDataAppHttpRequest,
   readRequiredFile,
   type PublishedDataApp,
 } from '@/commands/app/lib/remote.ts';
+import { optionalStringArg, stringArg } from '@/lib/args.ts';
+import { requireManagementPlane } from '@/lib/auth.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { sendHttp } from '@/lib/http-request.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
 
 export const appPublishCommand = defineCommand({
   metadata: {

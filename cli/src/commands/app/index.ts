@@ -1,4 +1,3 @@
-import { defineCommand } from '@/lib/command.ts';
 import { appBuildCommand } from '@/commands/app/build.ts';
 import { appCreateCommand } from '@/commands/app/create.ts';
 import { appDevCommand } from '@/commands/app/dev.ts';
@@ -7,6 +6,7 @@ import { appPublishCommand } from '@/commands/app/publish.ts';
 import { appUpdateCommand } from '@/commands/app/update.ts';
 import { appUpgradeCommand } from '@/commands/app/upgrade.ts';
 import { appValidateCommand } from '@/commands/app/validate.ts';
+import { defineCommand } from '@/lib/command.ts';
 
 export const appCommand = defineCommand({
   metadata: {

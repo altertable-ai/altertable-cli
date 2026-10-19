@@ -1,4 +1,3 @@
-import { configGet, configSet } from '@/lib/profile-store.ts';
 import {
   configDir,
   configFile,
@@ -7,8 +6,9 @@ import {
   kvSet,
   kvUnset,
 } from '@/lib/config-files.ts';
-import { assertAllowedApiBase } from '@/lib/url-policy.ts';
 import { readEnv } from '@/lib/env.ts';
+import { configGet, configSet } from '@/lib/profile-store.ts';
+import { assertAllowedApiBase } from '@/lib/url-policy.ts';
 import { isQueryLayout, type QueryLayout } from '@/ui/layouts/query.ts';
 
 export { configDir, configFile, credentialsFile, kvGet, kvSet, kvUnset };

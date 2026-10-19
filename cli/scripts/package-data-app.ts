@@ -1,4 +1,5 @@
 import type { BunPlugin } from 'bun';
+
 import { readDataAppPayload } from '@/commands/app/lib/distribution.ts';
 
 /** Both npm and native releases embed the same deterministic starter template. */

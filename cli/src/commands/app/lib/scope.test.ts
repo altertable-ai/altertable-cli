@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+
 import { assertAppScope } from '@/commands/app/lib/scope.ts';
 
 test('live apps require the selected organization and environment before querying', () => {

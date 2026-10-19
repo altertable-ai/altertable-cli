@@ -1,14 +1,14 @@
-import type { Command } from '@/lib/command.ts';
-import type {
-  CommandFlagScope,
-  PositionalCompletionKind,
-} from '@/lib/command.ts';
 import {
   resolveCommandDescriptor,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
 } from '@/lib/command-descriptor.ts';
+import type { Command } from '@/lib/command.ts';
+import type {
+  CommandFlagScope,
+  PositionalCompletionKind,
+} from '@/lib/command.ts';
 
 /**
  * Static completion spec projected from the normalized command descriptor.

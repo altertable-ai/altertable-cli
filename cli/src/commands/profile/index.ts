@@ -1,4 +1,3 @@
-import { defineCommand } from '@/lib/command.ts';
 import { profileConfigureCommand } from '@/commands/profile/configure.ts';
 import { profileCurrentCommand } from '@/commands/profile/current.ts';
 import { profileDeleteCommand } from '@/commands/profile/delete.ts';
@@ -8,6 +7,7 @@ import { profileRenameCommand } from '@/commands/profile/rename.ts';
 import { profileShowCommand } from '@/commands/profile/show.ts';
 import { profileStatusCommand } from '@/commands/profile/status.ts';
 import { profileSwitchCommand } from '@/commands/profile/switch.ts';
+import { defineCommand } from '@/lib/command.ts';
 
 export const profileCommand = defineCommand({
   metadata: {

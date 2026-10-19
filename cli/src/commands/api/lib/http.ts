@@ -5,11 +5,11 @@ import {
 } from '@/commands/api/lib/body.ts';
 import type { CommandOutputMode } from '@/lib/command-output.ts';
 import { CliError } from '@/lib/errors.ts';
-import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
-import { parseManagementOutputFormat } from '@/lib/tabular-result.ts';
-import type { OutputSink } from '@/lib/runtime.ts';
 import type { ExecutionContext } from '@/lib/execution-context.ts';
 import { sendHttp, type HttpRequest } from '@/lib/http-request.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
+import { parseManagementOutputFormat } from '@/lib/tabular-result.ts';
 
 export type ApiHttpArgs = {
   method?: string;

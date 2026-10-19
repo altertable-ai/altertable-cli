@@ -1,22 +1,23 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { Prompts } from '@/ui/prompts.ts';
-import {
-  hasConfigureCredentialFlags,
-  runConfigureWizard,
-} from '@/lib/profile-configure.ts';
+import { join } from 'node:path';
+
+import { setCliContext } from '@/context.ts';
+import { configGet } from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
 import {
   configureRunSet,
   withConfigureProfileContext,
 } from '@/lib/profile-configure-core.ts';
-import { configGet } from '@/lib/config.ts';
-import { secretGet } from '@/lib/secrets.ts';
-import { setCliContext } from '@/context.ts';
+import {
+  hasConfigureCredentialFlags,
+  runConfigureWizard,
+} from '@/lib/profile-configure.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
+import { secretGet } from '@/lib/secrets.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
+import type { Prompts } from '@/ui/prompts.ts';
 
 const profileName = 'default';
 

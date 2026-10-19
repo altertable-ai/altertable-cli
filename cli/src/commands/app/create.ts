@@ -1,11 +1,12 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { defineCommand } from '@/lib/command.ts';
-import { CliError } from '@/lib/errors.ts';
-import { readEnv } from '@/lib/env.ts';
-import { configGet } from '@/lib/profile-store.ts';
+
 import { createAppFiles } from '@/commands/app/lib/distribution.ts';
 import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { readEnv } from '@/lib/env.ts';
+import { CliError } from '@/lib/errors.ts';
+import { configGet } from '@/lib/profile-store.ts';
 
 export const appCreateCommand = defineCommand({
   metadata: {

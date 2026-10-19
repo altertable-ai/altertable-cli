@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
+
 import { configDir, configFile, kvGet, kvSet } from '@/lib/config-files.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
 import { configuredEnvConfig, readEnv } from '@/lib/env.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
 
 export const DEFAULT_PROFILE_NAME = 'default';
 const PROFILE_ID_KEY = 'profile_id';

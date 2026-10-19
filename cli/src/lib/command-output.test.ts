@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { writeCommandOutput } from '@/lib/command-output.ts';
 import { createCliRuntime, type OutputSink } from '@/lib/runtime.ts';
 

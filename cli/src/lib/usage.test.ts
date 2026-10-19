@@ -2,30 +2,31 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { buildMainCommand } from '@/cli.ts';
+import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
 import { getBootstrapCliContext } from '@/context.ts';
 import { defineCommand } from '@/lib/command.ts';
+import { configureRunSet } from '@/lib/profile-configure-core.ts';
+import { createCliRuntime, setCliRuntime } from '@/lib/runtime.ts';
 import {
   buildStructuredHelp,
   renderAltertableUsage,
   resolveSubCommandForUsage,
 } from '@/lib/usage.ts';
-import { configureRunSet } from '@/lib/profile-configure-core.ts';
-import { createCliRuntime, setCliRuntime } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
-import { VERSION } from '@/version.ts';
-import { span } from '@/ui/document.ts';
-import {
-  getVisibleTextWidth,
-  renderDisplayText,
-} from '@/ui/terminal/styles.ts';
-import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
 import {
   forceTerminalColorForTests,
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
 } from '@/test-utils/terminal.ts';
+import { span } from '@/ui/document.ts';
+import {
+  getVisibleTextWidth,
+  renderDisplayText,
+} from '@/ui/terminal/styles.ts';
+import { VERSION } from '@/version.ts';
 
 describe('renderAltertableUsage', () => {
   test('groups root commands before global flags in a custom help panel', async () => {

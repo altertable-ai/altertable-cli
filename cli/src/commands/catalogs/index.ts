@@ -1,8 +1,8 @@
-import { defineCommand } from '@/lib/command.ts';
 import { catalogsCreateCommand } from '@/commands/catalogs/create.ts';
 import { requireManagementPlane } from '@/lib/auth.ts';
-import { fetchManagementCatalogRows } from '@/lib/management/catalogs.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { fetchManagementCatalogRows } from '@/lib/management/catalogs.ts';
 import {
   formatCatalogsSummary,
   formatCatalogsTable,

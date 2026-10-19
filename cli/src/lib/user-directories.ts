@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { isAbsolute, join, parse } from 'node:path';
+
 import { readEnv } from '@/lib/env.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
 

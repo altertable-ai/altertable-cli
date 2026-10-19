@@ -1,4 +1,6 @@
 import { unlinkSync, rmSync, existsSync, readFileSync } from 'node:fs';
+
+import { getCliContext } from '@/context.ts';
 import {
   configFile,
   configGet,
@@ -7,11 +9,7 @@ import {
   kvUnset,
 } from '@/lib/config.ts';
 import { CliError, ConfigurationError } from '@/lib/errors.ts';
-import {
-  deleteProfile,
-  deriveProfileName,
-  listProfiles,
-} from '@/lib/profile/model.ts';
+import { pluralizeLabel } from '@/lib/pluralize.ts';
 import {
   ensureProfileExists,
   getActiveProfileName,
@@ -21,15 +19,18 @@ import {
   resolveWorkingProfile,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
-import { pluralizeLabel } from '@/lib/pluralize.ts';
-import { getCliContext } from '@/context.ts';
-import { secretDelete, secretSet } from '@/lib/secrets.ts';
-import { assertAllowedApiBase } from '@/lib/url-policy.ts';
+import {
+  deleteProfile,
+  deriveProfileName,
+  listProfiles,
+} from '@/lib/profile/model.ts';
 import {
   getCliRuntime,
   getOutputSink,
   type OutputSink,
 } from '@/lib/runtime.ts';
+import { secretDelete, secretSet } from '@/lib/secrets.ts';
+import { assertAllowedApiBase } from '@/lib/url-policy.ts';
 import { span } from '@/ui/document.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';
 

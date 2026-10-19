@@ -12,8 +12,8 @@ import {
   TERMINAL_LABEL_WIDTH,
   TERMINAL_NESTED_LABEL_WIDTH,
 } from '@/ui/terminal/spacing.ts';
-import { renderFixedTable } from '@/ui/terminal/table.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';
+import { renderFixedTable } from '@/ui/terminal/table.ts';
 
 export type TerminalRenderOptions = {
   indent?: string;

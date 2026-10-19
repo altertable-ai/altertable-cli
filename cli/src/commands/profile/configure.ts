@@ -1,13 +1,13 @@
+import { optionalArg } from '@/commands/profile/lib/profile.ts';
 import { getCliContext } from '@/context.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
-import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
 import {
   configureArgs,
   runProfileConfigure,
   type ConfigureCommandArgs,
 } from '@/lib/profile-configure.ts';
-import { optionalArg } from '@/commands/profile/lib/profile.ts';
+import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
 
 export const profileConfigureCommand = defineCommand({
   metadata: {

@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { renderFixedTable } from '@/ui/terminal/table.ts';
+
 import { formatApiRoutes } from '@/commands/api/lib/render.ts';
+import { span } from '@/ui/document.ts';
 import {
   setTerminalColorMode,
   getVisibleTextWidth,
 } from '@/ui/terminal/styles.ts';
-import { span } from '@/ui/document.ts';
+import { renderFixedTable } from '@/ui/terminal/table.ts';
 
 const originalAltertableColor = process.env.ALTERTABLE_COLOR;
 const originalOscHyperlink = process.env.OSC_HYPERLINK;

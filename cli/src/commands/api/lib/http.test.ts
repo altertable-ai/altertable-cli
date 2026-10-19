@@ -1,8 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { setCliContext } from '@/context.ts';
+import { join } from 'node:path';
+
 import {
   readJsonInput,
   resolveApiRequestPayload,
@@ -14,10 +14,11 @@ import {
   resolveApiHttp,
   type ApiHttpArgs,
 } from '@/commands/api/lib/http.ts';
+import { setCliContext } from '@/context.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { ParseError } from '@/lib/errors.ts';
 import { createExecutionContext } from '@/lib/execution-context.ts';
 import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
-import { ParseError } from '@/lib/errors.ts';
 
 let testHome = '';
 let mockFile = '';

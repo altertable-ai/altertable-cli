@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { ParseError } from '@/lib/errors.ts';
 import { parseWhoamiResponse } from '@/lib/management/model.ts';
 

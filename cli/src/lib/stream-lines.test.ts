@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { readTextStreamLines } from '@/lib/stream-lines.ts';
 
 async function collectLines(

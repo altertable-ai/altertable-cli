@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { defineCommand } from '@/lib/command.ts';
+
 import { CommandParseError, executeCommand } from '@/lib/command-parser.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
 

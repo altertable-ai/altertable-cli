@@ -1,16 +1,16 @@
 import {
+  aliasFlagToken,
+  visibleCommandDescriptors,
+  type CommandArgumentDescriptor,
+  type CommandDescriptor,
+} from '@/lib/command-descriptor.ts';
+import {
   ALTERTABLE_COMMAND_GROUPS,
   COMMAND_ARGUMENT_TYPES,
   COMMAND_FLAG_SCOPES,
   POSITIONAL_COMPLETION_KINDS,
   type AltertableCommandGroup,
 } from '@/lib/command.ts';
-import {
-  aliasFlagToken,
-  visibleCommandDescriptors,
-  type CommandArgumentDescriptor,
-  type CommandDescriptor,
-} from '@/lib/command-descriptor.ts';
 
 export const CLI_REFERENCE_SCHEMA_VERSION = 1;
 

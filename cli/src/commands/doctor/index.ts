@@ -1,10 +1,10 @@
-import { defineCommand } from '@/lib/command.ts';
-import { writeCommandOutput } from '@/lib/command-output.ts';
 import { createDoctorChecks } from '@/commands/doctor/lib/checks.ts';
 import { formatDoctorReport } from '@/commands/doctor/lib/render.ts';
 import { runDoctorChecks } from '@/commands/doctor/lib/runner.ts';
-import { createDiagnosticExecutionContext } from '@/lib/execution-context.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { EXIT_GENERIC, EXIT_SUCCESS } from '@/lib/errors.ts';
+import { createDiagnosticExecutionContext } from '@/lib/execution-context.ts';
 
 export const doctorCommand = defineCommand({
   metadata: {

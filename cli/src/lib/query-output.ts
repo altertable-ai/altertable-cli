@@ -1,5 +1,11 @@
-import type { OutputSink } from '@/lib/runtime.ts';
 import { CliError } from '@/lib/errors.ts';
+import type { LakehouseApiQueryFormat } from '@/lib/lakehouse/query.ts';
+import {
+  resolvePagerOptions,
+  writePagedOutput,
+  type PagerOptions,
+} from '@/lib/pager.ts';
+import { writeQueryDestination } from '@/lib/query-destination.ts';
 import {
   defaultDisplayOptions,
   formatQueryCellRaw,
@@ -8,13 +14,7 @@ import {
   renderQueryMarkdown,
   type QueryDisplayOptions,
 } from '@/lib/query-format.ts';
-import {
-  resolvePagerOptions,
-  writePagedOutput,
-  type PagerOptions,
-} from '@/lib/pager.ts';
-import { writeQueryDestination } from '@/lib/query-destination.ts';
-import type { LakehouseApiQueryFormat } from '@/lib/lakehouse/query.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
 
 export type { LakehouseApiQueryFormat };
 export type QueryResultFormat =

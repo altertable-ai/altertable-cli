@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { CliError } from '@/lib/errors.ts';
 import {
   inferLakehouseFileFormat,

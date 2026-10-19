@@ -1,14 +1,14 @@
+import { uploadArgs, UPLOAD_MODE_OPTIONS } from '@/commands/upload/lib/args.ts';
 import { enumArg, optionalStringArg, stringArg } from '@/lib/args.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
+import { createLakehouseUploadRequest } from '@/lib/lakehouse-transport.ts';
 import {
   parseLakehouseFileContentType,
   parseLakehouseTarget,
 } from '@/lib/lakehouse/args.ts';
-import { createLakehouseUploadRequest } from '@/lib/lakehouse-transport.ts';
 import { getFileSizeBytes } from '@/lib/lakehouse/file.ts';
-import { uploadArgs, UPLOAD_MODE_OPTIONS } from '@/commands/upload/lib/args.ts';
 
 export const uploadCommand = defineCommand({
   metadata: {

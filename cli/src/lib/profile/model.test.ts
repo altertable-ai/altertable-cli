@@ -8,10 +8,20 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { setCliContext } from '@/context.ts';
 import { credentialsFile, kvGet, kvSet } from '@/lib/config.ts';
-import { configureRunSet } from '@/lib/profile-configure-core.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
+import { configureRunSet } from '@/lib/profile-configure-core.ts';
+import {
+  getActiveProfileName,
+  getProfileId,
+  ensureProfilesLayout,
+  profileConfigFile,
+  profileDir,
+  profileExists,
+  setActiveProfile,
+} from '@/lib/profile-store.ts';
 import {
   createEmptyProfile,
   deleteProfile,
@@ -22,15 +32,6 @@ import {
   renameProfile,
   updateProfile,
 } from '@/lib/profile/model.ts';
-import {
-  getActiveProfileName,
-  getProfileId,
-  ensureProfilesLayout,
-  profileConfigFile,
-  profileDir,
-  profileExists,
-  setActiveProfile,
-} from '@/lib/profile-store.ts';
 import { secretGet } from '@/lib/secrets.ts';
 import { createFakeKeychain } from '@/test-utils/keychain.ts';
 

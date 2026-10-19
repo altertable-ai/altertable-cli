@@ -1,14 +1,15 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { setCliContext } from '@/context.ts';
 import { getManagementAuthHeader, requireManagementPlane } from '@/lib/auth.ts';
 import { configSet } from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
 import { FROM_ENV_PSEUDOPROFILE_NAME } from '@/lib/profile-store.ts';
 import { secretSet } from '@/lib/secrets.ts';
-import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
-import { setCliContext } from '@/context.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
 
 const profileName = 'default';
 

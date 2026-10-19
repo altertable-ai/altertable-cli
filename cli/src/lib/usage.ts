@@ -1,8 +1,3 @@
-import type { Command } from '@/lib/command.ts';
-import {
-  ALTERTABLE_COMMAND_GROUPS,
-  type AltertableCommandGroup,
-} from '@/lib/command.ts';
 import {
   aliasFlagToken,
   resolveCommandDescriptor,
@@ -11,14 +6,19 @@ import {
   type CommandDescriptor,
   type ResolvedCommandMetadata,
 } from '@/lib/command-descriptor.ts';
+import { resolveCommandSelection } from '@/lib/command-parser.ts';
+import type { Command } from '@/lib/command.ts';
+import {
+  ALTERTABLE_COMMAND_GROUPS,
+  type AltertableCommandGroup,
+} from '@/lib/command.ts';
+import { readEnv } from '@/lib/env.ts';
+import { getOutputSink } from '@/lib/runtime.ts';
 import { span, type DisplaySpan } from '@/ui/document.ts';
 import {
   getVisibleTextWidth,
   renderDisplayText,
 } from '@/ui/terminal/styles.ts';
-import { readEnv } from '@/lib/env.ts';
-import { getOutputSink } from '@/lib/runtime.ts';
-import { resolveCommandSelection } from '@/lib/command-parser.ts';
 
 const HELP_INDENT = '    ';
 const HELP_COLUMN_GAP = '  ';

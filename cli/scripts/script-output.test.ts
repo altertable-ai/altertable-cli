@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
+
 import { renderQueryMarkdown } from '@/lib/query-format.ts';
+import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
 
 describe('script output lossless guarantees', () => {
   test('CSV round-trips cells with commas, quotes, newlines, and Unicode', () => {

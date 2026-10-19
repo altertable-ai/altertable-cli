@@ -1,7 +1,3 @@
-import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
-import { span } from '@/ui/document.ts';
-import { renderDisplayText } from '@/ui/terminal/styles.ts';
-import { VERSION } from '@/version.ts';
 import { asCliArgString } from '@/lib/cli-args.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
 import { defineCommand } from '@/lib/command.ts';
@@ -19,6 +15,10 @@ import {
   resolveUpdateSource,
   type UpdateCheckResult,
 } from '@/lib/updater.ts';
+import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
+import { VERSION } from '@/version.ts';
 
 export const updateCommand = defineCommand({
   metadata: {

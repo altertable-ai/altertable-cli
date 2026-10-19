@@ -1,6 +1,3 @@
-import { checkAppScope } from '@/commands/app/lib/scope.ts';
-import { defineCommand } from '@/lib/command.ts';
-import { CliError, EXIT_GENERIC } from '@/lib/errors.ts';
 import { startAppDevProxy } from '@/commands/app/lib/dev-proxy.ts';
 import {
   appDirectory,
@@ -8,6 +5,9 @@ import {
   requireAppScripts,
   runAppCommand,
 } from '@/commands/app/lib/run.ts';
+import { checkAppScope } from '@/commands/app/lib/scope.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { CliError, EXIT_GENERIC } from '@/lib/errors.ts';
 
 export const appDevCommand = defineCommand({
   metadata: {

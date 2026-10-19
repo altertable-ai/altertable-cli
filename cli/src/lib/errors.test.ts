@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+
 import {
   CliError,
   ConfigurationError,
@@ -20,16 +21,16 @@ import {
   shouldShowCommandExamplesOnError,
 } from '@/lib/errors.ts';
 import {
-  renderCliError,
-  renderCliErrorDetails,
-  renderCliErrorJson,
-} from '@/ui/error.ts';
-import {
   forceNoTerminalColorForTests,
   restoreTerminalState,
   snapshotTerminalState,
   type TerminalTestState,
 } from '@/test-utils/terminal.ts';
+import {
+  renderCliError,
+  renderCliErrorDetails,
+  renderCliErrorJson,
+} from '@/ui/error.ts';
 
 let terminalState: TerminalTestState;
 

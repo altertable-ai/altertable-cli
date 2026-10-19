@@ -1,7 +1,7 @@
-import { assertNoEnvConfigMode, renameProfile } from '@/lib/profile/model.ts';
 import { requireProfileName } from '@/commands/profile/lib/profile.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { assertNoEnvConfigMode, renameProfile } from '@/lib/profile/model.ts';
 
 export const profileRenameCommand = defineCommand({
   metadata: { name: 'rename', description: 'Rename a profile', hidden: true },

@@ -1,31 +1,31 @@
-import { VERSION } from '@/version.ts';
-import {
-  detectConfiguredProfileAuth,
-  readProfileConfiguration,
-  type ProfileAuth,
-} from '@/lib/profile/model.ts';
-import { envConfigMode } from '@/lib/profile-store.ts';
-import { readEnv } from '@/lib/env.ts';
-import {
-  configGetGlobal,
-  resolveApiBase,
-  resolveManagementApiBase,
-} from '@/lib/config.ts';
-import { secretStoreDisplay } from '@/lib/secrets.ts';
-import { sendHttp } from '@/lib/http-request.ts';
-import { buildLakehouseVerifyRequest } from '@/lib/lakehouse/query.ts';
-import { parseWhoamiResponse } from '@/lib/management/model.ts';
-import { formatWhoamiPrincipalLine } from '@/lib/management/render.ts';
-import {
-  parseLakehouseQueryResponse,
-  type LakehouseRow,
-} from '@/lib/lakehouse-ndjson.ts';
-import { ParseError } from '@/lib/errors.ts';
 import type {
   DoctorCheck,
   DoctorCheckContext,
   DoctorCheckOutcome,
 } from '@/commands/doctor/lib/model.ts';
+import {
+  configGetGlobal,
+  resolveApiBase,
+  resolveManagementApiBase,
+} from '@/lib/config.ts';
+import { readEnv } from '@/lib/env.ts';
+import { ParseError } from '@/lib/errors.ts';
+import { sendHttp } from '@/lib/http-request.ts';
+import {
+  parseLakehouseQueryResponse,
+  type LakehouseRow,
+} from '@/lib/lakehouse-ndjson.ts';
+import { buildLakehouseVerifyRequest } from '@/lib/lakehouse/query.ts';
+import { parseWhoamiResponse } from '@/lib/management/model.ts';
+import { formatWhoamiPrincipalLine } from '@/lib/management/render.ts';
+import { envConfigMode } from '@/lib/profile-store.ts';
+import {
+  detectConfiguredProfileAuth,
+  readProfileConfiguration,
+  type ProfileAuth,
+} from '@/lib/profile/model.ts';
+import { secretStoreDisplay } from '@/lib/secrets.ts';
+import { VERSION } from '@/version.ts';
 
 function passOutcome(
   message: string,

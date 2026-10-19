@@ -16,7 +16,6 @@ import {
   optionalAuth,
   type ExecutionContext,
 } from '@/lib/execution-context.ts';
-import { isFromEnvProfile } from '@/lib/profile-store.ts';
 import { httpSend } from '@/lib/http.ts';
 import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
 import {
@@ -24,6 +23,7 @@ import {
   hasOAuthSession,
 } from '@/lib/oauth-profile.ts';
 import { parseApiJson } from '@/lib/parse-api-json.ts';
+import { isFromEnvProfile } from '@/lib/profile-store.ts';
 import { secretSet } from '@/lib/secrets.ts';
 import { span } from '@/ui/document.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';

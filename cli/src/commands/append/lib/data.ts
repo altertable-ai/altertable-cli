@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+
 import { CliError } from '@/lib/errors.ts';
 
 export function parseAppendJsonContent(dataArg: string): string {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { chmodSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { configSet } from '@/lib/config.ts';
 import { secretSet } from '@/lib/secrets.ts';
 import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';

@@ -1,6 +1,5 @@
 import { configGet } from '@/lib/config.ts';
 import { CliError } from '@/lib/errors.ts';
-import { secretExists, secretGet } from '@/lib/secrets.ts';
 import { type ConfigureOptions } from '@/lib/profile-configure-core.ts';
 import {
   configureCredentialStatus,
@@ -8,9 +7,10 @@ import {
   managementPlaneStatusDetail,
 } from '@/lib/profile/model.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
+import { secretExists, secretGet } from '@/lib/secrets.ts';
 import { span } from '@/ui/document.ts';
-import { renderDisplayText } from '@/ui/terminal/styles.ts';
 import type { Prompts, SelectOption } from '@/ui/prompts.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
 
 export type ConfigureWizardScope = 'both' | 'management' | 'lakehouse';
 

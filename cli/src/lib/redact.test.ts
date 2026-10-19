@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import {
   MASKED_PASSWORD_PLACEHOLDER,
   redactPasswordFieldInText,

@@ -8,14 +8,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
+
 import { readDataAppPayload } from '@/commands/app/lib/distribution.ts';
-import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
 import {
   configSet,
   ensureProfileExists,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
+import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 
 let home: string;
 let previousConfigHome: string | undefined;

@@ -1,14 +1,14 @@
 import type { ExecutionContext } from '@/lib/execution-context.ts';
 import {
-  parseLakehouseQueryResponse,
-  parseLakehouseQueryStream,
-  type LakehouseQueryResult,
-} from '@/lib/lakehouse-ndjson.ts';
-import {
   sendHttp,
   sendHttpStream,
   type HttpRequest,
 } from '@/lib/http-request.ts';
+import {
+  parseLakehouseQueryResponse,
+  parseLakehouseQueryStream,
+  type LakehouseQueryResult,
+} from '@/lib/lakehouse-ndjson.ts';
 
 export type LakehouseApiQueryFormat = 'csv' | 'jsonl' | 'parquet';
 

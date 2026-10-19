@@ -1,5 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
+
 import { dataAppPlugin } from '@/../scripts/package-data-app.ts';
 
 export const NPM_BUNDLE_OPTIONS = {

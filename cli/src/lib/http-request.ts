@@ -1,21 +1,21 @@
+import { getLakehouseAuthHeader, getManagementAuthHeader } from '@/lib/auth.ts';
+import { resolveApiBase, resolveManagementApiBase } from '@/lib/config.ts';
 import { HttpError, type AuthPlane } from '@/lib/errors.ts';
-import { httpSend, httpSendStream, type HttpSendOptions } from '@/lib/http.ts';
-import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
 import {
   optionalAuth,
   type ExecutionContext,
 } from '@/lib/execution-context.ts';
-import { getLakehouseAuthHeader, getManagementAuthHeader } from '@/lib/auth.ts';
-import { resolveApiBase, resolveManagementApiBase } from '@/lib/config.ts';
-import {
-  ensureFreshAccessToken,
-  hasOAuthSession,
-} from '@/lib/oauth-profile.ts';
+import { httpSend, httpSendStream, type HttpSendOptions } from '@/lib/http.ts';
 import {
   canRecoverLakehouseAuth,
   hasManagementCredentials,
   provisionLakehouseCredential,
 } from '@/lib/lakehouse-provision.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import {
+  ensureFreshAccessToken,
+  hasOAuthSession,
+} from '@/lib/oauth-profile.ts';
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 

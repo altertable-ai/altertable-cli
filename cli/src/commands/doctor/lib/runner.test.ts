@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { ConfigurationError, HttpError } from '@/lib/errors.ts';
+
 import type {
   DoctorCheck,
   DoctorCheckContext,
 } from '@/commands/doctor/lib/model.ts';
 import { runDoctorChecks } from '@/commands/doctor/lib/runner.ts';
+import { ConfigurationError, HttpError } from '@/lib/errors.ts';
 
 function createDoctorContext(offline = false): DoctorCheckContext {
   return {

@@ -1,9 +1,9 @@
+import type { HttpRequest } from '@/lib/http-request.ts';
 import { type HttpSendOptions } from '@/lib/http.ts';
 import {
   createUploadProgressReporter,
   shouldShowProgress,
 } from '@/lib/progress.ts';
-import type { HttpRequest } from '@/lib/http-request.ts';
 
 export type LakehouseAppendOptions = {
   sync?: boolean;

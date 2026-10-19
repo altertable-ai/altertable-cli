@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { NetworkError, getCliExitCode } from '@/lib/errors.ts';
 import { writeQueryDestination } from '@/lib/query-destination.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';

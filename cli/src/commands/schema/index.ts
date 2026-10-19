@@ -1,11 +1,11 @@
+import { schemaArgs } from '@/commands/schema/lib/args.ts';
+import { buildSchemaTreeView } from '@/commands/schema/lib/views.ts';
 import { stringArg } from '@/lib/args.ts';
 import { defineCommand } from '@/lib/command.ts';
-import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
-import { writePagedOutput } from '@/lib/pager.ts';
-import { writeQueryOutput } from '@/lib/query-output.ts';
 import { executeLakehouseQuery } from '@/lib/lakehouse/query.ts';
-import { buildSchemaTreeView } from '@/commands/schema/lib/views.ts';
-import { schemaArgs } from '@/commands/schema/lib/args.ts';
+import { writePagedOutput } from '@/lib/pager.ts';
+import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
+import { writeQueryOutput } from '@/lib/query-output.ts';
 import { renderTreeText } from '@/ui/renderers/terminal.ts';
 
 export const schemaCommand = defineCommand({

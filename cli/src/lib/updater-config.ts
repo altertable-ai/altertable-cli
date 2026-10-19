@@ -1,10 +1,10 @@
+import { objectKeys } from '@/lib/object.ts';
 import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
 import {
   RELEASE_CHECKSUMS_ASSET,
   RELEASE_PLATFORM_CONFIG,
   type ReleasePlatform,
 } from '@/release-manifest.ts';
-import { objectKeys } from '@/lib/object.ts';
 
 const DAILY_MS = 24 * 60 * 60 * 1000;
 const EXECUTABLE_NAME = 'altertable';

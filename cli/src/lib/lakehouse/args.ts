@@ -1,4 +1,5 @@
 import { extname } from 'node:path';
+
 import { defineArguments } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
 

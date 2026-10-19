@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import {
+  buildCommandReference,
+  renderCliReferenceSchema,
+  renderCommandReferenceJson,
+  renderCommandReferenceMarkdown,
+} from '@/../scripts/command-reference.ts';
 import { buildMainCommand } from '@/cli.ts';
 import {
   resolveCommandDescriptor,
@@ -13,12 +20,6 @@ import {
   POSITIONAL_COMPLETION_KINDS,
 } from '@/lib/command.ts';
 import { VERSION } from '@/version.ts';
-import {
-  buildCommandReference,
-  renderCliReferenceSchema,
-  renderCommandReferenceJson,
-  renderCommandReferenceMarkdown,
-} from '@/../scripts/command-reference.ts';
 
 async function resolveReference() {
   const descriptor = await resolveCommandDescriptor(buildMainCommand());

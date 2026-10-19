@@ -1,8 +1,15 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
+
+import {
+  formatBashCompletion,
+  formatFishCompletion,
+  formatZshCompletion,
+} from '@/commands/completion/lib/format.ts';
+import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
 import type { Command } from '@/lib/command.ts';
-import { CliError } from '@/lib/errors.ts';
 import { readEnv } from '@/lib/env.ts';
+import { CliError } from '@/lib/errors.ts';
 import { homeDir, configHome, dataHome } from '@/lib/user-directories.ts';
 import {
   document,
@@ -13,12 +20,6 @@ import {
   type DisplayText,
 } from '@/ui/document.ts';
 import { renderDocumentText } from '@/ui/renderers/terminal.ts';
-import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
-import {
-  formatBashCompletion,
-  formatFishCompletion,
-  formatZshCompletion,
-} from '@/commands/completion/lib/format.ts';
 
 export type GetRootCommand = () => Command;
 export type SupportedShell = 'bash' | 'zsh' | 'fish';

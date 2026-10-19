@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+
 import { isJsonOutput, setCliContext } from '@/context.ts';
+import { CliError } from '@/lib/errors.ts';
 import {
   AGENT_ENV_VARIABLES,
   mergeGlobalFlagsFromArgs,
@@ -12,7 +14,6 @@ import {
   setCliRuntime,
 } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
-import { CliError } from '@/lib/errors.ts';
 import { renderCliErrorJson } from '@/ui/error.ts';
 
 describe('parseGlobalOutputFlags', () => {

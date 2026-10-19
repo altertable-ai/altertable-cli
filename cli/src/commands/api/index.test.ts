@@ -1,20 +1,21 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { buildMainCommand } from '@/cli.ts';
 import { apiCommand } from '@/commands/api/index.ts';
-import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
-import { setCliContext } from '@/context.ts';
 import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
+import { setCliContext } from '@/context.ts';
+import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
+import { executeCommand } from '@/lib/command-parser.ts';
+import type { Command } from '@/lib/command.ts';
 import {
   createCliRuntime,
   getCliRuntime,
   setCliRuntime,
 } from '@/lib/runtime.ts';
 import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
-import type { Command } from '@/lib/command.ts';
-import { executeCommand } from '@/lib/command-parser.ts';
 
 describe('api', () => {
   beforeEach(() => {

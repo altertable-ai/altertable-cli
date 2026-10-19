@@ -1,20 +1,21 @@
 import { spawnSync } from 'node:child_process';
+
+import { optionalStringArg } from '@/lib/args.ts';
 import {
   getLakehouseCredentialPair,
   requireManagementPlane,
   type LakehouseBasicAuthPair,
 } from '@/lib/auth.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { readEnv } from '@/lib/env.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+import type { ExecutionContext } from '@/lib/execution-context.ts';
+import { fetchManagementCatalogRows } from '@/lib/management/catalogs.ts';
+import type { CatalogRow } from '@/lib/management/model.ts';
 import {
   configureVerify,
   type ConfigureAuthPlane,
 } from '@/lib/profile-status.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
-import { defineCommand } from '@/lib/command.ts';
-import { optionalStringArg } from '@/lib/args.ts';
-import { fetchManagementCatalogRows } from '@/lib/management/catalogs.ts';
-import type { CatalogRow } from '@/lib/management/model.ts';
-import type { ExecutionContext } from '@/lib/execution-context.ts';
-import { readEnv } from '@/lib/env.ts';
 
 export const duckdbCommand = defineCommand({
   metadata: {

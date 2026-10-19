@@ -5,8 +5,9 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { setCliContext } from '@/context.ts';
 import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
 

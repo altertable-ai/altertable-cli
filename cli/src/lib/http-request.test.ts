@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { basicAuthToken } from '@/lib/auth.ts';
 import { configGet, configSet } from '@/lib/config.ts';
 import type { ExecutionContext } from '@/lib/execution-context.ts';

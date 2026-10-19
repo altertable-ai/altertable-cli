@@ -1,6 +1,6 @@
 import { defineCommand } from '@/lib/command.ts';
-import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
 import { configureRunClear } from '@/lib/profile-configure-core.ts';
+import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
 
 export const logoutCommand = defineCommand({
   metadata: {

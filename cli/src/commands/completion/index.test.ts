@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { defineCommand, type Command } from '@/lib/command.ts';
-import { executeCommand } from '@/lib/command-parser.ts';
+
 import { buildMainCommand } from '@/cli.ts';
 import { createCompletionCommand } from '@/commands/completion/index.ts';
+import { executeCommand } from '@/lib/command-parser.ts';
+import { defineCommand, type Command } from '@/lib/command.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
 

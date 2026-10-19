@@ -1,5 +1,6 @@
 import { defineDataApp } from '@altertable/data-app';
 import { parseAppearance } from '@altertable/data-app/appearance';
+
 import app from '#config';
 
 export default defineDataApp({

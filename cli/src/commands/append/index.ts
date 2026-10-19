@@ -1,13 +1,13 @@
+import { appendGroupArgs } from '@/commands/append/lib/args.ts';
+import { parseAppendJsonContent } from '@/commands/append/lib/data.ts';
+import { appendStatusCommand } from '@/commands/append/status.ts';
 import { booleanArg, stringArg } from '@/lib/args.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
 import { buildLakehouseAppendRequest } from '@/lib/lakehouse-transport.ts';
 import { parseLakehouseTarget } from '@/lib/lakehouse/args.ts';
 import { startProgress } from '@/lib/progress.ts';
-import { appendStatusCommand } from '@/commands/append/status.ts';
-import { appendGroupArgs } from '@/commands/append/lib/args.ts';
-import { parseAppendJsonContent } from '@/commands/append/lib/data.ts';
 
 export const appendCommand = defineCommand({
   metadata: {

@@ -1,4 +1,5 @@
 import { basename, join, resolve } from 'node:path';
+
 import { isRecord } from '../src/lib/object.ts';
 
 export type NpmVersionLookup =

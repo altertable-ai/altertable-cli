@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
 import { configGet } from '@/lib/config.ts';
 import { readEnv } from '@/lib/env.ts';
-import { isFromEnvProfile } from '@/lib/profile-store.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
+import { isFromEnvProfile } from '@/lib/profile-store.ts';
 
 export function assertAppScope(
   scope: unknown,

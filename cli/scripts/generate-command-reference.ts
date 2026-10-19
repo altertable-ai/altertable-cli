@@ -1,10 +1,5 @@
 import { join } from 'node:path';
-import { buildMainCommand } from '@/cli.ts';
-import {
-  resolveCommandDescriptor,
-  validateCommandDescriptor,
-} from '@/lib/command-descriptor.ts';
-import { VERSION } from '@/version.ts';
+
 import {
   buildCommandReference,
   renderCliReferenceSchema,
@@ -15,6 +10,12 @@ import {
   parseGeneratedArtifactMode,
   updateOrCheckGeneratedArtifact,
 } from '@/../scripts/generated-artifact.ts';
+import { buildMainCommand } from '@/cli.ts';
+import {
+  resolveCommandDescriptor,
+  validateCommandDescriptor,
+} from '@/lib/command-descriptor.ts';
+import { VERSION } from '@/version.ts';
 
 const descriptor = await resolveCommandDescriptor(buildMainCommand());
 validateCommandDescriptor(descriptor);

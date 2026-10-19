@@ -7,8 +7,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { configDir } from '@/lib/user-directories.ts';
+
 import { ConfigurationError } from '@/lib/errors.ts';
+import { configDir } from '@/lib/user-directories.ts';
 
 export { configDir } from '@/lib/user-directories.ts';
 

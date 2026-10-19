@@ -1,15 +1,18 @@
-import { defineCommand } from '@/lib/command.ts';
-import { assertRetrieved, ConfigurationError } from '@/lib/errors.ts';
 import { getCliContext, isJsonOutput, setCliContext } from '@/context.ts';
-import { assertAllowedApiBase } from '@/lib/url-policy.ts';
-import { refreshCliRuntimeContext, type OutputSink } from '@/lib/runtime.ts';
-import { httpSend } from '@/lib/http.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { resolveManagementApiRoot } from '@/lib/config.ts';
+import { assertRetrieved, ConfigurationError } from '@/lib/errors.ts';
+import { httpSend } from '@/lib/http.ts';
 import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
-import { runLoginFlow, type TokenResponse } from '@/lib/oauth-flow.ts';
-import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
 import type { WhoamiResponse } from '@/lib/management/model.ts';
 import { formatWhoamiPrincipalLine } from '@/lib/management/render.ts';
+import { runLoginFlow, type TokenResponse } from '@/lib/oauth-flow.ts';
+import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
+import {
+  profileExists,
+  resolveWorkingProfile,
+  setActiveProfile,
+} from '@/lib/profile-store.ts';
 import {
   assertNoEnvConfigMode,
   createEmptyProfile,
@@ -18,11 +21,7 @@ import {
   profileHasAnyAuthConfigured,
   updateProfile,
 } from '@/lib/profile/model.ts';
-import {
-  profileExists,
-  resolveWorkingProfile,
-  setActiveProfile,
-} from '@/lib/profile-store.ts';
+import { refreshCliRuntimeContext, type OutputSink } from '@/lib/runtime.ts';
 import { secretSet } from '@/lib/secrets.ts';
 import {
   fetchEnvironmentCatalogs,
@@ -34,6 +33,7 @@ import {
   type ServiceAccountRoleAssignment,
   type ServiceAccountScope,
 } from '@/lib/service-account-provision.ts';
+import { assertAllowedApiBase } from '@/lib/url-policy.ts';
 import { document, section, span, table } from '@/ui/document.ts';
 import { renderDocumentText } from '@/ui/renderers/terminal.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';

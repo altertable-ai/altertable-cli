@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { ConfigurationError } from '@/lib/errors.ts';
 import { parseServiceAccountScope } from '@/lib/service-account-provision.ts';
 

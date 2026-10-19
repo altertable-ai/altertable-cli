@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { kvGet } from '@/lib/config.ts';
+import { kvSet } from '@/lib/config.ts';
 import {
   DEFAULT_PROFILE_NAME,
   ensureProfileExists,
@@ -16,7 +18,6 @@ import {
   resolveProfileReference,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
-import { kvSet } from '@/lib/config.ts';
 
 let testHome = '';
 

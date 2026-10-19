@@ -1,15 +1,11 @@
+import { getCliContext, isJsonOutput } from '@/context.ts';
 import { defineArguments } from '@/lib/command.ts';
+import { ConfigurationError, CliError } from '@/lib/errors.ts';
 import {
   configureRunSet,
   withConfigureProfileContext,
   type ConfigureOptions,
 } from '@/lib/profile-configure-core.ts';
-import { formatConfigureSessionSummary } from '@/lib/profile/render.ts';
-import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
-import { ConfigurationError, CliError } from '@/lib/errors.ts';
-import { getCliContext, isJsonOutput } from '@/context.ts';
-import { resolveWorkingProfile } from '@/lib/profile-store.ts';
-import { getOutputSink, type OutputSink } from '@/lib/runtime.ts';
 import {
   collectLakehouseCredentials,
   collectManagementCredentials,
@@ -18,13 +14,11 @@ import {
   type ConfigureWizardOptions,
   type ConfigureWizardScope,
 } from '@/lib/profile-configure-interactive.ts';
-import { defaultPrompts, PromptCancelled } from '@/ui/prompts.ts';
-import {
-  getTerminalWidth,
-  getVisibleTextWidth,
-  renderDisplayText,
-} from '@/ui/terminal/styles.ts';
+import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
+import { resolveWorkingProfile } from '@/lib/profile-store.ts';
 import { deriveProfileName } from '@/lib/profile/model.ts';
+import { formatConfigureSessionSummary } from '@/lib/profile/render.ts';
+import { getOutputSink, type OutputSink } from '@/lib/runtime.ts';
 import {
   document,
   section,
@@ -32,7 +26,13 @@ import {
   text,
   type DisplayText,
 } from '@/ui/document.ts';
+import { defaultPrompts, PromptCancelled } from '@/ui/prompts.ts';
 import { renderDocumentText } from '@/ui/renderers/terminal.ts';
+import {
+  getTerminalWidth,
+  getVisibleTextWidth,
+  renderDisplayText,
+} from '@/ui/terminal/styles.ts';
 
 const DEFAULT_SCOPE: ConfigureWizardScope = 'both';
 const AUTO_PROFILE_NAME = 'auto';

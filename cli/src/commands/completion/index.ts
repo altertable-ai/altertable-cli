@@ -1,4 +1,3 @@
-import { defineCommand, type Command } from '@/lib/command.ts';
 import { createGenerateCommand } from '@/commands/completion/generate.ts';
 import { createInstallCommand } from '@/commands/completion/install.ts';
 import {
@@ -6,6 +5,7 @@ import {
   formatCompletionHelpMessage,
   type GetRootCommand,
 } from '@/commands/completion/lib/completion.ts';
+import { defineCommand, type Command } from '@/lib/command.ts';
 
 export function createCompletionCommand(
   getRootCommand: GetRootCommand

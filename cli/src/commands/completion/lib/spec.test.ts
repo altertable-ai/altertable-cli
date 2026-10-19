@@ -2,17 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { defineCommand } from '@/lib/command.ts';
+
 import { buildMainCommand } from '@/cli.ts';
-import {
-  buildCompletionSpec,
-  collectCompletionContexts,
-} from '@/commands/completion/lib/spec.ts';
-import {
-  buildCompletionModel,
-  findCompletionContext,
-  normalizeCompletionArgv,
-} from '@/commands/completion/lib/model.ts';
 import {
   formatBashCompletion,
   formatBashFlagWordList,
@@ -21,6 +12,16 @@ import {
   formatZshCompletion,
   mergeCompletionFlags,
 } from '@/commands/completion/lib/format.ts';
+import {
+  buildCompletionModel,
+  findCompletionContext,
+  normalizeCompletionArgv,
+} from '@/commands/completion/lib/model.ts';
+import {
+  buildCompletionSpec,
+  collectCompletionContexts,
+} from '@/commands/completion/lib/spec.ts';
+import { defineCommand } from '@/lib/command.ts';
 
 type CompletionSpec = Awaited<ReturnType<typeof buildCompletionSpec>>;
 

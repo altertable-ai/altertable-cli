@@ -1,14 +1,14 @@
+import { upsertArgs } from '@/commands/upsert/lib/args.ts';
 import { optionalStringArg, stringArg } from '@/lib/args.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
+import { createLakehouseUpsertRequest } from '@/lib/lakehouse-transport.ts';
 import {
   parseLakehouseFileContentType,
   parseLakehouseTarget,
 } from '@/lib/lakehouse/args.ts';
 import { getFileSizeBytes } from '@/lib/lakehouse/file.ts';
-import { createLakehouseUpsertRequest } from '@/lib/lakehouse-transport.ts';
-import { upsertArgs } from '@/commands/upsert/lib/args.ts';
 
 export const upsertCommand = defineCommand({
   metadata: {

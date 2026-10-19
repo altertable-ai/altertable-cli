@@ -1,15 +1,15 @@
 import {
+  span,
+  type DisplayTableColumn,
+  type DisplayTableOptions,
+} from '@/ui/document.ts';
+import {
   getTerminalWidth,
   getVisibleTextWidth,
   padVisibleText,
   renderDisplayText,
   truncateTerminalText,
 } from '@/ui/terminal/styles.ts';
-import {
-  span,
-  type DisplayTableColumn,
-  type DisplayTableOptions,
-} from '@/ui/document.ts';
 
 const COLUMN_GAP = '  ';
 const FLEX_SHRINK_MIN_WIDTH = 4;

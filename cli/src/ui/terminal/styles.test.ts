@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+
+import { span } from '@/ui/document.ts';
 import {
   getVisibleTextWidth,
   setTerminalColorMode,
@@ -7,7 +9,6 @@ import {
   applyTerminalColorFromContext,
   renderDisplayText,
 } from '@/ui/terminal/styles.ts';
-import { span } from '@/ui/document.ts';
 
 const originalNoColor = process.env.NO_COLOR;
 const originalTerm = process.env.TERM;

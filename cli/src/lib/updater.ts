@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -8,20 +10,16 @@ import {
 } from 'node:fs';
 import { chmodSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { createHash, randomBytes } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+
 import type { CliContext } from '@/context.ts';
 import { isJsonOutput } from '@/context.ts';
-import { USER_AGENT, VERSION } from '@/version.ts';
 import { configDir, configGetGlobal } from '@/lib/config.ts';
+import { copyProcessEnv, readEnv, readEnvFrom } from '@/lib/env.ts';
 import { CliError, HttpError, NetworkError } from '@/lib/errors.ts';
+import { resolveProcessExecutablePath } from '@/lib/executable-path.ts';
 import { hasObjectKey } from '@/lib/object.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
 import { getOutputSink } from '@/lib/runtime.ts';
-import { renderDisplayText } from '@/ui/terminal/styles.ts';
-import { span } from '@/ui/document.ts';
-import { copyProcessEnv, readEnv, readEnvFrom } from '@/lib/env.ts';
-import { resolveProcessExecutablePath } from '@/lib/executable-path.ts';
 import {
   UpdaterInstallationKind,
   UpdaterCheckIntervals,
@@ -35,6 +33,9 @@ import {
   type UpdateInstallMethod,
   type UpdateSource,
 } from '@/lib/updater-config.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
+import { USER_AGENT, VERSION } from '@/version.ts';
 
 export type ReleaseInfo = {
   version: string;

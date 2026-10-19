@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import type { ProfileInspect } from '@/lib/profile/model.ts';
 import {
   formatProfileInspectResult,

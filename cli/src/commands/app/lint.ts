@@ -1,20 +1,21 @@
-import { checkAppScope } from '@/commands/app/lib/scope.ts';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { defineCommand } from '@/lib/command.ts';
-import { getLakehouseCredentialPair } from '@/lib/auth.ts';
-import { resolveApiBase } from '@/lib/config.ts';
-import { ConfigurationError, EXIT_GENERIC } from '@/lib/errors.ts';
-import { copyProcessEnv } from '@/lib/env.ts';
-import { configureVerify } from '@/lib/profile-status.ts';
+
+import { requirePublishedDataApp } from '@/commands/app/lib/package.ts';
+import projectCheckScript from '@/commands/app/lib/project-check.js.txt';
 import {
   appDirectory,
   assertAppOutputMode,
   requireAppScripts,
   runAppCommand,
 } from '@/commands/app/lib/run.ts';
-import { requirePublishedDataApp } from '@/commands/app/lib/package.ts';
-import projectCheckScript from '@/commands/app/lib/project-check.js.txt';
+import { checkAppScope } from '@/commands/app/lib/scope.ts';
+import { getLakehouseCredentialPair } from '@/lib/auth.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { resolveApiBase } from '@/lib/config.ts';
+import { copyProcessEnv } from '@/lib/env.ts';
+import { ConfigurationError, EXIT_GENERIC } from '@/lib/errors.ts';
+import { configureVerify } from '@/lib/profile-status.ts';
 
 type AppManifest = {
   schemaVersion: 1;

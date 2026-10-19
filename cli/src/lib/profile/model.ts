@@ -8,6 +8,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+
 import {
   configDir,
   configFile,
@@ -17,17 +18,8 @@ import {
   resolveApiBase,
   resolveManagementApiBase,
 } from '@/lib/config.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
 import { configuredEnvConfig, readEnv } from '@/lib/env.ts';
-import {
-  migrateProfileSecrets,
-  secretDelete,
-  secretExists,
-  secretGet,
-  secretSet,
-  secretStoreDisplay,
-  type SecretStore,
-} from '@/lib/secrets.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
 import {
   assertSafeProfileName,
   DEFAULT_PROFILE_NAME,
@@ -45,6 +37,15 @@ import {
   readProfileConfigRecord,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
+import {
+  migrateProfileSecrets,
+  secretDelete,
+  secretExists,
+  secretGet,
+  secretSet,
+  secretStoreDisplay,
+  type SecretStore,
+} from '@/lib/secrets.ts';
 
 const PROFILE_SECRET_ACCOUNTS = [
   'api-key',

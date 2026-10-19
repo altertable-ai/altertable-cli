@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+
 import { buildApiOperationDetailsView } from '@/commands/api/lib/views.ts';
 import { renderDocumentText } from '@/ui/renderers/terminal.ts';
 import { setTerminalColorMode } from '@/ui/terminal/styles.ts';

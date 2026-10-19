@@ -3,7 +3,14 @@ import {
   type ConfigureVerifyResult,
   formatConfigureVerifyRemediation,
 } from '@/lib/profile-status.ts';
-import type { SelectOption } from '@/ui/prompts.ts';
+import { isFromEnvProfile } from '@/lib/profile-store.ts';
+import type {
+  ConfigureLakehouseCredential,
+  ConfigureManagementCredential,
+  ConfigureShowData,
+  ProfileInspect,
+  ProfileSummary,
+} from '@/lib/profile/model.ts';
 import {
   document,
   rows,
@@ -15,16 +22,9 @@ import {
   type DisplayRow,
   type DisplayText,
 } from '@/ui/document.ts';
-import { TERMINAL_INDENT } from '@/ui/terminal/spacing.ts';
-import type {
-  ConfigureLakehouseCredential,
-  ConfigureManagementCredential,
-  ConfigureShowData,
-  ProfileInspect,
-  ProfileSummary,
-} from '@/lib/profile/model.ts';
-import { isFromEnvProfile } from '@/lib/profile-store.ts';
+import type { SelectOption } from '@/ui/prompts.ts';
 import type { ShellExportView } from '@/ui/shell/model.ts';
+import { TERMINAL_INDENT } from '@/ui/terminal/spacing.ts';
 
 const ACTIVE_PROFILE_MARK = '✓';
 const INACTIVE_PROFILE_MARK = ' ';

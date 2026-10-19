@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
+
 import { getQueryDefaultPager } from '@/lib/config.ts';
+import { copyProcessEnv } from '@/lib/env.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
 import { getVisibleTextWidth } from '@/ui/terminal/styles.ts';
-import { copyProcessEnv } from '@/lib/env.ts';
 
 export type PagerMode = 'auto' | 'always' | 'never';
 

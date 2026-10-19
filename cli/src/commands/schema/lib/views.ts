@@ -1,10 +1,10 @@
-import { getQueryColumnNames } from '@/lib/query-format.ts';
 import type {
   LakehouseQueryResult,
   LakehouseRow,
 } from '@/lib/lakehouse-ndjson.ts';
-import type { TreeNode, TreeView } from '@/ui/layouts/tree.ts';
+import { getQueryColumnNames } from '@/lib/query-format.ts';
 import { span, type DisplaySpan } from '@/ui/document.ts';
+import type { TreeNode, TreeView } from '@/ui/layouts/tree.ts';
 
 type SchemaTreeColumn = {
   name: string;

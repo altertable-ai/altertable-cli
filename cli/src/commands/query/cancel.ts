@@ -1,8 +1,8 @@
 import { stringArg } from '@/lib/args.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
-import { buildLakehouseQueryCancelRequest } from '@/lib/lakehouse/query.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
+import { buildLakehouseQueryCancelRequest } from '@/lib/lakehouse/query.ts';
 
 export const queryCancelCommand = defineCommand({
   metadata: {

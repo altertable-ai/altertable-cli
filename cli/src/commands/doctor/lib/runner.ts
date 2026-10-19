@@ -1,4 +1,3 @@
-import { serializeCliError } from '@/lib/errors.ts';
 import type {
   DoctorCheck,
   DoctorCheckContext,
@@ -6,6 +5,7 @@ import type {
   DoctorReport,
   DoctorSummary,
 } from '@/commands/doctor/lib/model.ts';
+import { serializeCliError } from '@/lib/errors.ts';
 
 function summarizeCheckResults(
   checks: readonly DoctorCheckResult[]

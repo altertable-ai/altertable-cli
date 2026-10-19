@@ -1,9 +1,10 @@
-import starter from '../starter/src/index.html';
-import view from '../starter/fixtures/view.html';
-import components from '../starter/fixtures/index.html';
-import { operations as activityOperations } from '../starter/fixtures/activity.ts';
-import { createDataHandler } from '@altertable/data-app/server';
 import { DataSourceError } from '@altertable/data-app/contract';
+import { createDataHandler } from '@altertable/data-app/server';
+
+import { operations as activityOperations } from '../starter/fixtures/activity.ts';
+import components from '../starter/fixtures/index.html';
+import view from '../starter/fixtures/view.html';
+import starter from '../starter/src/index.html';
 import { operations } from '../starter/src/operations.ts';
 let fail = false;
 const handler = createDataHandler(

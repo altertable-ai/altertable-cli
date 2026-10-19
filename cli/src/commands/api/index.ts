@@ -1,15 +1,15 @@
-import { defineCommand } from '@/lib/command.ts';
-import { writeCommandOutput } from '@/lib/command-output.ts';
-import {
-  executeApiHttp,
-  apiHttpResultOutput,
-} from '@/commands/api/lib/http.ts';
 import {
   API_HTTP_BASE_ARGS,
   resolveApiCommandRequest,
 } from '@/commands/api/lib/command.ts';
-import { apiSpecCommand } from '@/commands/api/spec.ts';
+import {
+  executeApiHttp,
+  apiHttpResultOutput,
+} from '@/commands/api/lib/http.ts';
 import { apiRouteCommand, apiRoutesCommand } from '@/commands/api/routes.ts';
+import { apiSpecCommand } from '@/commands/api/spec.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 
 export const apiCommand = defineCommand({
   metadata: {

@@ -1,17 +1,18 @@
 #!/usr/bin/env bun
-import { VERSION } from '@/version.ts';
+import { buildTopLevelCommands } from '@/commands/index.ts';
 import {
   getCliContext,
   getBootstrapCliContext,
   isJsonOutput,
   setCliContext,
 } from '@/context.ts';
-import { createCliRuntime, setCliRuntime } from '@/lib/runtime.ts';
 import {
-  mergeGlobalFlagsFromArgs,
-  parseGlobalOutputFlags,
-} from '@/lib/global-flags.ts';
-import { buildTopLevelCommands } from '@/commands/index.ts';
+  executeCommand,
+  resolveCommandSelection,
+} from '@/lib/command-parser.ts';
+import { defineArguments, defineCommand, type Command } from '@/lib/command.ts';
+import { findEarlyBootstrapExit } from '@/lib/early-bootstrap.ts';
+import { validateEnvironment } from '@/lib/env.ts';
 import {
   CliError,
   EXIT_SUCCESS,
@@ -20,24 +21,23 @@ import {
   shouldShowCommandExamplesOnError,
 } from '@/lib/errors.ts';
 import {
-  renderCliError,
-  renderCliErrorDetails,
-  renderCliErrorJson,
-} from '@/ui/error.ts';
-import { defineArguments, defineCommand, type Command } from '@/lib/command.ts';
-import {
-  executeCommand,
-  resolveCommandSelection,
-} from '@/lib/command-parser.ts';
+  mergeGlobalFlagsFromArgs,
+  parseGlobalOutputFlags,
+} from '@/lib/global-flags.ts';
+import { createCliRuntime, setCliRuntime } from '@/lib/runtime.ts';
+import { maybeShowUpdateNotice } from '@/lib/updater.ts';
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
   showCommandExamplesForArgs,
 } from '@/lib/usage.ts';
-import { findEarlyBootstrapExit } from '@/lib/early-bootstrap.ts';
+import {
+  renderCliError,
+  renderCliErrorDetails,
+  renderCliErrorJson,
+} from '@/ui/error.ts';
 import { applyTerminalColorFromContext } from '@/ui/terminal/styles.ts';
-import { maybeShowUpdateNotice } from '@/lib/updater.ts';
-import { validateEnvironment } from '@/lib/env.ts';
+import { VERSION } from '@/version.ts';
 
 const ROOT_ARGS = defineArguments({
   help: {

@@ -1,7 +1,7 @@
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
 import { listProfiles } from '@/lib/profile/model.ts';
 import { formatProfileList } from '@/lib/profile/render.ts';
-import { defineCommand } from '@/lib/command.ts';
-import { writeCommandOutput } from '@/lib/command-output.ts';
 
 export const profileListCommand = defineCommand({
   metadata: { name: 'list', description: 'List configured profiles' },

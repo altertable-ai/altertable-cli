@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { pluralize, pluralizeLabel } from '@/lib/pluralize.ts';
 
 describe('pluralize', () => {

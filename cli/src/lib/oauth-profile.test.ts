@@ -1,20 +1,21 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { setCliContext, getCliContext } from '@/context.ts';
+import { getManagementAuthHeader } from '@/lib/auth.ts';
+import { configGet, configSet, resolveOAuthBase } from '@/lib/config.ts';
+import { ConfigurationError, HttpError, NetworkError } from '@/lib/errors.ts';
+import { createExecutionContext } from '@/lib/execution-context.ts';
+import { sendHttp } from '@/lib/http-request.ts';
 import { exchangeCode } from '@/lib/oauth-flow.ts';
 import {
   ensureFreshAccessToken,
   storeOAuthTokens,
 } from '@/lib/oauth-profile.ts';
-import { getManagementAuthHeader } from '@/lib/auth.ts';
-import { configGet, configSet, resolveOAuthBase } from '@/lib/config.ts';
-import { secretGet, secretSet } from '@/lib/secrets.ts';
-import { setCliContext, getCliContext } from '@/context.ts';
-import { ConfigurationError, HttpError, NetworkError } from '@/lib/errors.ts';
-import { createExecutionContext } from '@/lib/execution-context.ts';
-import { sendHttp } from '@/lib/http-request.ts';
 import { createCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
+import { secretGet, secretSet } from '@/lib/secrets.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
 
 const profileName = 'default';

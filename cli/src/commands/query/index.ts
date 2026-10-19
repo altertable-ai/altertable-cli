@@ -1,20 +1,20 @@
-import { defineCommand } from '@/lib/command.ts';
+import { queryCancelCommand } from '@/commands/query/cancel.ts';
 import { queryRunArgs } from '@/commands/query/lib/args.ts';
 import { queryShowCommand } from '@/commands/query/show.ts';
-import { queryCancelCommand } from '@/commands/query/cancel.ts';
-import { CliError } from '@/lib/errors.ts';
 import { optionalStringArg } from '@/lib/args.ts';
-import { writeQueryDestination } from '@/lib/query-destination.ts';
-import {
-  isApiNativeQueryFormat,
-  writeQueryOutput,
-} from '@/lib/query-output.ts';
-import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { CliError } from '@/lib/errors.ts';
 import {
   executeLakehouseQuery,
   executeLakehouseQueryBytes,
   type LakehouseQueryInput,
 } from '@/lib/lakehouse/query.ts';
+import { writeQueryDestination } from '@/lib/query-destination.ts';
+import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
+import {
+  isApiNativeQueryFormat,
+  writeQueryOutput,
+} from '@/lib/query-output.ts';
 
 export const queryCommand = defineCommand({
   metadata: {

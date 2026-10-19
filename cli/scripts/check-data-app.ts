@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+
 import { dataAppDirectory } from '@/commands/app/lib/distribution.ts';
 
 for (const project of ['starter', 'tests']) {

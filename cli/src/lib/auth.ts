@@ -1,9 +1,9 @@
 import { configGet } from '@/lib/config.ts';
+import { readEnv } from '@/lib/env.ts';
 import { CliError, ConfigurationError, EXIT_CONFIG } from '@/lib/errors.ts';
 import { optionalAuth } from '@/lib/execution-context.ts';
-import { secretGet } from '@/lib/secrets.ts';
-import { readEnv } from '@/lib/env.ts';
 import { isFromEnvProfile } from '@/lib/profile-store.ts';
+import { secretGet } from '@/lib/secrets.ts';
 
 export function basicAuthToken(user: string, password: string): string {
   return Buffer.from(`${user}:${password}`).toString('base64');

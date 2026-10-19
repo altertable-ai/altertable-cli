@@ -1,10 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { defineCommand } from '@/lib/command.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
-import { appDirectory } from '@/commands/app/lib/run.ts';
-import { copyProcessEnv } from '@/lib/env.ts';
+
 import {
   dataAppPackage,
   dataAppPackages,
@@ -14,6 +10,11 @@ import {
   recommendedDataAppPeers,
   recommendedDataAppVersion,
 } from '@/commands/app/lib/package.ts';
+import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { appDirectory } from '@/commands/app/lib/run.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { copyProcessEnv } from '@/lib/env.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
 
 export const appUpgradeCommand = defineCommand({
   metadata: {

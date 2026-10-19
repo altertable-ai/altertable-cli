@@ -1,5 +1,4 @@
 import { readEnv, setEnv, unsetEnv } from '@/lib/env.ts';
-
 import type { DisplayText, DisplayTextStyle } from '@/ui/document.ts';
 
 export const DEFAULT_TERMINAL_WIDTH = 80;

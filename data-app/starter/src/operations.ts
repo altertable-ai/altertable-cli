@@ -1,4 +1,5 @@
 import { connectionCheck } from '@altertable/data-app/contract';
+
 import app from '#app/config.ts';
 
 /** Connectivity probe only: its successful query supplies no analytical result. Replace it with

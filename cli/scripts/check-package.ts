@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { smokeNpmBundle } from '@/../scripts/smoke-npm-bundle.ts';
 
 const packageDirectory = join(import.meta.dir, '..');

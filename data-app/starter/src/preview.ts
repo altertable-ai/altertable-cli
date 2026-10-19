@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+
 import { localLakehouse } from '@altertable/data-app-bun';
 import { serveAppFile } from '@altertable/data-app-bun/preview';
 

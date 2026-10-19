@@ -1,5 +1,6 @@
 import { createDataContext } from '@altertable/data-app-react';
 import { defineQueryNames } from '@altertable/data-app/contract';
+
 import type app from '#app/config.ts';
 
 /** Setup context only. Replace it with the exploration's scope, exact definitions, limitations,

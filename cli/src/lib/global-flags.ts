@@ -1,6 +1,6 @@
-import { copyProcessEnv } from '@/lib/env.ts';
 import type { CliContext } from '@/context.ts';
 import { asCliArgString } from '@/lib/cli-args.ts';
+import { copyProcessEnv } from '@/lib/env.ts';
 import { parseTimeoutSeconds } from '@/lib/timeout-args.ts';
 
 export const AGENT_ENV_VARIABLES = [

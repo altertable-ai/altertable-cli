@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { configFile, credentialsFile, kvSet } from '@/lib/config.ts';
 import { configureRunSet } from '@/lib/profile-configure-core.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
 import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 import { runWithCliRuntime } from '@/test-utils/runtime.ts';
-import { configFile, credentialsFile, kvSet } from '@/lib/config.ts';
 
 let testHome = '';
 let mockFile = '';

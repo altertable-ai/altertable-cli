@@ -1,6 +1,6 @@
-import { getActiveProfileName } from '@/lib/profile-store.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { getActiveProfileName } from '@/lib/profile-store.ts';
 
 export const profileCurrentCommand = defineCommand({
   metadata: { name: 'current', description: 'Show the active profile name' },

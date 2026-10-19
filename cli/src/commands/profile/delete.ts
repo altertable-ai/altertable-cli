@@ -1,8 +1,8 @@
-import { assertNoEnvConfigMode, deleteProfile } from '@/lib/profile/model.ts';
-import { CliError } from '@/lib/errors.ts';
 import { requireProfileName } from '@/commands/profile/lib/profile.ts';
-import { defineCommand } from '@/lib/command.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { CliError } from '@/lib/errors.ts';
+import { assertNoEnvConfigMode, deleteProfile } from '@/lib/profile/model.ts';
 
 export const profileDeleteCommand = defineCommand({
   metadata: { name: 'delete', description: 'Delete a profile' },

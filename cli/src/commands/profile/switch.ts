@@ -1,13 +1,13 @@
-import { getCliContext, isJsonOutput } from '@/context.ts';
-import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
-import { setActiveProfile } from '@/lib/profile-store.ts';
-import { CliError } from '@/lib/errors.ts';
 import {
   promptProfileSwitch,
   requireProfileName,
 } from '@/commands/profile/lib/profile.ts';
-import { defineCommand } from '@/lib/command.ts';
+import { getCliContext, isJsonOutput } from '@/context.ts';
 import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { CliError } from '@/lib/errors.ts';
+import { setActiveProfile } from '@/lib/profile-store.ts';
+import { assertNoEnvConfigMode } from '@/lib/profile/model.ts';
 
 export const profileSwitchCommand = defineCommand({
   metadata: {

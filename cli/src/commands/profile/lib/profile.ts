@@ -1,17 +1,17 @@
-import { asCliArgString } from '@/lib/cli-args.ts';
 import { getCliContext } from '@/context.ts';
+import { asCliArgString } from '@/lib/cli-args.ts';
 import { CliError, ConfigurationError } from '@/lib/errors.ts';
-import type { ProfileInspect } from '@/lib/profile/model.ts';
 import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
-import { defaultPrompts, type Prompts } from '@/ui/prompts.ts';
-import { profileSwitchOption } from '@/lib/profile/views.ts';
 import {
   envConfigMode,
   getActiveProfileName,
   isFromEnvProfile,
   profileExists,
 } from '@/lib/profile-store.ts';
+import type { ProfileInspect } from '@/lib/profile/model.ts';
 import { listProfiles } from '@/lib/profile/model.ts';
+import { profileSwitchOption } from '@/lib/profile/views.ts';
+import { defaultPrompts, type Prompts } from '@/ui/prompts.ts';
 
 export function requireProfileName(name: unknown): string {
   const trimmed = asCliArgString(name).trim();

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 import {
   createLakehouseTestWorkspace,

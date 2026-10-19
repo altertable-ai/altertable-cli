@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { assertAllowedApiBase } from '@/lib/url-policy.ts';
 
 describe('assertAllowedApiBase', () => {

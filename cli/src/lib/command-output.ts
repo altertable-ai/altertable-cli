@@ -1,8 +1,8 @@
-import type { ManagementOutputFormat } from '@/lib/tabular-result.ts';
 import { renderManagementOutput } from '@/lib/management-output.ts';
-import { parseApiJson } from '@/lib/parse-api-json.ts';
 import { resolvePagerOptions, writePagedOutput } from '@/lib/pager.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
+import type { ManagementOutputFormat } from '@/lib/tabular-result.ts';
 import { span } from '@/ui/document.ts';
 import { renderDisplayText } from '@/ui/terminal/styles.ts';
 

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { CliError, ConfigurationError } from '@/lib/errors.ts';
+
 import { copyProcessEnv } from '@/lib/env.ts';
+import { CliError, ConfigurationError } from '@/lib/errors.ts';
 
 export type AppScript = 'typecheck' | 'lint' | 'format:check' | 'dev' | 'build';
 export type AppCommand = 'install' | 'install-frozen' | AppScript;

@@ -1,6 +1,8 @@
-import openapiTS, { astToString } from 'openapi-typescript';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import openapiTS, { astToString } from 'openapi-typescript';
+
 import {
   parseGeneratedArtifactMode,
   updateOrCheckGeneratedArtifact,

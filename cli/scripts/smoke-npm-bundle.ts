@@ -1,5 +1,6 @@
-import { smokeDataApp } from '@/../scripts/smoke-data-app.ts';
 import { join } from 'node:path';
+
+import { smokeDataApp } from '@/../scripts/smoke-data-app.ts';
 
 const repositoryRoot = join(import.meta.dir, '../..');
 const defaultBundlePath = join(repositoryRoot, 'cli/dist/cli.js');

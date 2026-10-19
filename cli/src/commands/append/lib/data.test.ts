@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { parseAppendJsonContent } from '@/commands/append/lib/data.ts';
 import { CliError } from '@/lib/errors.ts';
 

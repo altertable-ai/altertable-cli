@@ -1,15 +1,15 @@
-import { DEFAULT_CONNECT_TIMEOUT_MS } from '@/lib/transport-defaults.ts';
-import {
-  getCliRuntime,
-  isCliRuntimeReady,
-  refreshCliRuntimeContext,
-} from '@/lib/runtime.ts';
 import {
   getBootstrapCliContextState,
   isJsonOutput as contextUsesJsonOutput,
   setBootstrapCliContext,
   type CliContext,
 } from '@/lib/cli-context.ts';
+import {
+  getCliRuntime,
+  isCliRuntimeReady,
+  refreshCliRuntimeContext,
+} from '@/lib/runtime.ts';
+import { DEFAULT_CONNECT_TIMEOUT_MS } from '@/lib/transport-defaults.ts';
 
 export type { CliContext } from '@/lib/cli-context.ts';
 
