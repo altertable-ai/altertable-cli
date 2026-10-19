@@ -45,14 +45,10 @@ async function run(arguments_: string[], cwd = project, stdin?: string) {
   const child = Bun.spawn([process.execPath, cliPath, ...arguments_], {
     cwd,
     env: environment,
-    stdin: stdin === undefined ? "ignore" : "pipe",
+    stdin: stdin === undefined ? "ignore" : new Blob([stdin]),
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (stdin !== undefined && child.stdin) {
-    child.stdin.write(stdin);
-    child.stdin.end();
-  }
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
