@@ -1,7 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NetworkError, getCliExitCode } from "@/lib/errors.ts";
 import { writeQueryDestination } from "@/lib/query-destination.ts";
 import { createCliRuntime } from "@/lib/runtime.ts";
 
@@ -157,4 +158,52 @@ describe("writeQueryDestination", () => {
     expect(canceled).toBe(true);
     expect(stream.locked).toBe(false);
   });
+  test.each(["transport", "write", "none"])(
+    "preserves the primary failure when file finalization fails: %s",
+    async (mode) => {
+      const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
+      const file = Bun.file(join(dir, "out.csv"));
+      const writer = file.writer();
+      const closeWriter = writer.end.bind(writer);
+      const primaryError =
+        mode === "transport" ? new NetworkError("connection lost") : new Error("write failed");
+      const cleanupError = new Error("finalization failed");
+      const fileSpy = spyOn(Bun, "file").mockReturnValue(file);
+      const writerSpy = spyOn(file, "writer").mockReturnValue(writer);
+      const endSpy = spyOn(writer, "end").mockImplementation(() => {
+        throw cleanupError;
+      });
+      const writeSpy =
+        mode === "write"
+          ? spyOn(writer, "write").mockImplementation(() => {
+              throw primaryError;
+            })
+          : undefined;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          if (mode === "transport") controller.error(primaryError);
+          else {
+            controller.enqueue(Uint8Array.of(1));
+            controller.close();
+          }
+        },
+      });
+      let failure: unknown;
+      try {
+        await writeQueryDestination(stream, { outputPath: file.name });
+      } catch (error) {
+        failure = error;
+      } finally {
+        writeSpy?.mockRestore();
+        endSpy.mockRestore();
+        writerSpy.mockRestore();
+        fileSpy.mockRestore();
+        await closeWriter();
+        rmSync(dir, { recursive: true, force: true });
+      }
+      expect(failure).toBe(mode === "none" ? cleanupError : primaryError);
+      expect(getCliExitCode(failure)).toBe(mode === "transport" ? 9 : 1);
+      expect(stream.locked).toBe(false);
+    },
+  );
 });

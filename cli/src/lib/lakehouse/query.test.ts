@@ -16,7 +16,7 @@ import {
   type LakehouseRow,
 } from "@/lib/lakehouse-ndjson.ts";
 import { getQueryColumnNames } from "@/lib/query-format.ts";
-import { httpSendStream } from "@/lib/http.ts";
+import { httpSendStream, resolveReadTimeoutMs } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import {
   buildLakehouseQueryRequest,
@@ -250,6 +250,35 @@ describe("parseLakehouseQueryStream", () => {
 });
 
 describe("buildLakehouseQueryRequest", () => {
+  test.each([
+    [undefined, 5],
+    [0, 0],
+    [25, 25],
+  ] as const)(
+    "streaming timeout precedence: request %s resolves to %s ms",
+    (readTimeoutMs, expected) => {
+      setCliContext({ debug: false, json: false, agent: false, readTimeoutMs: 5 });
+      const request = buildLakehouseQueryRequest(
+        {
+          statement: "SELECT 1",
+          ...(readTimeoutMs === undefined ? {} : { httpOptions: { readTimeoutMs } }),
+        },
+        true,
+      );
+      expect(
+        resolveReadTimeoutMs({ ...request, url: "https://example.com/query", authHeader: "" }, 0),
+      ).toBe(expected);
+    },
+  );
+
+  test("streaming queries retain an unlimited default without a timeout override", () => {
+    const request = buildLakehouseQueryRequest({ statement: "SELECT 1" }, true);
+    expect(
+      resolveReadTimeoutMs({ ...request, url: "https://example.com/query", authHeader: "" }, 0),
+    ).toBe(0);
+    expect(request.retry).toBe(false);
+  });
+
   test("includes optional QueryRequest fields in the JSON body", () => {
     const request = buildLakehouseQueryRequest(
       {

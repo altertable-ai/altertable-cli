@@ -18,7 +18,8 @@ describe("query failures through the public CLI", () => {
     | "socket"
     | "body-socket"
     | "http-error"
-    | "success";
+    | "success"
+    | "slow-success";
   const server = createServer(async (request, response) => {
     if (failure === "socket") {
       request.socket.destroy();
@@ -32,6 +33,24 @@ describe("query failures through the public CLI", () => {
     let body = "";
     for await (const chunk of request) body += chunk;
     const { format } = JSON.parse(body) as { format?: string };
+    if (failure === "slow-success") {
+      response.writeHead(200);
+      response.flushHeaders();
+      setTimeout(
+        () =>
+          response.end(
+            format === "csv"
+              ? "v\n1\n"
+              : format === "jsonl"
+                ? '{"v":1}\n'
+                : format === "parquet"
+                  ? "PAR1"
+                  : '{}\n["v"]\n[1]\n',
+          ),
+        1_200,
+      );
+      return;
+    }
     if (failure === "success") {
       response.end(
         format === "jsonl"
@@ -89,6 +108,29 @@ describe("query failures through the public CLI", () => {
       }
     });
   }
+
+  test.each(allModes.filter((mode) => mode !== "--json" && mode !== "--agent"))(
+    "honors an explicit query read timeout: %s",
+    async (mode) => {
+      failure = "slow-success";
+      const result = await workspace.runCommand(
+        `altertable query "SELECT 1" ${mode} --read-timeout 1`,
+      );
+      expect(result.exitCode).toBe(9);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("timed out");
+    },
+  );
+
+  test.each(["", "--format csv"])("zero read timeout allows a slow query: %s", async (mode) => {
+    failure = "slow-success";
+    const result = await workspace.runCommand(
+      `altertable query "SELECT 1" ${mode} --read-timeout 0`,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("1");
+  });
 
   test.each(allModes)("HTTP engine error: %s", async (mode) => {
     failure = "http-error";
