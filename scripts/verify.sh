@@ -17,11 +17,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown flag: $1" >&2
-      echo "Usage: $0 [--quick] [--integration]" >&2
+      echo "Usage: $0 [--quick | --integration]" >&2
       exit 1
       ;;
   esac
 done
+
+if [[ "${QUICK}" == true && "${RUN_INTEGRATION}" == true ]]; then
+  echo "--quick and --integration cannot be combined." >&2
+  echo "Use --integration to run the full gate with integration tests." >&2
+  exit 1
+fi
 
 run_step() {
   local name="$1"
