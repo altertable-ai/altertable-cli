@@ -1,4 +1,4 @@
-import { createSecretStore, type SecretStore } from "@/lib/secrets.ts";
+import { createSecretStore, type SecretStore } from '@/lib/secrets.ts';
 
 type FakeKeychain = {
   store: SecretStore;
@@ -10,7 +10,7 @@ type FakeKeychain = {
 
 function argumentAfter(args: string[], flag: string): string {
   const index = args.indexOf(flag);
-  return index >= 0 ? (args[index + 1] ?? "") : "";
+  return index >= 0 ? (args[index + 1] ?? '') : '';
 }
 
 export function createFakeKeychain(): FakeKeychain {
@@ -21,31 +21,35 @@ export function createFakeKeychain(): FakeKeychain {
   const failingDeletes = new Set<string>();
 
   const store = createSecretStore({
-    platform: "darwin",
+    platform: 'darwin',
     spawnSync(_command, args) {
       calls.push([...args]);
-      if (args.includes("help")) return { status: 0, stdout: Buffer.from("") };
+      if (args.includes('help')) return { status: 0, stdout: Buffer.from('') };
 
-      const account = argumentAfter(args, "-a");
-      if (args.includes("add-generic-password")) {
-        if (failingWrites.has(account)) return { status: 1, stdout: Buffer.from("") };
-        values.set(account, argumentAfter(args, "-w"));
-        return { status: 0, stdout: Buffer.from("") };
+      const account = argumentAfter(args, '-a');
+      if (args.includes('add-generic-password')) {
+        if (failingWrites.has(account))
+          return { status: 1, stdout: Buffer.from('') };
+        values.set(account, argumentAfter(args, '-w'));
+        return { status: 0, stdout: Buffer.from('') };
       }
-      if (args.includes("find-generic-password")) {
-        if (failingReads.has(account)) return { status: 1, stdout: Buffer.from("") };
+      if (args.includes('find-generic-password')) {
+        if (failingReads.has(account))
+          return { status: 1, stdout: Buffer.from('') };
         const value = values.get(account);
         return value === undefined
-          ? { status: 44, stdout: Buffer.from("") }
+          ? { status: 44, stdout: Buffer.from('') }
           : { status: 0, stdout: Buffer.from(value) };
       }
-      if (args.includes("delete-generic-password")) {
-        if (failingDeletes.has(account)) return { status: 1, stdout: Buffer.from("") };
-        if (!values.has(account)) return { status: 44, stdout: Buffer.from("") };
+      if (args.includes('delete-generic-password')) {
+        if (failingDeletes.has(account))
+          return { status: 1, stdout: Buffer.from('') };
+        if (!values.has(account))
+          return { status: 44, stdout: Buffer.from('') };
         values.delete(account);
-        return { status: 0, stdout: Buffer.from("") };
+        return { status: 0, stdout: Buffer.from('') };
       }
-      return { status: 1, stdout: Buffer.from("") };
+      return { status: 1, stdout: Buffer.from('') };
     },
   });
 

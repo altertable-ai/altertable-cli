@@ -1,13 +1,15 @@
-import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { isRecord } from "@/lib/object.ts";
-import { redactSensitiveJsonValue } from "@/lib/redact.ts";
+import { parseApiJson } from '@/lib/parse-api-json.ts';
+import { isRecord } from '@/lib/object.ts';
+import { redactSensitiveJsonValue } from '@/lib/redact.ts';
 import {
   renderTabularOutput,
   type ManagementOutputFormat,
   type TabularResult,
-} from "@/lib/tabular-result.ts";
+} from '@/lib/tabular-result.ts';
 
-export function extractManagementRows(data: unknown): Record<string, unknown>[] {
+export function extractManagementRows(
+  data: unknown
+): Record<string, unknown>[] {
   if (!isRecord(data)) {
     return [];
   }
@@ -22,7 +24,9 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
     return plainRows.map(redactSensitiveRow);
   }
 
-  const nestedObjects = Object.entries(data).filter(([, value]) => isRecord(value));
+  const nestedObjects = Object.entries(data).filter(([, value]) =>
+    isRecord(value)
+  );
   if (nestedObjects.length === 1 && Object.keys(data).length === 1) {
     const nestedObject = nestedObjects[0]?.[1];
     if (!isRecord(nestedObject)) {
@@ -45,12 +49,17 @@ export function extractManagementRows(data: unknown): Record<string, unknown>[] 
   return Object.keys(row).length > 0 ? [row] : [];
 }
 
-function redactSensitiveRow(row: Record<string, unknown>): Record<string, unknown> {
+function redactSensitiveRow(
+  row: Record<string, unknown>
+): Record<string, unknown> {
   return redactSensitiveJsonValue(row) as Record<string, unknown>;
 }
 
 function redactSensitiveRowValue(key: string, value: unknown): unknown {
-  const redacted = redactSensitiveJsonValue({ [key]: value }) as Record<string, unknown>;
+  const redacted = redactSensitiveJsonValue({ [key]: value }) as Record<
+    string,
+    unknown
+  >;
   return redacted[key];
 }
 
@@ -72,10 +81,13 @@ function managementDataToTabularResult(data: unknown): TabularResult {
   };
 }
 
-export function renderManagementOutput(body: string, format: ManagementOutputFormat): string {
+export function renderManagementOutput(
+  body: string,
+  format: ManagementOutputFormat
+): string {
   const data = parseApiJson(body);
 
-  if (format === "json") {
+  if (format === 'json') {
     return JSON.stringify(data, null, 2);
   }
 

@@ -1,37 +1,45 @@
-import { defineCommand } from "@/lib/command.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { createDoctorChecks } from "@/commands/doctor/lib/checks.ts";
-import { formatDoctorReport } from "@/commands/doctor/lib/render.ts";
-import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
-import { createDiagnosticExecutionContext } from "@/lib/execution-context.ts";
-import { EXIT_GENERIC, EXIT_SUCCESS } from "@/lib/errors.ts";
+import { defineCommand } from '@/lib/command.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { createDoctorChecks } from '@/commands/doctor/lib/checks.ts';
+import { formatDoctorReport } from '@/commands/doctor/lib/render.ts';
+import { runDoctorChecks } from '@/commands/doctor/lib/runner.ts';
+import { createDiagnosticExecutionContext } from '@/lib/execution-context.ts';
+import { EXIT_GENERIC, EXIT_SUCCESS } from '@/lib/errors.ts';
 
 export const doctorCommand = defineCommand({
   metadata: {
-    name: "doctor",
-    commandGroup: "platform",
-    description: "Diagnose local configuration and Altertable connectivity.",
-    examples: ["altertable doctor", "altertable doctor --offline", "altertable --json doctor"],
+    name: 'doctor',
+    commandGroup: 'platform',
+    description: 'Diagnose local configuration and Altertable connectivity.',
+    examples: [
+      'altertable doctor',
+      'altertable doctor --offline',
+      'altertable --json doctor',
+    ],
   },
   args: {
     offline: {
-      type: "boolean",
-      description: "Inspect local configuration without contacting Altertable APIs.",
+      type: 'boolean',
+      description:
+        'Inspect local configuration without contacting Altertable APIs.',
     },
   },
   async run({ args, runtime, sink }) {
     const report = await runDoctorChecks(createDoctorChecks(), {
       execution: createDiagnosticExecutionContext(runtime),
       offline: args.offline === true,
-      interactive: !runtime.context.json && !runtime.context.agent && process.stdin.isTTY === true,
+      interactive:
+        !runtime.context.json &&
+        !runtime.context.agent &&
+        process.stdin.isTTY === true,
     });
     await writeCommandOutput(
       {
-        kind: "normalized",
+        kind: 'normalized',
         data: report,
         humanText: formatDoctorReport(report),
       },
-      sink,
+      sink
     );
     return { exitCode: report.healthy ? EXIT_SUCCESS : EXIT_GENERIC };
   },

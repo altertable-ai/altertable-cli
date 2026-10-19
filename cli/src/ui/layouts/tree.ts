@@ -1,4 +1,4 @@
-import type { DisplayText } from "@/ui/document.ts";
+import type { DisplayText } from '@/ui/document.ts';
 
 export type TreeNode = {
   label: DisplayText;

@@ -1,19 +1,19 @@
-import { CliError } from "@/lib/errors.ts";
-import { renderQueryCsv, renderQueryJson } from "@/lib/query-output.ts";
+import { CliError } from '@/lib/errors.ts';
+import { renderQueryCsv, renderQueryJson } from '@/lib/query-output.ts';
 import {
   defaultDisplayOptions,
   getQueryColumnNames,
   renderQueryHumanOutput,
   renderQueryMarkdown,
-} from "@/lib/query-format.ts";
+} from '@/lib/query-format.ts';
 
-export type ManagementOutputFormat = "json" | "table" | "csv" | "markdown";
+export type ManagementOutputFormat = 'json' | 'table' | 'csv' | 'markdown';
 
 const MANAGEMENT_OUTPUT_FORMATS = new Set<ManagementOutputFormat>([
-  "json",
-  "table",
-  "csv",
-  "markdown",
+  'json',
+  'table',
+  'csv',
+  'markdown',
 ]);
 
 export type TabularResult = {
@@ -21,23 +21,37 @@ export type TabularResult = {
   rows: Record<string, unknown>[];
 };
 
-export function parseManagementOutputFormat(format: string): ManagementOutputFormat {
+export function parseManagementOutputFormat(
+  format: string
+): ManagementOutputFormat {
   if (!MANAGEMENT_OUTPUT_FORMATS.has(format as ManagementOutputFormat)) {
-    throw new CliError(`Unsupported format: ${format}. Use json, table, csv, or markdown.`);
+    throw new CliError(
+      `Unsupported format: ${format}. Use json, table, csv, or markdown.`
+    );
   }
   return format as ManagementOutputFormat;
 }
 
-export function renderTabularOutput(result: TabularResult, format: ManagementOutputFormat): string {
-  const queryResult = { metadata: {}, columns: result.columns, rows: result.rows };
-  if (format === "json") return renderQueryJson(queryResult);
-  if (format === "csv") return renderQueryCsv(queryResult);
-  if (format === "markdown") {
+export function renderTabularOutput(
+  result: TabularResult,
+  format: ManagementOutputFormat
+): string {
+  const queryResult = {
+    metadata: {},
+    columns: result.columns,
+    rows: result.rows,
+  };
+  if (format === 'json') return renderQueryJson(queryResult);
+  if (format === 'csv') return renderQueryCsv(queryResult);
+  if (format === 'markdown') {
     return renderQueryMarkdown(
       queryResult,
       getQueryColumnNames(queryResult),
-      defaultDisplayOptions(),
+      defaultDisplayOptions()
     );
   }
-  return renderQueryHumanOutput(queryResult, { ...defaultDisplayOptions(), layout: "table" });
+  return renderQueryHumanOutput(queryResult, {
+    ...defaultDisplayOptions(),
+    layout: 'table',
+  });
 }

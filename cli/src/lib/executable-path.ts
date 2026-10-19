@@ -1,5 +1,5 @@
-import { accessSync, constants, realpathSync, statSync } from "node:fs";
-import { delimiter, isAbsolute, resolve } from "node:path";
+import { accessSync, constants, realpathSync, statSync } from 'node:fs';
+import { delimiter, isAbsolute, resolve } from 'node:path';
 
 export type ExecutablePathOptions = {
   execPath?: string;
@@ -28,11 +28,15 @@ function isExecutableFile(path: string): boolean {
   }
 }
 
-function invocationPath(value: string, cwd: string, pathValue: string): string | undefined {
+function invocationPath(
+  value: string,
+  cwd: string,
+  pathValue: string
+): string | undefined {
   if (isAbsolute(value)) {
     return isExecutableFile(value) ? value : undefined;
   }
-  if (value.includes("/") || value.includes("\\")) {
+  if (value.includes('/') || value.includes('\\')) {
     const candidate = resolve(cwd, value);
     return isExecutableFile(candidate) ? candidate : undefined;
   }
@@ -46,12 +50,15 @@ function invocationPath(value: string, cwd: string, pathValue: string): string |
 }
 
 /** Resolve the file that should be replaced when a compiled CLI updates itself. */
-export function resolveProcessExecutablePath(options: ExecutablePathOptions = {}): string {
+export function resolveProcessExecutablePath(
+  options: ExecutablePathOptions = {}
+): string {
   const usesCurrentProcess = options.execPath === undefined;
   const execPath = options.execPath ?? process.execPath;
-  const argv0 = options.argv0 ?? (usesCurrentProcess ? process.argv0 : execPath);
+  const argv0 =
+    options.argv0 ?? (usesCurrentProcess ? process.argv0 : execPath);
   const cwd = options.cwd ?? process.cwd();
-  const pathValue = options.path ?? "";
+  const pathValue = options.path ?? '';
 
   if (isAbsolute(execPath)) {
     return canonicalPath(execPath);
@@ -62,6 +69,7 @@ export function resolveProcessExecutablePath(options: ExecutablePathOptions = {}
     return canonicalPath(invokedPath);
   }
 
-  const resolvedExecPath = invocationPath(execPath, cwd, pathValue) ?? resolve(cwd, execPath);
+  const resolvedExecPath =
+    invocationPath(execPath, cwd, pathValue) ?? resolve(cwd, execPath);
   return canonicalPath(resolvedExecPath);
 }

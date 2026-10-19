@@ -1,34 +1,41 @@
-import type { ManagementOutputFormat } from "@/lib/tabular-result.ts";
-import { renderManagementOutput } from "@/lib/management-output.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { resolvePagerOptions, writePagedOutput } from "@/lib/pager.ts";
-import type { OutputSink } from "@/lib/runtime.ts";
-import { span } from "@/ui/document.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
+import type { ManagementOutputFormat } from '@/lib/tabular-result.ts';
+import { renderManagementOutput } from '@/lib/management-output.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
+import { resolvePagerOptions, writePagedOutput } from '@/lib/pager.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
 
 export type CommandOutputMode =
-  | { kind: "raw_api"; body: string; humanFormatter?: (data: unknown) => string }
   | {
-      kind: "normalized";
+      kind: 'raw_api';
+      body: string;
+      humanFormatter?: (data: unknown) => string;
+    }
+  | {
+      kind: 'normalized';
       data: unknown;
       humanText: string;
       metadataLines?: string[];
       pageHumanText?: boolean;
     }
-  | { kind: "human"; text: string }
+  | { kind: 'human'; text: string }
   | {
-      kind: "tabular";
+      kind: 'tabular';
       body: string;
       format?: ManagementOutputFormat;
       humanFormatter?: (data: unknown) => string;
     }
-  | { kind: "deleted"; message: string; id?: string }
-  | { kind: "ack"; data: Record<string, unknown>; metadataMessage: string };
+  | { kind: 'deleted'; message: string; id?: string }
+  | { kind: 'ack'; data: Record<string, unknown>; metadataMessage: string };
 
-export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSink): Promise<void> {
+export async function writeCommandOutput(
+  mode: CommandOutputMode,
+  sink: OutputSink
+): Promise<void> {
   const json = sink.json;
 
-  if (mode.kind === "deleted") {
+  if (mode.kind === 'deleted') {
     if (json) {
       sink.writeJson({
         deleted: true,
@@ -40,7 +47,7 @@ export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSi
     return;
   }
 
-  if (mode.kind === "human") {
+  if (mode.kind === 'human') {
     if (json) {
       sink.writeJson({ text: mode.text });
       return;
@@ -49,7 +56,7 @@ export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSi
     return;
   }
 
-  if (mode.kind === "normalized") {
+  if (mode.kind === 'normalized') {
     if (json) {
       sink.writeJson(mode.data);
       return;
@@ -65,16 +72,18 @@ export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSi
     return;
   }
 
-  if (mode.kind === "ack") {
+  if (mode.kind === 'ack') {
     if (json) {
       sink.writeJson(mode.data);
       return;
     }
-    sink.writeMetadata([renderDisplayText([span(mode.metadataMessage, "subtle")])]);
+    sink.writeMetadata([
+      renderDisplayText([span(mode.metadataMessage, 'subtle')]),
+    ]);
     return;
   }
 
-  if (mode.kind === "raw_api") {
+  if (mode.kind === 'raw_api') {
     if (json) {
       sink.writeRaw(mode.body);
       return;
@@ -87,7 +96,7 @@ export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSi
     return;
   }
 
-  if (mode.kind === "tabular") {
+  if (mode.kind === 'tabular') {
     if (json) {
       sink.writeRaw(mode.body);
       return;
@@ -96,9 +105,9 @@ export async function writeCommandOutput(mode: CommandOutputMode, sink: OutputSi
       sink.writeHuman(mode.humanFormatter(parseApiJson(mode.body)));
       return;
     }
-    const format = mode.format ?? "table";
+    const format = mode.format ?? 'table';
     const output = renderManagementOutput(mode.body, format);
-    if (format === "table") {
+    if (format === 'table') {
       await writePagedOutput(output, resolvePagerOptions(), sink);
       return;
     }

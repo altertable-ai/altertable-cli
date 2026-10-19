@@ -1,33 +1,43 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { setCliContext } from "@/context.ts";
-import { configGet, configSet } from "@/lib/config.ts";
-import { createExecutionContext } from "@/lib/execution-context.ts";
-import { sendHttp } from "@/lib/http-request.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
-import { secretGet, secretSet } from "@/lib/secrets.ts";
-import { USER_AGENT } from "@/version.ts";
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { setCliContext } from '@/context.ts';
+import { configGet, configSet } from '@/lib/config.ts';
+import { createExecutionContext } from '@/lib/execution-context.ts';
+import { sendHttp } from '@/lib/http-request.ts';
+import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
+import { secretGet, secretSet } from '@/lib/secrets.ts';
+import { USER_AGENT } from '@/version.ts';
 
-const profileName = "default";
+const profileName = 'default';
 
-let testHome = "";
-let mockFile = "";
-let logFile = "";
+let testHome = '';
+let mockFile = '';
+let logFile = '';
 
-const WHOAMI_BODY = JSON.stringify({ principal: { id: "user-1", type: "User", name: "Leo" } });
+const WHOAMI_BODY = JSON.stringify({
+  principal: { id: 'user-1', type: 'User', name: 'Leo' },
+});
 const CREDENTIAL_BODY = JSON.stringify({
-  credential: { username: "cli-user", expires_at: "2100-01-01T00:00:00Z" },
-  password: "cli-pass",
+  credential: { username: 'cli-user', expires_at: '2100-01-01T00:00:00Z' },
+  password: 'cli-pass',
 });
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-lakehouse-provision-test-"));
-  mockFile = join(testHome, "mocks.json");
-  logFile = join(testHome, "http.log");
+  testHome = mkdtempSync(
+    join(tmpdir(), 'altertable-lakehouse-provision-test-')
+  );
+  mockFile = join(testHome, 'mocks.json');
+  logFile = join(testHome, 'http.log');
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
-  process.env.ALTERTABLE_SECRET_BACKEND = "file";
+  process.env.ALTERTABLE_SECRET_BACKEND = 'file';
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_HTTP_LOG = logFile;
   setCliContext({ debug: false, json: false, agent: false });
@@ -35,10 +45,10 @@ beforeEach(() => {
   // profile rather than env vars: setting those vars would trigger env-config
   // isolation (`_from_env`), which has no store to cache provisioned lakehouse
   // credentials in. This exercises the stored-profile provisioning path.
-  configSet("api_base", "https://api.example.com", profileName);
-  configSet("management_api_base", "https://app.example.com", profileName);
-  configSet("api_key_env", "env-1", profileName);
-  secretSet("api-key", "atm_test", profileName);
+  configSet('api_base', 'https://api.example.com', profileName);
+  configSet('management_api_base', 'https://app.example.com', profileName);
+  configSet('api_key_env', 'env-1', profileName);
+  secretSet('api-key', 'atm_test', profileName);
   refreshCliRuntimeContext(getCliRuntime().context);
 });
 
@@ -52,250 +62,305 @@ afterEach(() => {
 
 function writeMocks(
   credentialBody: string = CREDENTIAL_BODY,
-  options: { whoamiBody?: string; credentialUrlPattern?: string } = {},
+  options: { whoamiBody?: string; credentialUrlPattern?: string } = {}
 ): void {
   writeFileSync(
     mockFile,
     JSON.stringify([
-      { urlPattern: "/whoami", method: "GET", body: options.whoamiBody ?? WHOAMI_BODY },
       {
-        urlPattern: options.credentialUrlPattern ?? "/users/user-1/environments/env-1/credentials",
-        method: "POST",
+        urlPattern: '/whoami',
+        method: 'GET',
+        body: options.whoamiBody ?? WHOAMI_BODY,
+      },
+      {
+        urlPattern:
+          options.credentialUrlPattern ??
+          '/users/user-1/environments/env-1/credentials',
+        method: 'POST',
         body: credentialBody,
       },
-      { urlPattern: "api.example.com/tables", method: "GET", body: "ok" },
-    ]),
+      { urlPattern: 'api.example.com/tables', method: 'GET', body: 'ok' },
+    ])
   );
 }
 
 async function sendLakehouseRequest(authRecovery?: boolean): Promise<string> {
   return sendHttp(
-    { plane: "lakehouse", method: "GET", endpoint: "/tables", authRecovery },
-    createExecutionContext(getCliRuntime()),
+    { plane: 'lakehouse', method: 'GET', endpoint: '/tables', authRecovery },
+    createExecutionContext(getCliRuntime())
   );
 }
 
 // bun-types declare rejects.toThrow() as void, so awaiting it trips the
 // await-thenable lint rule; capture the rejection explicitly instead.
-async function expectRejection(promise: Promise<unknown>, message: string): Promise<void> {
+async function expectRejection(
+  promise: Promise<unknown>,
+  message: string
+): Promise<void> {
   const error = await promise.then(
     () => undefined,
-    (thrown: unknown) => thrown,
+    (thrown: unknown) => thrown
   );
   expect(error).toBeInstanceOf(Error);
   expect((error as Error).message).toContain(message);
 }
 
-describe("lakehouse credential auto-provisioning", () => {
-  test("provisions a credential when none exists and management auth is available", async () => {
+describe('lakehouse credential auto-provisioning', () => {
+  test('provisions a credential when none exists and management auth is available', async () => {
     writeMocks();
 
     const response = await sendLakehouseRequest();
 
-    expect(response).toBe("ok");
-    const expectedToken = Buffer.from("cli-user:cli-pass").toString("base64");
-    expect(secretGet("lakehouse/basic-token", profileName)).toBe(expectedToken);
-    expect(configGet("lakehouse_credential_expiry", profileName)).toBe(
-      String(Date.parse("2100-01-01T00:00:00Z")),
+    expect(response).toBe('ok');
+    const expectedToken = Buffer.from('cli-user:cli-pass').toString('base64');
+    expect(secretGet('lakehouse/basic-token', profileName)).toBe(expectedToken);
+    expect(configGet('lakehouse_credential_expiry', profileName)).toBe(
+      String(Date.parse('2100-01-01T00:00:00Z'))
     );
-    const logContent = readFileSync(logFile, "utf8");
+    const logContent = readFileSync(logFile, 'utf8');
     expect(logContent).toContain(
-      "URL=https://app.example.com/rest/v1/users/user-1/environments/env-1/credentials",
+      'URL=https://app.example.com/rest/v1/users/user-1/environments/env-1/credentials'
     );
     expect(logContent).toContain(`"label":"${USER_AGENT}"`);
   });
 
-  test("provisions through /service_accounts for a service account principal", async () => {
+  test('provisions through /service_accounts for a service account principal', async () => {
     writeMocks(CREDENTIAL_BODY, {
       whoamiBody: JSON.stringify({
-        principal: { id: "svc-1", type: "ServiceAccount", name: "CI Bot" },
+        principal: { id: 'svc-1', type: 'ServiceAccount', name: 'CI Bot' },
       }),
-      credentialUrlPattern: "/service_accounts/svc-1/environments/env-1/credentials",
+      credentialUrlPattern:
+        '/service_accounts/svc-1/environments/env-1/credentials',
     });
 
     const response = await sendLakehouseRequest();
 
-    expect(response).toBe("ok");
-    expect(readFileSync(logFile, "utf8")).toContain(
-      "URL=https://app.example.com/rest/v1/service_accounts/svc-1/environments/env-1/credentials",
+    expect(response).toBe('ok');
+    expect(readFileSync(logFile, 'utf8')).toContain(
+      'URL=https://app.example.com/rest/v1/service_accounts/svc-1/environments/env-1/credentials'
     );
   });
 
   // A principal type like "constructor" resolves to a truthy Object.prototype
   // member under a bare lookup, which would build a nonsense credentials URL.
-  test("rejects a principal type that only exists on the object prototype", async () => {
+  test('rejects a principal type that only exists on the object prototype', async () => {
     writeMocks(CREDENTIAL_BODY, {
       whoamiBody: JSON.stringify({
-        principal: { id: "weird-1", type: "constructor", name: "Weird" },
+        principal: { id: 'weird-1', type: 'constructor', name: 'Weird' },
       }),
     });
 
     await expectRejection(
       sendLakehouseRequest(),
-      "Cannot auto-create lakehouse credentials for this identity",
+      'Cannot auto-create lakehouse credentials for this identity'
     );
   });
 
-  test("re-provisions when the stored credential is expired", async () => {
+  test('re-provisions when the stored credential is expired', async () => {
     writeMocks();
     secretSet(
-      "lakehouse/basic-token",
-      Buffer.from("old-user:old-pass").toString("base64"),
-      profileName,
+      'lakehouse/basic-token',
+      Buffer.from('old-user:old-pass').toString('base64'),
+      profileName
     );
-    configSet("lakehouse_credential_expiry", String(Date.now() - 1000), profileName);
+    configSet(
+      'lakehouse_credential_expiry',
+      String(Date.now() - 1000),
+      profileName
+    );
 
     const response = await sendLakehouseRequest();
 
-    expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
-      Buffer.from("cli-user:cli-pass").toString("base64"),
+    expect(response).toBe('ok');
+    expect(secretGet('lakehouse/basic-token', profileName)).toBe(
+      Buffer.from('cli-user:cli-pass').toString('base64')
     );
   });
 
-  test("aborts on a corrupt stored expiry without provisioning or sending anything", async () => {
+  test('aborts on a corrupt stored expiry without provisioning or sending anything', async () => {
     writeMocks();
     secretSet(
-      "lakehouse/basic-token",
-      Buffer.from("old-user:old-pass").toString("base64"),
-      profileName,
+      'lakehouse/basic-token',
+      Buffer.from('old-user:old-pass').toString('base64'),
+      profileName
     );
-    configSet("lakehouse_credential_expiry", "not-a-number", profileName);
+    configSet('lakehouse_credential_expiry', 'not-a-number', profileName);
 
     await expectRejection(
       sendLakehouseRequest(),
-      "Stored lakehouse credential expiry is corrupted. Run 'altertable logout' and try again.",
+      "Stored lakehouse credential expiry is corrupted. Run 'altertable logout' and try again."
     );
     expect(existsSync(logFile)).toBe(false);
   });
 
-  test("aborts when the created credential has no expiry", () => {
-    writeMocks(JSON.stringify({ credential: { username: "cli-user" }, password: "cli-pass" }));
+  test('aborts when the created credential has no expiry', () => {
+    writeMocks(
+      JSON.stringify({
+        credential: { username: 'cli-user' },
+        password: 'cli-pass',
+      })
+    );
 
     return expect(sendLakehouseRequest()).rejects.toThrow(
-      "Credential creation response was missing an expiry.",
+      'Credential creation response was missing an expiry.'
     );
   });
 
-  test("uses valid stored credentials without touching the management plane", async () => {
+  test('uses valid stored credentials without touching the management plane', async () => {
     writeMocks();
     secretSet(
-      "lakehouse/basic-token",
-      Buffer.from("old-user:old-pass").toString("base64"),
-      profileName,
+      'lakehouse/basic-token',
+      Buffer.from('old-user:old-pass').toString('base64'),
+      profileName
     );
 
     const response = await sendLakehouseRequest();
 
-    expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
-      Buffer.from("old-user:old-pass").toString("base64"),
+    expect(response).toBe('ok');
+    expect(secretGet('lakehouse/basic-token', profileName)).toBe(
+      Buffer.from('old-user:old-pass').toString('base64')
     );
-    expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+    expect(readFileSync(logFile, 'utf8')).not.toContain('/whoami');
   });
 });
 
-describe("lakehouse credential recovery after 401", () => {
-  const OLD_TOKEN = Buffer.from("old-user:old-pass").toString("base64");
+describe('lakehouse credential recovery after 401', () => {
+  const OLD_TOKEN = Buffer.from('old-user:old-pass').toString('base64');
 
   function storeProvisionedCredential(): void {
-    secretSet("lakehouse/basic-token", OLD_TOKEN, profileName);
-    configSet("lakehouse_credential_expiry", String(Date.now() + 60 * 60 * 1000), profileName);
+    secretSet('lakehouse/basic-token', OLD_TOKEN, profileName);
+    configSet(
+      'lakehouse_credential_expiry',
+      String(Date.now() + 60 * 60 * 1000),
+      profileName
+    );
   }
 
-  test("re-provisions and retries when the server rejects a provisioned credential", async () => {
+  test('re-provisions and retries when the server rejects a provisioned credential', async () => {
     storeProvisionedCredential();
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "api.example.com/tables",
-          method: "GET",
+          urlPattern: 'api.example.com/tables',
+          method: 'GET',
           authPattern: OLD_TOKEN,
           status: 401,
-          body: "",
+          body: '',
         },
-        { urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY },
+        { urlPattern: '/whoami', method: 'GET', body: WHOAMI_BODY },
         {
-          urlPattern: "/users/user-1/environments/env-1/credentials",
-          method: "POST",
+          urlPattern: '/users/user-1/environments/env-1/credentials',
+          method: 'POST',
           body: CREDENTIAL_BODY,
         },
-        { urlPattern: "api.example.com/tables", method: "GET", body: "ok" },
-      ]),
+        { urlPattern: 'api.example.com/tables', method: 'GET', body: 'ok' },
+      ])
     );
 
     const response = await sendLakehouseRequest();
 
-    expect(response).toBe("ok");
-    expect(secretGet("lakehouse/basic-token", profileName)).toBe(
-      Buffer.from("cli-user:cli-pass").toString("base64"),
+    expect(response).toBe('ok');
+    expect(secretGet('lakehouse/basic-token', profileName)).toBe(
+      Buffer.from('cli-user:cli-pass').toString('base64')
     );
   });
 
-  test("gives up after one re-provision attempt", async () => {
+  test('gives up after one re-provision attempt', async () => {
     storeProvisionedCredential();
     writeFileSync(
       mockFile,
       JSON.stringify([
-        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
-        { urlPattern: "/whoami", method: "GET", body: WHOAMI_BODY },
         {
-          urlPattern: "/users/user-1/environments/env-1/credentials",
-          method: "POST",
+          urlPattern: 'api.example.com/tables',
+          method: 'GET',
+          status: 401,
+          body: '',
+        },
+        { urlPattern: '/whoami', method: 'GET', body: WHOAMI_BODY },
+        {
+          urlPattern: '/users/user-1/environments/env-1/credentials',
+          method: 'POST',
           body: CREDENTIAL_BODY,
         },
-      ]),
+      ])
     );
 
-    await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
-    const whoamiCalls = readFileSync(logFile, "utf8").match(/\/whoami/g) ?? [];
+    await expectRejection(
+      sendLakehouseRequest(),
+      'Authentication failed (401)'
+    );
+    const whoamiCalls = readFileSync(logFile, 'utf8').match(/\/whoami/g) ?? [];
     expect(whoamiCalls).toHaveLength(1);
   });
 
-  test("does not re-provision on 401 when env credentials are in use", async () => {
+  test('does not re-provision on 401 when env credentials are in use', async () => {
     storeProvisionedCredential();
-    process.env.ALTERTABLE_BASIC_AUTH_TOKEN = "env-token";
+    process.env.ALTERTABLE_BASIC_AUTH_TOKEN = 'env-token';
     try {
       writeFileSync(
         mockFile,
         JSON.stringify([
-          { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
-        ]),
+          {
+            urlPattern: 'api.example.com/tables',
+            method: 'GET',
+            status: 401,
+            body: '',
+          },
+        ])
       );
 
-      await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
-      expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+      await expectRejection(
+        sendLakehouseRequest(),
+        'Authentication failed (401)'
+      );
+      expect(readFileSync(logFile, 'utf8')).not.toContain('/whoami');
     } finally {
       delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
     }
   });
 
-  test("does not re-provision on 401 for manually configured credentials", async () => {
-    secretSet("lakehouse/basic-token", OLD_TOKEN, profileName);
+  test('does not re-provision on 401 for manually configured credentials', async () => {
+    secretSet('lakehouse/basic-token', OLD_TOKEN, profileName);
 
     writeFileSync(
       mockFile,
       JSON.stringify([
-        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
-      ]),
+        {
+          urlPattern: 'api.example.com/tables',
+          method: 'GET',
+          status: 401,
+          body: '',
+        },
+      ])
     );
 
-    await expectRejection(sendLakehouseRequest(), "Authentication failed (401)");
-    expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+    await expectRejection(
+      sendLakehouseRequest(),
+      'Authentication failed (401)'
+    );
+    expect(readFileSync(logFile, 'utf8')).not.toContain('/whoami');
   });
 
-  test("does not re-provision a managed credential when auth recovery is disabled", async () => {
+  test('does not re-provision a managed credential when auth recovery is disabled', async () => {
     storeProvisionedCredential();
     writeFileSync(
       mockFile,
       JSON.stringify([
-        { urlPattern: "api.example.com/tables", method: "GET", status: 401, body: "" },
-      ]),
+        {
+          urlPattern: 'api.example.com/tables',
+          method: 'GET',
+          status: 401,
+          body: '',
+        },
+      ])
     );
 
-    await expectRejection(sendLakehouseRequest(false), "Authentication failed (401)");
-    expect(secretGet("lakehouse/basic-token", profileName)).toBe(OLD_TOKEN);
-    expect(readFileSync(logFile, "utf8")).not.toContain("/whoami");
+    await expectRejection(
+      sendLakehouseRequest(false),
+      'Authentication failed (401)'
+    );
+    expect(secretGet('lakehouse/basic-token', profileName)).toBe(OLD_TOKEN);
+    expect(readFileSync(logFile, 'utf8')).not.toContain('/whoami');
   });
 });

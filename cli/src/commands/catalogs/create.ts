@@ -1,31 +1,34 @@
-import { requireManagementPlane } from "@/lib/auth.ts";
-import { buildCatalogCreateRequest } from "@/commands/catalogs/lib/requests.ts";
-import { defineCommand } from "@/lib/command.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { sendHttp } from "@/lib/http-request.ts";
+import { requireManagementPlane } from '@/lib/auth.ts';
+import { buildCatalogCreateRequest } from '@/commands/catalogs/lib/requests.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { sendHttp } from '@/lib/http-request.ts';
 
 export const catalogsCreateCommand = defineCommand({
   metadata: {
-    name: "create",
-    description: "Create an Altertable catalog.",
-    examples: ["altertable catalog create Analytics"],
+    name: 'create',
+    description: 'Create an Altertable catalog.',
+    examples: ['altertable catalog create Analytics'],
   },
   args: {
     name: {
-      type: "positional",
-      description: "Catalog name",
+      type: 'positional',
+      description: 'Catalog name',
       required: true,
     },
   },
   async run({ args, execution, sink }) {
     const env = requireManagementPlane(execution.profile, {
-      requirement: "Creating a catalog requires the management API",
+      requirement: 'Creating a catalog requires the management API',
     });
     const name = String(args.name);
-    const response = await sendHttp(buildCatalogCreateRequest(env, name), execution);
+    const response = await sendHttp(
+      buildCatalogCreateRequest(env, name),
+      execution
+    );
     await writeCommandOutput(
       {
-        kind: "raw_api",
+        kind: 'raw_api',
         body: response,
         humanFormatter(data) {
           const parsed = data as {
@@ -33,10 +36,10 @@ export const catalogsCreateCommand = defineCommand({
             connection?: { slug?: string; name?: string; engine?: string };
           };
           const catalog = parsed.database ?? parsed.connection;
-          return `Created catalog "${catalog?.name ?? name}" (slug: ${catalog?.slug ?? ""}, engine: ${catalog?.engine ?? "altertable"}, environment: ${env}).`;
+          return `Created catalog "${catalog?.name ?? name}" (slug: ${catalog?.slug ?? ''}, engine: ${catalog?.engine ?? 'altertable'}, environment: ${env}).`;
         },
       },
-      sink,
+      sink
     );
   },
 });

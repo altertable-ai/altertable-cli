@@ -40,7 +40,7 @@ export class CliError extends Error {
 
   constructor(message: string, options: CliErrorOptions = {}) {
     super(message);
-    this.name = "CliError";
+    this.name = 'CliError';
     this.exitCode = options.exitCode ?? EXIT_GENERIC;
     if (options.cause !== undefined) {
       this.cause = options.cause;
@@ -54,10 +54,12 @@ export class CliError extends Error {
 export function assertRetrieved<T>(
   value: T | null | undefined,
   operation: string,
-  path: string,
+  path: string
 ): T {
-  if (value === undefined || value === null || value === "") {
-    throw new CliError(`${operation} failed: assertion failed retrieving ${path}`);
+  if (value === undefined || value === null || value === '') {
+    throw new CliError(
+      `${operation} failed: assertion failed retrieving ${path}`
+    );
   }
   return value;
 }
@@ -65,7 +67,7 @@ export function assertRetrieved<T>(
 export class ConfigurationError extends CliError {
   constructor(message: string, options: CliErrorOptions = {}) {
     super(message, { ...options, exitCode: options.exitCode ?? EXIT_CONFIG });
-    this.name = "ConfigurationError";
+    this.name = 'ConfigurationError';
   }
 }
 
@@ -121,65 +123,76 @@ export class HttpError extends CliError {
       exitCode: options.exitCode ?? httpStatusExitCode(options.status),
       details: options.detailsOverride ?? options.parsedDetail,
     });
-    this.name = "HttpError";
+    this.name = 'HttpError';
     this.status = options.status;
     this.body = options.body;
     this.method = options.method;
     this.url = options.url;
     this.parsedDetail = options.parsedDetail;
     this.retryAfterHeader = options.retryAfterHeader;
-    this.message = options.messageOverride ?? httpStatusMessage(options.status, options.authPlane);
+    this.message =
+      options.messageOverride ??
+      httpStatusMessage(options.status, options.authPlane);
   }
 }
 
 export class NetworkError extends CliError {
-  constructor(message = "Request failed (network error).", options: CliErrorOptions = {}) {
+  constructor(
+    message = 'Request failed (network error).',
+    options: CliErrorOptions = {}
+  ) {
     super(message, { ...options, exitCode: options.exitCode ?? EXIT_NETWORK });
-    this.name = "NetworkError";
+    this.name = 'NetworkError';
   }
 }
 
 export class TimeoutError extends NetworkError {
-  constructor(message = "Request timed out.", options: CliErrorOptions = {}) {
+  constructor(message = 'Request timed out.', options: CliErrorOptions = {}) {
     super(message, options);
-    this.name = "TimeoutError";
+    this.name = 'TimeoutError';
   }
 }
 
 export class ParseError extends CliError {
   constructor(message: string, options: CliErrorOptions = {}) {
-    super(message, { ...options, exitCode: options.exitCode ?? EXIT_VALIDATION });
-    this.name = "ParseError";
+    super(message, {
+      ...options,
+      exitCode: options.exitCode ?? EXIT_VALIDATION,
+    });
+    this.name = 'ParseError';
   }
 }
 
 export class QueryError extends CliError {
   constructor(message: string) {
     super(`Query failed: ${message}`);
-    this.name = "QueryError";
+    this.name = 'QueryError';
   }
 }
 
-export type AuthPlane = "lakehouse" | "management";
+export type AuthPlane = 'lakehouse' | 'management';
 
-export function httpStatusMessage(status: number, authPlane?: AuthPlane): string {
+export function httpStatusMessage(
+  status: number,
+  authPlane?: AuthPlane
+): string {
   if (status === 401) {
-    if (authPlane === "lakehouse") {
-      return "Authentication failed (401). Check lakehouse credentials (username/password or Basic token).";
+    if (authPlane === 'lakehouse') {
+      return 'Authentication failed (401). Check lakehouse credentials (username/password or Basic token).';
     }
-    if (authPlane === "management") {
-      return "Authentication failed (401). Check your management API key.";
+    if (authPlane === 'management') {
+      return 'Authentication failed (401). Check your management API key.';
     }
-    return "Authentication failed (401). Check your credentials.";
+    return 'Authentication failed (401). Check your credentials.';
   }
   if (status === 403) {
-    return "Permission denied (403).";
+    return 'Permission denied (403).';
   }
   if (status === 404) {
-    return "Not found (404).";
+    return 'Not found (404).';
   }
   if (status === 429) {
-    return "Rate limited (429). Try again later.";
+    return 'Rate limited (429). Try again later.';
   }
   if (status >= 500) {
     return `Server error (${status}). Try again later.`;
@@ -199,50 +212,50 @@ export type CliErrorJson = {
 export function errorCodeFromError(error: unknown): string {
   if (error instanceof HttpError) {
     if (error.status === 401) {
-      return "auth_failed";
+      return 'auth_failed';
     }
     if (error.status === 403) {
-      return "forbidden";
+      return 'forbidden';
     }
     if (error.status === 404) {
-      return "not_found";
+      return 'not_found';
     }
     if (error.status === 409) {
-      return "conflict";
+      return 'conflict';
     }
     if (error.status === 422) {
-      return "validation_error";
+      return 'validation_error';
     }
     if (error.status === 429) {
-      return "rate_limited";
+      return 'rate_limited';
     }
     if (error.status >= 500) {
-      return "server_error";
+      return 'server_error';
     }
-    return "http_error";
+    return 'http_error';
   }
   if (error instanceof QueryError) {
-    return "query_error";
+    return 'query_error';
   }
   if (error instanceof ConfigurationError) {
-    return "configuration_error";
+    return 'configuration_error';
   }
   if (error instanceof ParseError) {
-    return "parse_error";
+    return 'parse_error';
   }
   if (error instanceof TimeoutError) {
-    return "timeout_error";
+    return 'timeout_error';
   }
   if (error instanceof NetworkError) {
-    return "network_error";
+    return 'network_error';
   }
   if (error instanceof CliError) {
-    return "cli_error";
+    return 'cli_error';
   }
-  if (error instanceof Error && error.name === "CLIError") {
-    return "usage_error";
+  if (error instanceof Error && error.name === 'CLIError') {
+    return 'usage_error';
   }
-  return "unexpected_error";
+  return 'unexpected_error';
 }
 
 export function serializeCliError(error: unknown): CliErrorJson {
@@ -270,10 +283,10 @@ export function serializeCliError(error: unknown): CliErrorJson {
     };
   }
 
-  if (error instanceof Error && error.name === "CLIError") {
+  if (error instanceof Error && error.name === 'CLIError') {
     return {
       error: true,
-      code: "usage_error",
+      code: 'usage_error',
       message: error.message,
       exit_code: EXIT_GENERIC,
     };
@@ -281,8 +294,8 @@ export function serializeCliError(error: unknown): CliErrorJson {
 
   return {
     error: true,
-    code: "unexpected_error",
-    message: "Unexpected error.",
+    code: 'unexpected_error',
+    message: 'Unexpected error.',
     exit_code: EXIT_GENERIC,
   };
 }
@@ -291,14 +304,16 @@ export function getCliExitCode(error: unknown): number {
   if (error instanceof CliError) {
     return error.exitCode;
   }
-  if (error instanceof Error && error.name === "CLIError") {
+  if (error instanceof Error && error.name === 'CLIError') {
     return EXIT_GENERIC;
   }
   return EXIT_GENERIC;
 }
 
-export function isCommandParseError(error: unknown): error is Error & { code: string } {
-  return error instanceof Error && error.name === "CLIError" && "code" in error;
+export function isCommandParseError(
+  error: unknown
+): error is Error & { code: string } {
+  return error instanceof Error && error.name === 'CLIError' && 'code' in error;
 }
 
 export function shouldShowCommandExamplesOnError(error: unknown): boolean {

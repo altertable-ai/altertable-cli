@@ -1,39 +1,47 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
-import type { Command } from "@/lib/command.ts";
-import { CliError } from "@/lib/errors.ts";
-import { readEnv } from "@/lib/env.ts";
-import { homeDir, configHome, dataHome } from "@/lib/user-directories.ts";
-import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
-import { renderDocumentText } from "@/ui/renderers/terminal.ts";
-import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
+import type { Command } from '@/lib/command.ts';
+import { CliError } from '@/lib/errors.ts';
+import { readEnv } from '@/lib/env.ts';
+import { homeDir, configHome, dataHome } from '@/lib/user-directories.ts';
+import {
+  document,
+  rows,
+  section,
+  span,
+  text,
+  type DisplayText,
+} from '@/ui/document.ts';
+import { renderDocumentText } from '@/ui/renderers/terminal.ts';
+import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
 import {
   formatBashCompletion,
   formatFishCompletion,
   formatZshCompletion,
-} from "@/commands/completion/lib/format.ts";
+} from '@/commands/completion/lib/format.ts';
 
 export type GetRootCommand = () => Command;
-export type SupportedShell = "bash" | "zsh" | "fish";
+export type SupportedShell = 'bash' | 'zsh' | 'fish';
 export type InstallResult = {
   shell: SupportedShell;
   completionPath: string;
   rcPath?: string;
   rcUpdated: boolean;
-  startupAction: "updated" | "skipped" | "not-needed";
+  startupAction: 'updated' | 'skipped' | 'not-needed';
 };
 
 type InstallTarget = { completionPath: string; rcPath?: string };
 type InstallOptions = { updateRc?: boolean };
 
-export const SUPPORTED_SHELLS = ["bash", "fish", "zsh"] as const;
-const START_MARKER = "# >>> altertable completion >>>";
-const END_MARKER = "# <<< altertable completion <<<";
-const COMPLETION_DOCS_URL = "https://github.com/altertable-ai/altertable-cli#shell-completion";
+export const SUPPORTED_SHELLS = ['bash', 'fish', 'zsh'] as const;
+const START_MARKER = '# >>> altertable completion >>>';
+const END_MARKER = '# <<< altertable completion <<<';
+const COMPLETION_DOCS_URL =
+  'https://github.com/altertable-ai/altertable-cli#shell-completion';
 export const COMPLETION_GUIDANCE = {
-  install: "altertable completion install",
-  installShell: "altertable completion install zsh",
-  manual: "altertable completion generate zsh",
+  install: 'altertable completion install',
+  installShell: 'altertable completion install zsh',
+  manual: 'altertable completion generate zsh',
   docs: COMPLETION_DOCS_URL,
 };
 
@@ -42,7 +50,7 @@ export function isSupportedShell(shell: string): shell is SupportedShell {
 }
 
 function formatSupportedShells(): string {
-  return SUPPORTED_SHELLS.join(", ");
+  return SUPPORTED_SHELLS.join(', ');
 }
 
 function getShellName(shellPath: string): string {
@@ -50,17 +58,19 @@ function getShellName(shellPath: string): string {
 }
 
 export function resolveShell(shell: unknown): SupportedShell {
-  if (typeof shell === "string" && shell.length > 0) {
+  if (typeof shell === 'string' && shell.length > 0) {
     const explicitShell = getShellName(shell);
     if (isSupportedShell(explicitShell)) return explicitShell;
-    throw new CliError(`Unsupported shell: ${shell}. Use ${formatSupportedShells()}.`);
+    throw new CliError(
+      `Unsupported shell: ${shell}. Use ${formatSupportedShells()}.`
+    );
   }
 
-  const envShell = readEnv("SHELL");
-  const detectedShell = envShell ? getShellName(envShell) : "";
+  const envShell = readEnv('SHELL');
+  const detectedShell = envShell ? getShellName(envShell) : '';
   if (isSupportedShell(detectedShell)) return detectedShell;
   throw new CliError(
-    `Could not detect a supported shell. Pass one of: ${formatSupportedShells()}.`,
+    `Could not detect a supported shell. Pass one of: ${formatSupportedShells()}.`
   );
 }
 
@@ -69,20 +79,30 @@ function shellQuote(value: string): string {
 }
 
 function installTarget(shell: SupportedShell): InstallTarget {
-  if (shell === "bash") {
+  if (shell === 'bash') {
     return {
-      completionPath: join(dataHome(), "bash-completion", "completions", "altertable"),
-      rcPath: join(homeDir(), ".bashrc"),
+      completionPath: join(
+        dataHome(),
+        'bash-completion',
+        'completions',
+        'altertable'
+      ),
+      rcPath: join(homeDir(), '.bashrc'),
     };
   }
-  if (shell === "zsh") {
+  if (shell === 'zsh') {
     return {
-      completionPath: join(dataHome(), "zsh", "site-functions", "_altertable"),
-      rcPath: join(homeDir(), ".zshrc"),
+      completionPath: join(dataHome(), 'zsh', 'site-functions', '_altertable'),
+      rcPath: join(homeDir(), '.zshrc'),
     };
   }
   return {
-    completionPath: join(configHome(), "fish", "completions", "altertable.fish"),
+    completionPath: join(
+      configHome(),
+      'fish',
+      'completions',
+      'altertable.fish'
+    ),
   };
 }
 
@@ -90,24 +110,32 @@ function managedBlock(body: string): string {
   return `${START_MARKER}\n${body.trimEnd()}\n${END_MARKER}\n`;
 }
 
-function rcBlock(shell: SupportedShell, target: InstallTarget): string | undefined {
+function rcBlock(
+  shell: SupportedShell,
+  target: InstallTarget
+): string | undefined {
   if (!target.rcPath) return undefined;
-  if (shell === "bash") {
+  if (shell === 'bash') {
     return managedBlock(
-      `if [ -f ${shellQuote(target.completionPath)} ]; then\n  . ${shellQuote(target.completionPath)}\nfi`,
+      `if [ -f ${shellQuote(target.completionPath)} ]; then\n  . ${shellQuote(target.completionPath)}\nfi`
     );
   }
   return managedBlock(
-    `fpath=(${shellQuote(dirname(target.completionPath))} $fpath)\nautoload -Uz compinit\ncompinit`,
+    `fpath=(${shellQuote(dirname(target.completionPath))} $fpath)\nautoload -Uz compinit\ncompinit`
   );
 }
 
 async function readOptionalFile(path: string): Promise<string> {
   try {
-    return await readFile(path, "utf8");
+    return await readFile(path, 'utf8');
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-      return "";
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
+      return '';
     }
     throw error;
   }
@@ -119,7 +147,7 @@ function upsertManagedBlock(existing: string, block: string): string {
   if (start !== -1 && end !== -1 && end > start) {
     const before = existing.slice(0, start).trimEnd();
     const after = existing.slice(end + END_MARKER.length).trimStart();
-    return [before, block.trimEnd(), after].filter(Boolean).join("\n\n") + "\n";
+    return [before, block.trimEnd(), after].filter(Boolean).join('\n\n') + '\n';
   }
   const prefix = existing.trimEnd();
   return prefix ? `${prefix}\n\n${block}` : block;
@@ -127,34 +155,34 @@ function upsertManagedBlock(existing: string, block: string): string {
 
 export async function formatCompletionScript(
   shell: SupportedShell,
-  rootCommand: Command,
+  rootCommand: Command
 ): Promise<string> {
   const spec = await buildCompletionSpec(rootCommand);
-  if (shell === "bash") return formatBashCompletion(spec);
-  if (shell === "zsh") return formatZshCompletion(spec);
+  if (shell === 'bash') return formatBashCompletion(spec);
+  if (shell === 'zsh') return formatZshCompletion(spec);
   return formatFishCompletion(spec);
 }
 
 export async function installCompletion(
   shell: SupportedShell,
   script: string,
-  options: InstallOptions = {},
+  options: InstallOptions = {}
 ): Promise<InstallResult> {
   const target = installTarget(shell);
   await mkdir(dirname(target.completionPath), { recursive: true });
-  await writeFile(target.completionPath, `${script.trimEnd()}\n`, "utf8");
+  await writeFile(target.completionPath, `${script.trimEnd()}\n`, 'utf8');
 
   const block = options.updateRc === false ? undefined : rcBlock(shell, target);
   if (block && target.rcPath) {
     await mkdir(dirname(target.rcPath), { recursive: true });
     const existing = await readOptionalFile(target.rcPath);
-    await writeFile(target.rcPath, upsertManagedBlock(existing, block), "utf8");
+    await writeFile(target.rcPath, upsertManagedBlock(existing, block), 'utf8');
     return {
       shell,
       completionPath: target.completionPath,
       rcPath: target.rcPath,
       rcUpdated: true,
-      startupAction: "updated",
+      startupAction: 'updated',
     };
   }
 
@@ -163,36 +191,39 @@ export async function installCompletion(
     completionPath: target.completionPath,
     rcPath: target.rcPath,
     rcUpdated: false,
-    startupAction: target.rcPath ? "skipped" : "not-needed",
+    startupAction: target.rcPath ? 'skipped' : 'not-needed',
   };
 }
 
 export function formatInstallMessage(result: InstallResult): string {
   const startup: DisplayText =
-    result.startupAction === "updated"
-      ? [span("updated "), span(result.rcPath ?? "", "accent")]
-      : result.startupAction === "skipped"
-        ? [span("left unchanged "), span("(--no-rc)", "subtle")]
-        : "automatic";
+    result.startupAction === 'updated'
+      ? [span('updated '), span(result.rcPath ?? '', 'accent')]
+      : result.startupAction === 'skipped'
+        ? [span('left unchanged '), span('(--no-rc)', 'subtle')]
+        : 'automatic';
   const next =
-    result.startupAction === "skipped"
-      ? "Add the completion script to your shell startup file, then open a new terminal."
-      : "Open a new terminal, or reload your shell, to start using completion.";
+    result.startupAction === 'skipped'
+      ? 'Add the completion script to your shell startup file, then open a new terminal.'
+      : 'Open a new terminal, or reload your shell, to start using completion.';
 
   return renderDocumentText(
     document(
       section(
-        text([[span("✓", "success"), span(" Shell completion installed")]]),
+        text([[span('✓', 'success'), span(' Shell completion installed')]]),
         rows([
-          { label: "Shell:", value: result.shell },
-          { label: "Script:", value: [span(result.completionPath, "accent")] },
-          { label: "Startup:", value: startup },
-          { label: "Next:", value: next },
-          { label: "Docs:", value: [span("Shell completion", "accent", COMPLETION_DOCS_URL)] },
-        ]),
-      ),
+          { label: 'Shell:', value: result.shell },
+          { label: 'Script:', value: [span(result.completionPath, 'accent')] },
+          { label: 'Startup:', value: startup },
+          { label: 'Next:', value: next },
+          {
+            label: 'Docs:',
+            value: [span('Shell completion', 'accent', COMPLETION_DOCS_URL)],
+          },
+        ])
+      )
     ),
-    { labelWidth: "Startup:".length },
+    { labelWidth: 'Startup:'.length }
   );
 }
 
@@ -200,18 +231,20 @@ export function formatCompletionHelpMessage(): string {
   return renderDocumentText(
     document(
       section(
-        text([[span("Shell completion", "accent")]]),
+        text([[span('Shell completion', 'accent')]]),
         rows([
-          { label: "Install:", value: COMPLETION_GUIDANCE.install },
-          { label: "Install shell:", value: COMPLETION_GUIDANCE.installShell },
-          { label: "Manual:", value: COMPLETION_GUIDANCE.manual },
+          { label: 'Install:', value: COMPLETION_GUIDANCE.install },
+          { label: 'Install shell:', value: COMPLETION_GUIDANCE.installShell },
+          { label: 'Manual:', value: COMPLETION_GUIDANCE.manual },
           {
-            label: "Docs:",
-            value: [span("Shell completion", "accent", COMPLETION_GUIDANCE.docs)],
+            label: 'Docs:',
+            value: [
+              span('Shell completion', 'accent', COMPLETION_GUIDANCE.docs),
+            ],
           },
-        ]),
-      ),
+        ])
+      )
     ),
-    { labelWidth: "Install shell:".length },
+    { labelWidth: 'Install shell:'.length }
   );
 }

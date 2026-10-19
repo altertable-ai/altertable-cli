@@ -1,7 +1,7 @@
 {
   "name": "@altertable/cli",
   "version": "1.12.0",
-  "description": "Altertable CLI — query and manage your data platform",
+  "description": "Altertable CLI \u2014 query and manage your data platform",
   "homepage": "https://github.com/altertable-ai/altertable-cli#readme",
   "bugs": {
     "url": "https://github.com/altertable-ai/altertable-cli/issues"
@@ -21,7 +21,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun node_modules/typescript-checker/bin/tsc --noEmit",
     "lint": "oxlint --type-aware",
     "lint:fix": "oxlint --type-aware --fix",
     "format": "oxfmt",
@@ -57,10 +57,11 @@
     "eslint-plugin-no-relative-import-paths": "1.6.1",
     "knip": "6.32.2",
     "openapi-typescript": "7.13.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
-    "oxlint-tsgolint": "7.0.2001",
-    "typescript": "6.0.3"
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "6.0.3",
+    "typescript-checker": "npm:typescript@7.0.2"
   },
   "engines": {
     "bun": ">=1.1.0"

@@ -1,27 +1,27 @@
-import { assertNoEnvConfigMode, deleteProfile } from "@/lib/profile/model.ts";
-import { CliError } from "@/lib/errors.ts";
-import { requireProfileName } from "@/commands/profile/lib/profile.ts";
-import { defineCommand } from "@/lib/command.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
+import { assertNoEnvConfigMode, deleteProfile } from '@/lib/profile/model.ts';
+import { CliError } from '@/lib/errors.ts';
+import { requireProfileName } from '@/commands/profile/lib/profile.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
 
 export const profileDeleteCommand = defineCommand({
-  metadata: { name: "delete", description: "Delete a profile" },
+  metadata: { name: 'delete', description: 'Delete a profile' },
   args: {
-    name: { type: "positional", description: "Profile name", required: true },
-    yes: { type: "boolean", description: "Confirm deletion" },
+    name: { type: 'positional', description: 'Profile name', required: true },
+    yes: { type: 'boolean', description: 'Confirm deletion' },
   },
   async run({ args, sink }) {
-    if (!args.yes) throw new CliError("Pass --yes to delete a profile.");
+    if (!args.yes) throw new CliError('Pass --yes to delete a profile.');
     const profileName = requireProfileName(args.name);
     assertNoEnvConfigMode();
     deleteProfile(profileName);
     await writeCommandOutput(
       {
-        kind: "ack",
+        kind: 'ack',
         data: { deleted: profileName },
         metadataMessage: `Deleted profile ${profileName}.`,
       },
-      sink,
+      sink
     );
   },
 });

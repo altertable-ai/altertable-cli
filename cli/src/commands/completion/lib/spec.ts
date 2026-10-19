@@ -1,11 +1,14 @@
-import type { Command } from "@/lib/command.ts";
-import type { CommandFlagScope, PositionalCompletionKind } from "@/lib/command.ts";
+import type { Command } from '@/lib/command.ts';
+import type {
+  CommandFlagScope,
+  PositionalCompletionKind,
+} from '@/lib/command.ts';
 import {
   resolveCommandDescriptor,
   visibleCommandDescriptors,
   type CommandArgumentDescriptor,
   type CommandDescriptor,
-} from "@/lib/command-descriptor.ts";
+} from '@/lib/command-descriptor.ts';
 
 /**
  * Static completion spec projected from the normalized command descriptor.
@@ -55,30 +58,32 @@ export type CompletionContext = {
 /** Max subcommand depth below root (top-level = 1, e.g. api → connections → list). */
 const MAX_SUBCOMMAND_DEPTH = 3;
 
-function extractFlags(commandArguments: readonly CommandArgumentDescriptor[]): CompletionFlag[] {
+function extractFlags(
+  commandArguments: readonly CommandArgumentDescriptor[]
+): CompletionFlag[] {
   return commandArguments
-    .filter((argument) => ["boolean", "string", "enum"].includes(argument.type))
-    .map((argument) => ({
+    .filter(argument => ['boolean', 'string', 'enum'].includes(argument.type))
+    .map(argument => ({
       name: argument.name,
       alias: argument.aliases[0],
       description: argument.description || undefined,
       values: argument.values.length > 0 ? argument.values : undefined,
-      takesValue: argument.type === "string" || argument.type === "enum",
+      takesValue: argument.type === 'string' || argument.type === 'enum',
       scope: argument.scope,
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function extractPositionals(
-  commandArguments: readonly CommandArgumentDescriptor[],
+  commandArguments: readonly CommandArgumentDescriptor[]
 ): CompletionPositional[] {
   return commandArguments
-    .filter((argument) => argument.type === "positional")
-    .map((argument) => ({
+    .filter(argument => argument.type === 'positional')
+    .map(argument => ({
       name: argument.name,
       description: argument.description || undefined,
       required: argument.required,
-      completion: argument.positionalCompletion ?? "freeform",
+      completion: argument.positionalCompletion ?? 'freeform',
       values: argument.values,
     }));
 }
@@ -92,17 +97,17 @@ function publicCommandNames(descriptor: CommandDescriptor): string[] {
 function buildCompletionNode(
   descriptor: CommandDescriptor,
   name: string,
-  depth: number,
+  depth: number
 ): CompletionNode {
   const metadata = descriptor.metadata;
   const subcommands =
     depth >= MAX_SUBCOMMAND_DEPTH
       ? []
       : visibleCommandDescriptors(descriptor.subcommands)
-          .flatMap((subcommand) =>
-            publicCommandNames(subcommand).map((subcommandName) =>
-              buildCompletionNode(subcommand, subcommandName, depth + 1),
-            ),
+          .flatMap(subcommand =>
+            publicCommandNames(subcommand).map(subcommandName =>
+              buildCompletionNode(subcommand, subcommandName, depth + 1)
+            )
           )
           .sort((left, right) => left.name.localeCompare(right.name));
 
@@ -116,22 +121,34 @@ function buildCompletionNode(
   };
 }
 
-export function buildCompletionSpecFromDescriptor(descriptor: CommandDescriptor): CompletionNode {
-  return buildCompletionNode(descriptor, descriptor.metadata.name ?? "altertable", 0);
+export function buildCompletionSpecFromDescriptor(
+  descriptor: CommandDescriptor
+): CompletionNode {
+  return buildCompletionNode(
+    descriptor,
+    descriptor.metadata.name ?? 'altertable',
+    0
+  );
 }
 
-export async function buildCompletionSpec(root: Command): Promise<CompletionNode> {
-  return buildCompletionSpecFromDescriptor(await resolveCommandDescriptor(root));
+export async function buildCompletionSpec(
+  root: Command
+): Promise<CompletionNode> {
+  return buildCompletionSpecFromDescriptor(
+    await resolveCommandDescriptor(root)
+  );
 }
 
-export function collectCompletionContexts(root: CompletionNode): CompletionContext[] {
+export function collectCompletionContexts(
+  root: CompletionNode
+): CompletionContext[] {
   const contexts: CompletionContext[] = [];
 
   function walk(node: CompletionNode, segments: string[]): void {
     contexts.push({
       segments: [...segments],
       flags: node.flags,
-      subcommands: node.subcommands.map((child) => child.name),
+      subcommands: node.subcommands.map(child => child.name),
       positionals: node.positionals,
       soleDirectOperands: node.soleDirectOperands,
     });

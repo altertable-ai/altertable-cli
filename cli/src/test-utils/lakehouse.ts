@@ -1,8 +1,14 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { setCliContext } from "@/context.ts";
-import { getCliRuntime, refreshCliRuntimeContext } from "@/lib/runtime.ts";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { setCliContext } from '@/context.ts';
+import { getCliRuntime, refreshCliRuntimeContext } from '@/lib/runtime.ts';
 
 export type MockHttpResponse = {
   urlPattern: string;
@@ -22,15 +28,17 @@ export type LakehouseTestWorkspace = {
   cleanup(): void;
 };
 
-export function createLakehouseTestWorkspace(name: string): LakehouseTestWorkspace {
+export function createLakehouseTestWorkspace(
+  name: string
+): LakehouseTestWorkspace {
   const home = mkdtempSync(join(tmpdir(), `altertable-${name}-test-`));
-  const mockFile = join(home, "mocks.json");
-  const logFile = join(home, "http.log");
+  const mockFile = join(home, 'mocks.json');
+  const logFile = join(home, 'http.log');
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_HTTP_LOG = logFile;
-  process.env.ALTERTABLE_API_BASE = "https://example.com";
-  process.env.ALTERTABLE_LAKEHOUSE_USERNAME = "testuser";
-  process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = "testpass";
+  process.env.ALTERTABLE_API_BASE = 'https://example.com';
+  process.env.ALTERTABLE_LAKEHOUSE_USERNAME = 'testuser';
+  process.env.ALTERTABLE_LAKEHOUSE_PASSWORD = 'testpass';
   setCliContext({ debug: false, json: false, agent: false });
   refreshCliRuntimeContext(getCliRuntime().context);
 
@@ -50,13 +58,13 @@ export function createLakehouseTestWorkspace(name: string): LakehouseTestWorkspa
       return path;
     },
     readHttpLog() {
-      return readFileSync(logFile, "utf8");
+      return readFileSync(logFile, 'utf8');
     },
     readPayloads() {
-      return readFileSync(logFile, "utf8")
-        .split("\n")
-        .filter((line) => line.startsWith("PAYLOAD="))
-        .map((line) => line.slice("PAYLOAD=".length));
+      return readFileSync(logFile, 'utf8')
+        .split('\n')
+        .filter(line => line.startsWith('PAYLOAD='))
+        .map(line => line.slice('PAYLOAD='.length));
     },
     cleanup() {
       rmSync(home, { recursive: true, force: true });

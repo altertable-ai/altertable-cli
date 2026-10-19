@@ -1,18 +1,20 @@
-import { serializeCliError } from "@/lib/errors.ts";
+import { serializeCliError } from '@/lib/errors.ts';
 import type {
   DoctorCheck,
   DoctorCheckContext,
   DoctorCheckResult,
   DoctorReport,
   DoctorSummary,
-} from "@/commands/doctor/lib/model.ts";
+} from '@/commands/doctor/lib/model.ts';
 
-function summarizeCheckResults(checks: readonly DoctorCheckResult[]): DoctorSummary {
+function summarizeCheckResults(
+  checks: readonly DoctorCheckResult[]
+): DoctorSummary {
   return {
-    passed: checks.filter((check) => check.status === "pass").length,
-    warnings: checks.filter((check) => check.status === "warn").length,
-    failed: checks.filter((check) => check.status === "fail").length,
-    skipped: checks.filter((check) => check.status === "skipped").length,
+    passed: checks.filter(check => check.status === 'pass').length,
+    warnings: checks.filter(check => check.status === 'warn').length,
+    failed: checks.filter(check => check.status === 'fail').length,
+    skipped: checks.filter(check => check.status === 'skipped').length,
   };
 }
 
@@ -25,7 +27,7 @@ function validateCheckSequence(checks: readonly DoctorCheck[]): void {
     for (const dependencyId of check.requires ?? []) {
       if (!precedingIds.has(dependencyId)) {
         throw new Error(
-          `Doctor check ${check.id} requires unknown or later check ${dependencyId}.`,
+          `Doctor check ${check.id} requires unknown or later check ${dependencyId}.`
         );
       }
     }
@@ -36,16 +38,16 @@ function validateCheckSequence(checks: readonly DoctorCheck[]): void {
 async function runDoctorCheck(
   check: DoctorCheck,
   context: DoctorCheckContext,
-  dependencies: readonly DoctorCheckResult[],
+  dependencies: readonly DoctorCheckResult[]
 ): Promise<DoctorCheckResult> {
   const blocker = dependencies.find(
-    (dependency) => dependency.status !== "pass" && dependency.status !== "warn",
+    dependency => dependency.status !== 'pass' && dependency.status !== 'warn'
   );
   if (blocker) {
     return {
       id: check.id,
       label: check.label,
-      status: "skipped",
+      status: 'skipped',
       message: `Blocked by ${blocker.label.toLowerCase()}.`,
     };
   }
@@ -55,7 +57,7 @@ async function runDoctorCheck(
     return {
       id: check.id,
       label: check.label,
-      status: "skipped",
+      status: 'skipped',
       message: skipReason,
     };
   }
@@ -74,7 +76,7 @@ async function runDoctorCheck(
     return {
       id: check.id,
       label: check.label,
-      status: "fail",
+      status: 'fail',
       message: serialized.message,
       code: serialized.code,
       http_status: serialized.status,
@@ -87,16 +89,20 @@ async function runDoctorCheck(
 
 export async function runDoctorChecks(
   checks: readonly DoctorCheck[],
-  context: DoctorCheckContext,
+  context: DoctorCheckContext
 ): Promise<DoctorReport> {
   validateCheckSequence(checks);
 
   const pendingResults = new Map<string, Promise<DoctorCheckResult>>();
   for (const check of checks) {
-    const dependencies = (check.requires ?? []).map((id) => pendingResults.get(id)!);
+    const dependencies = (check.requires ?? []).map(id =>
+      pendingResults.get(id)!
+    );
     pendingResults.set(
       check.id,
-      Promise.all(dependencies).then((results) => runDoctorCheck(check, context, results)),
+      Promise.all(dependencies).then(results =>
+        runDoctorCheck(check, context, results)
+      )
     );
   }
 

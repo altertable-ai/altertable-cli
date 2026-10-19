@@ -1,6 +1,9 @@
-import type { CliContext } from "@/context.ts";
-import { resolveProfileReference, resolveWorkingProfile } from "@/lib/profile-store.ts";
-import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
+import type { CliContext } from '@/context.ts';
+import {
+  resolveProfileReference,
+  resolveWorkingProfile,
+} from '@/lib/profile-store.ts';
+import type { CliRuntime, OutputSink } from '@/lib/runtime.ts';
 
 export type ExecutionContext = {
   cli: CliContext;
@@ -12,7 +15,7 @@ export function optionalAuth(resolve: () => string): string | undefined {
   try {
     return resolve();
   } catch (error) {
-    if (error instanceof Error && error.name === "ConfigurationError") {
+    if (error instanceof Error && error.name === 'ConfigurationError') {
       return undefined;
     }
     throw error;
@@ -23,11 +26,15 @@ export function createExecutionContext(runtime: CliRuntime): ExecutionContext {
   return {
     cli: runtime.context,
     output: runtime.output,
-    profile: runtime.session?.profile ?? resolveWorkingProfile(runtime.context.profile),
+    profile:
+      runtime.session?.profile ??
+      resolveWorkingProfile(runtime.context.profile),
   };
 }
 
-export function createDiagnosticExecutionContext(runtime: CliRuntime): ExecutionContext {
+export function createDiagnosticExecutionContext(
+  runtime: CliRuntime
+): ExecutionContext {
   return {
     cli: runtime.context,
     output: runtime.output,

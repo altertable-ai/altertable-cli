@@ -1,4 +1,4 @@
-import { ConfigurationError } from "@/lib/errors.ts";
+import { ConfigurationError } from '@/lib/errors.ts';
 
 type EnvSource = Readonly<Record<string, string | undefined>>;
 
@@ -7,7 +7,7 @@ function optional(value: string | undefined): string | undefined {
 }
 
 function oneOf<const TValue extends string>(
-  values: readonly TValue[],
+  values: readonly TValue[]
 ): (value: string | undefined, name: string) => TValue | undefined {
   return (value, name) => {
     const present = optional(value);
@@ -17,22 +17,25 @@ function oneOf<const TValue extends string>(
     if (values.includes(present as TValue)) {
       return present as TValue;
     }
-    throw invalidValue(name, present, `one of: ${values.join(", ")}`);
+    throw invalidValue(name, present, `one of: ${values.join(', ')}`);
   };
 }
 
-function booleanValue(value: string | undefined, name: string): boolean | undefined {
+function booleanValue(
+  value: string | undefined,
+  name: string
+): boolean | undefined {
   const present = optional(value)?.toLowerCase();
   if (present === undefined) {
     return undefined;
   }
-  if (present === "1" || present === "true") {
+  if (present === '1' || present === 'true') {
     return true;
   }
-  if (present === "0" || present === "false") {
+  if (present === '0' || present === 'false') {
     return false;
   }
-  throw invalidValue(name, value ?? "", "true, false, 1, or 0");
+  throw invalidValue(name, value ?? '', 'true, false, 1, or 0');
 }
 
 function port(value: string | undefined, name: string): number | undefined {
@@ -41,18 +44,22 @@ function port(value: string | undefined, name: string): number | undefined {
     return undefined;
   }
   if (!/^\d+$/.test(present)) {
-    throw invalidValue(name, present, "an integer from 0 to 65535");
+    throw invalidValue(name, present, 'an integer from 0 to 65535');
   }
   const parsed = Number(present);
   if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 65_535) {
-    throw invalidValue(name, present, "an integer from 0 to 65535");
+    throw invalidValue(name, present, 'an integer from 0 to 65535');
   }
   return parsed;
 }
 
-function invalidValue(name: string, value: string, expectation: string): ConfigurationError {
+function invalidValue(
+  name: string,
+  value: string,
+  expectation: string
+): ConfigurationError {
   return new ConfigurationError(
-    `Invalid ${name} value ${JSON.stringify(value)}; expected ${expectation}.`,
+    `Invalid ${name} value ${JSON.stringify(value)}; expected ${expectation}.`
   );
 }
 
@@ -62,7 +69,7 @@ const ENV_SCHEMA = {
   ALTERTABLE_API_BASE: { parse: optional },
   ALTERTABLE_API_KEY: { parse: optional, secret: true },
   ALTERTABLE_BASIC_AUTH_TOKEN: { parse: optional, secret: true },
-  ALTERTABLE_COLOR: { parse: oneOf(["auto", "always", "never"] as const) },
+  ALTERTABLE_COLOR: { parse: oneOf(['auto', 'always', 'never'] as const) },
   ALTERTABLE_CONFIG_HOME: { parse: optional },
   ALTERTABLE_DOCKER_PASSWORD: { parse: optional, secret: true },
   ALTERTABLE_DOCKER_USER: { parse: optional },
@@ -79,17 +86,19 @@ const ENV_SCHEMA = {
   ALTERTABLE_OAUTH_REDIRECT_PORT: { parse: port },
   ALTERTABLE_OAUTH_SCOPE: { parse: optional },
   ALTERTABLE_PROFILE: { parse: optional },
-  ALTERTABLE_SECRET_BACKEND: { parse: oneOf(["file", "keychain"] as const) },
+  ALTERTABLE_SECRET_BACKEND: { parse: oneOf(['file', 'keychain'] as const) },
   ALTERTABLE_UPDATE_CHECK: {
-    parse: oneOf(["0", "1", "false", "true", "never"] as const),
+    parse: oneOf(['0', '1', 'false', 'true', 'never'] as const),
   },
   ALTERTABLE_UPDATE_GITHUB_REPO: { parse: optional },
   ALTERTABLE_UPDATE_INSTALL_METHOD: {
-    parse: oneOf(["auto", "package-manager", "github-binary"] as const),
+    parse: oneOf(['auto', 'package-manager', 'github-binary'] as const),
   },
-  ALTERTABLE_UPDATE_INSTALLER: { parse: oneOf(["bun", "npm", "pnpm", "yarn"] as const) },
+  ALTERTABLE_UPDATE_INSTALLER: {
+    parse: oneOf(['bun', 'npm', 'pnpm', 'yarn'] as const),
+  },
   ALTERTABLE_UPDATE_REGISTRY_URL: { parse: optional },
-  ALTERTABLE_UPDATE_SOURCE: { parse: oneOf(["npm", "github"] as const) },
+  ALTERTABLE_UPDATE_SOURCE: { parse: oneOf(['npm', 'github'] as const) },
   BUN_INSTALL: { parse: optional },
   CI: { parse: optional },
   COLUMNS: { parse: optional },
@@ -112,20 +121,20 @@ const ENV_SCHEMA = {
 
 const SECRET_NAME_PATTERN = /_(?:KEY|PASSWORD|SECRET|TOKEN)$/;
 
-export function assertSecretEnvMetadata<TSchema extends Readonly<Record<string, object>>>(
-  schema: TSchema,
-): void {
+export function assertSecretEnvMetadata<
+  TSchema extends Readonly<Record<string, object>>,
+>(schema: TSchema): void {
   const missing = Object.entries(schema)
     .filter(
       ([name, definition]) =>
         SECRET_NAME_PATTERN.test(name) &&
-        (definition as { readonly secret?: boolean }).secret !== true,
+        (definition as { readonly secret?: boolean }).secret !== true
     )
     .map(([name]) => name)
     .sort();
   if (missing.length > 0) {
     throw new Error(
-      `Secret environment variables must declare secret: true: ${missing.join(", ")}`,
+      `Secret environment variables must declare secret: true: ${missing.join(', ')}`
     );
   }
 }
@@ -133,7 +142,9 @@ export function assertSecretEnvMetadata<TSchema extends Readonly<Record<string, 
 assertSecretEnvMetadata(ENV_SCHEMA);
 
 export type EnvName = keyof typeof ENV_SCHEMA;
-export type EnvValue<TName extends EnvName> = ReturnType<(typeof ENV_SCHEMA)[TName]["parse"]>;
+export type EnvValue<TName extends EnvName> = ReturnType<
+  (typeof ENV_SCHEMA)[TName]['parse']
+>;
 
 export function readEnv<TName extends EnvName>(name: TName): EnvValue<TName> {
   return readEnvFrom(process.env, name);
@@ -141,12 +152,15 @@ export function readEnv<TName extends EnvName>(name: TName): EnvValue<TName> {
 
 export function readEnvFrom<TName extends EnvName>(
   source: EnvSource,
-  name: TName,
+  name: TName
 ): EnvValue<TName> {
   return ENV_SCHEMA[name].parse(source[name], name) as EnvValue<TName>;
 }
 
-export function setEnv<TName extends EnvName>(name: TName, value: string): void {
+export function setEnv<TName extends EnvName>(
+  name: TName,
+  value: string
+): void {
   ENV_SCHEMA[name].parse(value, name);
   process.env[name] = value;
 }
@@ -160,38 +174,48 @@ export function copyProcessEnv(): NodeJS.ProcessEnv {
 }
 
 function assertCoherentEnvConfig(source: EnvSource): void {
-  const user = readEnvFrom(source, "ALTERTABLE_LAKEHOUSE_USERNAME");
-  const password = readEnvFrom(source, "ALTERTABLE_LAKEHOUSE_PASSWORD");
+  const user = readEnvFrom(source, 'ALTERTABLE_LAKEHOUSE_USERNAME');
+  const password = readEnvFrom(source, 'ALTERTABLE_LAKEHOUSE_PASSWORD');
   if (Boolean(user) !== Boolean(password)) {
-    const set = user ? "ALTERTABLE_LAKEHOUSE_USERNAME" : "ALTERTABLE_LAKEHOUSE_PASSWORD";
-    const missing = user ? "ALTERTABLE_LAKEHOUSE_PASSWORD" : "ALTERTABLE_LAKEHOUSE_USERNAME";
-    throw new ConfigurationError(`${set} is set but ${missing} is not; set both or neither.`);
+    const set = user
+      ? 'ALTERTABLE_LAKEHOUSE_USERNAME'
+      : 'ALTERTABLE_LAKEHOUSE_PASSWORD';
+    const missing = user
+      ? 'ALTERTABLE_LAKEHOUSE_PASSWORD'
+      : 'ALTERTABLE_LAKEHOUSE_USERNAME';
+    throw new ConfigurationError(
+      `${set} is set but ${missing} is not; set both or neither.`
+    );
   }
 
   const hasCredential = Boolean(
-    readEnvFrom(source, "ALTERTABLE_API_KEY") ||
-    readEnvFrom(source, "ALTERTABLE_BASIC_AUTH_TOKEN") ||
-    (user && password),
+    readEnvFrom(source, 'ALTERTABLE_API_KEY') ||
+    readEnvFrom(source, 'ALTERTABLE_BASIC_AUTH_TOKEN') ||
+    (user && password)
   );
   if (hasCredential) {
     return;
   }
   const credentialless = (
-    ["ALTERTABLE_ENV", "ALTERTABLE_API_BASE", "ALTERTABLE_MANAGEMENT_API_BASE"] as const
-  ).filter((name) => readEnvFrom(source, name));
+    [
+      'ALTERTABLE_ENV',
+      'ALTERTABLE_API_BASE',
+      'ALTERTABLE_MANAGEMENT_API_BASE',
+    ] as const
+  ).filter(name => readEnvFrom(source, name));
   if (credentialless.length > 0) {
     throw new ConfigurationError(
       [
-        `Incomplete environment configuration: ${credentialless.join(", ")} ${credentialless.length === 1 ? "is" : "are"} set without credentials, and environment configuration replaces stored profiles entirely.`,
-        "Set ALTERTABLE_API_KEY, ALTERTABLE_BASIC_AUTH_TOKEN, or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD — or unset these variables to use stored profiles.",
-      ].join("\n"),
+        `Incomplete environment configuration: ${credentialless.join(', ')} ${credentialless.length === 1 ? 'is' : 'are'} set without credentials, and environment configuration replaces stored profiles entirely.`,
+        'Set ALTERTABLE_API_KEY, ALTERTABLE_BASIC_AUTH_TOKEN, or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD — or unset these variables to use stored profiles.',
+      ].join('\n')
     );
   }
 }
 
 export function validateEnvironment(source: EnvSource = process.env): void {
   for (const name of Object.keys(ENV_SCHEMA) as EnvName[]) {
-    if (name.startsWith("ALTERTABLE_")) {
+    if (name.startsWith('ALTERTABLE_')) {
       readEnvFrom(source, name);
     }
   }
@@ -199,36 +223,38 @@ export function validateEnvironment(source: EnvSource = process.env): void {
 }
 
 export type ConfigEnvName =
-  | "ALTERTABLE_API_KEY"
-  | "ALTERTABLE_BASIC_AUTH_TOKEN"
-  | "ALTERTABLE_LAKEHOUSE_USERNAME"
-  | "ALTERTABLE_LAKEHOUSE_PASSWORD"
-  | "ALTERTABLE_ENV"
-  | "ALTERTABLE_API_BASE"
-  | "ALTERTABLE_MANAGEMENT_API_BASE";
+  | 'ALTERTABLE_API_KEY'
+  | 'ALTERTABLE_BASIC_AUTH_TOKEN'
+  | 'ALTERTABLE_LAKEHOUSE_USERNAME'
+  | 'ALTERTABLE_LAKEHOUSE_PASSWORD'
+  | 'ALTERTABLE_ENV'
+  | 'ALTERTABLE_API_BASE'
+  | 'ALTERTABLE_MANAGEMENT_API_BASE';
 
 export const CONFIG_ENV_NAMES = [
-  "ALTERTABLE_API_KEY",
-  "ALTERTABLE_BASIC_AUTH_TOKEN",
-  "ALTERTABLE_LAKEHOUSE_USERNAME",
-  "ALTERTABLE_LAKEHOUSE_PASSWORD",
-  "ALTERTABLE_ENV",
-  "ALTERTABLE_API_BASE",
-  "ALTERTABLE_MANAGEMENT_API_BASE",
+  'ALTERTABLE_API_KEY',
+  'ALTERTABLE_BASIC_AUTH_TOKEN',
+  'ALTERTABLE_LAKEHOUSE_USERNAME',
+  'ALTERTABLE_LAKEHOUSE_PASSWORD',
+  'ALTERTABLE_ENV',
+  'ALTERTABLE_API_BASE',
+  'ALTERTABLE_MANAGEMENT_API_BASE',
 ] as const satisfies readonly ConfigEnvName[];
 
 export function isSecretEnv(name: EnvName): boolean {
-  return "secret" in ENV_SCHEMA[name] && ENV_SCHEMA[name].secret === true;
+  return 'secret' in ENV_SCHEMA[name] && ENV_SCHEMA[name].secret === true;
 }
 
 export function configuredEnvConfig(
-  source: EnvSource = process.env,
+  source: EnvSource = process.env
 ): Array<{ name: ConfigEnvName; display: string }> {
-  return CONFIG_ENV_NAMES.flatMap((name) => {
+  return CONFIG_ENV_NAMES.flatMap(name => {
     const value = readEnvFrom(source, name);
     if (!value) {
       return [];
     }
-    return [{ name, display: isSecretEnv(name) ? "set (hidden)" : String(value) }];
+    return [
+      { name, display: isSecretEnv(name) ? 'set (hidden)' : String(value) },
+    ];
   });
 }

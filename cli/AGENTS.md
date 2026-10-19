@@ -167,13 +167,17 @@ metadata; do not inspect or rewrite raw argv in parent handlers.
 Minimal pattern (management HTTP command):
 
 ```typescript
-import { defineCommand } from "@/lib/command.ts";
-import { sendHttp } from "@/lib/http-request.ts";
+import { defineCommand } from '@/lib/command.ts';
+import { sendHttp } from '@/lib/http-request.ts';
 
 export const myfeatureCommand = defineCommand({
-  meta: { name: "myfeature", description: "…" },
+  meta: { name: 'myfeature', description: '…' },
   async run({ execution, sink }) {
-    const request = { plane: "management", method: "GET", endpoint: "/path" } as const;
+    const request = {
+      plane: 'management',
+      method: 'GET',
+      endpoint: '/path',
+    } as const;
     const response = await sendHttp(request, execution);
     sink.writeJson(JSON.parse(response));
   },

@@ -1,4 +1,4 @@
-import { getCliContext } from "@/context.ts";
+import { getCliContext } from '@/context.ts';
 
 export function logDebug(message: string): void {
   if (getCliContext().debug) {

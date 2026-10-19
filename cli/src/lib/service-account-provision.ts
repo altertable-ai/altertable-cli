@@ -1,22 +1,27 @@
-import type { components } from "@/generated/openapi-types.ts";
-import { assertRetrieved, ConfigurationError, HttpError } from "@/lib/errors.ts";
-import { httpSend } from "@/lib/http.ts";
-import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
+import type { components } from '@/generated/openapi-types.ts';
+import {
+  assertRetrieved,
+  ConfigurationError,
+  HttpError,
+} from '@/lib/errors.ts';
+import { httpSend } from '@/lib/http.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
 
-export type ServiceAccountAccessMode = "ro" | "rw";
+export type ServiceAccountAccessMode = 'ro' | 'rw';
 
 // A bare mode applies to every catalog; the map form restricts per catalog.
 export type ServiceAccountScope =
   | ServiceAccountAccessMode
   | Record<string, ServiceAccountAccessMode>;
 
-export type ServiceAccountRoleAssignment = components["schemas"]["RoleAssignment"];
+export type ServiceAccountRoleAssignment =
+  components['schemas']['RoleAssignment'];
 
 // The spec leaves `service_oauth_token` optional because the endpoint only issues
 // one when asked; this module always asks and rejects a response without it.
 export type EnvironmentServiceAccountResponse =
-  components["schemas"]["EnvironmentServiceAccountResponse"] & {
+  components['schemas']['EnvironmentServiceAccountResponse'] & {
     service_oauth_token: string;
   };
 
@@ -40,17 +45,17 @@ export type EnvironmentCatalog = { name: string; slug: string };
 
 export function parseServiceAccountScope(value: string): ServiceAccountScope {
   const bareMode = value.trim().toLowerCase();
-  if (bareMode === "ro" || bareMode === "rw") {
+  if (bareMode === 'ro' || bareMode === 'rw') {
     return bareMode;
   }
 
   const scope: Record<string, ServiceAccountAccessMode> = {};
-  for (const rawEntry of value.split(",")) {
+  for (const rawEntry of value.split(',')) {
     const entry = rawEntry.trim();
-    const separatorIndex = entry.lastIndexOf(":");
+    const separatorIndex = entry.lastIndexOf(':');
     if (separatorIndex === -1) {
       throw new ConfigurationError(
-        `Invalid --scope entry "${entry}": expected ro, rw, catalog:ro or catalog:rw.`,
+        `Invalid --scope entry "${entry}": expected ro, rw, catalog:ro or catalog:rw.`
       );
     }
 
@@ -60,14 +65,18 @@ export function parseServiceAccountScope(value: string): ServiceAccountScope {
       .trim()
       .toLowerCase();
     if (!catalog) {
-      throw new ConfigurationError(`Invalid --scope entry "${entry}": catalog name is required.`);
+      throw new ConfigurationError(
+        `Invalid --scope entry "${entry}": catalog name is required.`
+      );
     }
-    if (mode !== "ro" && mode !== "rw") {
-      throw new ConfigurationError(`Invalid --scope entry "${entry}": mode must be ro or rw.`);
+    if (mode !== 'ro' && mode !== 'rw') {
+      throw new ConfigurationError(
+        `Invalid --scope entry "${entry}": mode must be ro or rw.`
+      );
     }
     if (scope[catalog] !== undefined) {
       throw new ConfigurationError(
-        `Invalid --scope entry "${entry}": catalog "${catalog}" is duplicated.`,
+        `Invalid --scope entry "${entry}": catalog "${catalog}" is duplicated.`
       );
     }
     scope[catalog] = mode;
@@ -99,7 +108,7 @@ function withServiceAccountRequestContext(error: unknown): unknown {
 }
 
 export async function provisionEnvironmentServiceAccount(
-  options: ProvisionEnvironmentServiceAccountOptions,
+  options: ProvisionEnvironmentServiceAccountOptions
 ): Promise<EnvironmentServiceAccountResponse> {
   const requestBody: {
     label: string;
@@ -116,41 +125,45 @@ export async function provisionEnvironmentServiceAccount(
   let response: string;
   try {
     response = await httpSend({
-      method: "POST",
+      method: 'POST',
       url: `${options.managementApiBase}${encodeManagementEndpoint(`/environments/${options.environment}/service_accounts`)}`,
       authHeader: `Authorization: Bearer ${options.accessToken}`,
       body: JSON.stringify(requestBody),
-      contentType: "application/json",
-      authPlane: "management",
+      contentType: 'application/json',
+      authPlane: 'management',
     });
   } catch (error) {
     throw withServiceAccountRequestContext(error);
   }
   const created = parseApiJson(
-    response,
-  ) as components["schemas"]["EnvironmentServiceAccountResponse"];
+    response
+  ) as components['schemas']['EnvironmentServiceAccountResponse'];
 
   const token = assertRetrieved(
     created.service_oauth_token,
-    "login",
-    "service_account.service_oauth_token",
+    'login',
+    'service_account.service_oauth_token'
   );
-  assertRetrieved(created.service_account?.slug, "login", "service_account.slug");
+  assertRetrieved(
+    created.service_account?.slug,
+    'login',
+    'service_account.slug'
+  );
 
   return { ...created, service_oauth_token: token };
 }
 
 function collectCatalogs(
   target: Map<string, EnvironmentCatalog>,
-  entries: CatalogIdentity[],
+  entries: CatalogIdentity[]
 ): void {
   for (const entry of entries) {
     if (!entry.id || (!entry.name && !entry.slug)) {
       continue;
     }
     target.set(entry.id, {
-      name: entry.name ?? entry.slug ?? "",
-      slug: entry.slug ?? "",
+      name: entry.name ?? entry.slug ?? '',
+      slug: entry.slug ?? '',
     });
   }
 }
@@ -161,18 +174,21 @@ function collectCatalogs(
  * exists by the time this runs, so a failed lookup must not fail the login.
  */
 export async function fetchEnvironmentCatalogs(
-  options: EnvironmentCatalogLookupOptions,
+  options: EnvironmentCatalogLookupOptions
 ): Promise<Map<string, EnvironmentCatalog>> {
   const catalogs = new Map<string, EnvironmentCatalog>();
-  for (const kind of ["databases", "connections"] as const) {
+  for (const kind of ['databases', 'connections'] as const) {
     try {
       const response = await httpSend({
-        method: "GET",
+        method: 'GET',
         url: `${options.managementApiBase}${encodeManagementEndpoint(`/environments/${options.environment}/${kind}`)}`,
         authHeader: `Authorization: Bearer ${options.accessToken}`,
-        authPlane: "management",
+        authPlane: 'management',
       });
-      const parsed = parseApiJson(response) as Record<string, CatalogIdentity[] | undefined>;
+      const parsed = parseApiJson(response) as Record<
+        string,
+        CatalogIdentity[] | undefined
+      >;
       collectCatalogs(catalogs, parsed[kind] ?? []);
     } catch {
       continue;

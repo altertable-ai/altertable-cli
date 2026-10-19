@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-import { CliError, ParseError } from "@/lib/errors.ts";
+import { readFileSync } from 'node:fs';
+import { CliError, ParseError } from '@/lib/errors.ts';
 
-const BODY_METHOD_NAMES = ["POST", "PATCH", "PUT"] as const;
+const BODY_METHOD_NAMES = ['POST', 'PATCH', 'PUT'] as const;
 const BODY_METHODS = new Set<string>(BODY_METHOD_NAMES);
-const BODY_METHOD_LIST = BODY_METHOD_NAMES.join(", ");
-const FIELD_METHOD_NAMES = ["GET", "DELETE"] as const;
+const BODY_METHOD_LIST = BODY_METHOD_NAMES.join(', ');
+const FIELD_METHOD_NAMES = ['GET', 'DELETE'] as const;
 const FIELD_QUERY_METHODS = new Set<string>(FIELD_METHOD_NAMES);
 
 export function readJsonInput(inputArg?: string): string | undefined {
@@ -12,11 +12,11 @@ export function readJsonInput(inputArg?: string): string | undefined {
     return undefined;
   }
   let body: string;
-  if (inputArg === "-") {
-    body = readFileSync(0, "utf8");
+  if (inputArg === '-') {
+    body = readFileSync(0, 'utf8');
   } else {
     try {
-      body = readFileSync(inputArg, "utf8");
+      body = readFileSync(inputArg, 'utf8');
     } catch {
       throw new CliError(`File not found: ${inputArg}`);
     }
@@ -29,18 +29,18 @@ function validateJsonBody(body: string): string {
   try {
     JSON.parse(body);
   } catch (error) {
-    throw new ParseError("Invalid JSON body.", { cause: error });
+    throw new ParseError('Invalid JSON body.', { cause: error });
   }
   return body;
 }
 
 function normalizeFieldEntries(
-  fields: Record<string, string> | string[] | string | undefined,
+  fields: Record<string, string> | string[] | string | undefined
 ): string[] {
   if (fields === undefined) {
     return [];
   }
-  if (typeof fields === "string") {
+  if (typeof fields === 'string') {
     return [fields];
   }
   if (Array.isArray(fields)) {
@@ -50,28 +50,34 @@ function normalizeFieldEntries(
 }
 
 function parseFieldEntry(entry: string): [string, string] {
-  const separatorIndex = entry.indexOf("=");
+  const separatorIndex = entry.indexOf('=');
   if (separatorIndex <= 0) {
-    throw new CliError(`Invalid field ${JSON.stringify(entry)}. Expected key=value.`);
+    throw new CliError(
+      `Invalid field ${JSON.stringify(entry)}. Expected key=value.`
+    );
   }
   const key = entry.slice(0, separatorIndex);
   const value = entry.slice(separatorIndex + 1);
   if (key.length === 0) {
-    throw new CliError(`Invalid field ${JSON.stringify(entry)}. Expected key=value.`);
+    throw new CliError(
+      `Invalid field ${JSON.stringify(entry)}. Expected key=value.`
+    );
   }
   return [key, value];
 }
 
 type ExactJsonInteger = {
-  kind: "exact_json_integer";
+  kind: 'exact_json_integer';
   json: string;
 };
 
 function canonicalizeJsonInteger(value: string): string {
-  const negative = value.startsWith("-");
+  const negative = value.startsWith('-');
   const digits = negative ? value.slice(1) : value;
-  const canonicalDigits = digits.replace(/^0+/, "") || "0";
-  return negative && canonicalDigits !== "0" ? `-${canonicalDigits}` : canonicalDigits;
+  const canonicalDigits = digits.replace(/^0+/, '') || '0';
+  return negative && canonicalDigits !== '0'
+    ? `-${canonicalDigits}`
+    : canonicalDigits;
 }
 
 export type ApiFieldValue = string | number | boolean | null | ExactJsonInteger;
@@ -82,27 +88,29 @@ export type ParsedApiField = {
 };
 
 function parseTypedFieldValue(value: string): ApiFieldValue {
-  if (value === "true") {
+  if (value === 'true') {
     return true;
   }
-  if (value === "false") {
+  if (value === 'false') {
     return false;
   }
-  if (value === "null") {
+  if (value === 'null') {
     return null;
   }
   if (/^-?\d+$/.test(value)) {
     const json = canonicalizeJsonInteger(value);
     const parsed = Number(json);
-    return Number.isSafeInteger(parsed) ? parsed : { kind: "exact_json_integer", json };
+    return Number.isSafeInteger(parsed)
+      ? parsed
+      : { kind: 'exact_json_integer', json };
   }
-  if (value === "@-") {
-    return readFileSync(0, "utf8");
+  if (value === '@-') {
+    return readFileSync(0, 'utf8');
   }
-  if (value.startsWith("@")) {
+  if (value.startsWith('@')) {
     const filePath = value.slice(1);
     try {
-      return readFileSync(filePath, "utf8");
+      return readFileSync(filePath, 'utf8');
     } catch {
       throw new CliError(`File not found: ${filePath}`);
     }
@@ -111,32 +119,36 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
 }
 
 function parseRawFields(
-  fields: Record<string, string> | string[] | string | undefined,
+  fields: Record<string, string> | string[] | string | undefined
 ): ParsedApiField[] {
-  return normalizeFieldEntries(fields).map((entry) => {
+  return normalizeFieldEntries(fields).map(entry => {
     const [key, value] = parseFieldEntry(entry);
     return { key, value };
   });
 }
 
 function parseTypedFields(
-  fields: Record<string, string> | string[] | string | undefined,
+  fields: Record<string, string> | string[] | string | undefined
 ): ParsedApiField[] {
-  return normalizeFieldEntries(fields).map((entry) => {
+  return normalizeFieldEntries(fields).map(entry => {
     const [key, value] = parseFieldEntry(entry);
     return { key, value: parseTypedFieldValue(value) };
   });
 }
 
 function isExactJsonInteger(value: ApiFieldValue): value is ExactJsonInteger {
-  return typeof value === "object" && value !== null && value.kind === "exact_json_integer";
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    value.kind === 'exact_json_integer'
+  );
 }
 
 export function formatApiFieldValue(value: ApiFieldValue): string {
   if (isExactJsonInteger(value)) {
     return value.json;
   }
-  return value === null ? "null" : String(value);
+  return value === null ? 'null' : String(value);
 }
 
 function serializeApiFieldValue(value: ApiFieldValue): string {
@@ -149,9 +161,9 @@ function serializeApiFields(fields: ParsedApiField[]): string {
     valuesByKey.set(field.key, field.value);
   }
   const properties = [...valuesByKey].map(
-    ([key, value]) => `${JSON.stringify(key)}:${serializeApiFieldValue(value)}`,
+    ([key, value]) => `${JSON.stringify(key)}:${serializeApiFieldValue(value)}`
   );
-  return `{${properties.join(",")}}`;
+  return `{${properties.join(',')}}`;
 }
 
 export type ResolveApiBodyOptions = {
@@ -168,20 +180,20 @@ export type ResolvedApiRequestPayload = {
 };
 
 export function resolveApiRequestPayload(
-  options: ResolveApiBodyOptions,
+  options: ResolveApiBodyOptions
 ): ResolvedApiRequestPayload {
   const method = options.method.toUpperCase();
   const inputArg = options.input;
   const rawFields = parseRawFields(options.rawFields ?? options.fields);
   const typedFields = parseTypedFields(options.typedFields);
   const parsedFields = [...rawFields, ...typedFields];
-  const hasBody = inputArg !== undefined && inputArg !== "";
+  const hasBody = inputArg !== undefined && inputArg !== '';
   const hasFields = parsedFields.length > 0;
 
   if (hasBody && hasFields) {
     if (!BODY_METHODS.has(method)) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`
       );
     }
 
@@ -194,7 +206,7 @@ export function resolveApiRequestPayload(
   if (FIELD_QUERY_METHODS.has(method)) {
     if (hasBody) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`
       );
     }
 
@@ -206,7 +218,7 @@ export function resolveApiRequestPayload(
   if (!BODY_METHODS.has(method)) {
     if (hasBody || hasFields) {
       throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input or request fields.`,
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input or request fields.`
       );
     }
     return { queryFields: [] };

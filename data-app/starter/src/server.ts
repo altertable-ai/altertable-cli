@@ -1,6 +1,6 @@
-import page from "#app/index.html";
-import { serveLocalApp } from "@altertable/data-app-bun";
-import { operations } from "#app/operations.ts";
-import app from "#app/config.ts";
+import page from '#app/index.html';
+import { serveLocalApp } from '@altertable/data-app-bun';
+import { operations } from '#app/operations.ts';
+import app from '#app/config.ts';
 
 serveLocalApp({ page, operations, title: app.title });

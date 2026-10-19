@@ -1,4 +1,4 @@
-import type { OutputSink } from "@/lib/runtime.ts";
+import type { OutputSink } from '@/lib/runtime.ts';
 
 export type WriteQueryDestinationOptions = {
   outputPath?: string;
@@ -7,7 +7,7 @@ export type WriteQueryDestinationOptions = {
 
 async function writeStreamChunks(
   stream: ReadableStream<Uint8Array>,
-  writeChunk: (chunk: Uint8Array) => void | Promise<void>,
+  writeChunk: (chunk: Uint8Array) => void | Promise<void>
 ): Promise<void> {
   const reader = stream.getReader();
   try {
@@ -25,12 +25,14 @@ async function writeStreamChunks(
 
 export async function writeQueryDestination(
   content: string | ReadableStream<Uint8Array>,
-  options: WriteQueryDestinationOptions = {},
+  options: WriteQueryDestinationOptions = {}
 ): Promise<void> {
   const { outputPath, sink } = options;
 
-  if (typeof content === "string") {
-    const bytes = new TextEncoder().encode(content.endsWith("\n") ? content : `${content}\n`);
+  if (typeof content === 'string') {
+    const bytes = new TextEncoder().encode(
+      content.endsWith('\n') ? content : `${content}\n`
+    );
     if (outputPath !== undefined) {
       await Bun.write(outputPath, bytes);
       return;
@@ -47,7 +49,7 @@ export async function writeQueryDestination(
     if (outputPath !== undefined) {
       const writer = Bun.file(outputPath).writer();
       try {
-        await writeStreamChunks(content, async (chunk) => {
+        await writeStreamChunks(content, async chunk => {
           await writer.write(chunk);
         });
       } catch (error) {
@@ -63,11 +65,11 @@ export async function writeQueryDestination(
     }
 
     if (sink) {
-      await writeStreamChunks(content, (chunk) => sink.writeBytes(chunk));
+      await writeStreamChunks(content, chunk => sink.writeBytes(chunk));
       return;
     }
 
-    await writeStreamChunks(content, async (chunk) => {
+    await writeStreamChunks(content, async chunk => {
       await Bun.write(Bun.stdout, chunk);
     });
   } catch (error) {

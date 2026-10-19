@@ -6,7 +6,8 @@
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
     "lint": "../starter/node_modules/.bin/oxlint --type-aware *.ts",
-    "format:check": "../starter/node_modules/.bin/oxfmt --check *.ts"
+    "format:check": "../starter/node_modules/.bin/oxfmt --config ../starter/.oxfmtrc.json --check *.ts",
+    "format": "../starter/node_modules/.bin/oxfmt --config ../starter/.oxfmtrc.json *.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

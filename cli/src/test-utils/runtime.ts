@@ -1,4 +1,8 @@
-import { getCliRuntime, setCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
+import {
+  getCliRuntime,
+  setCliRuntime,
+  type CliRuntime,
+} from '@/lib/runtime.ts';
 
 export function runWithCliRuntime<T>(runtime: CliRuntime, run: () => T): T {
   const previousRuntime = getCliRuntime();

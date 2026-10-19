@@ -1,9 +1,13 @@
-import { existsSync } from "node:fs";
-import { getBootstrapCliContextState, isJsonOutput, type CliContext } from "@/lib/cli-context.ts";
-import { createCliSession, type CliSession } from "@/lib/cli-session.ts";
-import { configFile } from "@/lib/config.ts";
-import { profilesDir } from "@/lib/profile-store.ts";
-import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
+import { existsSync } from 'node:fs';
+import {
+  getBootstrapCliContextState,
+  isJsonOutput,
+  type CliContext,
+} from '@/lib/cli-context.ts';
+import { createCliSession, type CliSession } from '@/lib/cli-session.ts';
+import { configFile } from '@/lib/config.ts';
+import { profilesDir } from '@/lib/profile-store.ts';
+import { applyTerminalColorFromContext } from '@/ui/terminal/styles.ts';
 
 export type OutputSink = {
   json: boolean;

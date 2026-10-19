@@ -4,23 +4,28 @@ import {
   buildProfileStatusView,
   configureAuthenticationRows,
   type ProfileStatusResult,
-} from "@/lib/profile/views.ts";
+} from '@/lib/profile/views.ts';
 import {
   buildConfigureShowData,
   type ProfileInspect,
   type ProfileSummary,
-} from "@/lib/profile/model.ts";
-import type { ConfigureAuthPlane } from "@/lib/profile-status.ts";
-import { renderDocumentText, renderRows } from "@/ui/renderers/terminal.ts";
+} from '@/lib/profile/model.ts';
+import type { ConfigureAuthPlane } from '@/lib/profile-status.ts';
+import { renderDocumentText, renderRows } from '@/ui/renderers/terminal.ts';
 import {
   nestedIndent,
   TERMINAL_INDENT,
   TERMINAL_LABEL_WIDTH,
   TERMINAL_NESTED_LABEL_WIDTH,
-} from "@/ui/terminal/spacing.ts";
+} from '@/ui/terminal/spacing.ts';
 
-export function formatProfileInspectResult(profile: ProfileInspect, interactive = true): string {
-  return renderDocumentText(buildProfileInspectResultView(profile, interactive));
+export function formatProfileInspectResult(
+  profile: ProfileInspect,
+  interactive = true
+): string {
+  return renderDocumentText(
+    buildProfileInspectResultView(profile, interactive)
+  );
 }
 
 export function formatProfileStatus(result: ProfileStatusResult): string {
@@ -39,7 +44,7 @@ type FormatConfigureAuthenticationOptions = {
 
 function renderConfigureRows(
   rows: Parameters<typeof renderRows>[0],
-  options: FormatConfigureAuthenticationOptions,
+  options: FormatConfigureAuthenticationOptions
 ): string[] {
   return renderRows(rows, {
     indent: options.indent ?? TERMINAL_INDENT,
@@ -51,17 +56,22 @@ function renderConfigureRows(
 
 export function formatConfigureAuthenticationLines(
   profileName: string,
-  options: FormatConfigureAuthenticationOptions = {},
+  options: FormatConfigureAuthenticationOptions = {}
 ): string[] {
   return renderConfigureRows(
-    configureAuthenticationRows(buildConfigureShowData(profileName), options.planes),
-    options,
+    configureAuthenticationRows(
+      buildConfigureShowData(profileName),
+      options.planes
+    ),
+    options
   );
 }
 
 export function formatConfigureSessionSummary(
   profileName: string,
-  configuredPlanes: ConfigureAuthPlane[],
+  configuredPlanes: ConfigureAuthPlane[]
 ): string[] {
-  return formatConfigureAuthenticationLines(profileName, { planes: configuredPlanes });
+  return formatConfigureAuthenticationLines(profileName, {
+    planes: configuredPlanes,
+  });
 }

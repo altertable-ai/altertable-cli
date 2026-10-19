@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -7,7 +7,7 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from "node:fs";
+} from 'node:fs';
 import {
   configDir,
   configFile,
@@ -16,9 +16,9 @@ import {
   kvGet,
   resolveApiBase,
   resolveManagementApiBase,
-} from "@/lib/config.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { configuredEnvConfig, readEnv } from "@/lib/env.ts";
+} from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+import { configuredEnvConfig, readEnv } from '@/lib/env.ts';
 import {
   migrateProfileSecrets,
   secretDelete,
@@ -27,7 +27,7 @@ import {
   secretSet,
   secretStoreDisplay,
   type SecretStore,
-} from "@/lib/secrets.ts";
+} from '@/lib/secrets.ts';
 import {
   assertSafeProfileName,
   DEFAULT_PROFILE_NAME,
@@ -44,19 +44,19 @@ import {
   profileExists,
   readProfileConfigRecord,
   setActiveProfile,
-} from "@/lib/profile-store.ts";
+} from '@/lib/profile-store.ts';
 
 const PROFILE_SECRET_ACCOUNTS = [
-  "api-key",
-  "lakehouse/password",
-  "lakehouse/basic-token",
-  "oauth/access-token",
-  "oauth/refresh-token",
+  'api-key',
+  'lakehouse/password',
+  'lakehouse/basic-token',
+  'oauth/access-token',
+  'oauth/refresh-token',
 ] as const;
 
 type ProfileSecretStore = Pick<
   SecretStore,
-  "migrateProfileSecrets" | "secretDelete" | "secretGet" | "secretSet"
+  'migrateProfileSecrets' | 'secretDelete' | 'secretGet' | 'secretSet'
 >;
 
 const PROFILE_SECRET_STORE: ProfileSecretStore = {
@@ -94,7 +94,7 @@ function profileMutationErrorDetail(error: unknown): string {
 function runProfileRollbackStep(
   failures: ProfileRollbackFailure[],
   step: string,
-  operation: () => void,
+  operation: () => void
 ): void {
   try {
     operation();
@@ -107,7 +107,7 @@ function rethrowProfileMutationFailure(
   originalError: unknown,
   rollbackFailures: ProfileRollbackFailure[],
   operation: string,
-  recoveryAdvice: string,
+  recoveryAdvice: string
 ): never {
   if (rollbackFailures.length === 0) {
     throw originalError;
@@ -119,15 +119,16 @@ function rethrowProfileMutationFailure(
       details: [
         `Original failure: ${profileMutationErrorDetail(originalError)}`,
         ...rollbackFailures.map(
-          ({ step, error }) => `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`,
+          ({ step, error }) =>
+            `Rollback failure (${step}): ${profileMutationErrorDetail(error)}`
         ),
-      ].join("\n"),
-    },
+      ].join('\n'),
+    }
   );
 }
 
-type ProfileManagementAuth = "oauth" | "api_key" | "none";
-type ProfileLakehouseAuth = "basic_token" | "username_password" | "none";
+type ProfileManagementAuth = 'oauth' | 'api_key' | 'none';
+type ProfileLakehouseAuth = 'basic_token' | 'username_password' | 'none';
 export type ProfileAuth = {
   management: ProfileManagementAuth;
   lakehouse: ProfileLakehouseAuth;
@@ -189,7 +190,7 @@ export type ProfileConfiguration = {
 
 export type ProfileInspect = ProfileConfiguration & {
   auth: ProfileAuth;
-  status: "configured" | "partial" | "empty";
+  status: 'configured' | 'partial' | 'empty';
 };
 
 type ProfileSnapshot = {
@@ -198,27 +199,27 @@ type ProfileSnapshot = {
 };
 
 const PROFILE_UPDATE_CONFIG_KEYS = {
-  organizationSlug: "organization_slug",
-  organizationName: "organization_name",
-  principalType: "principal_type",
-  principalName: "principal_name",
-  principalEmail: "principal_email",
-  principalSlug: "principal_slug",
-  environment: "api_key_env",
-  dataPlane: "api_base",
-  controlPlane: "management_api_base",
+  organizationSlug: 'organization_slug',
+  organizationName: 'organization_name',
+  principalType: 'principal_type',
+  principalName: 'principal_name',
+  principalEmail: 'principal_email',
+  principalSlug: 'principal_slug',
+  environment: 'api_key_env',
+  dataPlane: 'api_base',
+  controlPlane: 'management_api_base',
 } as const satisfies Record<keyof ProfileUpdate, ProfileConfigKey>;
 
 const MANAGEMENT_AUTH_LABELS = {
-  oauth: "oauth",
-  api_key: "api-key",
-  none: "none",
+  oauth: 'oauth',
+  api_key: 'api-key',
+  none: 'none',
 } as const satisfies Record<ProfileManagementAuth, string>;
 
 const LAKEHOUSE_AUTH_LABELS = {
-  basic_token: "basic",
-  username_password: "user/pass",
-  none: "none",
+  basic_token: 'basic',
+  username_password: 'user/pass',
+  none: 'none',
 } as const satisfies Record<ProfileLakehouseAuth, string>;
 
 const PROFILE_NAME_PART_PATTERN = /[^a-z0-9._-]+/g;
@@ -228,10 +229,10 @@ function normalizeProfileNamePart(value: string): string {
   return value
     .trim()
     .toLowerCase()
-    .replace(PROFILE_NAME_PART_PATTERN, "-")
-    .replace(PROFILE_NAME_SEPARATOR_PATTERN, "-")
-    .replace(/^[._-]+/, "")
-    .replace(/[._-]+$/, "");
+    .replace(PROFILE_NAME_PART_PATTERN, '-')
+    .replace(PROFILE_NAME_SEPARATOR_PATTERN, '-')
+    .replace(/^[._-]+/, '')
+    .replace(/[._-]+$/, '');
 }
 
 export function deriveProfileName(org: string, env: string): string {
@@ -239,7 +240,7 @@ export function deriveProfileName(org: string, env: string): string {
   const envPart = normalizeProfileNamePart(env);
   if (!orgPart || !envPart) {
     throw new ConfigurationError(
-      "Profile auto-naming requires non-empty organization and environment values.",
+      'Profile auto-naming requires non-empty organization and environment values.'
     );
   }
   const profileName = `${orgPart}_${envPart}`;
@@ -250,14 +251,14 @@ export function deriveProfileName(org: string, env: string): string {
 export function deriveServiceAccountProfileName(
   org: string,
   env: string,
-  serviceAccountSlug: string,
+  serviceAccountSlug: string
 ): string {
   const orgPart = normalizeProfileNamePart(org);
   const envPart = normalizeProfileNamePart(env);
   const slugPart = normalizeProfileNamePart(serviceAccountSlug);
   if (!orgPart || !envPart || !slugPart) {
     throw new ConfigurationError(
-      "Profile auto-naming requires non-empty organization, environment, and service account values.",
+      'Profile auto-naming requires non-empty organization, environment, and service account values.'
     );
   }
   const profileName = `${orgPart}_${envPart}_${slugPart}`;
@@ -283,27 +284,27 @@ function writeProfileUpdate(name: string, update: ProfileUpdate): void {
 export function detectConfiguredProfileAuth(name: string): ProfileAuth {
   if (isFromEnvProfile(name)) {
     return {
-      management: hasEnvManagementCredentials() ? "api_key" : "none",
+      management: hasEnvManagementCredentials() ? 'api_key' : 'none',
       lakehouse: envLakehouseAuthKind(),
     };
   }
   return {
-    management: secretExists("oauth/access-token", name)
-      ? "oauth"
-      : secretExists("api-key", name)
-        ? "api_key"
-        : "none",
-    lakehouse: secretExists("lakehouse/basic-token", name)
-      ? "basic_token"
-      : secretExists("lakehouse/password", name)
-        ? "username_password"
-        : "none",
+    management: secretExists('oauth/access-token', name)
+      ? 'oauth'
+      : secretExists('api-key', name)
+        ? 'api_key'
+        : 'none',
+    lakehouse: secretExists('lakehouse/basic-token', name)
+      ? 'basic_token'
+      : secretExists('lakehouse/password', name)
+        ? 'username_password'
+        : 'none',
   };
 }
 
 export function profileHasAnyAuthConfigured(name: string): boolean {
   const auth = detectConfiguredProfileAuth(name);
-  return auth.management !== "none" || auth.lakehouse !== "none";
+  return auth.management !== 'none' || auth.lakehouse !== 'none';
 }
 
 function readProfileSnapshot(name: string): ProfileSnapshot {
@@ -313,10 +314,13 @@ function readProfileSnapshot(name: string): ProfileSnapshot {
   };
 }
 
-function profileStatus(snapshot: ProfileSnapshot): ProfileInspect["status"] {
-  const hasMetadata = Object.values(snapshot.config).some((value) => value !== undefined);
-  const hasAnyAuth = snapshot.auth.management !== "none" || snapshot.auth.lakehouse !== "none";
-  return hasAnyAuth ? "configured" : hasMetadata ? "partial" : "empty";
+function profileStatus(snapshot: ProfileSnapshot): ProfileInspect['status'] {
+  const hasMetadata = Object.values(snapshot.config).some(
+    value => value !== undefined
+  );
+  const hasAnyAuth =
+    snapshot.auth.management !== 'none' || snapshot.auth.lakehouse !== 'none';
+  return hasAnyAuth ? 'configured' : hasMetadata ? 'partial' : 'empty';
 }
 
 function profileManagementAuthSummary(auth: ProfileAuth): string {
@@ -328,7 +332,7 @@ function profileLakehouseAuthSummary(auth: ProfileAuth): string {
 }
 
 function profilePrincipalSummary(
-  config: Record<ProfileConfigKey, string | undefined>,
+  config: Record<ProfileConfigKey, string | undefined>
 ): string | undefined {
   if (config.principal_email) {
     return config.principal_email;
@@ -345,10 +349,12 @@ export function listProfiles(): ProfileSummary[] {
   const names = listProfileNames();
 
   if (names.length === 0) {
-    return [{ name: DEFAULT_PROFILE_NAME, active: active === DEFAULT_PROFILE_NAME }];
+    return [
+      { name: DEFAULT_PROFILE_NAME, active: active === DEFAULT_PROFILE_NAME },
+    ];
   }
 
-  return names.map((name) => {
+  return names.map(name => {
     const snapshot = readProfileSnapshot(name);
     return {
       name,
@@ -378,26 +384,29 @@ function parseTimestampMs(raw: string | undefined): string | undefined {
 }
 
 function envLakehouseAuthKind(): ProfileLakehouseAuth {
-  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
-    return "basic_token";
+  if (readEnv('ALTERTABLE_BASIC_AUTH_TOKEN')) {
+    return 'basic_token';
   }
-  if (readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
-    return "username_password";
+  if (
+    readEnv('ALTERTABLE_LAKEHOUSE_USERNAME') &&
+    readEnv('ALTERTABLE_LAKEHOUSE_PASSWORD')
+  ) {
+    return 'username_password';
   }
-  return "none";
+  return 'none';
 }
 
 function readEnvironmentProfileConfiguration(): ProfileConfiguration {
   return {
     name: FROM_ENV_PSEUDOPROFILE_NAME,
     active: true,
-    config_file: "environment variables",
+    config_file: 'environment variables',
     organization: {},
     principal: {},
-    environment: readEnv("ALTERTABLE_ENV"),
+    environment: readEnv('ALTERTABLE_ENV'),
     endpoints: {
-      data_plane: readEnv("ALTERTABLE_API_BASE"),
-      control_plane: readEnv("ALTERTABLE_MANAGEMENT_API_BASE"),
+      data_plane: readEnv('ALTERTABLE_API_BASE'),
+      control_plane: readEnv('ALTERTABLE_MANAGEMENT_API_BASE'),
     },
     timestamps: {},
   };
@@ -406,7 +415,7 @@ function readEnvironmentProfileConfiguration(): ProfileConfiguration {
 function buildProfileConfiguration(
   name: string,
   active: boolean,
-  config: Record<ProfileConfigKey, string | undefined>,
+  config: Record<ProfileConfigKey, string | undefined>
 ): ProfileConfiguration {
   return {
     name,
@@ -432,7 +441,9 @@ function buildProfileConfiguration(
       updated_at: config.updated_at,
       last_verified_at: config.last_verified_at,
       oauth_expires_at: parseTimestampMs(config.oauth_expiry),
-      lakehouse_expires_at: parseTimestampMs(config.lakehouse_credential_expiry),
+      lakehouse_expires_at: parseTimestampMs(
+        config.lakehouse_credential_expiry
+      ),
     },
   };
 }
@@ -440,7 +451,7 @@ function buildProfileConfiguration(
 function buildProfileInspection(
   name: string,
   active: boolean,
-  snapshot: ProfileSnapshot,
+  snapshot: ProfileSnapshot
 ): ProfileInspect {
   return {
     ...buildProfileConfiguration(name, active, snapshot.config),
@@ -456,7 +467,10 @@ export function inspectProfile(name: string): ProfileInspect {
     return {
       ...configuration,
       auth,
-      status: auth.management !== "none" || auth.lakehouse !== "none" ? "configured" : "empty",
+      status:
+        auth.management !== 'none' || auth.lakehouse !== 'none'
+          ? 'configured'
+          : 'empty',
     };
   }
   assertSafeProfileName(name);
@@ -465,7 +479,11 @@ export function inspectProfile(name: string): ProfileInspect {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
 
-  return buildProfileInspection(name, getActiveProfileName() === name, readProfileSnapshot(name));
+  return buildProfileInspection(
+    name,
+    getActiveProfileName() === name,
+    readProfileSnapshot(name)
+  );
 }
 
 export function readProfileConfiguration(name: string): ProfileConfiguration {
@@ -477,8 +495,13 @@ export function readProfileConfiguration(name: string): ProfileConfiguration {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
 
-  const activeProfile = kvGet(configFile(), "active_profile") || DEFAULT_PROFILE_NAME;
-  return buildProfileConfiguration(name, activeProfile === name, readProfileConfigRecord(name));
+  const activeProfile =
+    kvGet(configFile(), 'active_profile') || DEFAULT_PROFILE_NAME;
+  return buildProfileConfiguration(
+    name,
+    activeProfile === name,
+    readProfileConfigRecord(name)
+  );
 }
 
 export function createEmptyProfile(name: string): ProfileInspect {
@@ -489,19 +512,22 @@ export function createEmptyProfile(name: string): ProfileInspect {
   }
   ensureProfileExists(name);
   const createdAt = nowIso();
-  configSet("created_at", createdAt, name);
-  configSet("updated_at", createdAt, name);
+  configSet('created_at', createdAt, name);
+  configSet('updated_at', createdAt, name);
   return inspectProfile(name);
 }
 
-export function updateProfile(name: string, update: ProfileUpdate): ProfileInspect {
+export function updateProfile(
+  name: string,
+  update: ProfileUpdate
+): ProfileInspect {
   assertSafeProfileName(name);
   ensureProfilesLayout();
   if (!profileExists(name)) {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
   writeProfileUpdate(name, update);
-  configSet("updated_at", nowIso(), name);
+  configSet('updated_at', nowIso(), name);
   return inspectProfile(name);
 }
 
@@ -515,7 +541,9 @@ type ProfileSecretSnapshot = {
   value: string;
 };
 
-function snapshotProfileConfig(name: string): ProfileConfigSnapshot | undefined {
+function snapshotProfileConfig(
+  name: string
+): ProfileConfigSnapshot | undefined {
   const filePath = profileConfigFile(name);
   if (!existsSync(filePath)) {
     return undefined;
@@ -528,9 +556,9 @@ function snapshotProfileConfig(name: string): ProfileConfigSnapshot | undefined 
 
 function snapshotProfileSecrets(
   name: string,
-  secrets: ProfileSecretStore,
+  secrets: ProfileSecretStore
 ): ProfileSecretSnapshot[] {
-  return PROFILE_SECRET_ACCOUNTS.map((account) => ({
+  return PROFILE_SECRET_ACCOUNTS.map(account => ({
     account,
     value: secrets.secretGet(account, name),
   }));
@@ -546,25 +574,25 @@ function rollbackProfileRename(options: {
   const failures: ProfileRollbackFailure[] = [];
 
   if (profileExists(target) && !profileExists(source)) {
-    runProfileRollbackStep(failures, "restore profile directory", () => {
+    runProfileRollbackStep(failures, 'restore profile directory', () => {
       operations.renameDirectory(target, source);
     });
   }
   if (wasActive) {
-    runProfileRollbackStep(failures, "restore active profile", () => {
+    runProfileRollbackStep(failures, 'restore active profile', () => {
       operations.setActive(source);
     });
   }
 
   if (!profileExists(source)) {
     failures.push({
-      step: "verify source profile",
+      step: 'verify source profile',
       error: new Error(`Profile directory is missing: ${source}`),
     });
   }
   if (profileExists(target)) {
     failures.push({
-      step: "verify target cleanup",
+      step: 'verify target cleanup',
       error: new Error(`Renamed profile directory still exists: ${target}`),
     });
   }
@@ -579,16 +607,23 @@ function rollbackProfileDelete(options: {
   secrets: ProfileSecretStore;
   operations: ProfileMutationOperations;
 }): ProfileRollbackFailure[] {
-  const { name, quarantinedName, configSnapshot, secretSnapshots, secrets, operations } = options;
+  const {
+    name,
+    quarantinedName,
+    configSnapshot,
+    secretSnapshots,
+    secrets,
+    operations,
+  } = options;
   const failures: ProfileRollbackFailure[] = [];
 
   if (profileExists(quarantinedName) && !profileExists(name)) {
-    runProfileRollbackStep(failures, "restore profile directory", () => {
+    runProfileRollbackStep(failures, 'restore profile directory', () => {
       operations.renameDirectory(quarantinedName, name);
     });
   }
 
-  runProfileRollbackStep(failures, "restore profile configuration", () => {
+  runProfileRollbackStep(failures, 'restore profile configuration', () => {
     mkdirSync(profileDir(name), { recursive: true });
     if (configSnapshot) {
       writeFileSync(profileConfigFile(name), configSnapshot.contents, {
@@ -606,14 +641,16 @@ function rollbackProfileDelete(options: {
 
   if (!profileExists(name)) {
     failures.push({
-      step: "verify source profile",
+      step: 'verify source profile',
       error: new Error(`Profile directory is missing: ${name}`),
     });
   }
   if (profileExists(quarantinedName)) {
     failures.push({
-      step: "verify quarantine cleanup",
-      error: new Error(`Quarantined profile directory still exists: ${quarantinedName}`),
+      step: 'verify quarantine cleanup',
+      error: new Error(
+        `Quarantined profile directory still exists: ${quarantinedName}`
+      ),
     });
   }
   return failures;
@@ -623,7 +660,7 @@ export function renameProfile(
   source: string,
   target: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
-  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS
 ): void {
   assertSafeProfileName(source);
   assertSafeProfileName(target);
@@ -657,7 +694,7 @@ export function renameProfile(
       error,
       rollbackFailures,
       `Renaming profile "${source}" to "${target}"`,
-      "Inspect both profiles before retrying.",
+      'Inspect both profiles before retrying.'
     );
   }
 }
@@ -665,7 +702,7 @@ export function renameProfile(
 export function deleteProfile(
   name: string,
   secrets: ProfileSecretStore = PROFILE_SECRET_STORE,
-  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS,
+  operations: ProfileMutationOperations = PROFILE_MUTATION_OPERATIONS
 ): void {
   assertSafeProfileName(name);
   ensureProfilesLayout();
@@ -677,14 +714,14 @@ export function deleteProfile(
   const active = getActiveProfileName();
   if (name === active) {
     throw new ConfigurationError(
-      `Cannot delete the active profile "${name}". Switch with: altertable profile switch <name>`,
+      `Cannot delete the active profile "${name}". Switch with: altertable profile switch <name>`
     );
   }
 
   secrets.migrateProfileSecrets(name, PROFILE_SECRET_ACCOUNTS);
   const secretSnapshots = snapshotProfileSecrets(name, secrets);
   const configSnapshot = snapshotProfileConfig(name);
-  const quarantinedName = `.deleting-${randomBytes(8).toString("hex")}`;
+  const quarantinedName = `.deleting-${randomBytes(8).toString('hex')}`;
   operations.renameDirectory(name, quarantinedName);
   try {
     for (const account of PROFILE_SECRET_ACCOUNTS) {
@@ -704,7 +741,7 @@ export function deleteProfile(
       error,
       rollbackFailures,
       `Deleting profile "${name}"`,
-      "Inspect the profile before retrying.",
+      'Inspect the profile before retrying.'
     );
   }
 }
@@ -720,18 +757,18 @@ type UnconfiguredCredential = {
 
 type ConfigureManagementApiKeyCredential = {
   configured: true;
-  mechanism: "management_api_key";
-  source?: "stored" | "environment";
+  mechanism: 'management_api_key';
+  source?: 'stored' | 'environment';
   environment?: string;
-  api_key?: "set";
+  api_key?: 'set';
 };
 
 type ConfigureManagementOAuthCredential = {
   configured: true;
-  mechanism: "management_oauth";
-  source: "stored";
+  mechanism: 'management_oauth';
+  source: 'stored';
   environment?: string;
-  oauth?: "set";
+  oauth?: 'set';
   expires?: string;
 };
 
@@ -742,18 +779,18 @@ export type ConfigureManagementCredential =
 
 type ConfigureLakehouseBasicTokenCredential = {
   configured: true;
-  mechanism: "lakehouse_basic_token";
-  source?: "stored" | "environment";
-  basic_token?: "set";
+  mechanism: 'lakehouse_basic_token';
+  source?: 'stored' | 'environment';
+  basic_token?: 'set';
   expires?: string;
 };
 
 type ConfigureLakehouseUsernamePasswordCredential = {
   configured: true;
-  mechanism: "lakehouse_username_password";
-  source?: "stored" | "environment";
+  mechanism: 'lakehouse_username_password';
+  source?: 'stored' | 'environment';
   user?: string;
-  password?: "set";
+  password?: 'set';
 };
 
 export type ConfigureLakehouseCredential =
@@ -786,30 +823,31 @@ export type ConfigureShowData = {
 };
 
 function hasEnvManagementCredentials(): boolean {
-  return Boolean(readEnv("ALTERTABLE_API_KEY"));
+  return Boolean(readEnv('ALTERTABLE_API_KEY'));
 }
 
 function hasStoredManagementCredentials(profileName: string): boolean {
-  return secretExists("api-key", profileName);
+  return secretExists('api-key', profileName);
 }
 
 function hasOAuthLogin(profileName: string): boolean {
-  return secretExists("oauth/access-token", profileName);
+  return secretExists('oauth/access-token', profileName);
 }
 
 function hasEnvLakehouseCredentials(): boolean {
-  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
+  if (readEnv('ALTERTABLE_BASIC_AUTH_TOKEN')) {
     return true;
   }
   return Boolean(
-    readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD"),
+    readEnv('ALTERTABLE_LAKEHOUSE_USERNAME') &&
+    readEnv('ALTERTABLE_LAKEHOUSE_PASSWORD')
   );
 }
 
 function hasStoredLakehouseCredentials(profileName: string): boolean {
   return (
-    secretExists("lakehouse/basic-token", profileName) ||
-    secretExists("lakehouse/password", profileName)
+    secretExists('lakehouse/basic-token', profileName) ||
+    secretExists('lakehouse/password', profileName)
   );
 }
 
@@ -826,107 +864,126 @@ export function assertNoEnvConfigMode(): void {
   if (!envConfigMode()) {
     return;
   }
-  const lines = configuredEnvConfig().map(({ name, display }) => `  ${name.padEnd(32)} ${display}`);
+  const lines = configuredEnvConfig().map(
+    ({ name, display }) => `  ${name.padEnd(32)} ${display}`
+  );
   throw new ConfigurationError(
     [
       "Profile management commands aren't available when configuring through environment variables.",
-      "",
-      "Currently configured:",
+      '',
+      'Currently configured:',
       ...lines,
-    ].join("\n"),
+    ].join('\n')
   );
 }
 
-export function configureCredentialStatus(profileName: string): ConfigureCredentialStatus {
+export function configureCredentialStatus(
+  profileName: string
+): ConfigureCredentialStatus {
   return {
     hasManagement:
       hasStoredManagementCredentials(profileName) ||
       hasEnvManagementCredentials() ||
       hasOAuthLogin(profileName),
-    hasLakehouse: hasStoredLakehouseCredentials(profileName) || hasEnvLakehouseCredentials(),
+    hasLakehouse:
+      hasStoredLakehouseCredentials(profileName) ||
+      hasEnvLakehouseCredentials(),
   };
 }
 
-function buildManagementCredential(profileName: string): ConfigureManagementCredential {
+function buildManagementCredential(
+  profileName: string
+): ConfigureManagementCredential {
   // Precedence mirrors getManagementAuthHeader: env key → OAuth login → stored key.
   if (hasEnvManagementCredentials()) {
     return {
       configured: true,
-      mechanism: "management_api_key",
-      source: "environment",
-      environment: readEnv("ALTERTABLE_ENV") ?? configGet("api_key_env", profileName) ?? undefined,
+      mechanism: 'management_api_key',
+      source: 'environment',
+      environment:
+        readEnv('ALTERTABLE_ENV') ??
+        configGet('api_key_env', profileName) ??
+        undefined,
     };
   }
   if (hasOAuthLogin(profileName)) {
     return {
       configured: true,
-      mechanism: "management_oauth",
-      source: "stored",
-      environment: configGet("api_key_env", profileName) || undefined,
-      oauth: "set",
-      expires: configGet("oauth_expiry", profileName) || undefined,
+      mechanism: 'management_oauth',
+      source: 'stored',
+      environment: configGet('api_key_env', profileName) || undefined,
+      oauth: 'set',
+      expires: configGet('oauth_expiry', profileName) || undefined,
     };
   }
   if (hasStoredManagementCredentials(profileName)) {
     return {
       configured: true,
-      mechanism: "management_api_key",
-      source: "stored",
-      environment: configGet("api_key_env", profileName) || undefined,
-      api_key: "set",
+      mechanism: 'management_api_key',
+      source: 'stored',
+      environment: configGet('api_key_env', profileName) || undefined,
+      api_key: 'set',
     };
   }
   return { configured: false };
 }
 
-function buildLakehouseCredential(profileName: string): ConfigureLakehouseCredential {
+function buildLakehouseCredential(
+  profileName: string
+): ConfigureLakehouseCredential {
   if (hasStoredLakehouseCredentials(profileName)) {
-    if (secretExists("lakehouse/basic-token", profileName)) {
+    if (secretExists('lakehouse/basic-token', profileName)) {
       return {
         configured: true,
-        mechanism: "lakehouse_basic_token",
-        source: "stored",
-        basic_token: "set",
-        expires: configGet("lakehouse_credential_expiry", profileName) || undefined,
+        mechanism: 'lakehouse_basic_token',
+        source: 'stored',
+        basic_token: 'set',
+        expires:
+          configGet('lakehouse_credential_expiry', profileName) || undefined,
       };
     }
     return {
       configured: true,
-      mechanism: "lakehouse_username_password",
-      source: "stored",
-      user: configGet("user", profileName) || undefined,
-      password: "set",
+      mechanism: 'lakehouse_username_password',
+      source: 'stored',
+      user: configGet('user', profileName) || undefined,
+      password: 'set',
     };
   }
-  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
+  if (readEnv('ALTERTABLE_BASIC_AUTH_TOKEN')) {
     return {
       configured: true,
-      mechanism: "lakehouse_basic_token",
-      source: "environment",
+      mechanism: 'lakehouse_basic_token',
+      source: 'environment',
     };
   }
-  const envUser = readEnv("ALTERTABLE_LAKEHOUSE_USERNAME");
-  if (envUser && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
+  const envUser = readEnv('ALTERTABLE_LAKEHOUSE_USERNAME');
+  if (envUser && readEnv('ALTERTABLE_LAKEHOUSE_PASSWORD')) {
     return {
       configured: true,
-      mechanism: "lakehouse_username_password",
-      source: "environment",
+      mechanism: 'lakehouse_username_password',
+      source: 'environment',
       user: envUser,
     };
   }
   return { configured: false };
 }
 
-function buildConfigureShowOverrides(profileName: string): ConfigureShowOverrides {
+function buildConfigureShowOverrides(
+  profileName: string
+): ConfigureShowOverrides {
   const overrides: ConfigureShowOverrides = {};
-  const storedApiKeyEnv = configGet("api_key_env", profileName);
-  const envOverride = readEnv("ALTERTABLE_ENV");
+  const storedApiKeyEnv = configGet('api_key_env', profileName);
+  const envOverride = readEnv('ALTERTABLE_ENV');
 
   if (envOverride && envOverride !== storedApiKeyEnv) {
     overrides.environment = envOverride;
     overrides.stored_environment = storedApiKeyEnv || null;
   }
-  if (readEnv("ALTERTABLE_API_KEY") && hasStoredManagementCredentials(profileName)) {
+  if (
+    readEnv('ALTERTABLE_API_KEY') &&
+    hasStoredManagementCredentials(profileName)
+  ) {
     overrides.api_key = true;
   }
   return overrides;
@@ -939,8 +996,8 @@ export function buildConfigureShowData(profileName: string): ConfigureShowData {
     config_file: profileConfigFile(profileName),
     secret_store: secretStoreDisplay(),
     organization: {
-      slug: configGet("organization_slug", profileName) || undefined,
-      name: configGet("organization_name", profileName) || undefined,
+      slug: configGet('organization_slug', profileName) || undefined,
+      name: configGet('organization_name', profileName) || undefined,
     },
     data_plane: resolveApiBase(profileName),
     control_plane: resolveManagementApiBase(profileName),
@@ -952,33 +1009,35 @@ export function buildConfigureShowData(profileName: string): ConfigureShowData {
   };
 }
 
-export function managementPlaneStatusDetail(profileName: string): string | null {
+export function managementPlaneStatusDetail(
+  profileName: string
+): string | null {
   if (hasEnvManagementCredentials()) {
-    return "via ALTERTABLE_API_KEY";
+    return 'via ALTERTABLE_API_KEY';
   }
   if (hasOAuthLogin(profileName)) {
-    const env = configGet("api_key_env", profileName);
-    return env ? `OAuth login (${env})` : "OAuth login";
+    const env = configGet('api_key_env', profileName);
+    return env ? `OAuth login (${env})` : 'OAuth login';
   }
   if (!hasStoredManagementCredentials(profileName)) {
     return null;
   }
-  return configGet("api_key_env", profileName) || "unknown";
+  return configGet('api_key_env', profileName) || 'unknown';
 }
 
 export function lakehousePlaneStatusDetail(profileName: string): string | null {
-  if (readEnv("ALTERTABLE_BASIC_AUTH_TOKEN")) {
-    return "via ALTERTABLE_BASIC_AUTH_TOKEN";
+  if (readEnv('ALTERTABLE_BASIC_AUTH_TOKEN')) {
+    return 'via ALTERTABLE_BASIC_AUTH_TOKEN';
   }
-  const envUser = readEnv("ALTERTABLE_LAKEHOUSE_USERNAME");
-  if (envUser && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) {
+  const envUser = readEnv('ALTERTABLE_LAKEHOUSE_USERNAME');
+  if (envUser && readEnv('ALTERTABLE_LAKEHOUSE_PASSWORD')) {
     return envUser;
   }
   if (!hasStoredLakehouseCredentials(profileName)) {
     return null;
   }
-  if (secretExists("lakehouse/basic-token", profileName)) {
-    return "basic token";
+  if (secretExists('lakehouse/basic-token', profileName)) {
+    return 'basic token';
   }
-  return configGet("user", profileName) || "unknown";
+  return configGet('user', profileName) || 'unknown';
 }

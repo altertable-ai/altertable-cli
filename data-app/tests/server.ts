@@ -1,43 +1,50 @@
-import starter from "../starter/src/index.html";
-import view from "../starter/fixtures/view.html";
-import components from "../starter/fixtures/index.html";
-import { operations as activityOperations } from "../starter/fixtures/activity.ts";
-import { createDataHandler } from "@altertable/data-app/server";
-import { DataSourceError } from "@altertable/data-app/contract";
-import { operations } from "../starter/src/operations.ts";
+import starter from '../starter/src/index.html';
+import view from '../starter/fixtures/view.html';
+import components from '../starter/fixtures/index.html';
+import { operations as activityOperations } from '../starter/fixtures/activity.ts';
+import { createDataHandler } from '@altertable/data-app/server';
+import { DataSourceError } from '@altertable/data-app/contract';
+import { operations } from '../starter/src/operations.ts';
 let fail = false;
-const handler = createDataHandler({ ...operations, ...activityOperations }, async () => ({
-  canDiscloseSql: true,
-  lakehouse: {
-    async queryAll(statement, options) {
-      if (statement.startsWith("SELECT 120 AS count")) {
-        if (!options.params?.start || !options.params.end)
-          throw new Error("Missing activity params");
-        if (fail) throw new DataSourceError("unavailable");
+const handler = createDataHandler(
+  { ...operations, ...activityOperations },
+  async () => ({
+    canDiscloseSql: true,
+    lakehouse: {
+      async queryAll(statement, options) {
+        if (statement.startsWith('SELECT 120 AS count')) {
+          if (!options.params?.start || !options.params.end)
+            throw new Error('Missing activity params');
+          if (fail) throw new DataSourceError('unavailable');
+          return {
+            columns: [{ name: 'count' }, { name: 'feature' }],
+            rows: [
+              [120, 'Queries'],
+              [120, 'Insights'],
+            ],
+          };
+        }
+        if (statement !== 'SELECT 1 AS connection_check' || options.limit !== 1)
+          throw new Error('Unexpected connection query');
+        if (fail) throw new DataSourceError('unavailable');
         return {
-          columns: [{ name: "count" }, { name: "feature" }],
-          rows: [
-            [120, "Queries"],
-            [120, "Insights"],
-          ],
+          columns: [{ name: 'connection_check' }],
+          rows: [[1]],
+          queryId: 'test-query',
         };
-      }
-      if (statement !== "SELECT 1 AS connection_check" || options.limit !== 1)
-        throw new Error("Unexpected connection query");
-      if (fail) throw new DataSourceError("unavailable");
-      return { columns: [{ name: "connection_check" }], rows: [[1]], queryId: "test-query" };
+      },
     },
-  },
-}));
+  })
+);
 Bun.serve({
   development: false,
-  hostname: "127.0.0.1",
+  hostname: '127.0.0.1',
   port: Number(process.env.DATA_APP_TEST_PORT ?? 26418),
-  routes: { "/": starter, "/components": components, "/view": view },
+  routes: { '/': starter, '/components': components, '/view': view },
   async fetch(request) {
-    if (new URL(request.url).pathname === "/__test/state") {
-      fail = (await request.text()) === "failure";
-      return new Response("ok");
+    if (new URL(request.url).pathname === '/__test/state') {
+      fail = (await request.text()) === 'failure';
+      return new Response('ok');
     }
     return handler(request);
   },

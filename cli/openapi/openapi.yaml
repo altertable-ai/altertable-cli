@@ -20,7 +20,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: "Management API key token (e.g. `atm_...`)"
+      description: 'Management API key token (e.g. `atm_...`)'
 
   schemas:
     Error:
@@ -33,7 +33,14 @@ components:
           properties:
             code:
               type: string
-              enum: [unauthorized, forbidden, not_found, bad_request, unprocessable_content]
+              enum:
+                [
+                  unauthorized,
+                  forbidden,
+                  not_found,
+                  bad_request,
+                  unprocessable_content,
+                ]
             message:
               type: string
             details:
@@ -53,11 +60,11 @@ components:
         region:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         endpoint:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         provider:
           type: string
           enum:
@@ -88,7 +95,7 @@ components:
       type: object
       properties:
         bucket:
-          "$ref": "#/components/schemas/Bucket"
+          '$ref': '#/components/schemas/Bucket'
       required:
         - bucket
     BucketsListResponse:
@@ -97,7 +104,7 @@ components:
         buckets:
           type: array
           items:
-            "$ref": "#/components/schemas/Bucket"
+            '$ref': '#/components/schemas/Bucket'
       required:
         - buckets
     Connection:
@@ -131,11 +138,11 @@ components:
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         labels:
           type: array
           items:
-            "$ref": "#/components/schemas/Label"
+            '$ref': '#/components/schemas/Label'
         catalog:
           type: string
         environment_id:
@@ -150,7 +157,7 @@ components:
           anyOf:
             - type: object
               additionalProperties: {}
-            - type: "null"
+            - type: 'null'
       required:
         - id
         - name
@@ -168,18 +175,18 @@ components:
         dataset:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         project_id_override:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionBucketTablesConfig:
       type: object
       properties:
         bucket_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         file_format:
           anyOf:
             - type: string
@@ -187,11 +194,11 @@ components:
                 - parquet
                 - csv
                 - json
-            - type: "null"
+            - type: 'null'
         assume_immutable:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         tables:
           type: object
           additionalProperties:
@@ -204,33 +211,33 @@ components:
         bucket_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         path:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionGlueConfig:
       type: object
       properties:
         warehouse:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         default_region:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         role_arn:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionIcebergTablesConfig:
       type: object
       properties:
         bucket_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         tables:
           type: object
           additionalProperties:
@@ -243,70 +250,70 @@ components:
         host:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         port:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         database:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         password:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         ssh_tunnel:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSshTunnel"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSshTunnel'
+            - type: 'null'
         srv:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         tls:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         auth_source:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionMysqlConfig:
       type: object
       properties:
         host:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         port:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         database:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         password:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         schema:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         ssh_tunnel:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSshTunnel"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSshTunnel'
+            - type: 'null'
         ssl_mode:
           anyOf:
             - type: string
@@ -314,38 +321,38 @@ components:
                 - disabled
                 - preferred
                 - verify_identity
-            - type: "null"
+            - type: 'null'
     ConnectionPostgresConfig:
       type: object
       properties:
         host:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         port:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         database:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         password:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         schema:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         ssh_tunnel:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSshTunnel"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSshTunnel'
+            - type: 'null'
         sslmode:
           anyOf:
             - type: string
@@ -356,27 +363,27 @@ components:
                 - require
                 - verify-ca
                 - verify-full
-            - type: "null"
+            - type: 'null'
     ConnectionR2CatalogConfig:
       type: object
       properties:
         warehouse:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         endpoint:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         token:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionResponse:
       type: object
       properties:
         connection:
-          "$ref": "#/components/schemas/Connection"
+          '$ref': '#/components/schemas/Connection'
       required:
         - connection
     ConnectionS3TablesConfig:
@@ -385,95 +392,95 @@ components:
         warehouse:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         default_region:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         aws_access_key_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         aws_secret_access_key:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionSnowflakeConfig:
       type: object
       properties:
         account_url:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         warehouse:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         password:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         database:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionSshTunnel:
       type: object
       properties:
         bastion_host:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         bastion_port:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         bastion_username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     ConnectionStandardConfig:
       type: object
       properties:
         host:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         port:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         database:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         username:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         password:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         schema:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         ssh_tunnel:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSshTunnel"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSshTunnel'
+            - type: 'null'
     ConnectionsListResponse:
       type: object
       properties:
         connections:
           type: array
           items:
-            "$ref": "#/components/schemas/Connection"
+            '$ref': '#/components/schemas/Connection'
       required:
         - connections
     CreateBucketRequest:
@@ -488,11 +495,11 @@ components:
         region:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         endpoint:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - name
         - access_key_id
@@ -522,65 +529,65 @@ components:
         read_only:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         label_ids:
           anyOf:
             - type: array
               items:
                 type: string
-            - type: "null"
+            - type: 'null'
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         standard_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionStandardConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionStandardConfig'
+            - type: 'null'
         mysql_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionMysqlConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionMysqlConfig'
+            - type: 'null'
         postgres_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionPostgresConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionPostgresConfig'
+            - type: 'null'
         mongo_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionMongoConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionMongoConfig'
+            - type: 'null'
         bigquery_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionBigQueryConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionBigQueryConfig'
+            - type: 'null'
         snowflake_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSnowflakeConfig'
+            - type: 'null'
         bucket_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionBucketTablesConfig'
+            - type: 'null'
         iceberg_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionIcebergTablesConfig'
+            - type: 'null'
         duckdb_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionDuckDBConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionDuckDBConfig'
+            - type: 'null'
         r2_catalog_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionR2CatalogConfig'
+            - type: 'null'
         s3_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionS3TablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionS3TablesConfig'
+            - type: 'null'
         glue_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionGlueConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionGlueConfig'
+            - type: 'null'
       required:
         - name
         - engine
@@ -590,17 +597,17 @@ components:
         label:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         expires_at:
           anyOf:
             - type: string
               format: date-time
-            - type: "null"
+            - type: 'null'
     CreateCredentialResponse:
       type: object
       properties:
         credential:
-          "$ref": "#/components/schemas/Credential"
+          '$ref': '#/components/schemas/Credential'
         password:
           type: string
       required:
@@ -614,25 +621,25 @@ components:
         bucket_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         read_only:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         label_ids:
           anyOf:
             - type: array
               items:
                 type: string
-            - type: "null"
+            - type: 'null'
         snapshot_retention_days:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - name
     CreateEnvironmentRequest:
@@ -650,17 +657,17 @@ components:
             - type: string
               enum:
                 - fsn1
-            - type: "null"
+            - type: 'null'
         cloud_provider_aws_region:
           anyOf:
             - type: string
               enum:
                 - eu-west-1
-            - type: "null"
+            - type: 'null'
         compute_units:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
       required:
         - name
         - cloud_provider
@@ -682,11 +689,11 @@ components:
                     enum:
                       - ro
                       - rw
-            - type: "null"
+            - type: 'null'
         with_service_oauth_token:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
       required:
         - label
     CreateServiceAccountRequest:
@@ -725,17 +732,17 @@ components:
           anyOf:
             - type: string
               format: date-time
-            - type: "null"
+            - type: 'null'
         revoked_at:
           anyOf:
             - type: string
               format: date-time
-            - type: "null"
+            - type: 'null'
         last_rotated_at:
           anyOf:
             - type: string
               format: date-time
-            - type: "null"
+            - type: 'null'
       required:
         - id
         - label
@@ -748,7 +755,7 @@ components:
       type: object
       properties:
         credential:
-          "$ref": "#/components/schemas/Credential"
+          '$ref': '#/components/schemas/Credential'
       required:
         - credential
     Database:
@@ -767,11 +774,11 @@ components:
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         labels:
           type: array
           items:
-            "$ref": "#/components/schemas/Label"
+            '$ref': '#/components/schemas/Label'
         catalog:
           type: string
         bucket_id:
@@ -779,7 +786,7 @@ components:
         snapshot_retention_days:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         environment_id:
           type: string
         created_at:
@@ -804,7 +811,7 @@ components:
       type: object
       properties:
         database:
-          "$ref": "#/components/schemas/Database"
+          '$ref': '#/components/schemas/Database'
       required:
         - database
     DatabasesListResponse:
@@ -813,7 +820,7 @@ components:
         databases:
           type: array
           items:
-            "$ref": "#/components/schemas/Database"
+            '$ref': '#/components/schemas/Database'
       required:
         - databases
     Environment:
@@ -853,22 +860,22 @@ components:
       type: object
       properties:
         environment:
-          "$ref": "#/components/schemas/Environment"
+          '$ref': '#/components/schemas/Environment'
       required:
         - environment
     EnvironmentServiceAccountResponse:
       type: object
       properties:
         service_account:
-          "$ref": "#/components/schemas/ServiceAccount"
+          '$ref': '#/components/schemas/ServiceAccount'
         role_assignments:
           type: array
           items:
-            "$ref": "#/components/schemas/RoleAssignment"
+            '$ref': '#/components/schemas/RoleAssignment'
         service_oauth_token:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - service_account
         - role_assignments
@@ -913,11 +920,11 @@ components:
         email:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         slug:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - id
         - type
@@ -941,7 +948,7 @@ components:
         role_assignments:
           type: array
           items:
-            "$ref": "#/components/schemas/RoleAssignment"
+            '$ref': '#/components/schemas/RoleAssignment'
       required:
         - role_assignments
     RoleInput:
@@ -966,7 +973,7 @@ components:
                 - organization
                 - environment
                 - catalog
-            - type: "null"
+            - type: 'null'
         resource_id:
           type: string
       required:
@@ -989,7 +996,7 @@ components:
       type: object
       properties:
         service_account:
-          "$ref": "#/components/schemas/ServiceAccount"
+          '$ref': '#/components/schemas/ServiceAccount'
       required:
         - service_account
     UpdateBucketRequest:
@@ -998,117 +1005,117 @@ components:
         name:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         access_key_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         secret_access_key:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         region:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         endpoint:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     UpdateConnectionRequest:
       type: object
       properties:
         name:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         read_only:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         label_ids:
           anyOf:
             - type: array
               items:
                 type: string
-            - type: "null"
+            - type: 'null'
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         standard_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionStandardConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionStandardConfig'
+            - type: 'null'
         mysql_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionMysqlConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionMysqlConfig'
+            - type: 'null'
         postgres_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionPostgresConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionPostgresConfig'
+            - type: 'null'
         mongo_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionMongoConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionMongoConfig'
+            - type: 'null'
         bigquery_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionBigQueryConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionBigQueryConfig'
+            - type: 'null'
         snowflake_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionSnowflakeConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionSnowflakeConfig'
+            - type: 'null'
         bucket_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionBucketTablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionBucketTablesConfig'
+            - type: 'null'
         iceberg_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionIcebergTablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionIcebergTablesConfig'
+            - type: 'null'
         duckdb_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionDuckDBConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionDuckDBConfig'
+            - type: 'null'
         r2_catalog_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionR2CatalogConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionR2CatalogConfig'
+            - type: 'null'
         s3_tables_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionS3TablesConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionS3TablesConfig'
+            - type: 'null'
         glue_config:
           anyOf:
-            - "$ref": "#/components/schemas/ConnectionGlueConfig"
-            - type: "null"
+            - '$ref': '#/components/schemas/ConnectionGlueConfig'
+            - type: 'null'
     UpdateDatabaseRequest:
       type: object
       properties:
         name:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         read_only:
           anyOf:
             - type: boolean
-            - type: "null"
+            - type: 'null'
         label_ids:
           anyOf:
             - type: array
               items:
                 type: string
-            - type: "null"
+            - type: 'null'
         snapshot_retention_days:
           anyOf:
             - type: integer
-            - type: "null"
+            - type: 'null'
         description:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
     UpdateEnvironmentRequest:
       type: object
       properties:
@@ -1122,7 +1129,7 @@ components:
         roles:
           type: array
           items:
-            "$ref": "#/components/schemas/RoleInput"
+            '$ref': '#/components/schemas/RoleInput'
       required:
         - roles
     UpdateServiceAccountRequest:
@@ -1138,11 +1145,11 @@ components:
         id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         invitation_id:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
         iac_id:
           type: string
         email:
@@ -1150,7 +1157,7 @@ components:
         name:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - id
         - invitation_id
@@ -1161,22 +1168,22 @@ components:
       type: object
       properties:
         user:
-          "$ref": "#/components/schemas/User"
+          '$ref': '#/components/schemas/User'
       required:
         - user
     WhoamiResponse:
       type: object
       properties:
         principal:
-          "$ref": "#/components/schemas/Principal"
+          '$ref': '#/components/schemas/Principal'
         organization:
-          "$ref": "#/components/schemas/Organization"
+          '$ref': '#/components/schemas/Organization'
         authentication_scope:
           type: string
         environment_slug:
           anyOf:
             - type: string
-            - type: "null"
+            - type: 'null'
       required:
         - principal
         - organization
@@ -1188,19 +1195,19 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
     Forbidden:
       description: Insufficient permissions
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
 
 paths:
   /whoami:
@@ -1210,39 +1217,39 @@ paths:
       description: Returns the principal (user or service account) and organization associated with the API key.
       tags: [Authentication]
       responses:
-        "200":
+        '200':
           description: Authenticated principal and organization
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WhoamiResponse"
+                $ref: '#/components/schemas/WhoamiResponse'
               examples:
                 user:
                   summary: User principal
                   value:
                     principal:
-                      id: "019d7223-796e-7917-8d7e-ca256daa7979"
+                      id: '019d7223-796e-7917-8d7e-ca256daa7979'
                       type: User
                       name: Jane Doe
                       email: jane@example.com
                     organization:
-                      id: "019d7223-796e-7917-8d7e-ca256daa7980"
+                      id: '019d7223-796e-7917-8d7e-ca256daa7980'
                       name: Acme Corp
                       slug: acme-corp
                 service_account:
                   summary: ServiceAccount principal
                   value:
                     principal:
-                      id: "019d7223-796e-7917-8d7e-ca256daa7981"
+                      id: '019d7223-796e-7917-8d7e-ca256daa7981'
                       type: ServiceAccount
                       name: CI Deploy
                       slug: ci-deploy
                     organization:
-                      id: "019d7223-796e-7917-8d7e-ca256daa7980"
+                      id: '019d7223-796e-7917-8d7e-ca256daa7980'
                       name: Acme Corp
                       slug: acme-corp
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /environments/{id}:
     get:
@@ -1257,21 +1264,21 @@ paths:
           schema:
             type: string
             examples:
-              - "019d7223-796e-7917-8d7e-ca256daa7979"
-              - "production"
+              - '019d7223-796e-7917-8d7e-ca256daa7979'
+              - 'production'
       responses:
-        "200":
+        '200':
           description: Environment
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnvironmentResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/EnvironmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       operationId: deleteEnvironment
       summary: Delete an environment
@@ -1284,17 +1291,17 @@ paths:
           schema:
             type: string
             examples:
-              - "019d7223-796e-7917-8d7e-ca256daa7979"
-              - "production"
+              - '019d7223-796e-7917-8d7e-ca256daa7979'
+              - 'production'
       responses:
-        "204":
+        '204':
           description: Environment deleted
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /environments:
     post:
@@ -1306,24 +1313,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateEnvironmentRequest"
+              $ref: '#/components/schemas/CreateEnvironmentRequest'
       responses:
-        "201":
+        '201':
           description: Environment created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnvironmentResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "422":
+                $ref: '#/components/schemas/EnvironmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
           description: Validation failed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
 
   /service_accounts:
     post:
@@ -1335,24 +1342,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateServiceAccountRequest"
+              $ref: '#/components/schemas/CreateServiceAccountRequest'
       responses:
-        "201":
+        '201':
           description: Service account created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServiceAccountResponse"
-        "400":
+                $ref: '#/components/schemas/ServiceAccountResponse'
+        '400':
           description: Missing required parameter
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /service_accounts/{id}:
     get:
@@ -1367,17 +1374,17 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Service account
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ServiceAccountResponse" }
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: '#/components/schemas/ServiceAccountResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       operationId: updateServiceAccount
       summary: Update a service account
@@ -1393,24 +1400,24 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateServiceAccountRequest" }
+            schema: { $ref: '#/components/schemas/UpdateServiceAccountRequest' }
       responses:
-        "200":
+        '200':
           description: Service account updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ServiceAccountResponse" }
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
+              schema: { $ref: '#/components/schemas/ServiceAccountResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: deleteServiceAccount
       summary: Delete a service account
@@ -1423,19 +1430,19 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Service account deleted
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
           description: Service account still has active credentials
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /environments/{environment_id}/service_accounts:
     post:
@@ -1457,14 +1464,14 @@ paths:
           schema:
             type: string
             examples:
-              - "019d7223-796e-7917-8d7e-ca256daa7979"
-              - "production"
+              - '019d7223-796e-7917-8d7e-ca256daa7979'
+              - 'production'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateEnvironmentServiceAccountRequest"
+              $ref: '#/components/schemas/CreateEnvironmentServiceAccountRequest'
             examples:
               environmentReadOnly:
                 summary: Read-only on the whole environment
@@ -1483,24 +1490,24 @@ paths:
                     analytics: ro
                     staging: rw
       responses:
-        "201":
+        '201':
           description: Service account created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnvironmentServiceAccountResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
+                $ref: '#/components/schemas/EnvironmentServiceAccountResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
           description: Validation failed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
 
   /environments/{environment_id}/buckets:
     get:
@@ -1513,14 +1520,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Buckets
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/BucketsListResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/BucketsListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: createBucket
       summary: Connect a bucket
@@ -1534,21 +1541,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateBucketRequest" }
+            schema: { $ref: '#/components/schemas/CreateBucketRequest' }
       responses:
-        "201":
+        '201':
           description: Bucket created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/BucketResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/BucketResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /environments/{environment_id}/buckets/{id}:
     get:
@@ -1565,14 +1572,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Bucket
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/BucketResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/BucketResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     patch:
       operationId: updateBucket
       summary: Update a bucket
@@ -1590,21 +1597,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateBucketRequest" }
+            schema: { $ref: '#/components/schemas/UpdateBucketRequest' }
       responses:
-        "200":
+        '200':
           description: Bucket updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/BucketResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/BucketResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: deleteBucket
       summary: Delete a bucket
@@ -1619,15 +1626,15 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "204": { description: Bucket deleted }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+        '204': { description: Bucket deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Built-in buckets cannot be deleted
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /environments/{environment_id}/connections:
     get:
@@ -1640,14 +1647,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Connections
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ConnectionsListResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/ConnectionsListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: createConnection
       summary: Create a connection
@@ -1661,21 +1668,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateConnectionRequest" }
+            schema: { $ref: '#/components/schemas/CreateConnectionRequest' }
       responses:
-        "201":
+        '201':
           description: Connection created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ConnectionResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/ConnectionResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /environments/{environment_id}/connections/{id}:
     get:
@@ -1692,14 +1699,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Connection
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ConnectionResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/ConnectionResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     patch:
       operationId: updateConnection
       summary: Update a connection
@@ -1717,21 +1724,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateConnectionRequest" }
+            schema: { $ref: '#/components/schemas/UpdateConnectionRequest' }
       responses:
-        "200":
+        '200':
           description: Connection updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ConnectionResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/ConnectionResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: deleteConnection
       summary: Delete a connection
@@ -1746,10 +1753,10 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "204": { description: Connection deleted }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        '204': { description: Connection deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /environments/{environment_id}/databases:
     get:
@@ -1762,14 +1769,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Databases
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/DatabasesListResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/DatabasesListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: createDatabase
       summary: Create a database
@@ -1783,21 +1790,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateDatabaseRequest" }
+            schema: { $ref: '#/components/schemas/CreateDatabaseRequest' }
       responses:
-        "201":
+        '201':
           description: Database created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/DatabaseResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/DatabaseResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /environments/{environment_id}/databases/{id}:
     get:
@@ -1814,14 +1821,14 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: Database
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/DatabaseResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/DatabaseResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     patch:
       operationId: updateDatabase
       summary: Update a database
@@ -1839,21 +1846,21 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateDatabaseRequest" }
+            schema: { $ref: '#/components/schemas/UpdateDatabaseRequest' }
       responses:
-        "200":
+        '200':
           description: Database updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/DatabaseResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/DatabaseResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: deleteDatabase
       summary: Delete a database
@@ -1868,10 +1875,10 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "204": { description: Database deleted }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        '204': { description: Database deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /users/lookup:
     get:
@@ -1885,19 +1892,19 @@ paths:
           description: Email address of the user to look up
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: User
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserResponse" }
-        "400":
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '400':
           description: Missing required parameter
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /users:
     post:
@@ -1909,25 +1916,25 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateUserRequest" }
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
       responses:
-        "200":
+        '200':
           description: Existing pending invitation
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserResponse" }
-        "201":
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '201':
           description: Invitation created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "422":
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
           description: Validation failed or the email is already an organization member
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /users/{id}:
     get:
@@ -1941,14 +1948,14 @@ paths:
           description: Opaque iac_id returned by the user API; either a user UUID or invitation_id=<UUID>
           schema: { type: string }
       responses:
-        "200":
+        '200':
           description: User
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     delete:
       operationId: deleteUser
       summary: Cancel an invitation or remove a user from the organization
@@ -1960,14 +1967,14 @@ paths:
           description: Opaque iac_id returned by the user API
           schema: { type: string }
       responses:
-        "204": { description: User or invitation is absent }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "422":
+        '204': { description: User or invitation is absent }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
           description: The authenticated principal cannot remove itself
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /users/{user_id}/role_assignments:
     get:
@@ -1983,14 +1990,14 @@ paths:
             schema: { type: string },
           }
       responses:
-        "200":
+        '200':
           description: Role assignments
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/RoleAssignmentsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     put:
       operationId: setUserRoleAssignments
       summary: Replace a user's role assignments
@@ -2007,21 +2014,22 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateRoleAssignmentsRequest" }
+            schema:
+              { $ref: '#/components/schemas/UpdateRoleAssignmentsRequest' }
       responses:
-        "200":
+        '200':
           description: Role assignments replaced
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/RoleAssignmentsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: resetUserRoleAssignments
       summary: Reset a user's role assignments to organization:member
@@ -2035,14 +2043,14 @@ paths:
             schema: { type: string },
           }
       responses:
-        "204": { description: Role assignments reset }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "422":
+        '204': { description: Role assignments reset }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /service_accounts/{service_account_id}/role_assignments:
     get:
@@ -2050,57 +2058,73 @@ paths:
       summary: List a service account's direct role assignments
       tags: [Role Assignments]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
       responses:
-        "200":
+        '200':
           description: Role assignments
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/RoleAssignmentsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     put:
       operationId: setServiceAccountRoleAssignments
       summary: Replace a service account's role assignments
       tags: [Role Assignments]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateRoleAssignmentsRequest" }
+            schema:
+              { $ref: '#/components/schemas/UpdateRoleAssignmentsRequest' }
       responses:
-        "200":
+        '200':
           description: Role assignments replaced
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RoleAssignmentsResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/RoleAssignmentsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: resetServiceAccountRoleAssignments
       summary: Reset a service account's role assignments to organization:member
       tags: [Role Assignments]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
       responses:
-        "204": { description: Role assignments reset }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+        '204': { description: Role assignments reset }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /users/{user_id}/environments/{environment_id}/credentials:
     post:
@@ -2115,26 +2139,31 @@ paths:
             description: Opaque user iac_id,
             schema: { type: string },
           }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
       requestBody:
         required: false
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateCredentialRequest" }
+            schema: { $ref: '#/components/schemas/CreateCredentialRequest' }
       responses:
-        "201":
+        '201':
           description: Credential created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CreateCredentialResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/CreateCredentialResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /users/{user_id}/environments/{environment_id}/credentials/{id}:
     get:
@@ -2149,30 +2178,40 @@ paths:
             description: Opaque user iac_id,
             schema: { type: string },
           }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        "200":
+        '200':
           description: Credential
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CredentialResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/CredentialResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     delete:
       operationId: revokeUserCredential
       summary: Revoke a user's credential
       tags: [Credentials]
       parameters:
         - { name: user_id, in: path, required: true, schema: { type: string } }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        "204": { description: Credential revoked }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        '204': { description: Credential revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /service_accounts/{service_account_id}/environments/{environment_id}/credentials:
     post:
@@ -2180,27 +2219,37 @@ paths:
       summary: Create a credential for a service account (returns the password once)
       tags: [Credentials]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
       requestBody:
         required: false
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateCredentialRequest" }
+            schema: { $ref: '#/components/schemas/CreateCredentialRequest' }
       responses:
-        "201":
+        '201':
           description: Credential created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CreateCredentialResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "422":
+              schema: { $ref: '#/components/schemas/CreateCredentialResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
           description: Validation failed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+              schema: { $ref: '#/components/schemas/Error' }
 
   /service_accounts/{service_account_id}/environments/{environment_id}/credentials/{id}:
     get:
@@ -2208,28 +2257,48 @@ paths:
       summary: Get a service account's credential (no secret)
       tags: [Credentials]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        "200":
+        '200':
           description: Credential
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CredentialResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+              schema: { $ref: '#/components/schemas/CredentialResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     delete:
       operationId: revokeServiceAccountCredential
       summary: Revoke a service account's credential
       tags: [Credentials]
       parameters:
-        - { name: service_account_id, in: path, required: true, schema: { type: string } }
-        - { name: environment_id, in: path, required: true, schema: { type: string } }
+        - {
+            name: service_account_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - {
+            name: environment_id,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        "204": { description: Credential revoked }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        '204': { description: Credential revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }

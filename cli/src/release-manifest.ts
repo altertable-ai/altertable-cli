@@ -1,5 +1,5 @@
-export type ReleaseOperatingSystem = "darwin" | "linux";
-export type ReleaseArchitecture = "arm64" | "x64";
+export type ReleaseOperatingSystem = 'darwin' | 'linux';
+export type ReleaseArchitecture = 'arm64' | 'x64';
 
 export type ReleaseTarget = {
   bunTarget: `bun-${string}`;
@@ -18,48 +18,48 @@ export type ReleaseTarget = {
  */
 export const RELEASE_TARGETS = [
   {
-    bunTarget: "bun-darwin-arm64",
-    platform: "darwin-arm64",
-    os: "darwin",
-    arch: "arm64",
-    asset: "altertable-darwin-arm64",
-    runner: "macos-15",
+    bunTarget: 'bun-darwin-arm64',
+    platform: 'darwin-arm64',
+    os: 'darwin',
+    arch: 'arm64',
+    asset: 'altertable-darwin-arm64',
+    runner: 'macos-15',
   },
   {
-    bunTarget: "bun-darwin-x64",
-    platform: "darwin-x64",
-    os: "darwin",
-    arch: "x64",
-    asset: "altertable-darwin-x64",
-    runner: "macos-15-intel",
+    bunTarget: 'bun-darwin-x64',
+    platform: 'darwin-x64',
+    os: 'darwin',
+    arch: 'x64',
+    asset: 'altertable-darwin-x64',
+    runner: 'macos-15-intel',
   },
   {
-    bunTarget: "bun-linux-arm64",
-    platform: "linux-arm64",
-    os: "linux",
-    arch: "arm64",
-    asset: "altertable-linux-arm64",
-    runner: "ubuntu-24.04-arm",
+    bunTarget: 'bun-linux-arm64',
+    platform: 'linux-arm64',
+    os: 'linux',
+    arch: 'arm64',
+    asset: 'altertable-linux-arm64',
+    runner: 'ubuntu-24.04-arm',
   },
   {
-    bunTarget: "bun-linux-x64-baseline",
-    platform: "linux-x64",
-    os: "linux",
-    arch: "x64",
-    asset: "altertable-linux-x64",
-    runner: "ubuntu-24.04",
+    bunTarget: 'bun-linux-x64-baseline',
+    platform: 'linux-x64',
+    os: 'linux',
+    arch: 'x64',
+    asset: 'altertable-linux-x64',
+    runner: 'ubuntu-24.04',
   },
 ] as const satisfies readonly ReleaseTarget[];
 
-export type ReleasePlatform = (typeof RELEASE_TARGETS)[number]["platform"];
-export type ReleaseAssetName = (typeof RELEASE_TARGETS)[number]["asset"];
+export type ReleasePlatform = (typeof RELEASE_TARGETS)[number]['platform'];
+export type ReleaseAssetName = (typeof RELEASE_TARGETS)[number]['asset'];
 
 export const RELEASE_PLATFORM_CONFIG: Readonly<
   Record<ReleasePlatform, { asset: ReleaseAssetName }>
 > = Object.freeze(
   Object.fromEntries(
-    RELEASE_TARGETS.map((target) => [target.platform, { asset: target.asset }]),
-  ) as Record<ReleasePlatform, { asset: ReleaseAssetName }>,
+    RELEASE_TARGETS.map(target => [target.platform, { asset: target.asset }])
+  ) as Record<ReleasePlatform, { asset: ReleaseAssetName }>
 );
 
-export const RELEASE_CHECKSUMS_ASSET = "checksums.txt";
+export const RELEASE_CHECKSUMS_ASSET = 'checksums.txt';

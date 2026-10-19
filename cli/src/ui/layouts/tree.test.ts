@@ -1,38 +1,43 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from 'bun:test';
 
-import { renderTree } from "@/ui/renderers/terminal.ts";
+import { renderTree } from '@/ui/renderers/terminal.ts';
 
-describe("tree layout", () => {
-  test("renders nested tree branches", () => {
+describe('tree layout', () => {
+  test('renders nested tree branches', () => {
     expect(
       renderTree({
-        title: "Catalog",
+        title: 'Catalog',
         children: [
           {
-            label: "main",
-            children: [{ label: "users" }, { label: "events", children: [{ label: "id" }] }],
+            label: 'main',
+            children: [
+              { label: 'users' },
+              { label: 'events', children: [{ label: 'id' }] },
+            ],
           },
-          { label: "scratch" },
+          { label: 'scratch' },
         ],
-      }),
+      })
     ).toEqual([
-      "Catalog",
-      "├── main",
-      "│   ├── users",
-      "│   └── events",
-      "│       └── id",
-      "└── scratch",
+      'Catalog',
+      '├── main',
+      '│   ├── users',
+      '│   └── events',
+      '│       └── id',
+      '└── scratch',
     ]);
   });
 
-  test("renders empty root and empty children labels", () => {
+  test('renders empty root and empty children labels', () => {
     expect(
       renderTree({
-        children: [{ label: "main", emptyLabel: "<no table>" }],
-        emptyLabel: "<no schema>",
-      }),
-    ).toEqual(["└── main", "    └── <no table>"]);
+        children: [{ label: 'main', emptyLabel: '<no table>' }],
+        emptyLabel: '<no schema>',
+      })
+    ).toEqual(['└── main', '    └── <no table>']);
 
-    expect(renderTree({ children: [], emptyLabel: "<no schema>" })).toEqual(["└── <no schema>"]);
+    expect(renderTree({ children: [], emptyLabel: '<no schema>' })).toEqual([
+      '└── <no schema>',
+    ]);
   });
 });

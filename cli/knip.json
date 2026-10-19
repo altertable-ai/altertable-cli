@@ -10,6 +10,6 @@
   "project": ["src/**/*.ts!", "!src/test-utils/**!", "scripts/**/*.ts!"],
   "ignore": ["src/generated/**"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["undici"],
+  "ignoreDependencies": ["undici", "typescript-checker"],
   "ignoreBinaries": ["less"]
 }

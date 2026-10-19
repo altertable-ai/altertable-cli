@@ -1,18 +1,22 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { buildMainCommand } from "@/cli.ts";
-import { apiCommand } from "@/commands/api/index.ts";
-import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { setCliContext } from "@/context.ts";
-import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
-import { createCliRuntime, getCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
-import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import type { Command } from "@/lib/command.ts";
-import { executeCommand } from "@/lib/command-parser.ts";
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { buildMainCommand } from '@/cli.ts';
+import { apiCommand } from '@/commands/api/index.ts';
+import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
+import { setCliContext } from '@/context.ts';
+import { buildCompletionSpec } from '@/commands/completion/lib/spec.ts';
+import {
+  createCliRuntime,
+  getCliRuntime,
+  setCliRuntime,
+} from '@/lib/runtime.ts';
+import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
+import type { Command } from '@/lib/command.ts';
+import { executeCommand } from '@/lib/command-parser.ts';
 
-describe("api", () => {
+describe('api', () => {
   beforeEach(() => {
     setCliContext({ debug: false, json: false, agent: false });
   });
@@ -21,44 +25,51 @@ describe("api", () => {
     setCliContext({ debug: false, json: false, agent: false });
   });
 
-  test("api spec prints YAML containing Altertable Management API", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec"], {
+  test('api spec prints YAML containing Altertable Management API', async () => {
+    const result = await runCommandWithTestRuntime(['api', 'spec'], {
       debug: false,
       json: false,
       agent: false,
     });
-    const output = result.stdout.join("");
-    expect(output).toContain("Altertable Management API");
-    expect(output).toContain("openapi: 3.1.0");
-    expect(output).not.toContain("AUTO-GENERATED");
+    const output = result.stdout.join('');
+    expect(output).toContain('Altertable Management API');
+    expect(output).toContain('openapi: 3.1.0');
+    expect(output).not.toContain('AUTO-GENERATED');
   });
 
-  test("api spec with JSON context prints parseable JSON with openapi 3.1.0", async () => {
-    const result = await runCommandWithTestRuntime(["api", "spec"], {
+  test('api spec with JSON context prints parseable JSON with openapi 3.1.0', async () => {
+    const result = await runCommandWithTestRuntime(['api', 'spec'], {
       debug: false,
       json: true,
       agent: false,
     });
-    const output = result.stdout.join("");
-    const document = JSON.parse(output) as { openapi?: string; info?: { title?: string } };
-    expect(document.openapi).toBe("3.1.0");
-    expect(document.info?.title).toBe("Altertable Management API");
+    const output = result.stdout.join('');
+    const document = JSON.parse(output) as {
+      openapi?: string;
+      info?: { title?: string };
+    };
+    expect(document.openapi).toBe('3.1.0');
+    expect(document.info?.title).toBe('Altertable Management API');
   });
 
-  test("api spec subcommand runs without ENDPOINT validation errors", async () => {
+  test('api spec subcommand runs without ENDPOINT validation errors', async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    runtime.output.writeHuman = (text) => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
+    runtime.output.writeHuman = text => {
       stdout.push(text);
     };
-    runtime.output.writeRaw = (body) => {
+    runtime.output.writeRaw = body => {
       stdout.push(body);
     };
-    runtime.output.writeStderr = (line) => {
+    runtime.output.writeStderr = line => {
       stderr.push(line);
     };
-    runtime.output.writeMetadata = (lines) => {
+    runtime.output.writeMetadata = lines => {
       stderr.push(...lines);
     };
 
@@ -66,82 +77,97 @@ describe("api", () => {
     setCliRuntime(runtime);
 
     try {
-      await executeCommand(buildMainCommand(), ["api", "spec"]);
+      await executeCommand(buildMainCommand(), ['api', 'spec']);
     } finally {
       setCliRuntime(previousRuntime);
     }
 
-    const output = stdout.join("");
-    const errorOutput = stderr.join("");
-    expect(errorOutput).not.toContain("ENDPOINT");
-    expect(output).toContain("openapi: 3.1.0");
-    expect(output).not.toContain("AUTO-GENERATED");
+    const output = stdout.join('');
+    const errorOutput = stderr.join('');
+    expect(errorOutput).not.toContain('ENDPOINT');
+    expect(output).toContain('openapi: 3.1.0');
+    expect(output).not.toContain('AUTO-GENERATED');
   });
 
-  test("OPENAPI_OPERATIONS lists createDatabase", () => {
-    expect(OPENAPI_OPERATIONS.some((operation) => operation.operationId === "createDatabase")).toBe(
-      true,
-    );
+  test('OPENAPI_OPERATIONS lists createDatabase', () => {
+    expect(
+      OPENAPI_OPERATIONS.some(
+        operation => operation.operationId === 'createDatabase'
+      )
+    ).toBe(true);
   });
 
-  test("api route inspects one operation in human mode", async () => {
-    const result = await runCommandWithTestRuntime(["api", "route", "createDatabase"], {
-      debug: false,
-      json: false,
-      agent: false,
-    });
-    const output = result.stdout.join("");
-    expect(output).toContain("createDatabase");
-    expect(output).toContain("Path:");
-    expect(output).toContain("/environments/{environment_id}/databases");
-    expect(output).toContain("environment_id");
-  });
-
-  test("api route operation detail includes path parameters in JSON mode", async () => {
+  test('api route inspects one operation in human mode', async () => {
     const result = await runCommandWithTestRuntime(
-      ["api", "route", "createServiceAccountCredential"],
-      { debug: false, json: true, agent: false },
+      ['api', 'route', 'createDatabase'],
+      {
+        debug: false,
+        json: false,
+        agent: false,
+      }
     );
-    const output = result.stdout.join("");
-    const operation = JSON.parse(output) as { operationId?: string; parameters?: string[] };
-    expect(operation.operationId).toBe("createServiceAccountCredential");
-    expect(operation.parameters).toEqual(["service_account_id", "environment_id"]);
+    const output = result.stdout.join('');
+    expect(output).toContain('createDatabase');
+    expect(output).toContain('Path:');
+    expect(output).toContain('/environments/{environment_id}/databases');
+    expect(output).toContain('environment_id');
   });
 
-  test("buildMainCommand top-level names include api and exclude connections", async () => {
+  test('api route operation detail includes path parameters in JSON mode', async () => {
+    const result = await runCommandWithTestRuntime(
+      ['api', 'route', 'createServiceAccountCredential'],
+      { debug: false, json: true, agent: false }
+    );
+    const output = result.stdout.join('');
+    const operation = JSON.parse(output) as {
+      operationId?: string;
+      parameters?: string[];
+    };
+    expect(operation.operationId).toBe('createServiceAccountCredential');
+    expect(operation.parameters).toEqual([
+      'service_account_id',
+      'environment_id',
+    ]);
+  });
+
+  test('buildMainCommand top-level names include api and exclude connections', async () => {
     const spec = await buildCompletionSpec(buildMainCommand());
-    const topLevelNames = spec.subcommands.map((command) => command.name);
-    expect(topLevelNames).toContain("api");
-    expect(topLevelNames).not.toContain("connections");
-    expect(topLevelNames).not.toContain("service-accounts");
-    expect(topLevelNames).not.toContain("databases");
-    expect(topLevelNames).not.toContain("credentials");
+    const topLevelNames = spec.subcommands.map(command => command.name);
+    expect(topLevelNames).toContain('api');
+    expect(topLevelNames).not.toContain('connections');
+    expect(topLevelNames).not.toContain('service-accounts');
+    expect(topLevelNames).not.toContain('databases');
+    expect(topLevelNames).not.toContain('credentials');
   });
 
-  test("api command tree exposes spec and route subcommands", () => {
+  test('api command tree exposes spec and route subcommands', () => {
     const subcommands = apiCommand.subcommands as Record<string, Command>;
     expect(subcommands.spec?.run).toBeDefined();
     expect(subcommands.route?.run).toBeDefined();
   });
 
-  test("api routes remains a callable hidden alias", async () => {
-    const result = await runCommandWithTestRuntime(["api", "routes", "createDatabase"]);
-    expect(result.stdout.join("")).toContain("createDatabase");
+  test('api routes remains a callable hidden alias', async () => {
+    const result = await runCommandWithTestRuntime([
+      'api',
+      'routes',
+      'createDatabase',
+    ]);
+    expect(result.stdout.join('')).toContain('createDatabase');
   });
 
-  describe("api HTTP invoker", () => {
-    let testHome = "";
-    let mockFile = "";
-    let logFile = "";
+  describe('api HTTP invoker', () => {
+    let testHome = '';
+    let mockFile = '';
+    let logFile = '';
 
     beforeEach(() => {
-      testHome = mkdtempSync(join(tmpdir(), "altertable-api-test-"));
-      mockFile = join(testHome, "mocks.json");
-      logFile = join(testHome, "http.log");
+      testHome = mkdtempSync(join(tmpdir(), 'altertable-api-test-'));
+      mockFile = join(testHome, 'mocks.json');
+      logFile = join(testHome, 'http.log');
       process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
       process.env.ALTERTABLE_HTTP_LOG = logFile;
-      process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
-      process.env.ALTERTABLE_API_KEY = "atm_test";
+      process.env.ALTERTABLE_MANAGEMENT_API_BASE = 'https://app.example.com';
+      process.env.ALTERTABLE_API_KEY = 'atm_test';
     });
 
     afterEach(() => {
@@ -152,51 +178,51 @@ describe("api", () => {
       delete process.env.ALTERTABLE_API_KEY;
     });
 
-    test("endpoint path without method issues a single HTTP request", async () => {
+    test('endpoint path without method issues a single HTTP request', async () => {
       writeFileSync(
         mockFile,
         JSON.stringify([
           {
-            urlPattern: "/whoami",
-            method: "GET",
+            urlPattern: '/whoami',
+            method: 'GET',
             body: '{"user":{"email":"dev@example.com"}}',
           },
-        ]),
+        ])
       );
 
-      await runCommandWithTestRuntime(["api", "/whoami"]);
+      await runCommandWithTestRuntime(['api', '/whoami']);
 
-      const logContent = readFileSync(logFile, "utf8");
-      expect(logContent).toContain("/rest/v1/whoami");
-      expect(logContent).toContain("METHOD=GET");
+      const logContent = readFileSync(logFile, 'utf8');
+      expect(logContent).toContain('/rest/v1/whoami');
+      expect(logContent).toContain('METHOD=GET');
     });
 
-    test("-X POST issues a single HTTP request", async () => {
+    test('-X POST issues a single HTTP request', async () => {
       writeFileSync(
         mockFile,
         JSON.stringify([
           {
-            urlPattern: "/service_accounts",
-            method: "POST",
+            urlPattern: '/service_accounts',
+            method: 'POST',
             body: '{"service_account":{"id":"sa_1","label":"CI Bot","slug":"ci-bot"}}',
           },
-        ]),
+        ])
       );
 
       await runCommandWithTestRuntime([
-        "api",
-        "/service_accounts",
-        "-X",
-        "POST",
-        "-f",
-        "label=CI Bot",
+        'api',
+        '/service_accounts',
+        '-X',
+        'POST',
+        '-f',
+        'label=CI Bot',
       ]);
 
-      const logContent = readFileSync(logFile, "utf8");
+      const logContent = readFileSync(logFile, 'utf8');
       const payloadLines = logContent.match(/^PAYLOAD=.*$/gm) ?? [];
       expect(payloadLines).toHaveLength(1);
-      expect(logContent).toContain("/rest/v1/service_accounts");
-      expect(logContent).not.toContain("/rest/v1/POST");
+      expect(logContent).toContain('/rest/v1/service_accounts');
+      expect(logContent).not.toContain('/rest/v1/POST');
     });
   });
 });

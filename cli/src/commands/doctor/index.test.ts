@@ -1,48 +1,52 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { configureRunSet } from "@/lib/profile-configure-core.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
-import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
-import { runWithCliRuntime } from "@/test-utils/runtime.ts";
-import { configFile, credentialsFile, kvSet } from "@/lib/config.ts";
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { configureRunSet } from '@/lib/profile-configure-core.ts';
+import { createCliRuntime } from '@/lib/runtime.ts';
+import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
+import { runWithCliRuntime } from '@/test-utils/runtime.ts';
+import { configFile, credentialsFile, kvSet } from '@/lib/config.ts';
 
-let testHome = "";
-let mockFile = "";
+let testHome = '';
+let mockFile = '';
 let stdinIsTty: PropertyDescriptor | undefined;
 
 const VALID_WHOAMI = {
   principal: {
-    id: "user-1",
-    type: "User",
-    name: "Jane",
-    email: "jane@example.com",
+    id: 'user-1',
+    type: 'User',
+    name: 'Jane',
+    email: 'jane@example.com',
   },
   organization: {
-    id: "org-1",
-    name: "Acme",
-    slug: "acme",
+    id: 'org-1',
+    name: 'Acme',
+    slug: 'acme',
   },
-  authentication_scope: "user",
+  authentication_scope: 'user',
 };
 
-const VALID_LAKEHOUSE_PROBE = ['{"statement":"SELECT 1"}', '["result"]', "[1]"].join("\n");
+const VALID_LAKEHOUSE_PROBE = [
+  '{"statement":"SELECT 1"}',
+  '["result"]',
+  '[1]',
+].join('\n');
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-doctor-test-"));
-  mockFile = join(testHome, "mocks.json");
+  testHome = mkdtempSync(join(tmpdir(), 'altertable-doctor-test-'));
+  mockFile = join(testHome, 'mocks.json');
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
-  process.env.ALTERTABLE_SECRET_BACKEND = "file";
+  process.env.ALTERTABLE_SECRET_BACKEND = 'file';
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
-  stdinIsTty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+  stdinIsTty = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
 });
 
 afterEach(() => {
   if (stdinIsTty) {
-    Object.defineProperty(process.stdin, "isTTY", stdinIsTty);
+    Object.defineProperty(process.stdin, 'isTTY', stdinIsTty);
   } else {
-    Reflect.deleteProperty(process.stdin, "isTTY");
+    Reflect.deleteProperty(process.stdin, 'isTTY');
   }
   rmSync(testHome, { recursive: true, force: true });
   delete process.env.ALTERTABLE_CONFIG_HOME;
@@ -50,41 +54,47 @@ afterEach(() => {
   delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
 });
 
-describe("doctor command", () => {
-  test("reports local findings without materializing the default profile", async () => {
-    const harness = await runCommandWithTestRuntime(["doctor", "--offline"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+describe('doctor command', () => {
+  test('reports local findings without materializing the default profile', async () => {
+    const harness = await runCommandWithTestRuntime(['doctor', '--offline']);
+    const report = JSON.parse(harness.stdout[0] ?? '');
 
     expect(report).toMatchObject({
       healthy: false,
-      profile: "default",
+      profile: 'default',
       summary: { passed: 3, failed: 2, skipped: 2 },
     });
     expect(harness.exitCode).toBe(1);
-    expect(await Bun.file(join(testHome, "config")).exists()).toBe(false);
-    expect(await Bun.file(join(testHome, "profiles", "default", "config")).exists()).toBe(false);
+    expect(await Bun.file(join(testHome, 'config')).exists()).toBe(false);
+    expect(
+      await Bun.file(join(testHome, 'profiles', 'default', 'config')).exists()
+    ).toBe(false);
   });
 
-  test("runs both read-only API probes for a configured profile", async () => {
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+  test('runs both read-only API probes for a configured profile', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: true,
+      agent: false,
+    });
     await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({ apiKey: "atm_test", env: "production" });
-      await configureRunSet({ user: "alice", password: "secret" });
+      await configureRunSet({ apiKey: 'atm_test', env: 'production' });
+      await configureRunSet({ user: 'alice', password: 'secret' });
     });
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/whoami",
-          method: "GET",
+          urlPattern: '/whoami',
+          method: 'GET',
           body: JSON.stringify(VALID_WHOAMI),
         },
-        { urlPattern: "/query", method: "POST", body: VALID_LAKEHOUSE_PROBE },
-      ]),
+        { urlPattern: '/query', method: 'POST', body: VALID_LAKEHOUSE_PROBE },
+      ])
     );
 
-    const harness = await runCommandWithTestRuntime(["doctor"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+    const harness = await runCommandWithTestRuntime(['doctor']);
+    const report = JSON.parse(harness.stdout[0] ?? '');
 
     expect(report).toMatchObject({
       healthy: true,
@@ -94,21 +104,23 @@ describe("doctor command", () => {
     expect(report.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "management.api",
-          status: "pass",
-          message: expect.stringContaining("Jane <jane@example.com>"),
+          id: 'management.api',
+          status: 'pass',
+          message: expect.stringContaining('Jane <jane@example.com>'),
         }),
-        expect.objectContaining({ id: "lakehouse.api", status: "pass" }),
-      ]),
+        expect.objectContaining({ id: 'lakehouse.api', status: 'pass' }),
+      ])
     );
   });
 
-  test("attributes credential backend failures to the secret store", async () => {
-    writeFileSync(credentialsFile(), "profile/default/api-key=atm_test\n", { mode: 0o644 });
+  test('attributes credential backend failures to the secret store', async () => {
+    writeFileSync(credentialsFile(), 'profile/default/api-key=atm_test\n', {
+      mode: 0o644,
+    });
     chmodSync(credentialsFile(), 0o644);
 
-    const harness = await runCommandWithTestRuntime(["doctor", "--offline"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+    const harness = await runCommandWithTestRuntime(['doctor', '--offline']);
+    const report = JSON.parse(harness.stdout[0] ?? '');
 
     expect(report).toMatchObject({
       healthy: false,
@@ -116,64 +128,71 @@ describe("doctor command", () => {
     });
     expect(report.checks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "profile.configuration", status: "pass" }),
         expect.objectContaining({
-          id: "credentials.store",
-          status: "fail",
-          message: expect.stringContaining("permissions 644 are too open"),
+          id: 'profile.configuration',
+          status: 'pass',
         }),
         expect.objectContaining({
-          id: "management.credentials",
-          status: "skipped",
-          message: "Blocked by secret store.",
+          id: 'credentials.store',
+          status: 'fail',
+          message: expect.stringContaining('permissions 644 are too open'),
         }),
-      ]),
+        expect.objectContaining({
+          id: 'management.credentials',
+          status: 'skipped',
+          message: 'Blocked by secret store.',
+        }),
+      ])
     );
   });
 
-  test("reports a stale active profile instead of selecting the default", async () => {
-    kvSet(configFile(), "active_profile", "missing");
+  test('reports a stale active profile instead of selecting the default', async () => {
+    kvSet(configFile(), 'active_profile', 'missing');
 
-    const harness = await runCommandWithTestRuntime(["doctor", "--offline"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+    const harness = await runCommandWithTestRuntime(['doctor', '--offline']);
+    const report = JSON.parse(harness.stdout[0] ?? '');
 
     expect(report).toMatchObject({
       healthy: false,
-      profile: "missing",
+      profile: 'missing',
       summary: { passed: 1, failed: 1, skipped: 5 },
     });
     expect(report.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "profile.configuration",
-          status: "fail",
-          message: "Profile not found: missing",
+          id: 'profile.configuration',
+          status: 'fail',
+          message: 'Profile not found: missing',
         }),
         expect.objectContaining({
-          id: "credentials.store",
-          status: "skipped",
-          message: "Blocked by profile.",
+          id: 'credentials.store',
+          status: 'skipped',
+          message: 'Blocked by profile.',
         }),
-      ]),
+      ])
     );
   });
 
-  test("rejects malformed successful API responses", async () => {
-    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+  test('rejects malformed successful API responses', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: true,
+      agent: false,
+    });
     await runWithCliRuntime(runtime, async () => {
-      await configureRunSet({ apiKey: "atm_test", env: "production" });
-      await configureRunSet({ user: "alice", password: "secret" });
+      await configureRunSet({ apiKey: 'atm_test', env: 'production' });
+      await configureRunSet({ user: 'alice', password: 'secret' });
     });
     writeFileSync(
       mockFile,
       JSON.stringify([
-        { urlPattern: "/whoami", method: "GET", body: "{}" },
-        { urlPattern: "/query", method: "POST", body: "{}" },
-      ]),
+        { urlPattern: '/whoami', method: 'GET', body: '{}' },
+        { urlPattern: '/query', method: 'POST', body: '{}' },
+      ])
     );
 
-    const harness = await runCommandWithTestRuntime(["doctor"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+    const harness = await runCommandWithTestRuntime(['doctor']);
+    const report = JSON.parse(harness.stdout[0] ?? '');
 
     expect(report).toMatchObject({
       healthy: false,
@@ -182,75 +201,96 @@ describe("doctor command", () => {
     expect(report.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "management.api",
-          status: "fail",
-          code: "parse_error",
-          details: "Expected principal and organization objects.",
+          id: 'management.api',
+          status: 'fail',
+          code: 'parse_error',
+          details: 'Expected principal and organization objects.',
         }),
         expect.objectContaining({
-          id: "lakehouse.api",
-          status: "fail",
-          code: "parse_error",
-          details: "Expected SELECT 1 to return the numeric value 1.",
+          id: 'lakehouse.api',
+          status: 'fail',
+          code: 'parse_error',
+          details: 'Expected SELECT 1 to return the numeric value 1.',
         }),
-      ]),
+      ])
     );
     const remediation = report.checks.flatMap(
-      (check: { remediation?: string[] }) => check.remediation ?? [],
+      (check: { remediation?: string[] }) => check.remediation ?? []
     );
     expect(remediation).toContain(
-      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`
     );
     expect(remediation).toContain(
-      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`
     );
-    expect(remediation).not.toContain("Run: altertable login");
-    expect(remediation.every((line: string) => !line.includes("--scope"))).toBe(true);
+    expect(remediation).not.toContain('Run: altertable login');
+    expect(remediation.every((line: string) => !line.includes('--scope'))).toBe(
+      true
+    );
   });
 
-  test("renders non-interactive remediation when stdin is not a TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-    const harness = await runCommandWithTestRuntime(["doctor", "--offline"], {
+  test('renders non-interactive remediation when stdin is not a TTY', async () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: false,
+      configurable: true,
+    });
+    const harness = await runCommandWithTestRuntime(['doctor', '--offline'], {
       debug: false,
       json: false,
       agent: false,
       noColor: true,
     });
 
-    expect(harness.stdout[0]).toContain("ALTERTABLE CLI DOCTOR");
-    expect(harness.stdout[0]).toContain("--api-key-stdin --env <name>");
-    expect(harness.stdout[0]).toContain("--user <username> --password-stdin");
-    expect(harness.stdout[0]).toContain("ALTERTABLE_API_KEY and ALTERTABLE_ENV");
-    expect(harness.stdout[0]).not.toContain("altertable login");
-    expect(harness.stdout[0]).not.toContain("--scope");
-    expect(harness.stdout[0]).toContain("Result: unhealthy");
+    expect(harness.stdout[0]).toContain('ALTERTABLE CLI DOCTOR');
+    expect(harness.stdout[0]).toContain('--api-key-stdin --env <name>');
+    expect(harness.stdout[0]).toContain('--user <username> --password-stdin');
+    expect(harness.stdout[0]).toContain(
+      'ALTERTABLE_API_KEY and ALTERTABLE_ENV'
+    );
+    expect(harness.stdout[0]).not.toContain('altertable login');
+    expect(harness.stdout[0]).not.toContain('--scope');
+    expect(harness.stdout[0]).toContain('Result: unhealthy');
   });
 
-  test("preserves login-first remediation for an interactive human terminal", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
-    const harness = await runCommandWithTestRuntime(["doctor", "--offline"], {
+  test('preserves login-first remediation for an interactive human terminal', async () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: true,
+      configurable: true,
+    });
+    const harness = await runCommandWithTestRuntime(['doctor', '--offline'], {
       debug: false,
       json: false,
       agent: false,
       noColor: true,
     });
 
-    expect(harness.stdout[0]).toContain("Run: altertable login");
-    expect(harness.stdout[0]).toContain("altertable profile configure --scope management");
-    expect(harness.stdout[0]).toContain("altertable profile configure --scope lakehouse");
+    expect(harness.stdout[0]).toContain('Run: altertable login');
+    expect(harness.stdout[0]).toContain(
+      'altertable profile configure --scope management'
+    );
+    expect(harness.stdout[0]).toContain(
+      'altertable profile configure --scope lakehouse'
+    );
   });
 
-  test("uses non-interactive remediation for agent output even with a TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
-    const harness = await runCommandWithTestRuntime(["--agent", "doctor", "--offline"]);
-    const report = JSON.parse(harness.stdout[0] ?? "");
+  test('uses non-interactive remediation for agent output even with a TTY', async () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: true,
+      configurable: true,
+    });
+    const harness = await runCommandWithTestRuntime([
+      '--agent',
+      'doctor',
+      '--offline',
+    ]);
+    const report = JSON.parse(harness.stdout[0] ?? '');
     const remediation = report.checks.flatMap(
-      (check: { remediation?: string[] }) => check.remediation ?? [],
+      (check: { remediation?: string[] }) => check.remediation ?? []
     );
 
     expect(remediation).toContain(
-      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`
     );
-    expect(remediation).not.toContain("Run: altertable login");
+    expect(remediation).not.toContain('Run: altertable login');
   });
 });

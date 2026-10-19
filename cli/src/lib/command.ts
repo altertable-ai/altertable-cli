@@ -1,13 +1,23 @@
-import type { ExecutionContext } from "@/lib/execution-context.ts";
-import type { CliRuntime, OutputSink } from "@/lib/runtime.ts";
+import type { ExecutionContext } from '@/lib/execution-context.ts';
+import type { CliRuntime, OutputSink } from '@/lib/runtime.ts';
 
 export type Resolvable<T> = T | Promise<T> | (() => T | Promise<T>);
-export const POSITIONAL_COMPLETION_KINDS = ["finite", "file", "freeform"] as const;
-export type PositionalCompletionKind = (typeof POSITIONAL_COMPLETION_KINDS)[number];
-export const COMMAND_FLAG_SCOPES = ["root-only", "global", "command"] as const;
+export const POSITIONAL_COMPLETION_KINDS = [
+  'finite',
+  'file',
+  'freeform',
+] as const;
+export type PositionalCompletionKind =
+  (typeof POSITIONAL_COMPLETION_KINDS)[number];
+export const COMMAND_FLAG_SCOPES = ['root-only', 'global', 'command'] as const;
 export type CommandFlagScope = (typeof COMMAND_FLAG_SCOPES)[number];
-export type CommandInvocationKind = "direct" | "subcommand";
-export const COMMAND_ARGUMENT_TYPES = ["boolean", "string", "enum", "positional"] as const;
+export type CommandInvocationKind = 'direct' | 'subcommand';
+export const COMMAND_ARGUMENT_TYPES = [
+  'boolean',
+  'string',
+  'enum',
+  'positional',
+] as const;
 export type CommandArgumentType = (typeof COMMAND_ARGUMENT_TYPES)[number];
 
 export type CommandArgument = {
@@ -18,7 +28,7 @@ export type CommandArgument = {
   default?: unknown;
   options?: readonly string[];
   values?: readonly string[];
-  completion?: Exclude<PositionalCompletionKind, "finite">;
+  completion?: Exclude<PositionalCompletionKind, 'finite'>;
   directRequired?: boolean;
   flagScope?: CommandFlagScope;
   valueHint?: string;
@@ -27,11 +37,12 @@ export type CommandArgument = {
 
 export type CommandArguments = Record<string, CommandArgument>;
 export const ALTERTABLE_COMMAND_GROUPS = [
-  { id: "platform", title: "Platform" },
-  { id: "ingest", title: "Ingest" },
-  { id: "query", title: "Query" },
+  { id: 'platform', title: 'Platform' },
+  { id: 'ingest', title: 'Ingest' },
+  { id: 'query', title: 'Query' },
 ] as const;
-export type AltertableCommandGroup = (typeof ALTERTABLE_COMMAND_GROUPS)[number]["id"];
+export type AltertableCommandGroup =
+  (typeof ALTERTABLE_COMMAND_GROUPS)[number]['id'];
 
 export type CommandMetadata = {
   name?: string;
@@ -44,8 +55,12 @@ export type CommandMetadata = {
 };
 
 type ParsedArgumentValue = string | boolean | string[] | undefined;
-export type ParsedCommandArguments<T extends CommandArguments = CommandArguments> = {
-  [K in keyof T]: T[K] extends { type: "boolean" } ? boolean | undefined : ParsedArgumentValue;
+export type ParsedCommandArguments<
+  T extends CommandArguments = CommandArguments,
+> = {
+  [K in keyof T]: T[K] extends { type: 'boolean' }
+    ? boolean | undefined
+    : ParsedArgumentValue;
 } & Record<string, ParsedArgumentValue>;
 
 export type CommandRunContext<T extends CommandArguments = CommandArguments> = {
@@ -72,30 +87,34 @@ export type CommandDefinition<T extends CommandArguments = CommandArguments> = {
    */
   soleDirectOperands?: readonly string[];
   run?: (
-    context: CommandRunContext<T>,
+    context: CommandRunContext<T>
   ) => void | CommandRunResult | Promise<void | CommandRunResult>;
 };
 
 export type Command = CommandDefinition<any>;
 
-export function defineArguments<const T extends CommandArguments>(commandArguments: T): T {
+export function defineArguments<const T extends CommandArguments>(
+  commandArguments: T
+): T {
   return commandArguments;
 }
 
-export function defineCommand<const T extends CommandArguments = CommandArguments>(
-  definition: CommandDefinition<T>,
-): CommandDefinition<T> {
+export function defineCommand<
+  const T extends CommandArguments = CommandArguments,
+>(definition: CommandDefinition<T>): CommandDefinition<T> {
   return definition;
 }
 
-export function commandArgumentValues(argument: CommandArgument): readonly string[] {
+export function commandArgumentValues(
+  argument: CommandArgument
+): readonly string[] {
   if (argument.values) return argument.values;
-  if (argument.type === "enum" && argument.options) return argument.options;
+  if (argument.type === 'enum' && argument.options) return argument.options;
   return [];
 }
 
 export async function resolveCommandValue<T>(value: Resolvable<T>): Promise<T> {
-  if (typeof value === "function") {
+  if (typeof value === 'function') {
     return await (value as () => T | Promise<T>)();
   }
   return await value;

@@ -1,4 +1,4 @@
-import { sleep } from "@/lib/sleep.ts";
+import { sleep } from '@/lib/sleep.ts';
 
 export const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 500;
@@ -6,10 +6,16 @@ export const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 export function isRetryableMethod(method: string): boolean {
   const normalizedMethod = method.toUpperCase();
-  return normalizedMethod === "GET" || normalizedMethod === "HEAD" || normalizedMethod === "DELETE";
+  return (
+    normalizedMethod === 'GET' ||
+    normalizedMethod === 'HEAD' ||
+    normalizedMethod === 'DELETE'
+  );
 }
 
-export function parseRetryAfterMs(headerValue: string | null): number | undefined {
+export function parseRetryAfterMs(
+  headerValue: string | null
+): number | undefined {
   if (!headerValue) {
     return undefined;
   }
@@ -29,7 +35,10 @@ export function parseRetryAfterMs(headerValue: string | null): number | undefine
   return undefined;
 }
 
-export function computeRetryDelayMs(attemptIndex: number, retryAfterHeader: string | null): number {
+export function computeRetryDelayMs(
+  attemptIndex: number,
+  retryAfterHeader: string | null
+): number {
   const retryAfterMs = parseRetryAfterMs(retryAfterHeader);
   if (retryAfterMs !== undefined) {
     return retryAfterMs;
@@ -47,7 +56,7 @@ export function shouldRetryHttpRequest(
   options: HttpRetryOptions,
   status: number,
   attemptIndex: number,
-  maxAttempts: number,
+  maxAttempts: number
 ): boolean {
   if (attemptIndex >= maxAttempts - 1) {
     return false;
@@ -66,7 +75,7 @@ export function shouldRetryHttpRequest(
 
 export async function delayBeforeHttpRetry(
   attemptIndex: number,
-  retryAfterHeader: string | null,
+  retryAfterHeader: string | null
 ): Promise<void> {
   const delayMs = computeRetryDelayMs(attemptIndex, retryAfterHeader);
   await sleep(delayMs);

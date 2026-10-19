@@ -1,88 +1,105 @@
 #!/usr/bin/env bun
-import { VERSION } from "@/version.ts";
-import { getCliContext, getBootstrapCliContext, isJsonOutput, setCliContext } from "@/context.ts";
-import { createCliRuntime, setCliRuntime } from "@/lib/runtime.ts";
-import { mergeGlobalFlagsFromArgs, parseGlobalOutputFlags } from "@/lib/global-flags.ts";
-import { buildTopLevelCommands } from "@/commands/index.ts";
+import { VERSION } from '@/version.ts';
+import {
+  getCliContext,
+  getBootstrapCliContext,
+  isJsonOutput,
+  setCliContext,
+} from '@/context.ts';
+import { createCliRuntime, setCliRuntime } from '@/lib/runtime.ts';
+import {
+  mergeGlobalFlagsFromArgs,
+  parseGlobalOutputFlags,
+} from '@/lib/global-flags.ts';
+import { buildTopLevelCommands } from '@/commands/index.ts';
 import {
   CliError,
   EXIT_SUCCESS,
   getCliExitCode,
   isCommandParseError,
   shouldShowCommandExamplesOnError,
-} from "@/lib/errors.ts";
-import { renderCliError, renderCliErrorDetails, renderCliErrorJson } from "@/ui/error.ts";
-import { defineArguments, defineCommand, type Command } from "@/lib/command.ts";
-import { executeCommand, resolveCommandSelection } from "@/lib/command-parser.ts";
+} from '@/lib/errors.ts';
+import {
+  renderCliError,
+  renderCliErrorDetails,
+  renderCliErrorJson,
+} from '@/ui/error.ts';
+import { defineArguments, defineCommand, type Command } from '@/lib/command.ts';
+import {
+  executeCommand,
+  resolveCommandSelection,
+} from '@/lib/command-parser.ts';
 import {
   resolveSubCommandForUsage,
   showAltertableUsage,
   showCommandExamplesForArgs,
-} from "@/lib/usage.ts";
-import { findEarlyBootstrapExit } from "@/lib/early-bootstrap.ts";
-import { applyTerminalColorFromContext } from "@/ui/terminal/styles.ts";
-import { maybeShowUpdateNotice } from "@/lib/updater.ts";
-import { validateEnvironment } from "@/lib/env.ts";
+} from '@/lib/usage.ts';
+import { findEarlyBootstrapExit } from '@/lib/early-bootstrap.ts';
+import { applyTerminalColorFromContext } from '@/ui/terminal/styles.ts';
+import { maybeShowUpdateNotice } from '@/lib/updater.ts';
+import { validateEnvironment } from '@/lib/env.ts';
 
 const ROOT_ARGS = defineArguments({
   help: {
-    type: "boolean",
-    alias: "h",
-    description: "Show this help",
-    flagScope: "global",
+    type: 'boolean',
+    alias: 'h',
+    description: 'Show this help',
+    flagScope: 'global',
   },
   version: {
-    type: "boolean",
-    alias: "v",
-    description: "Show the Altertable CLI version",
-    flagScope: "root-only",
+    type: 'boolean',
+    alias: 'v',
+    description: 'Show the Altertable CLI version',
+    flagScope: 'root-only',
   },
   debug: {
-    type: "boolean",
-    alias: "d",
-    description: "Enable debug output",
-    flagScope: "global",
+    type: 'boolean',
+    alias: 'd',
+    description: 'Enable debug output',
+    flagScope: 'global',
   },
   json: {
-    type: "boolean",
-    description: "Machine-readable JSON output",
-    flagScope: "global",
+    type: 'boolean',
+    description: 'Machine-readable JSON output',
+    flagScope: 'global',
   },
   agent: {
-    type: "boolean",
-    description: "Agent-friendly preset: structured JSON output, no pager or terminal styling",
-    flagScope: "global",
+    type: 'boolean',
+    description:
+      'Agent-friendly preset: structured JSON output, no pager or terminal styling',
+    flagScope: 'global',
   },
-  "no-agent": {
-    type: "boolean",
-    description: "Disable agent mode, including automatic detection",
-    flagScope: "global",
+  'no-agent': {
+    type: 'boolean',
+    description: 'Disable agent mode, including automatic detection',
+    flagScope: 'global',
   },
-  "no-color": {
-    type: "boolean",
-    description: "Disable terminal colors and styling",
-    flagScope: "global",
+  'no-color': {
+    type: 'boolean',
+    description: 'Disable terminal colors and styling',
+    flagScope: 'global',
   },
   profile: {
-    type: "string",
-    description: "Use a named profile for this command only",
-    flagScope: "global",
+    type: 'string',
+    description: 'Use a named profile for this command only',
+    flagScope: 'global',
   },
-  "connect-timeout": {
-    type: "string",
-    description: "HTTP connect timeout in seconds (default 5)",
-    flagScope: "global",
+  'connect-timeout': {
+    type: 'string',
+    description: 'HTTP connect timeout in seconds (default 5)',
+    flagScope: 'global',
   },
-  "read-timeout": {
-    type: "string",
-    description: "HTTP read timeout in seconds (default 60; 0 = no limit for streams)",
-    flagScope: "global",
-  },
-  "ignore-ssl-errors": {
-    type: "boolean",
+  'read-timeout': {
+    type: 'string',
     description:
-      "Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers)",
-    flagScope: "global",
+      'HTTP read timeout in seconds (default 60; 0 = no limit for streams)',
+    flagScope: 'global',
+  },
+  'ignore-ssl-errors': {
+    type: 'boolean',
+    description:
+      'Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers)',
+    flagScope: 'global',
   },
 });
 
@@ -93,13 +110,13 @@ export function buildMainCommand(): Command {
 
   mainCommand = defineCommand({
     metadata: {
-      name: "altertable",
+      name: 'altertable',
       description: `Altertable CLI v${VERSION} • Query and manage your data platform from the terminal.`,
       examples: [
-        "altertable profile configure",
-        "altertable profile show",
-        "altertable api route",
-        "altertable api /environments/production/databases",
+        'altertable profile configure',
+        'altertable profile show',
+        'altertable api route',
+        'altertable api /environments/production/databases',
         'altertable query "SELECT * FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"',
       ],
     },
@@ -150,24 +167,30 @@ async function bootstrap(): Promise<number> {
     setCliContext(earlyContext);
 
     const earlyExit = findEarlyBootstrapExit(rawArgs);
-    if (earlyExit?.id === "help") {
+    if (earlyExit?.id === 'help') {
       const [command, parent] = await resolveSubCommandForUsage(main, rawArgs);
       await showAltertableUsage(command, parent, main);
       await maybeShowUpdateNotice({
         context: getCliContext(),
-        commandName: (await resolveCommandSelection(main, rawArgs)).commandPath.at(0) ?? "help",
+        commandName:
+          (await resolveCommandSelection(main, rawArgs)).commandPath.at(0) ??
+          'help',
       });
       return EXIT_SUCCESS;
     }
 
-    if (earlyExit?.id === "version") {
+    if (earlyExit?.id === 'version') {
       console.log(VERSION);
       return EXIT_SUCCESS;
     }
 
     validateEnvironment();
     const selection = await executeCommand(main, rawArgs);
-    if (selection.command !== main && !selection.command.run && selection.command.subcommands) {
+    if (
+      selection.command !== main &&
+      !selection.command.run &&
+      selection.command.subcommands
+    ) {
       await showAltertableUsage(selection.command, selection.parent, main);
     }
     await maybeShowUpdateNotice({
@@ -183,7 +206,10 @@ async function bootstrap(): Promise<number> {
       if (showExamplesOnHumanOutput) {
         await showAltertableUsage(command, parent);
       }
-    } else if (showExamplesOnHumanOutput && shouldShowCommandExamplesOnError(error)) {
+    } else if (
+      showExamplesOnHumanOutput &&
+      shouldShowCommandExamplesOnError(error)
+    ) {
       await showCommandExamplesForArgs(main, rawArgs);
     }
     return handleCliError(error);
@@ -191,7 +217,7 @@ async function bootstrap(): Promise<number> {
 }
 
 if (import.meta.main) {
-  void bootstrap().then((exitCode) => {
+  void bootstrap().then(exitCode => {
     process.exitCode = exitCode;
   });
 }

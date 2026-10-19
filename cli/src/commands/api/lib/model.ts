@@ -1,5 +1,5 @@
-import { OPENAPI_OPERATIONS } from "@/generated/openapi-operations.ts";
-import { CliError } from "@/lib/errors.ts";
+import { OPENAPI_OPERATIONS } from '@/generated/openapi-operations.ts';
+import { CliError } from '@/lib/errors.ts';
 
 const PATH_PARAMETER_PATTERN = /\{([^}]+)\}/g;
 
@@ -19,11 +19,13 @@ export type ApiOperationDetails = {
 };
 
 export function extractPathParameters(path: string): string[] {
-  return [...path.matchAll(PATH_PARAMETER_PATTERN)].map((match) => String(match[1]));
+  return [...path.matchAll(PATH_PARAMETER_PATTERN)].map(match =>
+    String(match[1])
+  );
 }
 
 export function apiRouteRows(): ApiRouteRow[] {
-  return OPENAPI_OPERATIONS.map((operation) => ({
+  return OPENAPI_OPERATIONS.map(operation => ({
     method: operation.method,
     path: operation.path,
     operationId: operation.operationId,
@@ -32,7 +34,9 @@ export function apiRouteRows(): ApiRouteRow[] {
 }
 
 export function apiOperationDetails(operationId: string): ApiOperationDetails {
-  const operation = OPENAPI_OPERATIONS.find((candidate) => candidate.operationId === operationId);
+  const operation = OPENAPI_OPERATIONS.find(
+    candidate => candidate.operationId === operationId
+  );
   if (!operation) {
     throw new CliError(`Unknown API operation: ${operationId}`);
   }

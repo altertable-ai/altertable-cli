@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { afterEach, describe, expect, test } from 'bun:test';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import {
   assertReleaseTag,
   assertToolchain,
@@ -18,8 +18,8 @@ import {
   stageCommandReferenceAssets,
   SUPPORTED_BUN_RUNTIME_RANGE,
   writeReleaseMetadata,
-} from "@/../scripts/release.ts";
-import { NPM_BUNDLE_PATH } from "@/../scripts/npm-bundle.ts";
+} from '@/../scripts/release.ts';
+import { NPM_BUNDLE_PATH } from '@/../scripts/npm-bundle.ts';
 import {
   githubReleasePublishCommand,
   githubReleaseUploadCommand,
@@ -31,9 +31,9 @@ import {
   releaseAssetNames,
   readReleaseAssetPaths,
   SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
-} from "@/../scripts/publish-release.ts";
-import { UpdaterConfig } from "@/lib/updater-config.ts";
-import { releaseAssetName } from "@/lib/updater.ts";
+} from '@/../scripts/publish-release.ts';
+import { UpdaterConfig } from '@/lib/updater-config.ts';
+import { releaseAssetName } from '@/lib/updater.ts';
 import {
   RELEASE_BUNDLE_ASSET,
   RELEASE_CHECKSUMS_ASSET,
@@ -42,11 +42,11 @@ import {
   RELEASE_METADATA_ASSET,
   RELEASE_TARGETS,
   releaseCiMatrix,
-} from "@/../scripts/release-manifest.ts";
-import { VERSION } from "@/version.ts";
+} from '@/../scripts/release-manifest.ts';
+import { VERSION } from '@/version.ts';
 
 const temporaryDirectories: string[] = [];
-const repositoryRoot = join(import.meta.dir, "../..");
+const repositoryRoot = join(import.meta.dir, '../..');
 
 type WorkflowStep = {
   env?: Record<string, unknown>;
@@ -68,14 +68,17 @@ type Workflow = {
   jobs: Record<string, WorkflowJob>;
   on?: {
     workflow_dispatch?: {
-      inputs?: Record<string, { description?: string; required?: boolean; type?: string }>;
+      inputs?: Record<
+        string,
+        { description?: string; required?: boolean; type?: string }
+      >;
     };
   };
 };
 
 async function readWorkflow(name: string): Promise<Workflow> {
   return Bun.YAML.parse(
-    await readFile(join(repositoryRoot, ".github/workflows", name), "utf8"),
+    await readFile(join(repositoryRoot, '.github/workflows', name), 'utf8')
   ) as Workflow;
 }
 
@@ -85,55 +88,55 @@ function workflowNeeds(job: WorkflowJob): string[] {
 }
 
 function workflowStepIndex(job: WorkflowJob, name: string): number {
-  return job.steps?.findIndex((step) => step.name === name) ?? -1;
+  return job.steps?.findIndex(step => step.name === name) ?? -1;
 }
 
 async function fileSha256(path: string): Promise<string> {
-  const hasher = new Bun.CryptoHasher("sha256");
+  const hasher = new Bun.CryptoHasher('sha256');
   hasher.update(await Bun.file(path).arrayBuffer());
-  return hasher.digest("hex");
+  return hasher.digest('hex');
 }
 
 afterEach(async () => {
   await Promise.all(
     temporaryDirectories
       .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
+      .map(directory => rm(directory, { recursive: true, force: true }))
   );
 });
 
-describe("release target manifest", () => {
-  test("defines unique updater-compatible targets and artifacts", () => {
+describe('release target manifest', () => {
+  test('defines unique updater-compatible targets and artifacts', () => {
     expect(RELEASE_TARGETS).toHaveLength(4);
-    expect(new Set(RELEASE_TARGETS.map((target) => target.bunTarget)).size).toBe(
-      RELEASE_TARGETS.length,
+    expect(new Set(RELEASE_TARGETS.map(target => target.bunTarget)).size).toBe(
+      RELEASE_TARGETS.length
     );
-    expect(new Set(RELEASE_TARGETS.map((target) => target.platform)).size).toBe(
-      RELEASE_TARGETS.length,
+    expect(new Set(RELEASE_TARGETS.map(target => target.platform)).size).toBe(
+      RELEASE_TARGETS.length
     );
-    expect(new Set(RELEASE_TARGETS.map((target) => target.asset)).size).toBe(
-      RELEASE_TARGETS.length,
+    expect(new Set(RELEASE_TARGETS.map(target => target.asset)).size).toBe(
+      RELEASE_TARGETS.length
     );
-    expect(RELEASE_TARGETS.find((target) => target.platform === "linux-x64")?.bunTarget).toBe(
-      "bun-linux-x64-baseline",
-    );
+    expect(
+      RELEASE_TARGETS.find(target => target.platform === 'linux-x64')?.bunTarget
+    ).toBe('bun-linux-x64-baseline');
     expect(Object.keys(UpdaterConfig.releasePlatforms).sort()).toEqual(
-      RELEASE_TARGETS.map((target) => target.platform).sort(),
+      RELEASE_TARGETS.map(target => target.platform).sort()
     );
     for (const target of RELEASE_TARGETS) {
       expect(releaseAssetName(target.platform)).toBe(target.asset);
     }
-    expect(RELEASE_TARGETS.map((target) => target.asset).sort()).toEqual([
-      "altertable-darwin-arm64",
-      "altertable-darwin-x64",
-      "altertable-linux-arm64",
-      "altertable-linux-x64",
+    expect(RELEASE_TARGETS.map(target => target.asset).sort()).toEqual([
+      'altertable-darwin-arm64',
+      'altertable-darwin-x64',
+      'altertable-linux-arm64',
+      'altertable-linux-x64',
     ]);
   });
 
-  test("generates the complete GitHub Actions matrix", () => {
+  test('generates the complete GitHub Actions matrix', () => {
     expect(releaseCiMatrix()).toEqual({
-      include: RELEASE_TARGETS.map((target) => ({
+      include: RELEASE_TARGETS.map(target => ({
         target: target.bunTarget,
         artifact: target.asset,
         runner: target.runner,
@@ -141,47 +144,60 @@ describe("release target manifest", () => {
     });
   });
 
-  test("uses supported runner images for every release target", () => {
-    expect(RELEASE_TARGETS.find(({ platform }) => platform === "darwin-arm64")?.runner).toBe(
-      "macos-15",
-    );
-    expect(RELEASE_TARGETS.map(({ runner }) => runner)).not.toContain("macos-14");
-  });
-
-  test("detects native targets without changing public asset names", () => {
-    expect(nativeReleaseTarget("darwin", "arm64").asset).toBe("altertable-darwin-arm64");
-    expect(nativeReleaseTarget("linux", "x64").asset).toBe("altertable-linux-x64");
-    expect(() => nativeReleaseTarget("win32", "x64")).toThrow(
-      "Unsupported native release platform: win32-x64.",
+  test('uses supported runner images for every release target', () => {
+    expect(
+      RELEASE_TARGETS.find(({ platform }) => platform === 'darwin-arm64')
+        ?.runner
+    ).toBe('macos-15');
+    expect(RELEASE_TARGETS.map(({ runner }) => runner)).not.toContain(
+      'macos-14'
     );
   });
 
-  test("signs and verifies macOS release binaries", () => {
-    const darwinTarget = RELEASE_TARGETS.find(({ platform }) => platform === "darwin-arm64")!;
-    const linuxTarget = RELEASE_TARGETS.find(({ platform }) => platform === "linux-arm64")!;
-    const executable = "/tmp/altertable-test-binary";
+  test('detects native targets without changing public asset names', () => {
+    expect(nativeReleaseTarget('darwin', 'arm64').asset).toBe(
+      'altertable-darwin-arm64'
+    );
+    expect(nativeReleaseTarget('linux', 'x64').asset).toBe(
+      'altertable-linux-x64'
+    );
+    expect(() => nativeReleaseTarget('win32', 'x64')).toThrow(
+      'Unsupported native release platform: win32-x64.'
+    );
+  });
+
+  test('signs and verifies macOS release binaries', () => {
+    const darwinTarget = RELEASE_TARGETS.find(
+      ({ platform }) => platform === 'darwin-arm64'
+    )!;
+    const linuxTarget = RELEASE_TARGETS.find(
+      ({ platform }) => platform === 'linux-arm64'
+    )!;
+    const executable = '/tmp/altertable-test-binary';
 
     expect(darwinSignatureCommand(darwinTarget, executable)).toEqual([
-      "codesign",
-      "--force",
-      "--sign",
-      "-",
-      "--timestamp=none",
+      'codesign',
+      '--force',
+      '--sign',
+      '-',
+      '--timestamp=none',
       executable,
     ]);
     expect(signatureVerificationCommand(darwinTarget, executable)).toEqual([
-      "codesign",
-      "--verify",
-      "--strict",
+      'codesign',
+      '--verify',
+      '--strict',
       executable,
     ]);
     expect(darwinSignatureCommand(linuxTarget, executable)).toBeUndefined();
-    expect(signatureVerificationCommand(linuxTarget, executable)).toBeUndefined();
+    expect(
+      signatureVerificationCommand(linuxTarget, executable)
+    ).toBeUndefined();
   });
 });
 
-describe("release toolchain contract", () => {
-  test("pins the build toolchain without raising the package runtime floor", async () => {
+describe('release toolchain contract', () => {
+  test('pins the build toolchain without raising the package runtime floor', async () => {
     const contract = await readToolchainContract();
 
     expect(contract.bunVersion).toBe(Bun.version);
@@ -191,63 +207,72 @@ describe("release toolchain contract", () => {
     expect(await assertToolchain()).toEqual(contract);
     let error: unknown;
     try {
-      await assertToolchain("0.0.0");
+      await assertToolchain('0.0.0');
     } catch (cause) {
       error = cause;
     }
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      `Release builds require Bun ${contract.bunVersion}; received 0.0.0.`,
+      `Release builds require Bun ${contract.bunVersion}; received 0.0.0.`
     );
   });
 
-  test("requires release tags to match the CLI version", () => {
+  test('requires release tags to match the CLI version', () => {
     expect(expectedReleaseTag).toBe(`v${VERSION}`);
     expect(() => assertReleaseTag(expectedReleaseTag)).not.toThrow();
-    expect(() => assertReleaseTag("v0.0.0")).toThrow(
-      `Release tag must be ${expectedReleaseTag}; received v0.0.0.`,
+    expect(() => assertReleaseTag('v0.0.0')).toThrow(
+      `Release tag must be ${expectedReleaseTag}; received v0.0.0.`
     );
   });
 
-  test("uses hardened standalone compiler flags", () => {
+  test('uses hardened standalone compiler flags', () => {
     const target = RELEASE_TARGETS[0];
-    const command = compileCommand(target, "/tmp/altertable-test-binary");
+    const command = compileCommand(target, '/tmp/altertable-test-binary');
 
-    expect(command).toContain("--compile");
-    expect(command).toContain("--minify");
-    expect(command).toContain("--bytecode");
-    expect(command).toContain("--reject-unresolved");
-    expect(command).toContain("--no-compile-autoload-dotenv");
-    expect(command).toContain("--no-compile-autoload-bunfig");
+    expect(command).toContain('--compile');
+    expect(command).toContain('--minify');
+    expect(command).toContain('--bytecode');
+    expect(command).toContain('--reject-unresolved');
+    expect(command).toContain('--no-compile-autoload-dotenv');
+    expect(command).toContain('--no-compile-autoload-bunfig');
     expect(command).toContain(`--target=${target.bunTarget}`);
-    expect(command).toContain("--outfile=/tmp/altertable-test-binary");
-    expect(new Set(HARDENED_COMPILE_FLAGS).size).toBe(HARDENED_COMPILE_FLAGS.length);
+    expect(command).toContain('--outfile=/tmp/altertable-test-binary');
+    expect(new Set(HARDENED_COMPILE_FLAGS).size).toBe(
+      HARDENED_COMPILE_FLAGS.length
+    );
   });
 });
 
-describe("release metadata", () => {
-  test("writes a complete, checksummed release inventory atomically", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "altertable-release-test-"));
+describe('release metadata', () => {
+  test('writes a complete, checksummed release inventory atomically', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'altertable-release-test-'));
     temporaryDirectories.push(directory);
     for (const target of RELEASE_TARGETS) {
       await Bun.write(join(directory, target.asset), target.bunTarget);
     }
-    await Bun.write(join(directory, RELEASE_BUNDLE_ASSET), "console.log('altertable');\n");
+    await Bun.write(
+      join(directory, RELEASE_BUNDLE_ASSET),
+      "console.log('altertable');\n"
+    );
 
     const metadata = await writeReleaseMetadata(directory);
     const onDisk = JSON.parse(
-      await readFile(join(directory, RELEASE_METADATA_ASSET), "utf8"),
+      await readFile(join(directory, RELEASE_METADATA_ASSET), 'utf8')
     ) as typeof metadata;
-    const checksums = await readFile(join(directory, RELEASE_CHECKSUMS_ASSET), "utf8");
+    const checksums = await readFile(
+      join(directory, RELEASE_CHECKSUMS_ASSET),
+      'utf8'
+    );
     const checksumEntries = new Map(
       checksums
         .trim()
-        .split("\n")
-        .map((line) => {
+        .split('\n')
+        .map(line => {
           const [digest, file] = line.split(/\s+/, 2);
-          if (!digest || !file) throw new Error(`Invalid checksum line: ${line}`);
+          if (!digest || !file)
+            throw new Error(`Invalid checksum line: ${line}`);
           return [file, digest] as const;
-        }),
+        })
     );
 
     expect(metadata.schemaVersion).toBe(RELEASE_MANIFEST_SCHEMA_VERSION);
@@ -260,57 +285,72 @@ describe("release metadata", () => {
       expect(artifact.bytes).toBeGreaterThan(0);
       expect(artifact.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(checksumEntries.get(artifact.file)).toBe(
-        await fileSha256(join(directory, artifact.file)),
+        await fileSha256(join(directory, artifact.file))
       );
     }
     for (const target of RELEASE_TARGETS) {
-      const artifact = metadata.artifacts.find(({ file }) => file === target.asset);
+      const artifact = metadata.artifacts.find(
+        ({ file }) => file === target.asset
+      );
       expect(artifact?.recipe).toEqual({
-        builder: "bun-build-executable",
+        builder: 'bun-build-executable',
         bunVersion: Bun.version,
         target: target.bunTarget,
         flags: HARDENED_COMPILE_FLAGS,
       });
     }
-    expect(metadata.artifacts.find(({ kind }) => kind === "javascript")?.recipe).toEqual({
-      builder: "bun-build",
+    expect(
+      metadata.artifacts.find(({ kind }) => kind === 'javascript')?.recipe
+    ).toEqual({
+      builder: 'bun-build',
       bunVersion: Bun.version,
       ...JAVASCRIPT_BUNDLE_OPTIONS,
     });
     const documentationArtifacts = metadata.artifacts.filter(
-      ({ kind }) => kind === "documentation",
+      ({ kind }) => kind === 'documentation'
     );
     expect(documentationArtifacts).toHaveLength(2);
     for (const artifact of documentationArtifacts) {
       expect(artifact.recipe).toEqual({
-        builder: "command-reference",
+        builder: 'command-reference',
         schemaVersion: 1,
       });
-      expect(await readFile(join(directory, artifact.file), "utf8")).toBe(
-        await readFile(join(repositoryRoot, artifact.file), "utf8"),
+      expect(await readFile(join(directory, artifact.file), 'utf8')).toBe(
+        await readFile(join(repositoryRoot, artifact.file), 'utf8')
       );
     }
     expect(checksumEntries.get(RELEASE_METADATA_ASSET)).toBe(
-      await fileSha256(join(directory, RELEASE_METADATA_ASSET)),
+      await fileSha256(join(directory, RELEASE_METADATA_ASSET))
     );
-    expect([...checksumEntries.keys()].sort((left, right) => left.localeCompare(right))).toEqual(
-      [...metadata.artifacts.map(({ file }) => file), RELEASE_METADATA_ASSET].sort((left, right) =>
-        left.localeCompare(right),
-      ),
+    expect(
+      [...checksumEntries.keys()].sort((left, right) =>
+        left.localeCompare(right)
+      )
+    ).toEqual(
+      [
+        ...metadata.artifacts.map(({ file }) => file),
+        RELEASE_METADATA_ASSET,
+      ].sort((left, right) => left.localeCompare(right))
     );
   });
 
-  test("stages the exact npm bundle as the GitHub JavaScript asset", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "altertable-release-bundle-test-"));
+  test('stages the exact npm bundle as the GitHub JavaScript asset', async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), 'altertable-release-bundle-test-')
+    );
     temporaryDirectories.push(directory);
 
     const releaseBundle = await buildJavaScriptBundle(directory);
 
-    expect(await fileSha256(releaseBundle)).toBe(await fileSha256(NPM_BUNDLE_PATH));
+    expect(await fileSha256(releaseBundle)).toBe(
+      await fileSha256(NPM_BUNDLE_PATH)
+    );
   });
 
-  test("stages version-matched CLI reference assets", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "altertable-release-reference-test-"));
+  test('stages version-matched CLI reference assets', async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), 'altertable-release-reference-test-')
+    );
     temporaryDirectories.push(directory);
 
     const artifacts = await stageCommandReferenceAssets(directory);
@@ -321,72 +361,94 @@ describe("release metadata", () => {
     ]);
     for (const artifact of artifacts) {
       expect(await fileSha256(join(directory, artifact.file))).toBe(
-        await fileSha256(join(repositoryRoot, artifact.file)),
+        await fileSha256(join(repositoryRoot, artifact.file))
       );
     }
   });
 });
 
-describe("retry-safe npm publication", () => {
-  test("distinguishes published versions, missing versions, and registry failures", () => {
-    expect(parseNpmVersionLookup(0, '"1.1.0"\n', "")).toEqual({
-      status: "published",
-      version: "1.1.0",
+describe('retry-safe npm publication', () => {
+  test('distinguishes published versions, missing versions, and registry failures', () => {
+    expect(parseNpmVersionLookup(0, '"1.1.0"\n', '')).toEqual({
+      status: 'published',
+      version: '1.1.0',
     });
-    expect(parseNpmVersionLookup(1, "", "npm error code E404")).toEqual({ status: "missing" });
-    expect(() => parseNpmVersionLookup(1, "", "network timeout")).toThrow(
-      "npm view failed (1): network timeout",
+    expect(parseNpmVersionLookup(1, '', 'npm error code E404')).toEqual({
+      status: 'missing',
+    });
+    expect(() => parseNpmVersionLookup(1, '', 'network timeout')).toThrow(
+      'npm view failed (1): network timeout'
     );
-    expect(npmPublicationRequired({ status: "missing" }, "1.1.0")).toBe(true);
-    expect(npmPublicationRequired({ status: "published", version: "1.1.0" }, "1.1.0")).toBe(false);
+    expect(npmPublicationRequired({ status: 'missing' }, '1.1.0')).toBe(true);
+    expect(
+      npmPublicationRequired({ status: 'published', version: '1.1.0' }, '1.1.0')
+    ).toBe(false);
     expect(() =>
-      npmPublicationRequired({ status: "published", version: "1.0.0" }, "1.1.0"),
-    ).toThrow("npm returned version 1.0.0; expected 1.1.0");
+      npmPublicationRequired({ status: 'published', version: '1.0.0' }, '1.1.0')
+    ).toThrow('npm returned version 1.0.0; expected 1.1.0');
   });
 
-  test("requires tokenless GitHub OIDC and a compatible npm CLI before publishing", () => {
+  test('requires tokenless GitHub OIDC and a compatible npm CLI before publishing', () => {
     const oidcEnvironment = {
-      ACTIONS_ID_TOKEN_REQUEST_TOKEN: "ephemeral-token",
-      ACTIONS_ID_TOKEN_REQUEST_URL: "https://actions.example.test/oidc",
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'ephemeral-token',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://actions.example.test/oidc',
     };
 
     expect(() =>
-      assertTrustedPublishingEnvironment(oidcEnvironment, MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION),
+      assertTrustedPublishingEnvironment(
+        oidcEnvironment,
+        MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION
+      )
     ).not.toThrow();
     expect(() =>
       assertTrustedPublishingEnvironment(
-        { ...oidcEnvironment, NODE_AUTH_TOKEN: SETUP_NODE_AUTH_TOKEN_PLACEHOLDER },
-        MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION,
-      ),
+        {
+          ...oidcEnvironment,
+          NODE_AUTH_TOKEN: SETUP_NODE_AUTH_TOKEN_PLACEHOLDER,
+        },
+        MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION
+      )
     ).not.toThrow();
-    expect(() => assertTrustedPublishingEnvironment(oidcEnvironment, "12.0.0")).not.toThrow();
-    expect(() => assertTrustedPublishingEnvironment(oidcEnvironment, "11.5.0")).toThrow(
-      `npm trusted publishing requires npm >=${MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION}`,
+    expect(() =>
+      assertTrustedPublishingEnvironment(oidcEnvironment, '12.0.0')
+    ).not.toThrow();
+    expect(() =>
+      assertTrustedPublishingEnvironment(oidcEnvironment, '11.5.0')
+    ).toThrow(
+      `npm trusted publishing requires npm >=${MINIMUM_TRUSTED_PUBLISHING_NPM_VERSION}`
     );
-    expect(() => assertTrustedPublishingEnvironment({}, "12.0.0")).toThrow(
-      "npm trusted publishing requires GitHub Actions OIDC credentials",
+    expect(() => assertTrustedPublishingEnvironment({}, '12.0.0')).toThrow(
+      'npm trusted publishing requires GitHub Actions OIDC credentials'
     );
     expect(() =>
       assertTrustedPublishingEnvironment(
-        { ...oidcEnvironment, NODE_AUTH_TOKEN: "secret" },
-        "12.0.0",
-      ),
-    ).toThrow("npm publishing must use OIDC");
-    expect(() =>
-      assertTrustedPublishingEnvironment({ ...oidcEnvironment, NPM_TOKEN: "secret" }, "12.0.0"),
-    ).toThrow("npm publishing must use OIDC");
+        { ...oidcEnvironment, NODE_AUTH_TOKEN: 'secret' },
+        '12.0.0'
+      )
+    ).toThrow('npm publishing must use OIDC');
     expect(() =>
       assertTrustedPublishingEnvironment(
-        { ...oidcEnvironment, NODE_AUTH_TOKEN: `${SETUP_NODE_AUTH_TOKEN_PLACEHOLDER}-modified` },
-        "12.0.0",
-      ),
-    ).toThrow("npm publishing must use OIDC");
+        { ...oidcEnvironment, NPM_TOKEN: 'secret' },
+        '12.0.0'
+      )
+    ).toThrow('npm publishing must use OIDC');
+    expect(() =>
+      assertTrustedPublishingEnvironment(
+        {
+          ...oidcEnvironment,
+          NODE_AUTH_TOKEN: `${SETUP_NODE_AUTH_TOKEN_PLACEHOLDER}-modified`,
+        },
+        '12.0.0'
+      )
+    ).toThrow('npm publishing must use OIDC');
   });
 });
 
-describe("GitHub release publication", () => {
-  test("uploads the complete manifest-owned asset set before publishing the draft", async () => {
-    const releaseDirectory = await mkdtemp(join(tmpdir(), "altertable-release-upload-test-"));
+describe('GitHub release publication', () => {
+  test('uploads the complete manifest-owned asset set before publishing the draft', async () => {
+    const releaseDirectory = await mkdtemp(
+      join(tmpdir(), 'altertable-release-upload-test-')
+    );
     temporaryDirectories.push(releaseDirectory);
     const assetNames = [
       ...RELEASE_TARGETS.map(({ asset }) => asset),
@@ -396,26 +458,28 @@ describe("GitHub release publication", () => {
       RELEASE_METADATA_ASSET,
       RELEASE_CHECKSUMS_ASSET,
     ];
-    for (const asset of assetNames) await Bun.write(join(releaseDirectory, asset), asset);
+    for (const asset of assetNames)
+      await Bun.write(join(releaseDirectory, asset), asset);
     await Bun.write(
       join(releaseDirectory, RELEASE_METADATA_ASSET),
       JSON.stringify({
-        tag: "v1.1.0",
+        tag: 'v1.1.0',
         artifacts: [
           ...RELEASE_TARGETS.map(({ asset }) => ({ file: asset })),
           { file: RELEASE_BUNDLE_ASSET },
           { file: RELEASE_CLI_REFERENCE_ASSET },
           { file: RELEASE_CLI_REFERENCE_SCHEMA_ASSET },
         ],
-      }),
+      })
     );
 
-    const assetPaths = await readReleaseAssetPaths(releaseDirectory, "v1.1.0");
-    const upload = githubReleaseUploadCommand("v1.1.0", assetPaths);
-    const publish = githubReleasePublishCommand("v1.1.0");
+    const assetPaths = await readReleaseAssetPaths(releaseDirectory, 'v1.1.0');
+    const upload = githubReleaseUploadCommand('v1.1.0', assetPaths);
+    const publish = githubReleasePublishCommand('v1.1.0');
 
-    expect(upload.slice(0, 4)).toEqual(["gh", "release", "upload", "v1.1.0"]);
-    for (const target of RELEASE_TARGETS) expect(upload.join("\n")).toContain(target.asset);
+    expect(upload.slice(0, 4)).toEqual(['gh', 'release', 'upload', 'v1.1.0']);
+    for (const target of RELEASE_TARGETS)
+      expect(upload.join('\n')).toContain(target.asset);
     for (const asset of [
       RELEASE_BUNDLE_ASSET,
       RELEASE_CLI_REFERENCE_ASSET,
@@ -423,207 +487,270 @@ describe("GitHub release publication", () => {
       RELEASE_METADATA_ASSET,
       RELEASE_CHECKSUMS_ASSET,
     ]) {
-      expect(upload.join("\n")).toContain(asset);
+      expect(upload.join('\n')).toContain(asset);
     }
-    expect(upload.at(-1)).toBe("--clobber");
-    expect(publish).toEqual(["gh", "release", "edit", "v1.1.0", "--draft=false", "--latest"]);
+    expect(upload.at(-1)).toBe('--clobber');
+    expect(publish).toEqual([
+      'gh',
+      'release',
+      'edit',
+      'v1.1.0',
+      '--draft=false',
+      '--latest',
+    ]);
   });
 
-  test("validates the release package identity and manifest-owned asset names", () => {
-    expect(parsePackageIdentity({ name: "@altertable/cli", version: "1.2.0" }, "v1.2.0")).toEqual({
-      name: "@altertable/cli",
-      version: "1.2.0",
+  test('validates the release package identity and manifest-owned asset names', () => {
+    expect(
+      parsePackageIdentity(
+        { name: '@altertable/cli', version: '1.2.0' },
+        'v1.2.0'
+      )
+    ).toEqual({
+      name: '@altertable/cli',
+      version: '1.2.0',
     });
     expect(() =>
-      parsePackageIdentity({ name: "@altertable/cli", version: "1.2.0" }, "v1.3.0"),
-    ).toThrow("does not match package version");
-    for (const file of ["", ".", "..", "../secret", "nested/secret", "nested\\secret"]) {
-      expect(() => releaseAssetNames({ tag: "v1.2.0", artifacts: [{ file }] }, "v1.2.0")).toThrow(
-        "Unsafe release asset name",
-      );
+      parsePackageIdentity(
+        { name: '@altertable/cli', version: '1.2.0' },
+        'v1.3.0'
+      )
+    ).toThrow('does not match package version');
+    for (const file of [
+      '',
+      '.',
+      '..',
+      '../secret',
+      'nested/secret',
+      'nested\\secret',
+    ]) {
+      expect(() =>
+        releaseAssetNames({ tag: 'v1.2.0', artifacts: [{ file }] }, 'v1.2.0')
+      ).toThrow('Unsafe release asset name');
     }
   });
 });
 
-describe("release infrastructure wiring", () => {
-  test("updates the generated CLI reference version in release PRs", async () => {
+describe('release infrastructure wiring', () => {
+  test('updates the generated CLI reference version in release PRs', async () => {
     const releasePleaseConfig = JSON.parse(
-      await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
+      await readFile(join(repositoryRoot, 'release-please-config.json'), 'utf8')
     ) as {
-      packages: Record<string, { "extra-files"?: unknown[] }>;
+      packages: Record<string, { 'extra-files'?: unknown[] }>;
     };
 
-    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
-      type: "json",
-      path: "cli-reference.json",
-      jsonpath: "$.cliVersion",
+    expect(releasePleaseConfig.packages['.']?.['extra-files']).toContainEqual({
+      type: 'json',
+      path: 'cli-reference.json',
+      jsonpath: '$.cliVersion',
     });
-    expect(releasePleaseConfig.packages["."]?.["extra-files"]).toContainEqual({
-      type: "generic",
-      path: "cli-reference.schema.json",
+    expect(releasePleaseConfig.packages['.']?.['extra-files']).toContainEqual({
+      type: 'generic',
+      path: 'cli-reference.schema.json',
       glob: false,
     });
   });
 
-  test("keeps target literals out of build and workflow orchestration", async () => {
+  test('keeps target literals out of build and workflow orchestration', async () => {
     const files = [
-      "Makefile",
-      ".github/workflows/test.yml",
-      ".github/workflows/release-please.yml",
+      'Makefile',
+      '.github/workflows/test.yml',
+      '.github/workflows/release-please.yml',
     ];
     for (const file of files) {
-      const contents = await readFile(join(repositoryRoot, file), "utf8");
+      const contents = await readFile(join(repositoryRoot, file), 'utf8');
       for (const target of RELEASE_TARGETS) {
         expect(contents).not.toContain(target.bunTarget);
       }
     }
   });
 
-  test("enforces hardened workflow conventions", async () => {
+  test('enforces hardened workflow conventions', async () => {
     const workflows = [
-      "codeql.yml",
-      "dependency-review.yml",
-      "release-please.yml",
-      "semantic-pull-request.yml",
-      "test.yml",
-      "verify.yml",
+      'codeql.yml',
+      'dependency-review.yml',
+      'release-please.yml',
+      'semantic-pull-request.yml',
+      'test.yml',
+      'verify.yml',
     ];
     for (const workflow of workflows) {
-      const contents = await readFile(join(repositoryRoot, ".github/workflows", workflow), "utf8");
-      expect(contents).toContain("permissions:");
-      expect(contents).toContain("timeout-minutes:");
-      expect(contents).not.toContain("runs-on: ubuntu-latest");
-      expect(contents).not.toContain("continue-on-error: true");
+      const contents = await readFile(
+        join(repositoryRoot, '.github/workflows', workflow),
+        'utf8'
+      );
+      expect(contents).toContain('permissions:');
+      expect(contents).toContain('timeout-minutes:');
+      expect(contents).not.toContain('runs-on: ubuntu-latest');
+      expect(contents).not.toContain('continue-on-error: true');
 
-      const actionReferences = [...contents.matchAll(/uses:\s+[^@\s]+@([^\s]+)/g)];
+      const actionReferences = [
+        ...contents.matchAll(/uses:\s+[^@\s]+@([^\s]+)/g),
+      ];
       for (const reference of actionReferences) {
         expect(reference[1]).toMatch(/^[0-9a-f]{40}$/);
       }
-      if (contents.includes("actions/checkout@")) {
-        expect(contents).toContain("persist-credentials: false");
+      if (contents.includes('actions/checkout@')) {
+        expect(contents).toContain('persist-credentials: false');
       }
     }
   });
 
-  test("gates ordered release publication on canonical and native verification", async () => {
-    const workflow = await readWorkflow("release-please.yml");
+  test('gates ordered release publication on canonical and native verification', async () => {
+    const workflow = await readWorkflow('release-please.yml');
     const releasePleaseConfig = JSON.parse(
-      await readFile(join(repositoryRoot, "release-please-config.json"), "utf8"),
+      await readFile(join(repositoryRoot, 'release-please-config.json'), 'utf8')
     ) as { packages: Record<string, { draft?: boolean }> };
-    const preparation = workflow.jobs["release-please"] ?? {};
-    const context = workflow.jobs["release-context"] ?? {};
-    const verification = workflow.jobs["verify-release"] ?? {};
-    const matrix = workflow.jobs["release-matrix"] ?? {};
-    const native = workflow.jobs["release-native"] ?? {};
-    const publication = workflow.jobs["release-artifacts"] ?? {};
+    const preparation = workflow.jobs['release-please'] ?? {};
+    const context = workflow.jobs['release-context'] ?? {};
+    const verification = workflow.jobs['verify-release'] ?? {};
+    const matrix = workflow.jobs['release-matrix'] ?? {};
+    const native = workflow.jobs['release-native'] ?? {};
+    const publication = workflow.jobs['release-artifacts'] ?? {};
 
-    expect(releasePleaseConfig.packages["."]?.draft).toBe(true);
+    expect(releasePleaseConfig.packages['.']?.draft).toBe(true);
     expect(workflow.on?.workflow_dispatch?.inputs?.release_tag).toEqual({
-      description: "Existing draft or assetless release tag to recover (for example, v1.8.0)",
+      description:
+        'Existing draft or assetless release tag to recover (for example, v1.8.0)',
       required: true,
-      type: "string",
+      type: 'string',
     });
     expect(preparation.if).toContain("github.event_name == 'push'");
-    expect(workflowNeeds(context)).toEqual(["release-please"]);
-    expect(context.if).toContain("workflow_dispatch");
-    expect(context.if).toContain("!cancelled()");
-    expect(context.if).not.toContain("always()");
-    expect(context.permissions?.contents).toBe("write");
+    expect(workflowNeeds(context)).toEqual(['release-please']);
+    expect(context.if).toContain('workflow_dispatch');
+    expect(context.if).toContain('!cancelled()');
+    expect(context.if).not.toContain('always()');
+    expect(context.permissions?.contents).toBe('write');
     const contextScript = context.steps?.find(
-      ({ name }) => name === "Resolve automatic or recovery release",
+      ({ name }) => name === 'Resolve automatic or recovery release'
     )?.run;
-    expect(contextScript).toContain("gh api --paginate --slurp");
-    expect(contextScript).toContain("releases?per_page=100");
-    expect(contextScript).toContain("select(.tag_name == $tag)");
-    expect(contextScript).toContain("asset_count=\"$(jq -r '.[0].assets | length'");
-    expect(contextScript).toContain('"${is_draft}" != "true" && "${asset_count}" != "0"');
-    expect(contextScript).toContain("already has assets");
-    expect(contextScript).toContain("git/ref/tags/${RECOVERY_TAG}");
+    expect(contextScript).toContain('gh api --paginate --slurp');
+    expect(contextScript).toContain('releases?per_page=100');
+    expect(contextScript).toContain('select(.tag_name == $tag)');
+    expect(contextScript).toContain(
+      "asset_count=\"$(jq -r '.[0].assets | length'"
+    );
+    expect(contextScript).toContain(
+      '"${is_draft}" != "true" && "${asset_count}" != "0"'
+    );
+    expect(contextScript).toContain('already has assets');
+    expect(contextScript).toContain('git/ref/tags/${RECOVERY_TAG}');
     expect(contextScript).toContain('"${tag_ref}" != "${release_ref}"');
-    expect(contextScript).not.toContain("gh release view");
-    expect(contextScript).toContain("immutable commit SHA");
-    expect(contextScript).toContain("Release recovery must run from refs/heads/main");
-    expect(contextScript).toContain("orchestration_ref=${TRIGGER_SHA}");
-    expect(verification.uses).toBe("./.github/workflows/verify.yml");
-    expect(workflowNeeds(verification)).toEqual(["release-context"]);
-    expect(verification.if).toContain("!cancelled()");
-    expect(verification.if).toContain("needs.release-context.result == 'success'");
-    expect(verification.if).not.toContain("always()");
-    expect(verification.with?.ref).toContain("release_ref");
-    expect(workflowNeeds(matrix)).toEqual(["release-context", "verify-release"]);
-    expect(matrix.if).toContain("!cancelled()");
+    expect(contextScript).not.toContain('gh release view');
+    expect(contextScript).toContain('immutable commit SHA');
+    expect(contextScript).toContain(
+      'Release recovery must run from refs/heads/main'
+    );
+    expect(contextScript).toContain('orchestration_ref=${TRIGGER_SHA}');
+    expect(verification.uses).toBe('./.github/workflows/verify.yml');
+    expect(workflowNeeds(verification)).toEqual(['release-context']);
+    expect(verification.if).toContain('!cancelled()');
+    expect(verification.if).toContain(
+      "needs.release-context.result == 'success'"
+    );
+    expect(verification.if).not.toContain('always()');
+    expect(verification.with?.ref).toContain('release_ref');
+    expect(workflowNeeds(matrix)).toEqual([
+      'release-context',
+      'verify-release',
+    ]);
+    expect(matrix.if).toContain('!cancelled()');
     expect(matrix.if).toContain("needs.release-context.result == 'success'");
     expect(matrix.if).toContain("needs.verify-release.result == 'success'");
-    expect(matrix.if).not.toContain("always()");
-    expect(workflowNeeds(native)).toEqual(["release-context", "verify-release", "release-matrix"]);
-    expect(native.if).toContain("!cancelled()");
+    expect(matrix.if).not.toContain('always()');
+    expect(workflowNeeds(native)).toEqual([
+      'release-context',
+      'verify-release',
+      'release-matrix',
+    ]);
+    expect(native.if).toContain('!cancelled()');
     expect(native.if).toContain("needs.release-context.result == 'success'");
     expect(native.if).toContain("needs.verify-release.result == 'success'");
     expect(native.if).toContain("needs.release-matrix.result == 'success'");
-    expect(native.if).not.toContain("always()");
-    expect(workflowNeeds(publication)).toEqual(["release-context", "release-native"]);
-    expect(publication.if).toContain("!cancelled()");
-    expect(publication.if).toContain("needs.release-context.result == 'success'");
-    expect(publication.if).toContain("needs.release-native.result == 'success'");
-    expect(publication.if).not.toContain("always()");
+    expect(native.if).not.toContain('always()');
+    expect(workflowNeeds(publication)).toEqual([
+      'release-context',
+      'release-native',
+    ]);
+    expect(publication.if).toContain('!cancelled()');
+    expect(publication.if).toContain(
+      "needs.release-context.result == 'success'"
+    );
+    expect(publication.if).toContain(
+      "needs.release-native.result == 'success'"
+    );
+    expect(publication.if).not.toContain('always()');
     const releaseCheckout = publication.steps?.find(
-      ({ name }) => name === "Check out released revision",
+      ({ name }) => name === 'Check out released revision'
     );
     const orchestrationCheckout = publication.steps?.find(
-      ({ name }) => name === "Check out current release orchestration",
+      ({ name }) => name === 'Check out current release orchestration'
     );
-    expect(releaseCheckout?.with?.ref).toContain("release_ref");
-    expect(orchestrationCheckout?.with?.ref).toContain("orchestration_ref");
-    expect(orchestrationCheckout?.with?.path).toBe(".release-orchestration");
-    expect(orchestrationCheckout?.with?.["sparse-checkout"]).toBe(
-      "cli/scripts/publish-release.ts\ncli/src/lib/object.ts\n",
+    expect(releaseCheckout?.with?.ref).toContain('release_ref');
+    expect(orchestrationCheckout?.with?.ref).toContain('orchestration_ref');
+    expect(orchestrationCheckout?.with?.path).toBe('.release-orchestration');
+    expect(orchestrationCheckout?.with?.['sparse-checkout']).toBe(
+      'cli/scripts/publish-release.ts\ncli/src/lib/object.ts\n'
     );
 
     const orderedSteps = [
-      "Download tested release binaries",
-      "Build JavaScript release bundle",
-      "Finalize exact release artifacts",
-      "Smoke test npm bundle on release toolchain",
-      "Install minimum supported npm runtime",
-      "Smoke test exact npm bundle on minimum runtime",
-      "Restore release build toolchain",
-      "Verify release checksums",
-      "Attest release provenance",
-      "Upload release assets",
-      "Publish npm package",
-      "Publish completed GitHub release",
-    ].map((name) => workflowStepIndex(publication, name));
-    expect(orderedSteps.every((index) => index >= 0)).toBe(true);
-    expect(orderedSteps).toEqual([...orderedSteps].sort((left, right) => left - right));
-    expect(publication.steps?.[orderedSteps[5] ?? -1]?.run).toBe(
-      "bun run scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only",
+      'Download tested release binaries',
+      'Build JavaScript release bundle',
+      'Finalize exact release artifacts',
+      'Smoke test npm bundle on release toolchain',
+      'Install minimum supported npm runtime',
+      'Smoke test exact npm bundle on minimum runtime',
+      'Restore release build toolchain',
+      'Verify release checksums',
+      'Attest release provenance',
+      'Upload release assets',
+      'Publish npm package',
+      'Publish completed GitHub release',
+    ].map(name => workflowStepIndex(publication, name));
+    expect(orderedSteps.every(index => index >= 0)).toBe(true);
+    expect(orderedSteps).toEqual(
+      [...orderedSteps].sort((left, right) => left - right)
     );
-    const publishScript = "bun run .release-orchestration/cli/scripts/publish-release.ts";
-    expect(publication.steps?.[orderedSteps[9] ?? -1]?.run).toBe(`${publishScript} upload-github`);
-    expect(publication.steps?.[orderedSteps[10] ?? -1]?.run).toBe(`${publishScript} publish-npm`);
+    expect(publication.steps?.[orderedSteps[5] ?? -1]?.run).toBe(
+      'bun run scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only'
+    );
+    const publishScript =
+      'bun run .release-orchestration/cli/scripts/publish-release.ts';
+    expect(publication.steps?.[orderedSteps[9] ?? -1]?.run).toBe(
+      `${publishScript} upload-github`
+    );
+    expect(publication.steps?.[orderedSteps[10] ?? -1]?.run).toBe(
+      `${publishScript} publish-npm`
+    );
     expect(publication.steps?.[orderedSteps[11] ?? -1]?.run).toBe(
-      `${publishScript} publish-github`,
+      `${publishScript} publish-github`
     );
     for (const index of orderedSteps.slice(9)) {
-      expect(publication.steps?.[index]?.env?.RELEASE_ROOT).toBe("${{ github.workspace }}");
-      expect(publication.steps?.[index]?.env?.RELEASE_TAG).toContain("tag_name");
+      expect(publication.steps?.[index]?.env?.RELEASE_ROOT).toBe(
+        '${{ github.workspace }}'
+      );
+      expect(publication.steps?.[index]?.env?.RELEASE_TAG).toContain(
+        'tag_name'
+      );
     }
   });
 
-  test("builds release publication from only the orchestration checkout", async () => {
-    const workflow = await readWorkflow("release-please.yml");
-    const checkout = workflow.jobs["release-artifacts"]?.steps?.find(
-      ({ name }) => name === "Check out current release orchestration",
+  test('builds release publication from only the orchestration checkout', async () => {
+    const workflow = await readWorkflow('release-please.yml');
+    const checkout = workflow.jobs['release-artifacts']?.steps?.find(
+      ({ name }) => name === 'Check out current release orchestration'
     );
-    const sparseCheckout = checkout?.with?.["sparse-checkout"];
-    if (typeof sparseCheckout !== "string") {
-      throw new Error("Release orchestration sparse checkout is missing");
+    const sparseCheckout = checkout?.with?.['sparse-checkout'];
+    if (typeof sparseCheckout !== 'string') {
+      throw new Error('Release orchestration sparse checkout is missing');
     }
     const paths = sparseCheckout
       .trim()
-      .split("\n")
-      .map((path) => path.trim());
-    const directory = await mkdtemp(join(tmpdir(), "altertable-release-orchestration-test-"));
+      .split('\n')
+      .map(path => path.trim());
+    const directory = await mkdtemp(
+      join(tmpdir(), 'altertable-release-orchestration-test-')
+    );
     try {
       for (const path of paths) {
         const destination = join(directory, path);
@@ -631,9 +758,9 @@ describe("release infrastructure wiring", () => {
         await copyFile(join(repositoryRoot, path), destination);
       }
       const result = await Bun.build({
-        entrypoints: [join(directory, "cli/scripts/publish-release.ts")],
-        outdir: join(directory, "dist"),
-        target: "bun",
+        entrypoints: [join(directory, 'cli/scripts/publish-release.ts')],
+        outdir: join(directory, 'dist'),
+        target: 'bun',
       });
       expect(result.success).toBe(true);
     } finally {
@@ -641,92 +768,120 @@ describe("release infrastructure wiring", () => {
     }
   });
 
-  test("retains recoverable release binaries longer than diagnostic artifacts", async () => {
-    const releaseWorkflow = await readWorkflow("release-please.yml");
-    const verificationWorkflow = await readWorkflow("verify.yml");
-    const branchWorkflow = await readWorkflow("test.yml");
+  test('retains recoverable release binaries longer than diagnostic artifacts', async () => {
+    const releaseWorkflow = await readWorkflow('release-please.yml');
+    const verificationWorkflow = await readWorkflow('verify.yml');
+    const branchWorkflow = await readWorkflow('test.yml');
 
-    const releaseUpload = releaseWorkflow.jobs["release-native"]?.steps?.find(
-      ({ name }) => name === "Upload tested release binary",
+    const releaseUpload = releaseWorkflow.jobs['release-native']?.steps?.find(
+      ({ name }) => name === 'Upload tested release binary'
     );
     const coverageUpload = verificationWorkflow.jobs.repository?.steps?.find(
-      ({ name }) => name === "Upload coverage report",
+      ({ name }) => name === 'Upload coverage report'
     );
     const branchUpload = branchWorkflow.jobs.compile?.steps?.find(
-      ({ name }) => name === "Upload compiled binary",
+      ({ name }) => name === 'Upload compiled binary'
     );
 
-    expect(releaseUpload?.with?.["retention-days"]).toBe(30);
-    expect(coverageUpload?.with?.["retention-days"]).toBe(7);
-    expect(branchUpload?.with?.["retention-days"]).toBe(7);
+    expect(releaseUpload?.with?.['retention-days']).toBe(30);
+    expect(coverageUpload?.with?.['retention-days']).toBe(7);
+    expect(branchUpload?.with?.['retention-days']).toBe(7);
   });
 
-  test("publishes npm through trusted publishing without a long-lived token", async () => {
-    const workflow = await readWorkflow("release-please.yml");
-    const publication = workflow.jobs["release-artifacts"] ?? {};
-    const publishStep = publication.steps?.find(({ name }) => name === "Publish npm package");
+  test('publishes npm through trusted publishing without a long-lived token', async () => {
+    const workflow = await readWorkflow('release-please.yml');
+    const publication = workflow.jobs['release-artifacts'] ?? {};
+    const publishStep = publication.steps?.find(
+      ({ name }) => name === 'Publish npm package'
+    );
 
-    expect(publication.permissions?.["id-token"]).toBe("write");
-    expect(publishStep?.run).toContain(".release-orchestration/cli/scripts/publish-release.ts");
+    expect(publication.permissions?.['id-token']).toBe('write');
+    expect(publishStep?.run).toContain(
+      '.release-orchestration/cli/scripts/publish-release.ts'
+    );
     expect(publishStep?.env?.NODE_AUTH_TOKEN).toBeUndefined();
     expect(publishStep?.env?.NPM_TOKEN).toBeUndefined();
     expect(
-      await readFile(join(repositoryRoot, ".github/workflows/release-please.yml"), "utf8"),
-    ).not.toContain("NPM_TOKEN");
+      await readFile(
+        join(repositoryRoot, '.github/workflows/release-please.yml'),
+        'utf8'
+      )
+    ).not.toContain('NPM_TOKEN');
   });
 
-  test("pins the integration image and waits for its TCP listener", async () => {
-    const workflow = await readFile(join(repositoryRoot, ".github/workflows/verify.yml"), "utf8");
+  test('pins the integration image and waits for its TCP listener', async () => {
+    const workflow = await readFile(
+      join(repositoryRoot, '.github/workflows/verify.yml'),
+      'utf8'
+    );
 
     expect(workflow).toContain(
-      "ghcr.io/altertable-ai/altertable-mock@sha256:2e85cecd30b582a28196fc7574b2c7ae323378ccf40abfe658e2692270799977",
+      'ghcr.io/altertable-ai/altertable-mock@sha256:2e85cecd30b582a28196fc7574b2c7ae323378ccf40abfe658e2692270799977'
     );
-    expect(workflow).toContain("/dev/tcp/127.0.0.1/15000");
-    expect(workflow).not.toContain("altertable-mock:latest");
+    expect(workflow).toContain('/dev/tcp/127.0.0.1/15000');
+    expect(workflow).not.toContain('altertable-mock:latest');
     expect(workflow).not.toContain('--health-cmd "exit 0"');
   });
 
   test("keeps the Bun 1.1 runtime path free of Bun's newer YAML API", async () => {
     const packageJson = JSON.parse(
-      await readFile(join(repositoryRoot, "cli/package.json"), "utf8"),
+      await readFile(join(repositoryRoot, 'cli/package.json'), 'utf8')
     ) as { dependencies: Record<string, string>; engines: { bun: string } };
-    const openapiSpec = await readFile(join(repositoryRoot, "cli/src/lib/openapi-spec.ts"), "utf8");
+    const openapiSpec = await readFile(
+      join(repositoryRoot, 'cli/src/lib/openapi-spec.ts'),
+      'utf8'
+    );
 
     expect(packageJson.engines.bun).toBe(SUPPORTED_BUN_RUNTIME_RANGE);
-    expect(packageJson.dependencies.yaml).toBe("2.9.0");
-    expect(openapiSpec).not.toContain("Bun.YAML");
+    expect(packageJson.dependencies.yaml).toBe('2.9.0');
+    expect(openapiSpec).not.toContain('Bun.YAML');
 
-    const verification = await readWorkflow("verify.yml");
-    const runtimeJob = verification.jobs["npm-runtime"] ?? {};
+    const verification = await readWorkflow('verify.yml');
+    const runtimeJob = verification.jobs['npm-runtime'] ?? {};
     expect(
-      runtimeJob.steps?.find(({ name }) => name === "Install minimum supported runtime"),
+      runtimeJob.steps?.find(
+        ({ name }) => name === 'Install minimum supported runtime'
+      )
     ).toEqual(
-      expect.objectContaining({ uses: expect.stringMatching(/^oven-sh\/setup-bun@[0-9a-f]{40}$/) }),
+      expect.objectContaining({
+        uses: expect.stringMatching(/^oven-sh\/setup-bun@[0-9a-f]{40}$/),
+      })
     );
     expect(
-      runtimeJob.steps?.find(({ name }) => name === "Smoke test npm bundle on minimum runtime")
-        ?.run,
-    ).toBe("bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only");
+      runtimeJob.steps?.find(
+        ({ name }) => name === 'Smoke test npm bundle on minimum runtime'
+      )?.run
+    ).toBe(
+      'bun run cli/scripts/smoke-npm-bundle.ts --expected-bun=1.1.0 --scaffold-only'
+    );
   });
 
-  test("routes branch CI through the same canonical verification workflow", async () => {
-    const workflow = await readWorkflow("test.yml");
+  test('routes branch CI through the same canonical verification workflow', async () => {
+    const workflow = await readWorkflow('test.yml');
     const verification = workflow.jobs.verify ?? {};
     const required = workflow.jobs.required ?? {};
 
-    expect(verification.uses).toBe("./.github/workflows/verify.yml");
-    expect(verification.with?.ref).toContain("github.sha");
-    expect(workflowNeeds(workflow.jobs["release-matrix"] ?? {})).toContain("verify");
-    expect(workflowNeeds(workflow.jobs.compile ?? {})).toContain("verify");
-    expect(required.name).toBe("Required");
-    expect(required.if).toBe("always()");
-    expect(workflowNeeds(required)).toEqual(["verify", "release-matrix", "compile"]);
+    expect(verification.uses).toBe('./.github/workflows/verify.yml');
+    expect(verification.with?.ref).toContain('github.sha');
+    expect(workflowNeeds(workflow.jobs['release-matrix'] ?? {})).toContain(
+      'verify'
+    );
+    expect(workflowNeeds(workflow.jobs.compile ?? {})).toContain('verify');
+    expect(required.name).toBe('Required');
+    expect(required.if).toBe('always()');
+    expect(workflowNeeds(required)).toEqual([
+      'verify',
+      'release-matrix',
+      'compile',
+    ]);
 
-    const enforcement = required.steps?.find(({ name }) => name === "Enforce required CI results");
+    const enforcement = required.steps?.find(
+      ({ name }) => name === 'Enforce required CI results'
+    );
     expect(enforcement?.env).toEqual({
-      VERIFY_RESULT: "${{ needs.verify.result }}",
-      RELEASE_MATRIX_RESULT: "${{ needs.release-matrix.result }}",
-      COMPILE_RESULT: "${{ needs.compile.result }}",
+      VERIFY_RESULT: '${{ needs.verify.result }}',
+      RELEASE_MATRIX_RESULT: '${{ needs.release-matrix.result }}',
+      COMPILE_RESULT: '${{ needs.compile.result }}',
     });
     expect(enforcement?.run).toContain('exit "$failed"');
   });

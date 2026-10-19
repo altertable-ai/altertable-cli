@@ -3,8 +3,8 @@ import {
   type CompletionContext,
   type CompletionFlag,
   type CompletionNode,
-} from "@/commands/completion/lib/spec.ts";
-import { aliasFlagToken } from "@/lib/command-descriptor.ts";
+} from '@/commands/completion/lib/spec.ts';
+import { aliasFlagToken } from '@/lib/command-descriptor.ts';
 
 export type CompletionModel = {
   contexts: CompletionContext[];
@@ -22,27 +22,36 @@ export type NormalizedCompletionArgv = {
 };
 
 function flagForms(flag: CompletionFlag): string[] {
-  return flag.alias ? [aliasFlagToken(flag.alias), `--${flag.name}`] : [`--${flag.name}`];
+  return flag.alias
+    ? [aliasFlagToken(flag.alias), `--${flag.name}`]
+    : [`--${flag.name}`];
 }
 
-function allFlags(root: CompletionNode, contexts: readonly CompletionContext[]): CompletionFlag[] {
-  return [...root.flags, ...contexts.flatMap((context) => context.flags)];
+function allFlags(
+  root: CompletionNode,
+  contexts: readonly CompletionContext[]
+): CompletionFlag[] {
+  return [...root.flags, ...contexts.flatMap(context => context.flags)];
 }
 
 function commandEdgeKey(parent: readonly string[], child: string): string {
-  return `${parent.join("/")}|${child}`;
+  return `${parent.join('/')}|${child}`;
 }
 
 export function buildCompletionModel(root: CompletionNode): CompletionModel {
   const contexts = collectCompletionContexts(root);
-  const contextsByPath = new Map(contexts.map((context) => [context.segments.join("/"), context]));
+  const contextsByPath = new Map(
+    contexts.map(context => [context.segments.join('/'), context])
+  );
   const flags = allFlags(root, contexts);
-  const valueFlags = new Set(flags.filter((flag) => flag.takesValue).flatMap(flagForms));
+  const valueFlags = new Set(
+    flags.filter(flag => flag.takesValue).flatMap(flagForms)
+  );
   const booleanFlags = new Set(
     flags
-      .filter((flag) => !flag.takesValue)
+      .filter(flag => !flag.takesValue)
       .flatMap(flagForms)
-      .filter((flag) => !valueFlags.has(flag)),
+      .filter(flag => !valueFlags.has(flag))
   );
   const subcommandEdges = new Set<string>();
   const soleDirectEdges = new Set<string>();
@@ -66,9 +75,14 @@ export function buildCompletionModel(root: CompletionNode): CompletionModel {
   };
 
   for (const context of contexts) {
-    const normalized = normalizeCompletionArgv(model, [...context.segments, "--help"]);
+    const normalized = normalizeCompletionArgv(model, [
+      ...context.segments,
+      '--help',
+    ]);
     if (findCompletionContext(model, normalized.commandPath) !== context) {
-      throw new TypeError(`Invalid completion context: ${context.segments.join(" ")}`);
+      throw new TypeError(
+        `Invalid completion context: ${context.segments.join(' ')}`
+      );
     }
   }
 
@@ -77,7 +91,7 @@ export function buildCompletionModel(root: CompletionNode): CompletionModel {
 
 export function normalizeCompletionArgv(
   model: CompletionModel,
-  tokens: readonly string[],
+  tokens: readonly string[]
 ): NormalizedCompletionArgv {
   const commandPath: string[] = [];
   const positionals: string[] = [];
@@ -91,7 +105,7 @@ export function normalizeCompletionArgv(
     const word = tokens[index];
     if (word === undefined) continue;
 
-    if (!afterSeparator && word === "--") {
+    if (!afterSeparator && word === '--') {
       afterSeparator = true;
       continue;
     }
@@ -105,9 +119,10 @@ export function normalizeCompletionArgv(
     }
     if (
       !afterSeparator &&
-      (isInlineValueOption(model.valueFlags, word) || model.booleanFlags.has(word))
+      (isInlineValueOption(model.valueFlags, word) ||
+        model.booleanFlags.has(word))
     ) {
-      if (ambiguousCommand && (word === "--help" || word === "-h")) {
+      if (ambiguousCommand && (word === '--help' || word === '-h')) {
         ambiguousCommand.helpRequested = true;
       }
       continue;
@@ -152,12 +167,15 @@ export function normalizeCompletionArgv(
 
 export function findCompletionContext(
   model: CompletionModel,
-  commandPath: readonly string[],
+  commandPath: readonly string[]
 ): CompletionContext | undefined {
-  return model.contextsByPath.get(commandPath.join("/"));
+  return model.contextsByPath.get(commandPath.join('/'));
 }
 
-function isInlineValueOption(valueOptions: ReadonlySet<string>, token: string): boolean {
+function isInlineValueOption(
+  valueOptions: ReadonlySet<string>,
+  token: string
+): boolean {
   for (const option of valueOptions) {
     if (token.startsWith(`${option}=`)) return true;
   }

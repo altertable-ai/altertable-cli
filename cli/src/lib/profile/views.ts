@@ -2,8 +2,8 @@ import {
   type ConfigureAuthPlane,
   type ConfigureVerifyResult,
   formatConfigureVerifyRemediation,
-} from "@/lib/profile-status.ts";
-import type { SelectOption } from "@/ui/prompts.ts";
+} from '@/lib/profile-status.ts';
+import type { SelectOption } from '@/ui/prompts.ts';
 import {
   document,
   rows,
@@ -14,24 +14,24 @@ import {
   type DisplayDocument,
   type DisplayRow,
   type DisplayText,
-} from "@/ui/document.ts";
-import { TERMINAL_INDENT } from "@/ui/terminal/spacing.ts";
+} from '@/ui/document.ts';
+import { TERMINAL_INDENT } from '@/ui/terminal/spacing.ts';
 import type {
   ConfigureLakehouseCredential,
   ConfigureManagementCredential,
   ConfigureShowData,
   ProfileInspect,
   ProfileSummary,
-} from "@/lib/profile/model.ts";
-import { isFromEnvProfile } from "@/lib/profile-store.ts";
-import type { ShellExportView } from "@/ui/shell/model.ts";
+} from '@/lib/profile/model.ts';
+import { isFromEnvProfile } from '@/lib/profile-store.ts';
+import type { ShellExportView } from '@/ui/shell/model.ts';
 
-const ACTIVE_PROFILE_MARK = "✓";
-const INACTIVE_PROFILE_MARK = " ";
+const ACTIVE_PROFILE_MARK = '✓';
+const INACTIVE_PROFILE_MARK = ' ';
 const PROFILE_NAME_HEADER = `${INACTIVE_PROFILE_MARK} NAME`;
 
 function linkedUrl(value: string): DisplayText {
-  return /^https?:\/\//.test(value) ? [span(value, "accent", value)] : value;
+  return /^https?:\/\//.test(value) ? [span(value, 'accent', value)] : value;
 }
 
 function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
@@ -40,75 +40,94 @@ function profileInspectRows(profile: ProfileInspect): DisplayRow[] {
   const identityRows: DisplayRow[] = isFromEnvProfile(profile.name)
     ? []
     : [
-        { label: "Profile", value: `${profile.name}${profile.active ? " (active)" : ""}` },
-        { label: "Status", value: profile.status },
+        {
+          label: 'Profile',
+          value: `${profile.name}${profile.active ? ' (active)' : ''}`,
+        },
+        { label: 'Status', value: profile.status },
       ];
   return [
     ...identityRows,
-    { label: "Principal", value: formatProfilePrincipal(profile) },
-    { label: "Organization", value: profile.organization.slug ?? "not set" },
-    { label: "Environment", value: profile.environment ?? "not set" },
-    { label: "Management auth", value: profile.auth.management },
-    { label: "Lakehouse auth", value: profile.auth.lakehouse },
-    { label: "OAuth expires", value: profile.timestamps.oauth_expires_at ?? "not set" },
+    { label: 'Principal', value: formatProfilePrincipal(profile) },
+    { label: 'Organization', value: profile.organization.slug ?? 'not set' },
+    { label: 'Environment', value: profile.environment ?? 'not set' },
+    { label: 'Management auth', value: profile.auth.management },
+    { label: 'Lakehouse auth', value: profile.auth.lakehouse },
     {
-      label: "Lakehouse expires",
-      value: profile.timestamps.lakehouse_expires_at ?? "not set",
+      label: 'OAuth expires',
+      value: profile.timestamps.oauth_expires_at ?? 'not set',
     },
     {
-      label: "Data plane",
-      value: linkedUrl(profile.endpoints.data_plane ?? "default"),
+      label: 'Lakehouse expires',
+      value: profile.timestamps.lakehouse_expires_at ?? 'not set',
     },
     {
-      label: "Control plane",
-      value: linkedUrl(profile.endpoints.control_plane ?? "default"),
+      label: 'Data plane',
+      value: linkedUrl(profile.endpoints.data_plane ?? 'default'),
     },
-    { label: "Config file", value: [span(profile.config_file, "accent")] },
+    {
+      label: 'Control plane',
+      value: linkedUrl(profile.endpoints.control_plane ?? 'default'),
+    },
+    { label: 'Config file', value: [span(profile.config_file, 'accent')] },
   ];
 }
 
-export function buildProfileInspectView(profile: ProfileInspect): DisplayDocument {
+export function buildProfileInspectView(
+  profile: ProfileInspect
+): DisplayDocument {
   if (isFromEnvProfile(profile.name)) {
     return document(
       section(
-        text([`${TERMINAL_INDENT}Configuration set from environment variables`]),
-        rows(profileInspectRows(profile)),
-      ),
+        text([
+          `${TERMINAL_INDENT}Configuration set from environment variables`,
+        ]),
+        rows(profileInspectRows(profile))
+      )
     );
   }
   return document(section(rows(profileInspectRows(profile))));
 }
 
-export function profileInspectNextSteps(profile: ProfileInspect, interactive = true): string[] {
-  if (profile.status === "configured") return [];
-  if (interactive) return ["Run: altertable profile configure"];
+export function profileInspectNextSteps(
+  profile: ProfileInspect,
+  interactive = true
+): string[] {
+  if (profile.status === 'configured') return [];
+  if (interactive) return ['Run: altertable profile configure'];
 
   const nextSteps: string[] = [];
-  if (profile.auth.management === "none") {
+  if (profile.auth.management === 'none') {
     nextSteps.push(
-      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`,
+      `Run: printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>`
     );
   }
-  if (profile.auth.lakehouse === "none") {
+  if (profile.auth.lakehouse === 'none') {
     nextSteps.push(
-      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`,
+      `Run: printf '%s' "$PASSWORD" | altertable profile configure --user <username> --password-stdin`
     );
   }
-  return nextSteps.length > 0 ? nextSteps : ["Run: altertable profile configure"];
+  return nextSteps.length > 0
+    ? nextSteps
+    : ['Run: altertable profile configure'];
 }
 
 export function buildProfileInspectResultView(
   profile: ProfileInspect,
-  interactive = true,
+  interactive = true
 ): DisplayDocument {
   const nextSteps = profileInspectNextSteps(profile, interactive);
   return document(
     ...buildProfileInspectView(profile).sections,
-    ...(nextSteps.length > 0 ? [section(text(["Next steps:", ...nextSteps]))] : []),
+    ...(nextSteps.length > 0
+      ? [section(text(['Next steps:', ...nextSteps]))]
+      : [])
   );
 }
 
-export function profileInspectToJson(profile: ProfileInspect): Record<string, unknown> {
+export function profileInspectToJson(
+  profile: ProfileInspect
+): Record<string, unknown> {
   return { profile, next_steps: profileInspectNextSteps(profile, false) };
 }
 
@@ -123,10 +142,12 @@ function formatProfilePrincipal(profile: ProfileInspect): string {
       ? `${profile.principal.name} (${profile.principal.slug})`
       : profile.principal.slug;
   }
-  return profile.principal.name ?? "not set";
+  return profile.principal.name ?? 'not set';
 }
 
-export function buildProfileListView(profiles: readonly ProfileSummary[]): DisplayDocument {
+export function buildProfileListView(
+  profiles: readonly ProfileSummary[]
+): DisplayDocument {
   return document(
     section(
       table({
@@ -134,55 +155,55 @@ export function buildProfileListView(profiles: readonly ProfileSummary[]): Displ
         columns: [
           {
             header: PROFILE_NAME_HEADER,
-            cell: (profile) => [
+            cell: profile => [
               span(
                 `${profile.active ? ACTIVE_PROFILE_MARK : INACTIVE_PROFILE_MARK} ${profile.name}`,
-                "strong",
+                'strong'
               ),
             ],
           },
           {
-            header: "ORG",
-            cell: (profile) => [span(profile.organization ?? "", "muted")],
+            header: 'ORG',
+            cell: profile => [span(profile.organization ?? '', 'muted')],
           },
           {
-            header: "PRINCIPAL",
-            cell: (profile) => [span(profile.principal ?? "", "muted")],
+            header: 'PRINCIPAL',
+            cell: profile => [span(profile.principal ?? '', 'muted')],
           },
           {
-            header: "ENV",
-            cell: (profile) => [span(profile.management_env ?? "", "muted")],
+            header: 'ENV',
+            cell: profile => [span(profile.management_env ?? '', 'muted')],
           },
           {
-            header: "MGMT",
-            cell: (profile) => [span(profile.management_auth ?? "", "string")],
+            header: 'MGMT',
+            cell: profile => [span(profile.management_auth ?? '', 'string')],
           },
           {
-            header: "LAKEHOUSE",
-            cell: (profile) => [span(profile.lakehouse_auth ?? "", "string")],
+            header: 'LAKEHOUSE',
+            cell: profile => [span(profile.lakehouse_auth ?? '', 'string')],
           },
           {
-            header: "OAUTH EXPIRES",
-            cell: (profile) => [span(profile.oauth_expires_at ?? "", "muted")],
+            header: 'OAUTH EXPIRES',
+            cell: profile => [span(profile.oauth_expires_at ?? '', 'muted')],
           },
           {
-            header: "STATUS",
-            cell: (profile) => [span(profile.status ?? "", "accent")],
+            header: 'STATUS',
+            cell: profile => [span(profile.status ?? '', 'accent')],
           },
           {
-            header: "DATA PLANE",
-            cell: (profile) => linkedUrl(profile.data_plane ?? ""),
+            header: 'DATA PLANE',
+            cell: profile => linkedUrl(profile.data_plane ?? ''),
           },
         ],
-        emptyMessage: "No profiles configured.",
-      }),
-    ),
+        emptyMessage: 'No profiles configured.',
+      })
+    )
   );
 }
 
 export function profileSwitchOption(profile: ProfileSummary): SelectOption {
   const details = [
-    profile.active && "active",
+    profile.active && 'active',
     profile.organization && `org: ${profile.organization}`,
     profile.management_env && `env: ${profile.management_env}`,
     profile.principal && `principal: ${profile.principal}`,
@@ -191,11 +212,16 @@ export function profileSwitchOption(profile: ProfileSummary): SelectOption {
   ].filter((detail): detail is string => Boolean(detail));
   return {
     value: profile.name,
-    label: details.length > 0 ? `${profile.name} (${details.join(", ")})` : profile.name,
+    label:
+      details.length > 0
+        ? `${profile.name} (${details.join(', ')})`
+        : profile.name,
   };
 }
 
-export function buildProfileShellExportView(profileName: string): ShellExportView {
+export function buildProfileShellExportView(
+  profileName: string
+): ShellExportView {
   return {
     env: { ALTERTABLE_PROFILE: profileName },
   };
@@ -207,44 +233,51 @@ export type ProfileStatusResult = {
 };
 
 function verificationPlaneLabel(plane: ConfigureAuthPlane): string {
-  return plane === "management" ? "Management:" : "Lakehouse:";
+  return plane === 'management' ? 'Management:' : 'Lakehouse:';
 }
 
 function verificationSummary(result: ConfigureVerifyResult): string {
   if (result.configured.length === 0) {
-    return "no credentials configured";
+    return 'no credentials configured';
   }
   if (result.errors.length === 0) {
-    return "verified";
+    return 'verified';
   }
-  return `failed (${result.errors.map((error) => error.plane).join(", ")})`;
+  return `failed (${result.errors.map(error => error.plane).join(', ')})`;
 }
 
 function verificationRows(result: ConfigureVerifyResult): DisplayRow[] {
-  const summary: DisplayRow = { label: "Verification:", value: verificationSummary(result) };
-  const planes: DisplayRow[] = result.configured.map((plane) => ({
+  const summary: DisplayRow = {
+    label: 'Verification:',
+    value: verificationSummary(result),
+  };
+  const planes: DisplayRow[] = result.configured.map(plane => ({
     label: verificationPlaneLabel(plane),
-    value: result.verified[plane] ? "verified" : "failed",
+    value: result.verified[plane] ? 'verified' : 'failed',
     level: 1,
   }));
   return [summary, ...planes];
 }
 
-export function buildProfileStatusView(result: ProfileStatusResult): DisplayDocument {
+export function buildProfileStatusView(
+  result: ProfileStatusResult
+): DisplayDocument {
   const errors = result.verification.errors.map(
-    (error) =>
-      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane, result.verification.profile)}`,
+    error =>
+      `  ${error.plane}: ${error.message}\n  ${formatConfigureVerifyRemediation(error.plane, result.verification.profile)}`
   );
   return document(
     ...buildProfileInspectView(result.profile).sections,
     section(
       rows(verificationRows(result.verification)),
-      ...(errors.length > 0 ? [text(errors)] : []),
-    ),
+      ...(errors.length > 0 ? [text(errors)] : [])
+    )
   );
 }
 
-export function profileStatusToJson(result: ProfileStatusResult): Record<string, unknown> {
+export function profileStatusToJson(
+  result: ProfileStatusResult
+): Record<string, unknown> {
   return {
     profile: result.profile,
     verification: {
@@ -257,96 +290,120 @@ export function profileStatusToJson(result: ProfileStatusResult): Record<string,
 
 function timestampMsDisplay(raw: string | undefined): string {
   if (!raw) {
-    return "";
+    return '';
   }
   const ms = Number.parseInt(raw, 10);
-  return Number.isNaN(ms) ? "" : new Date(ms).toLocaleString();
+  return Number.isNaN(ms) ? '' : new Date(ms).toLocaleString();
 }
 
-function organizationDisplay(organization: ConfigureShowData["organization"]): string {
+function organizationDisplay(
+  organization: ConfigureShowData['organization']
+): string {
   const organizationSlug = organization.slug;
   const organizationName = organization.name;
   return organizationName && organizationSlug
     ? `${organizationName} (${organizationSlug})`
-    : (organizationName ?? organizationSlug ?? "");
+    : (organizationName ?? organizationSlug ?? '');
 }
 
 function managementCredentialRows(
   credential: ConfigureManagementCredential,
-  organization: ConfigureShowData["organization"],
+  organization: ConfigureShowData['organization']
 ): DisplayRow[] {
   if (!credential.configured) {
     return [];
   }
-  if (credential.source === "environment") {
+  if (credential.source === 'environment') {
     return [
-      { label: "Authentication:", value: "management API key (environment)" },
-      { label: "source:", value: "ALTERTABLE_API_KEY", level: 1 },
-      { label: "environment:", value: credential.environment ?? "unset", level: 1 },
+      { label: 'Authentication:', value: 'management API key (environment)' },
+      { label: 'source:', value: 'ALTERTABLE_API_KEY', level: 1 },
+      {
+        label: 'environment:',
+        value: credential.environment ?? 'unset',
+        level: 1,
+      },
     ];
   }
-  if (credential.mechanism === "management_oauth") {
+  if (credential.mechanism === 'management_oauth') {
     const rows: DisplayRow[] = [
-      { label: "Authentication:", value: "browser login (OAuth)" },
-      { label: "Environment:", value: credential.environment ?? "none", level: 1 },
+      { label: 'Authentication:', value: 'browser login (OAuth)' },
+      {
+        label: 'Environment:',
+        value: credential.environment ?? 'none',
+        level: 1,
+      },
     ];
     const displayOrganization = organizationDisplay(organization);
     if (displayOrganization) {
-      rows.push({ label: "Organization:", value: displayOrganization, level: 1 });
+      rows.push({
+        label: 'Organization:',
+        value: displayOrganization,
+        level: 1,
+      });
     }
     const expires = timestampMsDisplay(credential.expires);
     if (expires) {
-      rows.push({ label: "Expires:", value: expires, level: 1 });
+      rows.push({ label: 'Expires:', value: expires, level: 1 });
     }
     return rows;
   }
   return [
-    { label: "Authentication:", value: "management API key" },
-    { label: "environment:", value: credential.environment ?? "", level: 1 },
-    { label: "api key:", value: credential.api_key ?? "set", level: 1 },
+    { label: 'Authentication:', value: 'management API key' },
+    { label: 'environment:', value: credential.environment ?? '', level: 1 },
+    { label: 'api key:', value: credential.api_key ?? 'set', level: 1 },
   ];
 }
 
-function lakehouseCredentialRows(credential: ConfigureLakehouseCredential): DisplayRow[] {
+function lakehouseCredentialRows(
+  credential: ConfigureLakehouseCredential
+): DisplayRow[] {
   if (!credential.configured) {
     return [];
   }
-  if (credential.mechanism === "lakehouse_basic_token") {
+  if (credential.mechanism === 'lakehouse_basic_token') {
     const rows: DisplayRow[] = [
       {
-        label: "Authentication:",
+        label: 'Authentication:',
         value:
-          credential.source === "environment"
-            ? "lakehouse Basic token (environment)"
-            : "lakehouse Basic token",
+          credential.source === 'environment'
+            ? 'lakehouse Basic token (environment)'
+            : 'lakehouse Basic token',
       },
     ];
-    if (credential.source === "environment") {
-      rows.push({ label: "source:", value: "ALTERTABLE_BASIC_AUTH_TOKEN", level: 1 });
+    if (credential.source === 'environment') {
+      rows.push({
+        label: 'source:',
+        value: 'ALTERTABLE_BASIC_AUTH_TOKEN',
+        level: 1,
+      });
     } else {
-      rows.push({ label: "basic token:", value: credential.basic_token ?? "set", level: 1 });
+      rows.push({
+        label: 'basic token:',
+        value: credential.basic_token ?? 'set',
+        level: 1,
+      });
       const expires = timestampMsDisplay(credential.expires);
       if (expires) {
-        rows.push({ label: "expires:", value: expires, level: 1 });
+        rows.push({ label: 'expires:', value: expires, level: 1 });
       }
     }
     return rows;
   }
   return [
     {
-      label: "Authentication:",
+      label: 'Authentication:',
       value:
-        credential.source === "environment"
-          ? "lakehouse username/password (environment)"
-          : "lakehouse username/password",
+        credential.source === 'environment'
+          ? 'lakehouse username/password (environment)'
+          : 'lakehouse username/password',
     },
-    { label: "user:", value: credential.user ?? "", level: 1 },
+    { label: 'user:', value: credential.user ?? '', level: 1 },
     {
-      label: credential.source === "environment" ? "source:" : "password:",
+      label: credential.source === 'environment' ? 'source:' : 'password:',
       value:
-        credential.source === "environment"
-          ? "ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD"
-          : (credential.password ?? "set"),
+        credential.source === 'environment'
+          ? 'ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD'
+          : (credential.password ?? 'set'),
       level: 1,
     },
   ];
@@ -354,14 +411,16 @@ function lakehouseCredentialRows(credential: ConfigureLakehouseCredential): Disp
 
 export function configureAuthenticationRows(
   data: ConfigureShowData,
-  planes: readonly ConfigureAuthPlane[] | undefined,
+  planes: readonly ConfigureAuthPlane[] | undefined
 ): DisplayRow[] {
   const includePlane = (plane: ConfigureAuthPlane): boolean =>
     planes === undefined || planes.includes(plane);
   return [
-    ...(includePlane("management")
+    ...(includePlane('management')
       ? managementCredentialRows(data.credentials.management, data.organization)
       : []),
-    ...(includePlane("lakehouse") ? lakehouseCredentialRows(data.credentials.lakehouse) : []),
+    ...(includePlane('lakehouse')
+      ? lakehouseCredentialRows(data.credentials.lakehouse)
+      : []),
   ];
 }

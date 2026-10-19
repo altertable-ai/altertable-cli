@@ -1,6 +1,6 @@
-import type { ExecutionContext } from "@/lib/execution-context.ts";
+import type { ExecutionContext } from '@/lib/execution-context.ts';
 
-export type DoctorCheckStatus = "pass" | "warn" | "fail" | "skipped";
+export type DoctorCheckStatus = 'pass' | 'warn' | 'fail' | 'skipped';
 
 export type DoctorCheckResult = {
   id: string;
@@ -34,13 +34,15 @@ export type DoctorCheckContext = {
   interactive: boolean;
 };
 
-export type DoctorCheckOutcome = Omit<DoctorCheckResult, "id" | "label">;
+export type DoctorCheckOutcome = Omit<DoctorCheckResult, 'id' | 'label'>;
 
 export type DoctorCheck = {
   id: string;
   label: string;
   requires?: readonly string[];
   skip?: (context: DoctorCheckContext) => string | undefined;
-  run: (context: DoctorCheckContext) => DoctorCheckOutcome | Promise<DoctorCheckOutcome>;
+  run: (
+    context: DoctorCheckContext
+  ) => DoctorCheckOutcome | Promise<DoctorCheckOutcome>;
   remediation?: (context: DoctorCheckContext) => string[];
 };
