@@ -424,7 +424,7 @@ describe("NDJSON engine error records", () => {
 });
 
 describe("streamed parse line numbers", () => {
-  test.each(['{}\n["v"]\n[1]\n\nnot-json', "{}\n\n[1]\n \nnot-json"])(
+  test.each(['{}\n["v"]\n[1]\n\nnot-json', '{}\n{"v":1}\n\n \nnot-json'])(
     "counts empty and whitespace-only lines: %s",
     async (body) => {
       let bufferedFailure: unknown;
@@ -433,7 +433,7 @@ describe("streamed parse line numbers", () => {
       } catch (error) {
         bufferedFailure = error;
       }
-      const stream = new Response(body).body!;
+      const stream = new Blob([body]).stream();
       let streamedFailure: unknown;
       try {
         for await (const _row of parseLakehouseQueryStream(stream)) {

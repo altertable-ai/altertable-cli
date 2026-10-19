@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Cancel native query exports when output writes fail, and count blank lines consistently in buffered and streamed query parse errors.
+
 - Query engine error records now fail human/table, Markdown, JSON, and agent output with the engine message instead of a success summary. Lakehouse HTTP errors preserve plain-text details, and interrupted streams report network errors consistently. CSV, JSONL, and Parquet exports can contain partial output on failure; check the exit status before consuming them. A server socket closure without an error body cannot expose the engine's message.
 
 ### Changed

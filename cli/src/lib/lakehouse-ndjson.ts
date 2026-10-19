@@ -208,11 +208,12 @@ export async function* parseLakehouseQueryStream(
 
   try {
     if (header.pendingRowLine !== undefined) {
+      const pendingLineNumber = lineNumber;
+      lineNumber += 1;
       if (header.pendingRowLine.trim().length > 0) {
-        const row = parseRowLine(header.pendingRowLine, lineNumber);
+        const row = parseRowLine(header.pendingRowLine, pendingLineNumber);
         rows.push(row);
         yield row;
-        lineNumber += 1;
       }
     }
 
@@ -222,13 +223,14 @@ export async function* parseLakehouseQueryStream(
         break;
       }
       const line = nextLine.value;
+      const currentLineNumber = lineNumber;
+      lineNumber += 1;
       if (line.trim().length === 0) {
         continue;
       }
-      const row = parseRowLine(line, lineNumber);
+      const row = parseRowLine(line, currentLineNumber);
       rows.push(row);
       yield row;
-      lineNumber += 1;
     }
 
     return { metadata: header.metadata, columns: header.columns, rows };
