@@ -26,9 +26,9 @@ Install dependencies separately with `bun run setup` from the repository root be
 
 ```bash
 git submodule update --init --recursive   # first checkout only
-./scripts/verify.sh --quick               # focused CLI changes, including coverage
-./scripts/verify.sh                         # full gate before PR (mirrors CI minus native compile)
-./scripts/verify.sh --integration         # lakehouse HTTP paths (mock at :15000)
+bun run check --quick               # focused CLI changes, including coverage
+bun run check                         # full gate before PR (mirrors CI minus native compile)
+bun run check --integration         # lakehouse HTTP paths (mock at :15000)
 ```
 
 For data app changes, run the focused checks first from the repository root:
@@ -40,8 +40,8 @@ bun run --cwd cli data-app:test:browser
 
 The starter build requires its published package dependencies; see [data-app/README.md](data-app/README.md)
 for setup and browser prerequisites. Run `bun run --cwd cli data-app:check` to check all
-three data app projects together. Use `./scripts/verify.sh --quick` after focused checks,
-then default `./scripts/verify.sh` before opening a PR.
+three data app projects together. Use `bun run check --quick` after focused checks,
+then default `bun run check` before opening a PR.
 
 ## Deep guides
 

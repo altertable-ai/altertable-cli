@@ -21,13 +21,14 @@ bun run test                  # Bun CLI unit tests, no watch
 bun run test:watch
 bun run knip                  # unused code, exports, and dependencies
 bun run knip:production       # production reachability
-bun run check                 # canonical quick gate, including consumer checks
-bun run check:package         # full gate, browser tests and packed consumer smoke
+bun run check                 # full canonical gate, including consumers and packages
+bun run check --quick         # focused gate without browser/package smoke tests
+bun run check:package         # alias for the full canonical gate
 ```
 
 The root is a private command entry point, not a workspace: `cli/bun.lock` and the
 starter and browser-test lockfiles remain independent. Individual commands above
-operate on the CLI; both check commands also cover top-level tests and the data app
+operate on the CLI; the canonical check also covers top-level tests and the data app
 consumers. Install dependencies explicitly with `bun run setup` before checking;
 verification does not install development dependencies. Artifact smoke tests still
 install generated apps to exercise the real consumer path.
@@ -148,7 +149,7 @@ On push to `main`, `.github/workflows/release-please.yml`:
    The completed GitHub Release becomes public only after npm publication succeeds.
 
 Both `.github/workflows/test.yml` and the release workflow call `.github/workflows/verify.yml`, which
-runs the repository and integration gates and executes the npm bundle on the minimum supported Bun
+runs `bun run check --integration` and executes the npm bundle on the minimum supported Bun
 runtime. Branch CI then loads its native compile matrix from the typed release manifest and
 smoke-tests every Linux and macOS release target. Main-branch verification is never cancelled by a
 newer push. Workflows use explicit permissions, pinned runners/actions, concurrency controls, and job
@@ -219,12 +220,12 @@ The stored profile records only the URLs, not the flag, so subsequent commands a
 
 ## Verify (agents and contributors)
 
-From repo root, one script mirrors CI (minus native binary compile):
+From the repository root, the canonical command mirrors CI (minus native binary compile):
 
-```bash
-./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, generated-artifact drift
-./scripts/verify.sh                # + build, pack:check, top-level black-box tests
-./scripts/verify.sh --integration  # + tests/integration.e2e.ts (requires mock at :15000)
+```fish
+bun run check --quick        # typecheck, lint, format, knip, coverage, drift, black-box tests
+bun run check                # + browser tests, package build, and consumer smoke
+bun run check --integration  # + tests/integration.e2e.ts (requires mock at :15000)
 ```
 
 See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented docs.

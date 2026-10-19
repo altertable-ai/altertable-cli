@@ -15,8 +15,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for build, compile, and release details.
 
 1. Create a branch from `main`
 2. Edit `cli/src/**`
-3. Run checks: `bun run check:package` (use `bun run check` for iterative work; full gate before opening PR)
-4. Run integration tests when touching lakehouse HTTP paths: `./scripts/verify.sh --integration` (mock at `:15000`)
+3. Run checks: `bun run check` (use `bun run check --quick` for iterative work; full gate before opening PR)
+4. Run integration tests when touching lakehouse HTTP paths: `bun run check --integration` (mock at `:15000`)
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.)
 6. Update `CHANGELOG.md` under `[Unreleased]` when the change is user-facing
 7. Open a pull request

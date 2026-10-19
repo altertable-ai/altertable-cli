@@ -52,10 +52,10 @@ run_step "format:check" bun run format:check
 run_step "data app checks" bun run data-app:check
 run_step "generated artifact drift check" bun run generate:check
 run_step "unit tests with coverage" bun run test:coverage
+cd "${REPO_ROOT}"
 run_step "knip" bun run knip
 run_step "knip (production)" bun run knip:production
 
-cd "${REPO_ROOT}"
 run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
 
 if [[ "${QUICK}" == true ]]; then
@@ -65,7 +65,6 @@ fi
 
 cd "${REPO_ROOT}/cli"
 run_step "data app browser tests" bun run data-app:test:browser
-run_step "build" bun run build
 run_step "pack:check" bun run pack:check
 
 run_step "npm bundle smoke test" bun run scripts/smoke-npm-bundle.ts
