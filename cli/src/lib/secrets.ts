@@ -61,7 +61,9 @@ function fileMode(filePath: string): string {
   }
 }
 
-function requireSafeCredentialsFile(): void {
+function requireSafeCredentialsFile(platform: NodeJS.Platform): void {
+  // Windows mode bits do not describe the file's ACL permissions.
+  if (platform === "win32") return;
   const filePath = credentialsFile();
   try {
     statSync(filePath);
@@ -96,8 +98,10 @@ export function createSecretStore(
 
   function warnFileBackendOnce(): void {
     if (fileBackendWarned) return;
+    const protection =
+      secretProcess.platform === "win32" ? "Windows ACLs are not validated" : "chmod 600";
     logWarn(
-      `No macOS keychain; storing secrets at ${credentialsFile()} (chmod 600). Prefer environment variables in CI.`,
+      `No macOS keychain; storing secrets at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`,
     );
     fileBackendWarned = true;
   }
@@ -144,7 +148,7 @@ export function createSecretStore(
       const keychainValue = result.status === 0 ? String(result.stdout).trim() : "";
       if (keychainValue !== "") return keychainValue;
     }
-    requireSafeCredentialsFile();
+    requireSafeCredentialsFile(secretProcess.platform);
     return kvGet(credentialsFile(), storageAccount);
   }
 
@@ -160,7 +164,7 @@ export function createSecretStore(
         throw new CliError(`Failed to inspect secret in macOS keychain (${storageAccount}).`);
       }
     }
-    requireSafeCredentialsFile();
+    requireSafeCredentialsFile(secretProcess.platform);
     return kvGet(credentialsFile(), storageAccount) !== "";
   }
 

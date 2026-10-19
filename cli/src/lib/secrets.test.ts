@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createFakeKeychain } from "@/test-utils/keychain.ts";
 import { getProfileId } from "@/lib/profile-store.ts";
-import { secretExists, secretGet, secretSet } from "@/lib/secrets.ts";
+import { createSecretStore, secretExists, secretGet, secretSet } from "@/lib/secrets.ts";
+import { credentialsFile } from "@/lib/config.ts";
 
 let testHome = "";
 
@@ -73,3 +74,25 @@ describe("secretDelete", () => {
     expect(() => keychain.store.secretDelete("api-key", "default")).not.toThrow();
   });
 });
+
+for (const platform of ["linux", "win32"] as const) {
+  test(`file credentials use platform-appropriate mode checks on ${platform}`, () => {
+    process.env.ALTERTABLE_SECRET_BACKEND = "file";
+    const store = createSecretStore({
+      platform,
+      spawnSync() {
+        throw new Error("File credentials must not invoke a system keychain command.");
+      },
+    });
+    store.secretSet("api-key", "atm_file_test", "default");
+    // Windows reports mode bits without Unix owner/group/other distinctions.
+    chmodSync(credentialsFile(), 0o666);
+    if (platform === "win32") {
+      expect(store.secretGet("api-key", "default")).toBe("atm_file_test");
+      expect(store.secretExists("api-key", "default")).toBe(true);
+    } else {
+      expect(() => store.secretGet("api-key", "default")).toThrow("permissions");
+      expect(() => store.secretExists("api-key", "default")).toThrow("permissions");
+    }
+  });
+}

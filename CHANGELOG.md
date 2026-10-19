@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Complete stdin-based credential configuration before exiting on Windows.
+
+- Keep profiles and credentials in the user's home directory when `HOME` is unset, and reject relative config and shell-completion directory settings.
+- Read file-backed credentials on Windows without applying Unix permission checks.
+
+If credentials were saved inside a project, sign in again after upgrading and revoke any exposed credentials.
+
 - Honor explicit read timeouts for streamed queries and preserve primary transport or write errors when export file finalization also fails.
 
 - Cancel native query exports when output writes fail, and count blank lines consistently in buffered and streamed query parse errors.

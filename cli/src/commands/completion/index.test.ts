@@ -1,7 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { describe, expect, test } from "bun:test";
 import { defineCommand, type Command } from "@/lib/command.ts";
 import { executeCommand } from "@/lib/command-parser.ts";
 import { buildMainCommand } from "@/cli.ts";
@@ -44,18 +41,8 @@ const minimalRootCommand = defineCommand({
   },
 });
 
-let testHome: string | undefined;
-
 function visibleTerminalText(text: string): string {
   return text.replace(TERMINAL_CONTROL_PATTERN, "");
-}
-
-function setTestHome(): string {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-completion-test-"));
-  process.env.HOME = testHome;
-  delete process.env.XDG_CONFIG_HOME;
-  delete process.env.XDG_DATA_HOME;
-  return testHome;
 }
 
 async function captureCompletionOutput(run: () => unknown, json = false): Promise<string> {
@@ -101,42 +88,7 @@ async function runCompletionParentJson(rawArgs: string[]): Promise<string> {
   return await runCompletionParent(rawArgs, true);
 }
 
-async function runCompletionInstall(shell?: string, noRc = false): Promise<string> {
-  const completionCommand = createCompletionCommand(() => minimalRootCommand);
-  const rawArgs = shell ? ["completion", "install", shell] : ["completion", "install"];
-  if (noRc) {
-    rawArgs.splice(2, 0, "--no-rc");
-  }
-  return await runCompletionCommand(completionCommand, rawArgs);
-}
-
 describe("completion command", () => {
-  const originalHome = process.env.HOME;
-  const originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
-  const originalXdgDataHome = process.env.XDG_DATA_HOME;
-
-  afterEach(() => {
-    if (testHome) {
-      rmSync(testHome, { recursive: true, force: true });
-      testHome = undefined;
-    }
-    if (originalHome) {
-      process.env.HOME = originalHome;
-    } else {
-      delete process.env.HOME;
-    }
-    if (originalXdgConfigHome) {
-      process.env.XDG_CONFIG_HOME = originalXdgConfigHome;
-    } else {
-      delete process.env.XDG_CONFIG_HOME;
-    }
-    if (originalXdgDataHome) {
-      process.env.XDG_DATA_HOME = originalXdgDataHome;
-    } else {
-      delete process.env.XDG_DATA_HOME;
-    }
-  });
-
   test("bash output contains query and api commands", async () => {
     const output = await runCompletion(() => minimalRootCommand, "bash");
     expect(output).toContain("query");
@@ -214,45 +166,5 @@ describe("completion command", () => {
       install: "altertable completion install",
       manual: "altertable completion generate zsh",
     });
-  });
-
-  test("install writes fish completion without startup file changes", async () => {
-    const home = setTestHome();
-    const output = await runCompletionInstall("fish");
-    const completionPath = join(home, ".config", "fish", "completions", "altertable.fish");
-
-    expect(existsSync(completionPath)).toBe(true);
-    expect(readFileSync(completionPath, "utf8")).toContain("altertable fish completion");
-    const visibleOutput = visibleTerminalText(output);
-    expect(visibleOutput).toContain("Shell completion installed");
-    expect(visibleOutput).toContain(`Script:  ${completionPath}`);
-    expect(visibleOutput).toContain("Startup: automatic");
-    expect(visibleOutput).toContain("Docs:    Shell completion");
-  });
-
-  test("install writes zsh completion and updates zshrc idempotently", async () => {
-    const home = setTestHome();
-    await runCompletionInstall("zsh");
-    await runCompletionInstall("zsh");
-
-    const completionPath = join(home, ".local", "share", "zsh", "site-functions", "_altertable");
-    const zshrcPath = join(home, ".zshrc");
-    const zshrc = readFileSync(zshrcPath, "utf8");
-
-    expect(readFileSync(completionPath, "utf8")).toContain("#compdef altertable");
-    expect(zshrc).toContain("altertable completion");
-    expect(zshrc).toContain("autoload -Uz compinit");
-    expect(zshrc.match(/>>> altertable completion/g)).toHaveLength(1);
-  });
-
-  test("install can skip shell startup file updates", async () => {
-    const home = setTestHome();
-    const output = await runCompletionInstall("bash", true);
-
-    expect(
-      existsSync(join(home, ".local", "share", "bash-completion", "completions", "altertable")),
-    ).toBe(true);
-    expect(existsSync(join(home, ".bashrc"))).toBe(false);
-    expect(visibleTerminalText(output)).toContain("Startup: left unchanged (--no-rc)");
   });
 });

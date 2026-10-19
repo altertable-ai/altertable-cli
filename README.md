@@ -72,7 +72,7 @@ curl -fsSL https://install.altertable.ai | sh
 npm install -g @altertable/cli
 ```
 
-Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package).
+Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package). You can also install the same package with `bun install -g @altertable/cli`.
 
 ### Prebuilt binaries
 
@@ -233,6 +233,13 @@ Rules for updating credentials:
 - `altertable logout` removes **both** planes and resets endpoint overrides for all profiles.
 
 ### Profiles
+
+Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
+`$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
+be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
+
+Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
+Keep the configuration directory private.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
