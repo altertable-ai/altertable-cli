@@ -50,9 +50,15 @@ export async function writeQueryDestination(
         await writeStreamChunks(content, async (chunk) => {
           await writer.write(chunk);
         });
-      } finally {
-        await writer.end();
+      } catch (error) {
+        try {
+          await writer.end();
+        } catch {
+          // Finalization must not replace the transport or write failure.
+        }
+        throw error;
       }
+      await writer.end();
       return;
     }
 

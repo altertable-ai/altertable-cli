@@ -5,7 +5,6 @@ import {
   type LakehouseQueryResult,
 } from "@/lib/lakehouse-ndjson.ts";
 import { sendHttp, sendHttpStream, type HttpRequest } from "@/lib/http-request.ts";
-import { STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
 
 export type LakehouseApiQueryFormat = "csv" | "jsonl" | "parquet";
 
@@ -48,12 +47,7 @@ export function buildLakehouseQueryRequest(
     endpoint: "/query",
     body: JSON.stringify(buildQueryPayload(input)),
     contentType: "application/json",
-    ...(streaming
-      ? {
-          readTimeoutMs: input.httpOptions?.readTimeoutMs ?? STREAM_READ_TIMEOUT_MS,
-          retry: false,
-        }
-      : {}),
+    ...(streaming ? { retry: false } : {}),
     ...input.httpOptions,
   };
 }
