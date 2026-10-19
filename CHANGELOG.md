@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Complete stdin-based credential configuration before exiting on Windows.
+
 - Keep profiles and credentials in the user's home directory when `HOME` is unset, and reject relative config and shell-completion directory settings.
 - Read file-backed credentials on Windows without applying Unix permission checks.
 

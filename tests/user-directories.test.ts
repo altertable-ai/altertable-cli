@@ -41,7 +41,7 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function run(arguments_: string[], cwd = project, input?: Bun.BunFile) {
+async function run(arguments_: string[], cwd = project, input?: Blob) {
   const child = Bun.spawn([process.execPath, cliPath, ...arguments_], {
     cwd,
     env: environment,
@@ -65,6 +65,32 @@ async function configure() {
     project,
     Bun.file(inputPath),
   );
+}
+
+for (const { name, arguments_, secret } of [
+  {
+    name: "management API key",
+    arguments_: ["--api-key-stdin", "--env", "production"],
+    secret: "atm_pipe_test",
+  },
+  {
+    name: "lakehouse password",
+    arguments_: ["--user", "alice", "--password-stdin"],
+    secret: "password_pipe_test",
+  },
+]) {
+  test(`piped ${name} input completes credential storage before exiting`, async () => {
+    const saved = await run(
+      ["profile", "configure", ...arguments_, "--json"],
+      project,
+      new Blob([`${secret}\n`]),
+    );
+    expect(saved.exitCode).toBe(0);
+    const path = join(home, ".config", "altertable", "credentials");
+    expect(await Bun.file(path).text()).toContain(secret);
+    expect((await run(["profile", "show", "--json"], root)).exitCode).toBe(0);
+    expect(saved.stdout).not.toContain(secret);
+  });
 }
 
 for (const source of [homeVariable, "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as const) {
