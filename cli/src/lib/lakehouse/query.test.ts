@@ -422,3 +422,30 @@ describe("NDJSON engine error records", () => {
     expect(result.rows).toEqual([["valid data", 1], { error: "valid data", value: 2 }]);
   });
 });
+
+describe("streamed parse line numbers", () => {
+  test.each(['{}\n["v"]\n[1]\n\nnot-json', "{}\n\n[1]\n \nnot-json"])(
+    "counts empty and whitespace-only lines: %s",
+    async (body) => {
+      let bufferedFailure: unknown;
+      try {
+        parseLakehouseQueryResponse(body);
+      } catch (error) {
+        bufferedFailure = error;
+      }
+      const stream = new Response(body).body!;
+      let streamedFailure: unknown;
+      try {
+        for await (const _row of parseLakehouseQueryStream(stream)) {
+          /* consume */
+        }
+      } catch (error) {
+        streamedFailure = error;
+      }
+      expect(bufferedFailure).toBeInstanceOf(ParseError);
+      expect(streamedFailure).toBeInstanceOf(ParseError);
+      expect((bufferedFailure as ParseError).message).toContain("line 5");
+      expect((streamedFailure as ParseError).message).toBe((bufferedFailure as ParseError).message);
+    },
+  );
+});

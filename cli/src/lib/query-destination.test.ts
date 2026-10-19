@@ -99,4 +99,62 @@ describe("writeQueryDestination", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+  test.each(["sync", "async", "cancel-error"])(
+    "cancels the source and preserves a failed output write: %s",
+    async (mode) => {
+      const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+      const writeError = new Error("broken pipe");
+      runtime.output.writeBytes =
+        mode === "async"
+          ? async () => {
+              throw writeError;
+            }
+          : () => {
+              throw writeError;
+            };
+      let cancellationReason: unknown;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(Uint8Array.of(1));
+        },
+        cancel(reason) {
+          cancellationReason = reason;
+          if (mode === "cancel-error") throw new Error("cancel failed");
+        },
+      });
+      let failure: unknown;
+      try {
+        await writeQueryDestination(stream, { sink: runtime.output });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBe(writeError);
+      expect(cancellationReason).toBe(writeError);
+      expect(stream.locked).toBe(false);
+    },
+  );
+
+  test("cancels the source when opening an output file fails", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
+    let canceled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(Uint8Array.of(1));
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+    let failure: unknown;
+    try {
+      await writeQueryDestination(stream, { outputPath: join(dir, "missing", "out.csv") });
+    } catch (error) {
+      failure = error;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    expect(failure).toBeInstanceOf(Error);
+    expect(canceled).toBe(true);
+    expect(stream.locked).toBe(false);
+  });
 });
