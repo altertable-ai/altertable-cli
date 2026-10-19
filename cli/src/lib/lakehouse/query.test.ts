@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { ParseError } from "@/lib/errors.ts";
+import { ParseError, QueryError } from "@/lib/errors.ts";
 import {
   csvEscapeCell,
   renderQueryCsv,
@@ -16,7 +16,7 @@ import {
   type LakehouseRow,
 } from "@/lib/lakehouse-ndjson.ts";
 import { getQueryColumnNames } from "@/lib/query-format.ts";
-import { httpSendStream } from "@/lib/http.ts";
+import { httpSendStream, resolveReadTimeoutMs } from "@/lib/http.ts";
 import { createExecutionContext } from "@/lib/execution-context.ts";
 import {
   buildLakehouseQueryRequest,
@@ -250,6 +250,35 @@ describe("parseLakehouseQueryStream", () => {
 });
 
 describe("buildLakehouseQueryRequest", () => {
+  test.each([
+    [undefined, 5],
+    [0, 0],
+    [25, 25],
+  ] as const)(
+    "streaming timeout precedence: request %s resolves to %s ms",
+    (readTimeoutMs, expected) => {
+      setCliContext({ debug: false, json: false, agent: false, readTimeoutMs: 5 });
+      const request = buildLakehouseQueryRequest(
+        {
+          statement: "SELECT 1",
+          ...(readTimeoutMs === undefined ? {} : { httpOptions: { readTimeoutMs } }),
+        },
+        true,
+      );
+      expect(
+        resolveReadTimeoutMs({ ...request, url: "https://example.com/query", authHeader: "" }, 0),
+      ).toBe(expected);
+    },
+  );
+
+  test("streaming queries retain an unlimited default without a timeout override", () => {
+    const request = buildLakehouseQueryRequest({ statement: "SELECT 1" }, true);
+    expect(
+      resolveReadTimeoutMs({ ...request, url: "https://example.com/query", authHeader: "" }, 0),
+    ).toBe(0);
+    expect(request.retry).toBe(false);
+  });
+
   test("includes optional QueryRequest fields in the JSON body", () => {
     const request = buildLakehouseQueryRequest(
       {
@@ -375,4 +404,77 @@ describe("query renderers", () => {
     });
     expect(names).toEqual(["id", "name"]);
   });
+});
+
+describe("NDJSON engine error records", () => {
+  const message = "Conversion Error: invalid integer";
+  const errorLine = JSON.stringify({ error: message });
+
+  test.each([
+    errorLine,
+    `{}\n${errorLine}`,
+    `{}\n["v"]\n${errorLine}`,
+    `{}\n["v"]\n[1]\n${errorLine}`,
+  ])("buffered and chunked parsers reject the same engine frame: %s", async (body) => {
+    expect(() => parseLakehouseQueryResponse(body)).toThrow(message);
+    const bytes = new TextEncoder().encode(`${body.replaceAll("\n", "\r\n")}\r\n`);
+    let canceled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+    const rows: LakehouseRow[] = [];
+    async function consume() {
+      for await (const row of parseLakehouseQueryStream(stream)) rows.push(row);
+    }
+    let failure: unknown;
+    try {
+      await consume();
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(QueryError);
+    expect((failure as QueryError).message).toContain(message);
+    expect(rows).toEqual(body.includes("[1]") ? [[1]] : []);
+    expect(stream.locked).toBe(false);
+    expect(canceled).toBe(true);
+  });
+
+  test("preserves rows with error values and additional object fields", () => {
+    const result = parseLakehouseQueryResponse(
+      '{}\n["error","value"]\n["valid data",1]\n{"error":"valid data","value":2}\n',
+    );
+    expect(result.rows).toEqual([["valid data", 1], { error: "valid data", value: 2 }]);
+  });
+});
+
+describe("streamed parse line numbers", () => {
+  test.each(['{}\n["v"]\n[1]\n\nnot-json', '{}\n{"v":1}\n\n \nnot-json'])(
+    "counts empty and whitespace-only lines: %s",
+    async (body) => {
+      let bufferedFailure: unknown;
+      try {
+        parseLakehouseQueryResponse(body);
+      } catch (error) {
+        bufferedFailure = error;
+      }
+      const stream = new Blob([body]).stream();
+      let streamedFailure: unknown;
+      try {
+        for await (const _row of parseLakehouseQueryStream(stream)) {
+          /* consume */
+        }
+      } catch (error) {
+        streamedFailure = error;
+      }
+      expect(bufferedFailure).toBeInstanceOf(ParseError);
+      expect(streamedFailure).toBeInstanceOf(ParseError);
+      expect((bufferedFailure as ParseError).message).toContain("line 5");
+      expect((streamedFailure as ParseError).message).toBe((bufferedFailure as ParseError).message);
+    },
+  );
 });

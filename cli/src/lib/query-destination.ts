@@ -43,24 +43,36 @@ export async function writeQueryDestination(
     return;
   }
 
-  if (outputPath !== undefined) {
-    const writer = Bun.file(outputPath).writer();
-    try {
-      await writeStreamChunks(content, async (chunk) => {
-        await writer.write(chunk);
-      });
-    } finally {
+  try {
+    if (outputPath !== undefined) {
+      const writer = Bun.file(outputPath).writer();
+      try {
+        await writeStreamChunks(content, async (chunk) => {
+          await writer.write(chunk);
+        });
+      } catch (error) {
+        try {
+          await writer.end();
+        } catch {
+          // Finalization must not replace the transport or write failure.
+        }
+        throw error;
+      }
       await writer.end();
+      return;
     }
-    return;
-  }
 
-  if (sink) {
-    await writeStreamChunks(content, (chunk) => sink.writeBytes(chunk));
-    return;
-  }
+    if (sink) {
+      await writeStreamChunks(content, (chunk) => sink.writeBytes(chunk));
+      return;
+    }
 
-  await writeStreamChunks(content, async (chunk) => {
-    await Bun.write(Bun.stdout, chunk);
-  });
+    await writeStreamChunks(content, async (chunk) => {
+      await Bun.write(Bun.stdout, chunk);
+    });
+  } catch (error) {
+    // The reader is released before canceling; retain the output/transport error.
+    await content.cancel(error).catch(() => undefined);
+    throw error;
+  }
 }
