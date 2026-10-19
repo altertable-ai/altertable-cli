@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { localLakehouse } from "@altertable/data-app/server/bun";
-import { serveAppFile } from "@altertable/data-app/server/bun/preview";
+import { localLakehouse } from "@altertable/data-app-bun";
+import { serveAppFile } from "@altertable/data-app-bun/preview";
 
 const preview = await serveAppFile({
   file: resolve(import.meta.dir, "../index.tsx"),

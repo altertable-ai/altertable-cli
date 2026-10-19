@@ -1,5 +1,5 @@
 import page from "#app/index.html";
-import { serveLocalApp } from "@altertable/data-app/server/bun";
+import { serveLocalApp } from "@altertable/data-app-bun";
 import { operations } from "#app/operations.ts";
 import app from "#app/config.ts";
 

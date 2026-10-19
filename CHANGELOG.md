@@ -14,7 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 If credentials were saved inside a project, sign in again after upgrading and revoke any exposed credentials.
 
+- Honor explicit read timeouts for streamed queries and preserve primary transport or write errors when export file finalization also fails.
+
+- Cancel native query exports when output writes fail, and count blank lines consistently in buffered and streamed query parse errors.
+
+- Query engine error records now fail human/table, Markdown, JSON, and agent output with the engine message instead of a success summary. Lakehouse HTTP errors preserve plain-text details, and interrupted streams report network errors consistently. CSV, JSONL, and Parquet exports can contain partial output on failure; check the exit status before consuming them. A server socket closure without an error body cannot expose the engine's message.
+
 ### Changed
+
+- Generate data apps with the split core, React, and Bun packages at 0.71.0; keep declared data-app packages aligned during upgrades.
 
 - Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
 - Include a starter server example for previewing single-file data apps with the Bun preview API.

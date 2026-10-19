@@ -153,6 +153,13 @@ export class ParseError extends CliError {
   }
 }
 
+export class QueryError extends CliError {
+  constructor(message: string) {
+    super(`Query failed: ${message}`);
+    this.name = "QueryError";
+  }
+}
+
 export type AuthPlane = "lakehouse" | "management";
 
 export function httpStatusMessage(status: number, authPlane?: AuthPlane): string {
@@ -213,6 +220,9 @@ export function errorCodeFromError(error: unknown): string {
       return "server_error";
     }
     return "http_error";
+  }
+  if (error instanceof QueryError) {
+    return "query_error";
   }
   if (error instanceof ConfigurationError) {
     return "configuration_error";
@@ -299,7 +309,8 @@ export function shouldShowCommandExamplesOnError(error: unknown): boolean {
     error instanceof HttpError ||
     error instanceof NetworkError ||
     error instanceof TimeoutError ||
-    error instanceof ParseError
+    error instanceof ParseError ||
+    error instanceof QueryError
   ) {
     return false;
   }

@@ -1,4 +1,4 @@
-import { createDataContext } from "@altertable/data-app/react";
+import { createDataContext } from "@altertable/data-app-react";
 import { defineQueryNames } from "@altertable/data-app/contract";
 import type app from "#app/config.ts";
 
