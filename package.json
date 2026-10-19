@@ -13,7 +13,7 @@
     "test:watch": "bun run --cwd cli test:watch",
     "setup": "bun install --cwd cli --frozen-lockfile && bun install --cwd data-app/starter --frozen-lockfile && bun install --cwd data-app/tests --frozen-lockfile",
     "check": "./scripts/verify.sh",
-    "check:package": "bun run check",
+    "check:package": "bun run --cwd cli pack:check",
     "knip": "bun run --cwd cli knip",
     "knip:production": "bun run --cwd cli knip:production"
   },

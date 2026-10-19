@@ -33,7 +33,6 @@ try {
   }
   await smokeNpmBundle([
     `--bundle=${join(directory, 'package', manifest.bin.altertable)}`,
-    '--scaffold-only',
   ]);
 } finally {
   await rm(directory, { recursive: true, force: true });

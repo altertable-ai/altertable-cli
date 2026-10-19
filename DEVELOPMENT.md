@@ -23,7 +23,7 @@ bun run knip                  # unused code, exports, and dependencies
 bun run knip:production       # production reachability
 bun run check                 # full canonical gate, including consumers and packages
 bun run check --quick         # focused gate without browser/package smoke tests
-bun run check:package         # alias for the full canonical gate
+bun run check:package         # focused build, pack, and extracted-consumer smoke
 ```
 
 The root is a private command entry point, not a workspace: `cli/bun.lock` and the
@@ -37,7 +37,9 @@ CLI tests intentionally use `bun test` because they exercise Bun APIs and the CL
 runtime. The Bun build plugin embeds the offline starter in both npm and native
 artifacts; retaining it avoids introducing another build tool and plugin adapter.
 Formatting uses single quotes, ES5 trailing commas, unparenthesized single arrow
-parameters, an 80-column print width, and LF line endings. Generated API files stay
+parameters, an 80-column print width, and LF line endings. Import sorting is enabled while
+package JSON key order is preserved (`sortPackageJson: false` in Oxfmt 0.71).
+Generated API files stay
 under their generators' control.
 
 Typechecking uses TypeScript 7.0.2. The CLI installs that compiler under the explicit
@@ -46,6 +48,10 @@ Typechecking uses TypeScript 7.0.2. The CLI installs that compiler under the exp
 dependency stays at 6.0.3 for generation only; both CLI and top-level test checks
 invoke the version 7 compiler explicitly. Knip excludes this alias from unused
 dependency detection because it is executed by its installed file path.
+
+`check:package` builds once, packs and extracts the CLI, and runs the full generated-app
+consumer smoke against the extracted executable. It does not run repository unit tests,
+Playwright tests, or lakehouse integration. The full `check` invokes it once.
 
 Additional commands from `cli/`:
 

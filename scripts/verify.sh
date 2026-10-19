@@ -65,9 +65,7 @@ fi
 
 cd "${REPO_ROOT}/cli"
 run_step "data app browser tests" bun run data-app:test:browser
-run_step "pack:check" bun run pack:check
-
-run_step "npm bundle smoke test" bun run scripts/smoke-npm-bundle.ts
+run_step "package checks" bun run --cwd "${REPO_ROOT}" check:package
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server
