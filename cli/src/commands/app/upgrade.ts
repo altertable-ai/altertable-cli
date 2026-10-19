@@ -7,6 +7,7 @@ import { appDirectory } from "@/commands/app/lib/run.ts";
 import { copyProcessEnv } from "@/lib/env.ts";
 import {
   dataAppPackage,
+  dataAppPackages,
   lockedVersion,
   readAppLock,
   readAppPackage,
@@ -75,20 +76,28 @@ export async function upgradeApp(
     throw new ConfigurationError(`Cannot read a valid bun.lock in ${directory}.`);
   }
   const { packages } = readAppLock(lock, directory, reference);
-  const installedVersion = lockedVersion(packages, dataAppPackage);
-  if (!installedVersion || !Bun.semver.satisfies(installedVersion, reference)) {
-    throw new ConfigurationError(
-      "bun.lock does not resolve the declared data app package. Run bun install before upgrading.",
-    );
+  const dependencies = { ...manifest.devDependencies, ...manifest.dependencies };
+  const names = dataAppPackages.filter((name) => dependencies[name] !== undefined);
+  for (const name of names) {
+    const declared = dependencies[name]!;
+    if (!/^[\d~^<>=*]/.test(declared))
+      throw new ConfigurationError(`package.json must reference the published ${name} package.`);
+    const locked = readAppLock(lock, directory, declared, name);
+    const resolved = lockedVersion(locked.packages, name);
+    if (!resolved || !Bun.semver.satisfies(resolved, declared))
+      throw new ConfigurationError(
+        `bun.lock does not resolve the declared ${name} package. Run bun install before upgrading.`,
+      );
+    // Never partially upgrade or downgrade a newer split-package installation.
+    if (Bun.semver.order(resolved, version) > 0) return false;
   }
-  // A newer package installed intentionally must never be downgraded by an older CLI.
-  if (Bun.semver.order(installedVersion, version) > 0) return false;
   const defaults = JSON.parse(dataAppPayload.starter["package.json"]!).dependencies as Record<
     string,
     string
   >;
-  let packageChanged = reference !== version;
-  for (const [name, range] of Object.entries(recommendedDataAppPeers())) {
+  let packageChanged = names.some((name) => dependencies[name] !== version);
+  const peers = recommendedDataAppPeers(names);
+  for (const [name, range] of Object.entries(peers)) {
     const existing = manifest.dependencies?.[name] ?? manifest.devDependencies?.[name];
     const resolved = lockedVersion(packages, name);
     if (
@@ -109,21 +118,24 @@ export async function upgradeApp(
     packageChanged = true;
   }
   if (!packageChanged) return false;
-  manifest.dependencies![dataAppPackage] = version;
+  for (const name of names) {
+    if (manifest.dependencies?.[name] !== undefined) manifest.dependencies[name] = version;
+    if (manifest.devDependencies?.[name] !== undefined) manifest.devDependencies[name] = version;
+  }
   const nextPackage = `${JSON.stringify(manifest, null, 2)}\n`;
   try {
     await writeFile(join(directory, "package.json"), nextPackage);
     await (options.resolveLock ?? resolveLockfile)(directory);
-    const resolved = readAppLock(
-      await readFile(join(directory, "bun.lock"), "utf8"),
-      directory,
-      version,
-    );
-    if (lockedVersion(resolved.packages, dataAppPackage) !== version)
-      throw new ConfigurationError(
-        "Dependency resolution did not lock the tested data app version.",
-      );
-    for (const [name, range] of Object.entries(recommendedDataAppPeers())) {
+    const resolvedLock = await readFile(join(directory, "bun.lock"), "utf8");
+    const resolved = readAppLock(resolvedLock, directory, version);
+    for (const name of names) {
+      readAppLock(resolvedLock, directory, version, name);
+      if (lockedVersion(resolved.packages, name) !== version)
+        throw new ConfigurationError(
+          `Dependency resolution did not lock the tested ${name} version.`,
+        );
+    }
+    for (const [name, range] of Object.entries(peers)) {
       const peerVersion = lockedVersion(resolved.packages, name);
       if (!peerVersion || !Bun.semver.satisfies(peerVersion, range))
         throw new ConfigurationError(
@@ -150,8 +162,13 @@ export async function upgradeApp(
 async function resolveLockfile(directory: string): Promise<void> {
   const env = copyProcessEnv();
   for (const key of Object.keys(env)) if (key.startsWith("ALTERTABLE_")) delete env[key];
+  const { manifest } = await readAppPackage(directory);
+  const names = dataAppPackages.filter(
+    (name) =>
+      manifest.dependencies?.[name] !== undefined || manifest.devDependencies?.[name] !== undefined,
+  );
   const child = Bun.spawn(
-    [process.execPath, "update", "@altertable/data-app", "--lockfile-only", "--ignore-scripts"],
+    [process.execPath, "update", ...names, "--lockfile-only", "--ignore-scripts"],
     {
       cwd: directory,
       env: { ...env, BUN_BE_BUN: "1" },

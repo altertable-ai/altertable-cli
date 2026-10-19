@@ -1,4 +1,4 @@
-import { GettingStarted } from "@altertable/data-app/react/ui";
+import { GettingStarted } from "@altertable/data-app-react/ui";
 import { dataContext } from "#app/data-context.ts";
 
 /** Connectivity-only screen. Investigate the requested question, then replace this with a view

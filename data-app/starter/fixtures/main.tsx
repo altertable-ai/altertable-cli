@@ -17,14 +17,14 @@ import {
   Stack,
   TableWidget,
   VisualizationWidget,
-} from "@altertable/data-app/react";
+} from "@altertable/data-app-react";
 import {
   DataWidget,
   GlossaryDefinition,
   MetricWidget as StaticMetricWidget,
   VisualizationWidget as StaticVisualizationWidget,
-} from "@altertable/data-app/react/ui";
-import type { DataReading } from "@altertable/data-app/react/ui";
+} from "@altertable/data-app-react/ui";
+import type { DataReading } from "@altertable/data-app-react/ui";
 import { useState } from "react";
 
 const app = defineDataApp({

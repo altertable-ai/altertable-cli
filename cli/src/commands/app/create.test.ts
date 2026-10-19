@@ -273,6 +273,15 @@ describe("app create", () => {
         readFileSync(join(directory, "node_modules/@altertable/data-app/package.json"), "utf8"),
       ).version,
     ).toBe(recommendedDataAppVersion());
+    for (const name of ["data-app-react", "data-app-bun"]) {
+      expect(
+        JSON.parse(
+          readFileSync(join(directory, `node_modules/@altertable/${name}/package.json`), "utf8"),
+        ).version,
+      ).toBe(recommendedDataAppVersion());
+    }
+    expect(existsSync(join(directory, "node_modules/@altertable/data-app-embed"))).toBe(false);
+    expect(existsSync(join(directory, "node_modules/@altertable/data-app-worker"))).toBe(false);
     const { starter } = await readDataAppPayload();
     for (const name of Object.keys(starter)) {
       if (!name.endsWith(".md")) continue;

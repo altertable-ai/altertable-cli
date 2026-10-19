@@ -109,8 +109,17 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
       directory,
     );
     const manifest = await Bun.file(join(app, "package.json")).json();
-    if (!/^\d+\.\d+\.\d+$/.test(manifest.dependencies?.["@altertable/data-app"] ?? ""))
-      throw new Error("Packaged starter must pin a published runtime");
+    for (const name of [
+      "@altertable/data-app",
+      "@altertable/data-app-react",
+      "@altertable/data-app-bun",
+    ]) {
+      if (manifest.dependencies?.[name] !== "0.71.0")
+        throw new Error(`Packaged starter must pin ${name} to the tested release`);
+    }
+    for (const name of ["@altertable/data-app-embed", "@altertable/data-app-worker"]) {
+      if (manifest.dependencies?.[name]) throw new Error(`Packaged starter does not use ${name}`);
+    }
     if (await Bun.file(join(app, ".altertable/runtime/package.json")).exists())
       throw new Error("Packaged starter must not vendor the runtime");
     if (scaffoldOnly) return;
@@ -141,7 +150,7 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
       [
         process.execPath,
         "-e",
-        'import { createDataHandler } from "@altertable/data-app/server"; import { localLakehouse } from "@altertable/data-app/server/bun"; if (typeof createDataHandler !== "function" || typeof localLakehouse !== "function") process.exit(1);',
+        'import { createDataHandler } from "@altertable/data-app/server"; import { localLakehouse } from "@altertable/data-app-bun"; if (typeof createDataHandler !== "function" || typeof localLakehouse !== "function") process.exit(1);',
       ],
       app,
     );
@@ -150,7 +159,7 @@ export async function smokeDataApp(command: string[], scaffoldOnly = false): Pro
     await Bun.write(
       join(app, "index.tsx"),
       `import { defineDataApp as declareApp } from "@altertable/data-app";
-import { mountDataApp } from "@altertable/data-app/react";
+import { mountDataApp } from "@altertable/data-app-react";
 const app = declareApp({ title: "File preview smoke", description: "Smoke test", scope: { organization: "Test", environment: "test" }, queries: {} });
 function View() { return <p>File preview smoke</p>; }
 mountDataApp({ app, component: View });`,

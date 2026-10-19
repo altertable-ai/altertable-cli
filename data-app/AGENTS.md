@@ -8,7 +8,7 @@
 | Consumer integration or browser behavior | `tests/`, `starter/fixtures/` | Browser tests against the published package |
 
 See [development commands](README.md#develop). Keep SQL and metric definitions in app-owned source.
-Import only public package exports; local Bun serving uses `/server/bun`, and each browser entry
+Import only public package exports; local Bun serving uses `@altertable/data-app-bun`, and each browser entry
 calls `injectDataAppStyles()` before mounting. Keep starter and browser-test package pins aligned, commit their
 lockfiles, and preserve documentation links to installed package docs. Do not copy runtime source
 into this repository or generated apps.
