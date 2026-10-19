@@ -25,11 +25,18 @@ The CLI embeds only the starter allowlist in `cli/src/commands/app/lib/distribut
 Both npm and native CLI builds can scaffold an app without reading this checkout or accessing
 the network. Installing the generated app needs registry access or a populated Bun cache.
 Generated projects commit their source, package manifest, and lockfile; they do not vendor runtime
-source. Portable contracts, clients, and handlers use `@altertable/data-app` and its public subpaths.
-React authoring uses `@altertable/data-app-react` and `/ui`; local servers use
-`@altertable/data-app-bun` and `/preview`. The starter does not use the embed or Worker packages.
-The browser-test server uses only the portable core package; its HTML fixtures resolve React
-authoring from the starter's own dependencies.
+source.
+
+Each consumer declares only the packages it uses:
+
+| Package                      | Consumers                                                        |
+| ---------------------------- | ---------------------------------------------------------------- |
+| `@altertable/data-app`       | Starter definitions, contracts, and clients; browser-test server |
+| `@altertable/data-app-react` | Starter UI and browser-test fixtures                             |
+| `@altertable/data-app-bun`   | Starter local server and single-file preview                     |
+
+Browser-test fixtures live under `starter/` and resolve React authoring from the starter's
+own dependencies. Keep the browser-test server's manifest limited to its direct dependencies.
 
 The starter owns React, ReactDOM, and its authoring tools. The package owns its implementation
 dependencies. The browser entry calls `injectDataAppStyles()` before mounting. The app's `AGENTS.md`
@@ -42,18 +49,14 @@ source watcher.
 
 ## Upgrades
 
-`app upgrade` updates all declared split data-app dependencies in the app manifest and lockfile
-to the CLI's tested shared version, preserving unrelated dependencies and app code. A newer
-installed package is not downgraded.
-Peer incompatibilities stop with an actionable error; missing peers are seeded from starter defaults.
-Upgrades resolve only the lockfile and restore the original manifest and lockfile if resolution
-fails. Restart running previews after an upgrade. Apps must already use the published package;
-`app upgrade` does not migrate local runtime copies or rewrite app source.
+`app upgrade` updates declared data-app dependencies and dev dependencies in the app manifest
+and lockfile to the CLI's tested shared version. It preserves dependency placement, unrelated
+dependencies, and app code, and does not downgrade newer installations. Peer incompatibilities
+stop with an actionable error; missing required peers use starter defaults.
 
-When adding a package, install only what the app uses and keep all data-app packages at the
-shared version tested with the CLI. Update imports to match the installed packages' public
-exports, update `bun.lock` with `bun install`, then run `app lint`. `app upgrade` keeps declared
-packages aligned; it does not add packages or migrate imports.
+Upgrades resolve only the lockfile and restore the original manifest and lockfile if resolution
+fails. Apps must use published packages. The command does not add data-app packages or rewrite
+app imports; authors update their source as needed, run `app lint`, and restart running previews.
 
 ## Verify
 
