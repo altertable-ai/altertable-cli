@@ -203,35 +203,37 @@ function transportError(
   return signal.aborted ? timeoutError(options, cause) : connectionError(options, cause);
 }
 
-function streamWithTimeoutCleanup(
+function wrapResponseStream(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
   signal: AbortSignal,
   options: HttpStreamOptions,
 ): ReadableStream<Uint8Array> {
-  let reader: ReturnType<typeof stream.getReader> | undefined;
+  const reader = stream.getReader();
   return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const activeReader = stream.getReader();
-      reader = activeReader;
+    async pull(controller) {
       try {
-        while (true) {
-          const { done, value } = await activeReader.read();
-          if (done) {
-            clearTimeoutAfterRead();
-            controller.close();
-            break;
-          }
+        const { done, value } = await reader.read();
+        if (done) {
+          clearTimeoutAfterRead();
+          reader.releaseLock();
+          controller.close();
+        } else {
           controller.enqueue(value);
         }
       } catch (error) {
         clearTimeoutAfterRead();
+        reader.releaseLock();
         controller.error(transportError(options, signal, error));
       }
     },
-    cancel(reason) {
+    async cancel(reason) {
       clearTimeoutAfterRead();
-      return reader?.cancel(reason);
+      try {
+        await reader.cancel(reason);
+      } finally {
+        reader.releaseLock();
+      }
     },
   });
 }
@@ -424,7 +426,9 @@ function throwHttpError(
     body,
     method,
     url,
-    parsedDetail: httpExtractBodyDetail(body),
+    parsedDetail:
+      httpExtractBodyDetail(body) ??
+      (authPlane === "lakehouse" && body.trim() ? truncateBodySnippet(body) : undefined),
     authPlane,
     retryAfterHeader,
   });
@@ -543,16 +547,10 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     if (!response.body) {
       throw new NetworkError("Response body is missing.");
     }
-    if (readTimeoutMs <= 0) {
-      return response.body;
+    if (readTimeoutMs > 0) {
+      startTimeout(readTimeoutMs);
     }
-    startTimeout(readTimeoutMs);
-    return streamWithTimeoutCleanup(
-      response.body,
-      clearActiveTimeout,
-      abortController.signal,
-      options,
-    );
+    return wrapResponseStream(response.body, clearActiveTimeout, abortController.signal, options);
   }
 
   if (readTimeoutMs > 0) {

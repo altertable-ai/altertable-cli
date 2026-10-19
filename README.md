@@ -72,7 +72,7 @@ curl -fsSL https://install.altertable.ai | sh
 npm install -g @altertable/cli
 ```
 
-Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package).
+Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package). You can also install the same package with `bun install -g @altertable/cli`.
 
 ### Prebuilt binaries
 
@@ -233,6 +233,13 @@ Rules for updating credentials:
 - `altertable logout` removes **both** planes and resets endpoint overrides for all profiles.
 
 ### Profiles
+
+Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
+`$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
+be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
+
+Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
+Keep the configuration directory private.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
@@ -492,6 +499,7 @@ These flags apply to every command and may be placed before or after commands:
 | ----------------------- | --------------------------------------------------------------------------- |
 | `--profile <name>`      | Use a named profile for this invocation                                     |
 | `--json`                | Output raw JSON (machine-readable success; JSON error envelope on stderr)   |
+| `--no-agent`            | Disable agent mode, including automatic detection                          |
 | `--agent`               | Agent preset: structured JSON output, no pager, colors, or terminal styling |
 | `--debug`, `-d`         | Enable debug output                                                         |
 | `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
@@ -511,6 +519,14 @@ Stream endpoints (lakehouse query streams) treat `--read-timeout 0` as unlimited
 ---
 
 ## Scripting
+
+Agent mode also activates automatically when stdout is piped, a nonempty agent marker is present (`AI_AGENT`, `AGENT`, `CLAUDECODE`, `CODEX_CI`, `CODEX_SANDBOX`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `GEMINI_CLI`, `COPILOT_AGENT`, `COPILOT_CLI`, or `COPILOT_AGENT_SESSION_ID`), and neither `--json` nor `--format` was supplied. It uses the existing structured JSON preset. Automatic detection leaves explicit formats alone.
+
+Use `--agent` to force the preset or `--no-agent` to disable it. `ALTERTABLE_AGENT_MODE=1` (or `true`) forces it on from the environment; `0` (or `false`) disables it. Flags take precedence over the environment, and `--no-agent` wins if both flags are supplied. Forcing agent mode retains the preset’s existing format restrictions, including incompatibility with API-native `--format` values. Commands such as `app dev` and `app build` stream subprocess output directly and do not support the JSON preset; use `--no-agent` when running them in a detected agent environment. They do not require an interactive terminal. For example:
+
+```sh
+ALTERTABLE_AGENT_MODE=1 altertable profile show
+```
 
 Use `--json` or `--agent` for machine-readable output. Command errors are JSON objects on stderr and leave stdout empty. Completed health checks are different: unhealthy `doctor` and `profile status` reports remain on stdout and exit `1` without an error envelope.
 

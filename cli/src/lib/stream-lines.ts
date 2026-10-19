@@ -4,11 +4,13 @@ export async function* readTextStreamLines(
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let complete = false;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
+        complete = true;
         break;
       }
       buffer += decoder.decode(value, { stream: true });
@@ -30,6 +32,10 @@ export async function* readTextStreamLines(
       yield buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer;
     }
   } finally {
+    if (!complete) {
+      // Preserve the original parse/transport failure if cancellation also fails.
+      await reader.cancel().catch(() => undefined);
+    }
     reader.releaseLock();
   }
 }

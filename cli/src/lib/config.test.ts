@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   configDir,
@@ -110,3 +110,28 @@ describe("config", () => {
     expect(readFileSync(configFile, "utf8")).toContain("user=x");
   });
 });
+
+for (const { name, value } of [
+  { name: "unset", value: undefined },
+  { name: "empty", value: "" },
+]) {
+  test(`uses the OS home directory when HOME is ${name}`, () => {
+    const previous = {
+      HOME: process.env.HOME,
+      XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+      ALTERTABLE_CONFIG_HOME: process.env.ALTERTABLE_CONFIG_HOME,
+    };
+    try {
+      delete process.env.ALTERTABLE_CONFIG_HOME;
+      delete process.env.XDG_CONFIG_HOME;
+      if (value === undefined) delete process.env.HOME;
+      else process.env.HOME = value;
+      expect(configDir()).toBe(join(homedir(), ".config", "altertable"));
+    } finally {
+      for (const [name, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+  });
+}

@@ -17,14 +17,14 @@ import {
   Stack,
   TableWidget,
   VisualizationWidget,
-} from "@altertable/data-app/react";
+} from "@altertable/data-app-react";
 import {
   DataWidget,
   GlossaryDefinition,
   MetricWidget as StaticMetricWidget,
   VisualizationWidget as StaticVisualizationWidget,
-} from "@altertable/data-app/react/ui";
-import type { DataReading } from "@altertable/data-app/react/ui";
+} from "@altertable/data-app-react/ui";
+import type { DataReading } from "@altertable/data-app-react/ui";
 import { useState } from "react";
 
 const app = defineDataApp({
@@ -32,7 +32,13 @@ const app = defineDataApp({
   description: "Completed orders in production.",
   scope: { organization: "Acme", environment: "production" },
   appearance: { theme: "light" },
-  queries: { connection: { statement: "SELECT 1 AS connection_check", params: {} } },
+  queries: {
+    connection: {
+      statement: "SELECT 1 AS connection_check",
+      params: {},
+      projections: { connection_check: { type: "number" } },
+    },
+  },
 });
 const operations = { connection: connectionCheck(app.queries) };
 const connectionQueryNames = operations.connection.queryNames;

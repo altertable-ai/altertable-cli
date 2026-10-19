@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { Command } from "@/lib/command.ts";
 import { CliError } from "@/lib/errors.ts";
 import { readEnv } from "@/lib/env.ts";
+import { homeDir, configHome, dataHome } from "@/lib/user-directories.ts";
 import { document, rows, section, span, text, type DisplayText } from "@/ui/document.ts";
 import { renderDocumentText } from "@/ui/renderers/terminal.ts";
 import { buildCompletionSpec } from "@/commands/completion/lib/spec.ts";
@@ -64,18 +64,6 @@ export function resolveShell(shell: unknown): SupportedShell {
   );
 }
 
-function envHome(): string {
-  return readEnv("HOME") ?? homedir();
-}
-
-function xdgDataHome(): string {
-  return readEnv("XDG_DATA_HOME") ?? join(envHome(), ".local", "share");
-}
-
-function xdgConfigHome(): string {
-  return readEnv("XDG_CONFIG_HOME") ?? join(envHome(), ".config");
-}
-
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
@@ -83,18 +71,18 @@ function shellQuote(value: string): string {
 function installTarget(shell: SupportedShell): InstallTarget {
   if (shell === "bash") {
     return {
-      completionPath: join(xdgDataHome(), "bash-completion", "completions", "altertable"),
-      rcPath: join(envHome(), ".bashrc"),
+      completionPath: join(dataHome(), "bash-completion", "completions", "altertable"),
+      rcPath: join(homeDir(), ".bashrc"),
     };
   }
   if (shell === "zsh") {
     return {
-      completionPath: join(xdgDataHome(), "zsh", "site-functions", "_altertable"),
-      rcPath: join(envHome(), ".zshrc"),
+      completionPath: join(dataHome(), "zsh", "site-functions", "_altertable"),
+      rcPath: join(homeDir(), ".zshrc"),
     };
   }
   return {
-    completionPath: join(xdgConfigHome(), "fish", "completions", "altertable.fish"),
+    completionPath: join(configHome(), "fish", "completions", "altertable.fish"),
   };
 }
 

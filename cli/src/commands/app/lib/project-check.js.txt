@@ -32,7 +32,6 @@ async function check() {
       !/^[a-z][a-z0-9-]*$/.test(name) ||
       !operation ||
       typeof operation.input !== "function" ||
-      typeof operation.output !== "function" ||
       typeof operation.run !== "function" ||
       !Array.isArray(operation.checks) ||
       !operation.checks.length ||
@@ -44,7 +43,7 @@ async function check() {
         (!Number.isInteger(operation.policy.maxResponseBytes) ||
           operation.policy.maxResponseBytes < 1))
     ) {
-      throw new Error(`Operation "${name}" needs input and output parsers, check inputs, and limits.`);
+      throw new Error(`Operation "${name}" needs an input parser, a run function, check inputs, and limits.`);
     }
     for (const input of operation.checks) {
       try {
@@ -63,7 +62,7 @@ async function check() {
       plugins: [{
         name: "data-app-browser-boundary",
         setup(build) {
-          build.onResolve({ filter: /^@altertable\/data-app\/server(?:\/|$)/ }, () => {
+          build.onResolve({ filter: /^@altertable\/(?:data-app\/server|data-app-bun|data-app-worker)(?:\/|$)/ }, () => {
             throw new Error("Browser code cannot import server transport. Use import type for server types.");
           });
           build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, ({ path }) => {
@@ -71,7 +70,7 @@ async function check() {
             const root = process.cwd().replaceAll("\\", "/");
             if (normalized === `${root}/src/operations.ts` ||
                 normalized === `${root}/src/server.ts` ||
-                /node_modules\/@altertable\/data-app\/(?:dist\/(?:server|local)\.js|src\/server\/[^/]+\.[jt]s)$/.test(normalized)) {
+                /node_modules\/@altertable\/(?:data-app\/(?:dist|src)\/server\/|data-app-(?:bun|worker)\/)/.test(normalized)) {
               throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
             }
           });
@@ -83,7 +82,7 @@ async function check() {
 
   if (process.argv[1] !== "--lakehouse") return;
   const { createDataHandler } = await import("@altertable/data-app/server");
-  const { localLakehouse } = await import("@altertable/data-app/server/bun");
+  const { localLakehouse } = await import("@altertable/data-app-bun");
   const handle = createDataHandler(operations, async () => ({
     lakehouse: localLakehouse(process.env),
     canDiscloseSql: true,

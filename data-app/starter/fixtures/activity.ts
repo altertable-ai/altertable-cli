@@ -1,5 +1,5 @@
 import { defineDataApp } from "@altertable/data-app";
-import { defineDateRangeContract, parseCount, parseLabel } from "@altertable/data-app/contract";
+import { defineDateRangeContract } from "@altertable/data-app/contract";
 
 type Activity = { count: number; features: string[] };
 export const app = defineDataApp({
@@ -10,7 +10,8 @@ export const app = defineDataApp({
   queries: {
     activity: {
       statement: "SELECT 120 AS count, 'Queries' AS feature WHERE $start <= $end",
-      params: { start: {}, end: {} },
+      params: { start: { type: "string" }, end: { type: "string" } },
+      projections: { count: { type: "number" }, feature: { type: "string" } },
     },
   },
 });
@@ -25,24 +26,17 @@ export const operations = {
     policy: { maxQueryRows: 10, maxDurationMs: 30_000, maxResponseBytes: 1_000_000 },
     checks: [{ range: { start: "2026-03-10", end: "2026-03-12" }, comparison: null }],
     input: calendar.parseRequest,
-    output(value: unknown): Activity {
-      if (!value || typeof value !== "object") throw new Error("Invalid activity result");
-      const result = value as { count?: unknown; features?: unknown };
-      if (!Array.isArray(result.features)) throw new Error("Invalid activity features");
-      return {
-        count: parseCount(result.count),
-        features: result.features.map((feature) => parseLabel(feature)),
-      };
-    },
-    async run({ query }, input) {
+    async run({ query }, input): Promise<Activity> {
       const result = await query(
         "activity",
         { start: input.range.start, end: input.range.end },
         { limit: 10 },
       );
+      const firstRow = result.rows[0];
+      if (!firstRow) throw new Error("Activity query returned no rows.");
       return {
-        count: parseCount(result.rows[0]?.[0]),
-        features: result.rows.map((row) => parseLabel(row[1])),
+        count: firstRow.count,
+        features: result.rows.map((row) => row.feature),
       };
     },
   }),

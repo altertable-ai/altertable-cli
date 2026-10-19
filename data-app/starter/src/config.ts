@@ -11,6 +11,7 @@ export default defineDataApp({
     connection: {
       statement: "SELECT 1 AS connection_check",
       params: {},
+      projections: { connection_check: { type: "number" } },
     },
   },
 });

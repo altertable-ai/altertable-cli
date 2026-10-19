@@ -18,9 +18,34 @@ beforeEach(() => {
       exports: {
         "./appearance": "./dist/core/appearance.js",
         "./server": "./dist/server/index.js",
-        "./server/bun": "./dist/server/local.js",
       },
     }),
+  );
+  mkdirSync(join(directory, "node_modules/@altertable/data-app-bun/dist"), { recursive: true });
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-bun/package.json"),
+    JSON.stringify({
+      name: "@altertable/data-app-bun",
+      type: "module",
+      exports: {
+        ".": "./dist/index.js",
+        "./preview": "./dist/index.js",
+        "./reload": "./dist/index.js",
+      },
+    }),
+  );
+  mkdirSync(join(directory, "node_modules/@altertable/data-app-worker/dist"), { recursive: true });
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-worker/package.json"),
+    JSON.stringify({
+      name: "@altertable/data-app-worker",
+      type: "module",
+      exports: { ".": "./dist/index.js" },
+    }),
+  );
+  writeFileSync(
+    join(directory, "node_modules/@altertable/data-app-worker/dist/index.js"),
+    "export const secretFreeHandler = 1;",
   );
 });
 afterEach(() => {
@@ -47,18 +72,18 @@ describe("data app contract", () => {
     );
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { totals: { checks: [{}], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 0, maxDurationMs: 0 } } };",
+      "export const operations = { totals: { checks: [{}], input: () => ({}), run: async () => ({}), policy: { maxQueryRows: 0, maxDurationMs: 0 } } };",
     );
     const failure = await checkAppProject(directory).catch((error: unknown) => error);
     expect(failure).toMatchObject({ message: "Data app validation failed." });
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { totals: { checks: [], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+      "export const operations = { totals: { checks: [], input: () => ({}), run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
     );
     expect(checkAppProject(directory)).rejects.toThrow("Data app validation failed.");
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { totals: { checks: [{}], input: () => ({}), output: (value: unknown) => value, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+      "export const operations = { totals: { checks: [{}], input: () => ({}), run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
     );
     await checkAppProject(directory);
   });
@@ -110,7 +135,7 @@ test("browser bundles reject value imports of operations but allow type imports"
   );
   writeFileSync(
     join(directory, "src/operations.ts"),
-    "export const operations = { totals: { checks: [{}], input: () => ({}), output: (v: unknown) => v, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+    "export const operations = { totals: { checks: [{}], input: () => ({}), run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
   );
   writeFileSync(
     join(directory, "src/index.html"),
@@ -142,7 +167,7 @@ test("lakehouse checks execute every declared input through public package expor
     "export function parseAppearance() {}",
   );
   writeFileSync(
-    join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+    join(directory, "node_modules/@altertable/data-app-bun/dist/index.js"),
     "export function localLakehouse() { return {}; }",
   );
   writeFileSync(
@@ -162,7 +187,7 @@ test("lakehouse checks execute every declared input through public package expor
     `
     import { appendFileSync } from "node:fs";
     export const operations = { totals: {
-      checks: [{ day: 1 }, { day: 2 }], input: (value) => value, output: (value) => value,
+      checks: [{ day: 1 }, { day: 2 }], input: (value) => value,
       policy: { maxQueryRows: 1, maxDurationMs: 1000 },
       async run(context, input) { appendFileSync("executed.txt", String(input.day)); return input; },
     } };
@@ -174,7 +199,13 @@ test("lakehouse checks execute every declared input through public package expor
   expect(readFileSync(join(directory, "executed.txt"), "utf8")).toBe("12");
 });
 
-test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
+test.each([
+  "@altertable/data-app/server",
+  "@altertable/data-app-bun",
+  "@altertable/data-app-bun/preview",
+  "@altertable/data-app-bun/reload",
+  "@altertable/data-app-worker",
+])(
   "browser bundles reject the published %s entry even without credential strings",
   async (entry) => {
     mkdirSync(join(directory, "src"));
@@ -191,12 +222,12 @@ test.each(["@altertable/data-app/server", "@altertable/data-app/server/bun"])(
       "export const secretFreeHandler = 1;",
     );
     writeFileSync(
-      join(directory, "node_modules/@altertable/data-app/dist/server/local.js"),
+      join(directory, "node_modules/@altertable/data-app-bun/dist/index.js"),
       "export const secretFreeHandler = 1;",
     );
     writeFileSync(
       join(directory, "src/operations.ts"),
-      "export const operations = { test: { checks: [{}], input: v => v, output: v => v, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
+      "export const operations = { test: { checks: [{}], input: v => v, run: async () => ({}), policy: { maxQueryRows: 1, maxDurationMs: 1000 } } };",
     );
     writeFileSync(
       join(directory, "src/index.html"),

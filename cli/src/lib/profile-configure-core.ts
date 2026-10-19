@@ -1,4 +1,4 @@
-import { unlinkSync, rmSync, existsSync } from "node:fs";
+import { unlinkSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { configFile, configGet, configSet, credentialsFile, kvUnset } from "@/lib/config.ts";
 import { CliError, ConfigurationError } from "@/lib/errors.ts";
 import { deleteProfile, deriveProfileName, listProfiles } from "@/lib/profile/model.ts";
@@ -132,11 +132,12 @@ export async function configureRunSet(
       );
     }
 
+    // Bun's asynchronous stdin read can let Windows exit before credentials are saved.
     if (options.passwordStdin) {
-      password = (await Bun.stdin.text()).replace(/\n$/, "");
+      password = readFileSync(0, "utf8").replace(/\n$/, "");
     }
     if (options.apiKeyStdin) {
-      apiKey = (await Bun.stdin.text()).replace(/\n$/, "");
+      apiKey = readFileSync(0, "utf8").replace(/\n$/, "");
     }
 
     const hasLakehouseCredentials = Boolean(user || password);

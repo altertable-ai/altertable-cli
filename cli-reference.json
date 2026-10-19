@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "1.11.0",
+  "cliVersion": "1.12.0",
   "globalOptions": [
     {
       "name": "help",
@@ -53,6 +53,16 @@
       "aliases": [],
       "type": "boolean",
       "description": "Agent-friendly preset: structured JSON output, no pager or terminal styling",
+      "required": false,
+      "repeatable": false,
+      "scope": "global",
+      "values": []
+    },
+    {
+      "name": "no-agent",
+      "aliases": [],
+      "type": "boolean",
+      "description": "Disable agent mode, including automatic detection",
       "required": false,
       "repeatable": false,
       "scope": "global",

@@ -511,7 +511,7 @@ describe("binary self-update", () => {
       throw new Error("Expected downloaded binary verification to fail.");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain("Downloaded altertable version is 9.9.9");
+      expect((error as Error).message).toContain("Downloaded Altertable CLI version is 9.9.9");
     }
     expect(readFileSync(targetPath, "utf8")).toBe(originalBinary);
   });
@@ -707,7 +707,7 @@ describe("automatic update checks", () => {
       });
     });
 
-    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+    expect(stderr.join("\n")).toContain(`Update available: Altertable CLI ${UPDATE_TEST_VERSION}`);
     expect(stderr.join("\n")).toContain("altertable update");
   });
 
@@ -739,7 +739,7 @@ describe("automatic update checks", () => {
     });
 
     expect(fetchCalls).toBe(0);
-    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+    expect(stderr.join("\n")).toContain(`Update available: Altertable CLI ${UPDATE_TEST_VERSION}`);
   });
 
   test("falls back to a cached notice when a scheduled refresh fails", async () => {
@@ -769,7 +769,7 @@ describe("automatic update checks", () => {
       },
     });
 
-    expect(stderr.join("\n")).toContain(`Update available: altertable ${UPDATE_TEST_VERSION}`);
+    expect(stderr.join("\n")).toContain(`Update available: Altertable CLI ${UPDATE_TEST_VERSION}`);
     expect(readUpdateState().last_error).toBe("Unable to check for CLI updates.");
   });
 });
@@ -780,7 +780,7 @@ describe("update command", () => {
 
     expect(output.stdout[0]).toBe(
       [
-        `A new version of altertable is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
+        `A new version of Altertable CLI is available: v${UPDATE_TEST_VERSION} (current v${VERSION})`,
         `Run ${UpdaterConfig.commands.selfUpdate} to install it.`,
       ].join("\n"),
     );
@@ -800,7 +800,7 @@ describe("update command", () => {
 
     expect(output.stdout[0]).toBe(
       [
-        `Target version v${targetVersion} is older than installed altertable v${VERSION}.`,
+        `Target version v${targetVersion} is older than installed Altertable CLI v${VERSION}.`,
         `Run altertable update ${targetVersion} --force to install it anyway.`,
       ].join("\n"),
     );
@@ -810,7 +810,7 @@ describe("update command", () => {
     const output = await runUpdateCommand(["upgrade", UPDATE_TEST_VERSION, "--check"]);
 
     expect(output.stdout[0]).toContain(
-      `A new version of altertable is available: v${UPDATE_TEST_VERSION}`,
+      `A new version of Altertable CLI is available: v${UPDATE_TEST_VERSION}`,
     );
   });
 
@@ -838,8 +838,57 @@ describe("update command", () => {
     await executeUpdateCommand({}, runtime.output, dependencies);
 
     expect(installedVersion).toBe(UPDATE_TEST_VERSION);
-    expect(output.stderr).toContain(`Updating altertable to ${UPDATE_TEST_VERSION}`);
-    expect(output.stderr).toContain(`altertable ${UPDATE_TEST_VERSION} installed.`);
+    expect(output.stderr).toEqual([
+      `Altertable CLI v${UPDATE_TEST_VERSION} is out! You're on v${VERSION}`,
+    ]);
+    const summary = output.stdout.join("\n");
+    expect(summary).toStartWith("Upgraded.\n");
+    expect(summary).not.toContain("Welcome");
+    expect(summary).toContain(`Release notes for Altertable CLI v${UPDATE_TEST_VERSION}:`);
+    expect(summary).toContain(`/releases/tag/v${UPDATE_TEST_VERSION}`);
+    expect(summary).toContain("https://github.com/altertable-ai/altertable-cli/issues");
+    expect(summary).toContain(`/compare/v${VERSION}...v${UPDATE_TEST_VERSION}`);
+  });
+
+  test("keeps installation JSON free of human output", async () => {
+    const runtime = createCliRuntime({ debug: false, json: true, agent: false });
+    const humanOutput: string[] = [];
+    const jsonOutput: unknown[] = [];
+    runtime.output.writeHuman = (text) => humanOutput.push(text);
+    runtime.output.writeMetadata = (lines) => humanOutput.push(...lines);
+    runtime.output.writeJson = (data) => jsonOutput.push(data);
+    const installed = {
+      installed_version: UPDATE_TEST_VERSION,
+      verified_version: UPDATE_TEST_VERSION,
+      method: "github-binary" as const,
+      target_path: "/tmp/altertable",
+    };
+    await executeUpdateCommand({ version: UPDATE_TEST_VERSION }, runtime.output, {
+      checkForUpdate,
+      async installCliUpdate(_version, options) {
+        expect(options?.stdio).toBe("pipe");
+        return installed;
+      },
+    });
+    expect(humanOutput).toEqual([]);
+    expect(jsonOutput).toEqual([installed]);
+  });
+
+  test("does not announce success when installation fails", async () => {
+    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const humanOutput: string[] = [];
+    runtime.output.writeHuman = (text) => humanOutput.push(text);
+    runtime.output.writeMetadata = () => {};
+    const rejected = expect(
+      executeUpdateCommand({ version: UPDATE_TEST_VERSION }, runtime.output, {
+        checkForUpdate,
+        async installCliUpdate() {
+          throw new Error("Installation failed");
+        },
+      }),
+    ).rejects.toThrow("Installation failed");
+    expect(humanOutput).toEqual([]);
+    return rejected;
   });
 
   test("rejects a downgrade unless forced", () => {
@@ -848,10 +897,25 @@ describe("update command", () => {
     );
   });
 
-  test("installs an explicit downgrade when forced", async () => {
+  test.each([
+    {
+      version: "1.1.0",
+      announcement: `Downgrading Altertable CLI to v1.1.0. You're on v${VERSION}`,
+      outcome: "Downgraded.",
+    },
+    {
+      version: VERSION,
+      announcement: `Reinstalling Altertable CLI v${VERSION}.`,
+      outcome: "Reinstalled.",
+    },
+  ])("describes a forced $outcome accurately", async ({ version, announcement, outcome }) => {
     const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    runtime.output.writeHuman = (text) => stdout.push(text);
+    runtime.output.writeMetadata = (lines) => stderr.push(...lines);
     let installedVersion = "";
-    const dependencies: UpdateCommandDependencies = {
+    await executeUpdateCommand({ version, force: true }, runtime.output, {
       checkForUpdate,
       async installCliUpdate(version) {
         installedVersion = version;
@@ -862,11 +926,15 @@ describe("update command", () => {
           target_path: "/tmp/altertable",
         };
       },
-    };
-
-    await executeUpdateCommand({ version: "1.1.0", force: true }, runtime.output, dependencies);
-
-    expect(installedVersion).toBe("1.1.0");
+    });
+    expect(installedVersion).toBe(version);
+    expect(stderr).toEqual([announcement]);
+    expect(stdout[0]).toStartWith(`${outcome}\n`);
+    expect(stdout[0]).toContain(`Release notes for Altertable CLI v${version}:`);
+    expect(stdout[0]).not.toContain("What's new");
+    if (version === VERSION) {
+      expect(stdout[0]).not.toContain("Commit log:");
+    }
   });
 
   test("rejects the removed install positional", () => {

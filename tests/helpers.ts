@@ -9,6 +9,8 @@ const repoRoot = dirname(testsDir);
 
 type EnvValue = string | undefined;
 type TestEnvName =
+  | "ALTERTABLE_AGENT_MODE"
+  | "AI_AGENT"
   | "ALTERTABLE_API_BASE"
   | "ALTERTABLE_API_KEY"
   | "ALTERTABLE_BASIC_AUTH_TOKEN"
@@ -225,6 +227,8 @@ function buildEnv(overrides: TestEnv = {}): Record<string, string> {
   // Keep CLI output deterministic regardless of the developer's terminal: the CLI
   // colorizes arg-validation errors unless NO_COLOR/CI is set (CI has it, local shells don't).
   env.NO_COLOR = "1";
+  // Human-output tests must not inherit the agent running this suite.
+  env.ALTERTABLE_AGENT_MODE = "0";
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) {
       delete env[key];

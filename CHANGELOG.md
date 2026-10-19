@@ -11,9 +11,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preview a single-file data app locally with `altertable app dev --file index.tsx`. The file's `defineDataApp` scope must match the selected profile, and queries run through the CLI's loopback proxy.
 
+### Fixed
+
+- Complete stdin-based credential configuration before exiting on Windows.
+
+- Keep profiles and credentials in the user's home directory when `HOME` is unset, and reject relative config and shell-completion directory settings.
+- Read file-backed credentials on Windows without applying Unix permission checks.
+
+If credentials were saved inside a project, sign in again after upgrading and revoke any exposed credentials.
+
+- Honor explicit read timeouts for streamed queries and preserve primary transport or write errors when export file finalization also fails.
+
+- Cancel native query exports when output writes fail, and count blank lines consistently in buffered and streamed query parse errors.
+
+- Query engine error records now fail human/table, Markdown, JSON, and agent output with the engine message instead of a success summary. Lakehouse HTTP errors preserve plain-text details, and interrupted streams report network errors consistently. CSV, JSONL, and Parquet exports can contain partial output on failure; check the exit status before consuming them. A server socket closure without an error body cannot expose the engine's message.
+
 ### Changed
 
+- Generate data apps with the split core, React, and Bun packages at 0.71.0; keep declared data-app packages aligned during upgrades.
+
+- Update generated data apps and fixtures to `@altertable/data-app` 0.69.0.
+- Include a starter server example for previewing single-file data apps with the Bun preview API.
+
+- Make CLI updates easier to scan with styled version summaries, explicit upgrade/reinstall/downgrade messages, and release notes, issue, and commit-log links.
+
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
+
+## [1.12.0](https://github.com/altertable-ai/altertable-cli/compare/v1.11.0...v1.12.0) (2026-10-18)
+
+
+### Features
+
+* **app:** update data app examples to 0.69.0 ([#144](https://github.com/altertable-ai/altertable-cli/issues/144)) ([6d2b52e](https://github.com/altertable-ai/altertable-cli/commit/6d2b52e3c2c336a00cfac83df4a02bd58498f2ec))
+* **app:** update data-app consumers to 0.70.0 ([#146](https://github.com/altertable-ai/altertable-cli/issues/146)) ([60c8d26](https://github.com/altertable-ai/altertable-cli/commit/60c8d26793aceeef4515b101f85a012937da7319))
+* **cli:** automatically detect coding agents ([#145](https://github.com/altertable-ai/altertable-cli/issues/145)) ([6049d7e](https://github.com/altertable-ai/altertable-cli/commit/6049d7e86ef2578cb2aa30c1b437cebd66ad5491))
+* **update:** clarify installation progress and release guidance ([#142](https://github.com/altertable-ai/altertable-cli/issues/142)) ([bf8ac8e](https://github.com/altertable-ai/altertable-cli/commit/bf8ac8e8de75ad4b9ab7b8623d1e5bd478244511))
 
 ## [1.11.0](https://github.com/altertable-ai/altertable-cli/compare/v1.10.1...v1.11.0) (2026-10-13)
 

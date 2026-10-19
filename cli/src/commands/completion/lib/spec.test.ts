@@ -229,6 +229,7 @@ describe("buildCompletionSpec", () => {
     expect(findNode(spec, "update")).toBeDefined();
     expect(findNode(spec, "upgrade")).toBeDefined();
     expect(spec.flags.some((flag) => flag.name === "agent")).toBe(true);
+    expect(spec.flags.some((flag) => flag.name === "no-agent")).toBe(true);
     expect(catalog).toBeDefined();
     expect(findNode(spec, "catalogs")).toBeUndefined();
     expect(api).toBeDefined();
