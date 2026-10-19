@@ -11,18 +11,46 @@ const allModes = [...modes, "--format jsonl", "--format csv", "--format parquet"
 // generators can fail after sending bytes and terminate the HTTP response.
 describe("query failures through the public CLI", () => {
   let workspace: TestWorkspace;
-  let failure: "before-columns" | "after-columns" | "after-rows" | "socket" | "body-socket";
+  let failure:
+    | "before-columns"
+    | "after-columns"
+    | "after-rows"
+    | "socket"
+    | "body-socket"
+    | "http-error"
+    | "success";
   const server = createServer(async (request, response) => {
     if (failure === "socket") {
       request.socket.destroy();
       return;
     }
+    if (failure === "http-error") {
+      response.writeHead(422, { "content-type": "text/plain" });
+      response.end(engineMessage);
+      return;
+    }
     let body = "";
     for await (const chunk of request) body += chunk;
     const { format } = JSON.parse(body) as { format?: string };
+    if (failure === "success") {
+      response.end(
+        format === "jsonl"
+          ? '{"error":"valid data"}\n'
+          : '{"query_id":"ok"}\n["error"]\n["valid data"]\n',
+      );
+      return;
+    }
     if (failure === "body-socket" || format !== undefined) {
       response.writeHead(200, { "content-type": "application/octet-stream" });
-      response.write(format === "csv" ? "v\n1\n" : format === "parquet" ? "PAR1" : "[1]\n");
+      response.write(
+        format === "csv"
+          ? "v\n1\n"
+          : format === "parquet"
+            ? "PAR1"
+            : format === "jsonl"
+              ? '{"v":1}\n'
+              : '{"query_id":"partial"}\n["v"]\n[1]\n',
+      );
       closeBody(response);
       return;
     }
@@ -62,6 +90,26 @@ describe("query failures through the public CLI", () => {
     });
   }
 
+  test.each(allModes)("HTTP engine error: %s", async (mode) => {
+    failure = "http-error";
+    const result = await workspace.runCommand(`altertable query "${statement}" ${mode}`);
+    expect(result.exitCode).toBe(6);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(engineMessage);
+  });
+
+  test.each([...modes, "--format jsonl"])("valid error column: %s", async (mode) => {
+    failure = "success";
+    const result = await workspace.runCommand(
+      `altertable query "SELECT 'valid data' AS error" ${mode}`,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("valid data");
+    if (mode === "") expect(result.stdout).toContain("1 row");
+    if (mode === "--format jsonl") expect(result.stdout).toBe('{"error":"valid data"}\n');
+  });
+
   for (const phase of ["socket", "body-socket"] as const) {
     test.each(allModes)(`${phase} without an engine frame: %s`, async (mode) => {
       failure = phase;
@@ -70,7 +118,11 @@ describe("query failures through the public CLI", () => {
       expect(result.stderr).toContain("network error");
       expect(result.stderr).not.toContain("Unexpected error");
       expect(result.stderr).not.toContain(engineMessage);
-      if (!mode.includes("--format jsonl") && !mode.includes("--format csv") && !mode.includes("--format parquet")) {
+      if (
+        !mode.includes("--format jsonl") &&
+        !mode.includes("--format csv") &&
+        !mode.includes("--format parquet")
+      ) {
         expect(result.stdout).toBe("");
       } else if (phase === "body-socket") {
         expect(result.stdout.length).toBeGreaterThan(0);

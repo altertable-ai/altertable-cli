@@ -1,4 +1,4 @@
-import { ParseError } from "@/lib/errors.ts";
+import { ParseError, QueryError } from "@/lib/errors.ts";
 import { readTextStreamLines } from "@/lib/stream-lines.ts";
 
 export type LakehouseQueryMetadata = {
@@ -48,59 +48,57 @@ function isColumnObjectArray(value: unknown): value is LakehouseColumn[] {
 }
 
 function parseMetadataLine(line: string, lineNumber: number): LakehouseQueryMetadata {
-  try {
-    const parsedMetadata = JSON.parse(line) as unknown;
-    if (
-      typeof parsedMetadata !== "object" ||
-      parsedMetadata === null ||
-      Array.isArray(parsedMetadata)
-    ) {
-      throw new ParseError("Query response metadata must be a JSON object.", {
-        details: `Line ${lineNumber}: ${line}`,
-      });
-    }
-    return parsedMetadata as LakehouseQueryMetadata;
-  } catch (error) {
-    if (error instanceof ParseError) {
-      throw error;
-    }
-    throw new ParseError(`Failed to parse query response at line ${lineNumber}.`, {
-      details: line,
-      cause: error,
+  const parsedMetadata = parseProtocolLine(line, lineNumber);
+  if (
+    typeof parsedMetadata !== "object" ||
+    parsedMetadata === null ||
+    Array.isArray(parsedMetadata)
+  ) {
+    throw new ParseError("Query response metadata must be a JSON object.", {
+      details: `Line ${lineNumber}: ${line}`,
     });
   }
+  return parsedMetadata as LakehouseQueryMetadata;
 }
 
 function parseOptionalColumnsLine(
   line: string,
   lineNumber: number,
 ): string[] | LakehouseColumn[] | undefined {
-  let parsedLine: unknown;
-  try {
-    parsedLine = JSON.parse(line);
-  } catch (error) {
-    throw new ParseError(`Failed to parse query response at line ${lineNumber}.`, {
-      details: line,
-      cause: error,
-    });
-  }
-
+  const parsedLine = parseProtocolLine(line, lineNumber);
   if (isColumnNameArray(parsedLine) || isColumnObjectArray(parsedLine)) {
     return parsedLine;
   }
-
   return undefined;
 }
 
-function parseRowLine(line: string, lineNumber: number): LakehouseRow {
+// Default query NDJSON uses array rows and a standalone {error: string} record.
+// Native JSONL uses object rows, where an `error` column is valid user data.
+function parseProtocolLine(line: string, lineNumber: number): unknown {
+  let value: unknown;
   try {
-    return JSON.parse(line) as LakehouseRow;
+    value = JSON.parse(line);
   } catch (error) {
     throw new ParseError(`Failed to parse query response at line ${lineNumber}.`, {
       details: line,
       cause: error,
     });
   }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    "error" in value &&
+    typeof value.error === "string"
+  ) {
+    throw new QueryError(value.error);
+  }
+  return value;
+}
+
+function parseRowLine(line: string, lineNumber: number): LakehouseRow {
+  return parseProtocolLine(line, lineNumber) as LakehouseRow;
 }
 
 function trimTrailingEmptyLines(lines: string[]): string[] {
@@ -123,34 +121,39 @@ export async function parseLakehouseQueryHeader(lineSource: AsyncIterable<string
   pendingRowLine?: string;
 }> {
   const lineIterator = lineSource[Symbol.asyncIterator]();
-  const firstResult = await lineIterator.next();
-  if (firstResult.done || firstResult.value.trim().length === 0) {
-    throw new ParseError("Query response is empty.");
-  }
-
-  const metadata = parseMetadataLine(firstResult.value, 1);
-  let columns: string[] | LakehouseColumn[] = [];
-  let lineNumber = 2;
-  let pendingRowLine: string | undefined;
-
-  const secondResult = await lineIterator.next();
-  if (!secondResult.done) {
-    const parsedColumns = parseOptionalColumnsLine(secondResult.value, lineNumber);
-    if (parsedColumns !== undefined) {
-      columns = parsedColumns;
-      lineNumber += 1;
-    } else {
-      pendingRowLine = secondResult.value;
+  try {
+    const firstResult = await lineIterator.next();
+    if (firstResult.done || firstResult.value.trim().length === 0) {
+      throw new ParseError("Query response is empty.");
     }
-  }
 
-  return {
-    metadata,
-    columns,
-    lineIterator,
-    lineNumber,
-    pendingRowLine,
-  };
+    const metadata = parseMetadataLine(firstResult.value, 1);
+    let columns: string[] | LakehouseColumn[] = [];
+    let lineNumber = 2;
+    let pendingRowLine: string | undefined;
+
+    const secondResult = await lineIterator.next();
+    if (!secondResult.done) {
+      const parsedColumns = parseOptionalColumnsLine(secondResult.value, lineNumber);
+      if (parsedColumns !== undefined) {
+        columns = parsedColumns;
+        lineNumber += 1;
+      } else {
+        pendingRowLine = secondResult.value;
+      }
+    }
+
+    return {
+      metadata,
+      columns,
+      lineIterator,
+      lineNumber,
+      pendingRowLine,
+    };
+  } catch (error) {
+    await lineIterator.return?.();
+    throw error;
+  }
 }
 
 export function parseLakehouseQueryResponse(responseBody: string): LakehouseQueryResult {
@@ -203,29 +206,33 @@ export async function* parseLakehouseQueryStream(
   const rows: LakehouseRow[] = [];
   let lineNumber = header.lineNumber;
 
-  if (header.pendingRowLine !== undefined) {
-    if (header.pendingRowLine.trim().length > 0) {
-      const row = parseRowLine(header.pendingRowLine, lineNumber);
+  try {
+    if (header.pendingRowLine !== undefined) {
+      if (header.pendingRowLine.trim().length > 0) {
+        const row = parseRowLine(header.pendingRowLine, lineNumber);
+        rows.push(row);
+        yield row;
+        lineNumber += 1;
+      }
+    }
+
+    while (true) {
+      const nextLine = await header.lineIterator.next();
+      if (nextLine.done) {
+        break;
+      }
+      const line = nextLine.value;
+      if (line.trim().length === 0) {
+        continue;
+      }
+      const row = parseRowLine(line, lineNumber);
       rows.push(row);
       yield row;
       lineNumber += 1;
     }
-  }
 
-  while (true) {
-    const nextLine = await header.lineIterator.next();
-    if (nextLine.done) {
-      break;
-    }
-    const line = nextLine.value;
-    if (line.trim().length === 0) {
-      continue;
-    }
-    const row = parseRowLine(line, lineNumber);
-    rows.push(row);
-    yield row;
-    lineNumber += 1;
+    return { metadata: header.metadata, columns: header.columns, rows };
+  } finally {
+    await header.lineIterator.return?.();
   }
-
-  return { metadata: header.metadata, columns: header.columns, rows };
 }

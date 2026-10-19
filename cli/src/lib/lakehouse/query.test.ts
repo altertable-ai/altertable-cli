@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setCliContext } from "@/context.ts";
-import { ParseError } from "@/lib/errors.ts";
+import { ParseError, QueryError } from "@/lib/errors.ts";
 import {
   csvEscapeCell,
   renderQueryCsv,
@@ -374,5 +374,51 @@ describe("query renderers", () => {
       rows: [{ id: 1, name: "Alice" }],
     });
     expect(names).toEqual(["id", "name"]);
+  });
+});
+
+describe("NDJSON engine error records", () => {
+  const message = "Conversion Error: invalid integer";
+  const errorLine = JSON.stringify({ error: message });
+
+  test.each([
+    errorLine,
+    `{}\n${errorLine}`,
+    `{}\n["v"]\n${errorLine}`,
+    `{}\n["v"]\n[1]\n${errorLine}`,
+  ])("buffered and chunked parsers reject the same engine frame: %s", async (body) => {
+    expect(() => parseLakehouseQueryResponse(body)).toThrow(message);
+    const bytes = new TextEncoder().encode(`${body.replaceAll("\n", "\r\n")}\r\n`);
+    let canceled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+    const rows: LakehouseRow[] = [];
+    async function consume() {
+      for await (const row of parseLakehouseQueryStream(stream)) rows.push(row);
+    }
+    let failure: unknown;
+    try {
+      await consume();
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(QueryError);
+    expect((failure as QueryError).message).toContain(message);
+    expect(rows).toEqual(body.includes("[1]") ? [[1]] : []);
+    expect(stream.locked).toBe(false);
+    expect(canceled).toBe(true);
+  });
+
+  test("preserves rows with error values and additional object fields", () => {
+    const result = parseLakehouseQueryResponse(
+      '{}\n["error","value"]\n["valid data",1]\n{"error":"valid data","value":2}\n',
+    );
+    expect(result.rows).toEqual([["valid data", 1], { error: "valid data", value: 2 }]);
   });
 });
