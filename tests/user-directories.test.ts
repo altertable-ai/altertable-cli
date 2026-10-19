@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const cliPath =
   process.env.ALTERTABLE_TEST_CLI_PATH ??
   join(dirname(fileURLToPath(import.meta.url)), "../cli/src/cli.ts");
+const homeVariable = process.platform === "win32" ? "USERPROFILE" : "HOME";
 let root: string;
 let project: string;
 let home: string;
@@ -68,11 +69,11 @@ async function configure() {
   );
 }
 
-for (const source of ["HOME", "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as const) {
+for (const source of [homeVariable, "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as const) {
   test(`credentials and profiles stay accessible across working directories using ${source}`, async () => {
     const configHome = join(root, "settings");
     let configDir = join(home, ".config", "altertable");
-    if (source === "HOME") {
+    if (source === homeVariable) {
       environment.XDG_CONFIG_HOME = "";
       environment.ALTERTABLE_CONFIG_HOME = "";
     }
@@ -101,13 +102,15 @@ for (const source of ["HOME", "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as co
   });
 }
 
-for (const source of ["HOME", "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as const) {
+for (const source of [homeVariable, "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as const) {
   test(`refuses relative ${source} before writing config or credentials`, async () => {
     environment[source] = "relative-settings";
     const result = await configure();
     expect(result.exitCode).toBe(10);
     expect(result.stdout).toBe("");
-    expect(JSON.parse(result.stderr).message).toContain(source);
+    expect(JSON.parse(result.stderr).message).toContain(
+      source === homeVariable ? "home directory" : source,
+    );
     expect(result.stderr).toContain("absolute");
     expect(await readdir(project)).toEqual([]);
     expect(await readdir(home)).toEqual([]);
@@ -117,14 +120,14 @@ for (const source of ["HOME", "XDG_CONFIG_HOME", "ALTERTABLE_CONFIG_HOME"] as co
 for (const [shell, source] of [
   ["fish", "XDG_CONFIG_HOME"],
   ["bash", "XDG_DATA_HOME"],
-  ["zsh", "HOME"],
+  ["zsh", homeVariable],
 ] as const) {
   test(`completion install refuses relative ${source} without writing shell files`, async () => {
     environment.ALTERTABLE_CONFIG_HOME = join(root, "settings");
     environment[source] = "relative-settings";
     const result = await run(["completion", "install", shell, "--json"]);
     expect(result.exitCode).toBe(10);
-    expect(result.stderr).toContain(source);
+    expect(result.stderr).toContain(source === homeVariable ? "home directory" : source);
     expect(await readdir(project)).toEqual([]);
     expect(await readdir(home)).toEqual([]);
   });
@@ -141,19 +144,60 @@ test("completion and profile storage share the XDG config root", async () => {
   expect(existsSync(join(project, ".config"))).toBe(false);
 });
 
+test("fish installation writes completion without changing shell startup files", async () => {
+  const result = await run(["completion", "install", "fish"]);
+  expect(result.exitCode).toBe(0);
+  const path = join(home, ".config", "fish", "completions", "altertable.fish");
+  expect(await Bun.file(path).text()).toContain("altertable fish completion");
+  expect(result.stdout).toContain("Shell completion installed");
+  expect(result.stdout).toContain(path);
+  expect(result.stdout).toContain("Startup: automatic");
+  expect(result.stdout).toContain("Docs:    Shell completion");
+  expect(existsSync(join(home, ".bashrc"))).toBe(false);
+  expect(existsSync(join(home, ".zshrc"))).toBe(false);
+});
+
+test("zsh installation updates its startup file idempotently", async () => {
+  for (let invocation = 0; invocation < 2; invocation += 1) {
+    expect((await run(["completion", "install", "zsh"])).exitCode).toBe(0);
+  }
+  const path = join(home, ".local", "share", "zsh", "site-functions", "_altertable");
+  expect(await Bun.file(path).text()).toContain("#compdef altertable");
+  const startup = await Bun.file(join(home, ".zshrc")).text();
+  expect(startup).toContain("autoload -Uz compinit");
+  expect(startup.match(/>>> altertable completion/g)).toHaveLength(1);
+});
+
+test("bash installation can leave its startup file unchanged", async () => {
+  const result = await run(["completion", "install", "bash", "--no-rc"]);
+  expect(result.exitCode).toBe(0);
+  const path = join(home, ".local", "share", "bash-completion", "completions", "altertable");
+  expect(await Bun.file(path).text()).toContain("altertable");
+  expect(existsSync(join(home, ".bashrc"))).toBe(false);
+  expect(result.stdout).toContain("Startup: left unchanged (--no-rc)");
+});
+
 if (process.platform === "win32") {
-  test("PowerShell without HOME stores credentials under USERPROFILE", async () => {
-    delete environment.HOME;
-    const saved = await configure();
-    expect(saved.exitCode).toBe(0);
-    expect(saved.stderr).toContain("Windows ACLs are not validated");
-    expect(saved.stderr).not.toContain("chmod 600");
-    expect(await Bun.file(join(home, ".config", "altertable", "credentials")).text()).toContain(
-      "atm_directory_test",
-    );
-    expect((await run(["profile", "show", "--json"], root)).exitCode).toBe(0);
-    expect(await readdir(project)).toEqual([]);
-  });
+  for (const { name, value } of [
+    { name: "unset", value: undefined },
+    { name: "empty", value: "" },
+    { name: "a different directory", value: "other-home" },
+  ]) {
+    test(`Windows uses USERPROFILE when HOME is ${name}`, async () => {
+      if (value === undefined) delete environment.HOME;
+      else environment.HOME = value === "other-home" ? join(root, value) : value;
+      const saved = await configure();
+      expect(saved.exitCode).toBe(0);
+      expect(saved.stderr).toContain("Windows ACLs are not validated");
+      expect(saved.stderr).not.toContain("chmod 600");
+      expect(await Bun.file(join(home, ".config", "altertable", "credentials")).text()).toContain(
+        "atm_directory_test",
+      );
+      expect((await run(["profile", "show", "--json"], root)).exitCode).toBe(0);
+      expect(existsSync(join(root, "other-home", ".config"))).toBe(false);
+      expect(await readdir(project)).toEqual([]);
+    });
+  }
 
   for (const path of ["C:settings", "\\settings", "/settings"]) {
     test(`refuses drive-dependent config path ${path}`, async () => {

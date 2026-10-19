@@ -236,7 +236,7 @@ Rules for updating credentials:
 
 Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
 `$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
-be absolute. If `HOME` is unset or empty, the CLI uses the operating system's home directory.
+be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
 
 Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
 Keep the configuration directory private.

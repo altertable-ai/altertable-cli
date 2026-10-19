@@ -4,15 +4,10 @@ import { readEnv } from "@/lib/env.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 
 export function homeDir(): string {
-  const home = readEnv("HOME");
-  if (home) return requireAbsoluteDirectory(home, "HOME");
   try {
     return requireAbsoluteDirectory(homedir(), "OS home directory");
   } catch (cause) {
-    throw new ConfigurationError(
-      "Unable to determine an absolute home directory. Set HOME to an absolute directory.",
-      { cause },
-    );
+    throw new ConfigurationError("Unable to determine an absolute OS home directory.", { cause });
   }
 }
 
