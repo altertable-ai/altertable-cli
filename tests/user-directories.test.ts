@@ -41,11 +41,11 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function run(arguments_: string[], cwd = project, stdin?: string) {
+async function run(arguments_: string[], cwd = project, input?: Bun.BunFile) {
   const child = Bun.spawn([process.execPath, cliPath, ...arguments_], {
     cwd,
     env: environment,
-    stdin: stdin === undefined ? "ignore" : new Blob([stdin]),
+    stdin: input ?? "ignore",
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -58,10 +58,12 @@ async function run(arguments_: string[], cwd = project, stdin?: string) {
 }
 
 async function configure() {
+  const inputPath = join(root, "credential-input.txt");
+  await Bun.write(inputPath, "atm_directory_test\n");
   return run(
     ["profile", "configure", "--api-key-stdin", "--env", "production", "--json"],
     project,
-    "atm_directory_test\n",
+    Bun.file(inputPath),
   );
 }
 
