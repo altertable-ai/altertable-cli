@@ -1,9 +1,8 @@
 import { resolve } from "node:path";
-import { fileDevPort, previewAppFile } from "@/commands/app/lib/file-dev.ts";
+import { prepareFilePreview } from "@/commands/app/lib/file-dev.ts";
 import { checkAppScope } from "@/commands/app/lib/scope.ts";
 import { defineCommand } from "@/lib/command.ts";
 import { CliError, EXIT_GENERIC } from "@/lib/errors.ts";
-import type { ExecutionContext } from "@/lib/execution-context.ts";
 import { startAppDevProxy } from "@/commands/app/lib/dev-proxy.ts";
 import {
   appDirectory,
@@ -34,41 +33,34 @@ export const appDevCommand = defineCommand({
     },
     port: {
       type: "string",
-      description: `Local dev server port (1–65535; default: app setting, or ${fileDevPort} for --file).`,
+      description: "Local dev server port (1–65535; default: app setting, or 25837 for --file).",
     },
   },
   async run({ args, execution, runtime }) {
     assertAppOutputMode(runtime.context.json, runtime.context.agent);
-    const port = appPort(args.port);
-    const exitCode =
-      args.file === undefined
-        ? await previewAppDirectory(appDirectory(args.dir), port, execution)
-        : await previewAppFile(appFile(args.file, args.dir), port ?? fileDevPort, execution);
-    return { exitCode };
+    const file = args.file === undefined ? undefined : appFile(args.file, args.dir);
+    const port = appPort(args.port) ?? (file ? "25837" : undefined);
+    const directory = file
+      ? await prepareFilePreview(file, execution.profile)
+      : appDirectory(args.dir);
+    requireAppScripts(directory, ["dev"]);
+    if (!file) await checkAppScope(directory, execution.profile);
+    const installExitCode = await runAppCommand(file ? "install-frozen" : "install", directory);
+    if (installExitCode !== 0) return { exitCode: EXIT_GENERIC };
+    const proxy = startAppDevProxy(execution);
+    try {
+      const environment = {
+        ...proxy.environment,
+        ...(file ? { ALTERTABLE_APP_FILE: file } : {}),
+        ...(port ? { PORT: port } : {}),
+      };
+      const exitCode = await runAppCommand("dev", directory, environment);
+      return { exitCode: exitCode === 0 ? 0 : EXIT_GENERIC };
+    } finally {
+      await proxy.stop();
+    }
   },
 });
-
-async function previewAppDirectory(
-  directory: string,
-  port: string | undefined,
-  execution: ExecutionContext,
-): Promise<number> {
-  requireAppScripts(directory, ["dev"]);
-  await checkAppScope(directory, execution.profile);
-  const installExitCode = await runAppCommand("install", directory);
-  if (installExitCode !== 0) return EXIT_GENERIC;
-  const proxy = startAppDevProxy(execution);
-  try {
-    const environment = {
-      ...proxy.environment,
-      ...(port ? { PORT: port } : {}),
-    };
-    const exitCode = await runAppCommand("dev", directory, environment);
-    return exitCode === 0 ? 0 : EXIT_GENERIC;
-  } finally {
-    await proxy.stop();
-  }
-}
 
 function appFile(file: unknown, dir: unknown): string {
   if (dir !== undefined) throw new CliError("Pass either --dir or --file.");

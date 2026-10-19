@@ -1,77 +1,40 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { extractDataAppManifest } from "@altertable/data-app-manifest";
 import serverScript from "@/commands/app/lib/file-dev-server.ts.txt";
-import { readDeclaredAppScope } from "@/commands/app/lib/declared-app.ts";
-import { startAppDevProxy } from "@/commands/app/lib/dev-proxy.ts";
-import { createAppFiles } from "@/commands/app/lib/distribution.ts";
 import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
 import { dataAppPayload } from "@/commands/app/lib/payload.ts";
 import { readRequiredFile } from "@/commands/app/lib/remote.ts";
-import { runAppProcess } from "@/commands/app/lib/run.ts";
 import { assertAppScope, profileAppScope } from "@/commands/app/lib/scope.ts";
 import { configDir } from "@/lib/config-files.ts";
-import { CliError, EXIT_GENERIC } from "@/lib/errors.ts";
-import type { ExecutionContext } from "@/lib/execution-context.ts";
+import { ConfigurationError } from "@/lib/errors.ts";
 
-export const fileDevPort = "25837";
-
-export function fileDevRuntimeDirectory(): string {
-  return join(configDir(), "data-app-dev", recommendedDataAppVersion());
-}
-
-export async function writeFileDevRuntime(directory: string): Promise<void> {
-  await mkdir(directory, { recursive: true });
-  await Promise.all(
-    Object.entries(runtimeFiles()).map(([name, content]) =>
-      writeFile(join(directory, name), content),
-    ),
-  );
-}
-
-/** The frozen lockfile pins the package version; an installed runtime makes this an offline no-op. */
-export async function prepareFileDevRuntime(
-  directory: string,
-  run: typeof runAppProcess = runAppProcess,
-): Promise<void> {
-  await writeFileDevRuntime(directory);
-  if ((await run(["install", "--frozen-lockfile", "--production"], directory)) !== 0) {
-    throw new CliError("Could not install the data app package used to preview a single file.");
-  }
-}
-
-export async function previewAppFile(
-  file: string,
-  port: string,
-  execution: ExecutionContext,
-  run: typeof runAppProcess = runAppProcess,
-): Promise<number> {
+/** Prepare a regular dev project backed by the starter's pinned runtime. */
+export async function prepareFilePreview(file: string, profile: string): Promise<string> {
   const source = await readRequiredFile(file, "source");
-  assertAppScope(readDeclaredAppScope(source), profileAppScope(execution.profile), "data app file");
-  const directory = fileDevRuntimeDirectory();
-  await prepareFileDevRuntime(directory, run);
-  const proxy = startAppDevProxy(execution);
-  try {
-    const exitCode = await run(["server.ts"], directory, {
-      ...proxy.environment,
-      ALTERTABLE_APP_FILE: file,
-      PORT: port,
-    });
-    return exitCode === 0 ? 0 : EXIT_GENERIC;
-  } finally {
-    await proxy.stop();
+  const { manifest, diagnostics } = extractDataAppManifest(source);
+  if (!manifest) {
+    const details = diagnostics
+      .slice(0, 3)
+      .map(({ message, start }) => `${start.line}:${start.column}: ${message}`)
+      .join("\n");
+    throw new ConfigurationError(`Could not extract the data app manifest.\n${details}`);
   }
-}
+  assertAppScope(manifest.scope, profileAppScope(profile), "data app file");
 
-function runtimeFiles(): Record<string, string> {
-  const starter = createAppFiles(dataAppPayload, {
-    name: "altertable-file-dev",
-    title: "File dev",
-    scope: { organization: "local", environment: "local" },
-  });
-  return {
-    "package.json": starter["package.json"]!,
+  const directory = join(configDir(), "data-app-dev", recommendedDataAppVersion());
+  const starter = dataAppPayload.starter;
+  const packageJson = JSON.parse(starter["package.json"]!);
+  packageJson.scripts = { dev: "bun server.ts" };
+  await mkdir(directory, { recursive: true });
+  const files = {
+    "package.json": `${JSON.stringify(packageJson, null, 2)}\n`,
     "bun.lock": starter["bun.lock"]!,
     "bunfig.toml": starter["bunfig.toml"]!,
     "server.ts": serverScript,
   };
+  await Promise.all(
+    Object.entries(files).map(([name, content]) => writeFile(join(directory, name), content)),
+  );
+  return directory;
 }

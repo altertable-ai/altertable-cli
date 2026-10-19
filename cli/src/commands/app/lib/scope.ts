@@ -5,15 +5,9 @@ import { readEnv } from "@/lib/env.ts";
 import { isFromEnvProfile } from "@/lib/profile-store.ts";
 import { ConfigurationError } from "@/lib/errors.ts";
 
-export type ProfileAppScope = {
-  organization?: string;
-  organizationName?: string;
-  environment?: string;
-};
-
 export function assertAppScope(
   scope: unknown,
-  profile: ProfileAppScope,
+  profile: { organization?: string; organizationName?: string; environment?: string },
   source = "app.json",
 ): void {
   const value = scope as { organization?: unknown; environment?: unknown } | null;
@@ -33,7 +27,7 @@ export function assertAppScope(
   }
 }
 
-export function profileAppScope(profile: string): ProfileAppScope {
+export function profileAppScope(profile: string) {
   return {
     organization: configGet("organization_slug", profile).trim(),
     organizationName: configGet("organization_name", profile).trim(),

@@ -48,21 +48,6 @@ export async function runAppCommand(
   appEnvironment?: Record<string, string>,
   signal?: AbortSignal,
 ): Promise<number> {
-  const arguments_ =
-    command === "install"
-      ? ["install"]
-      : command === "install-frozen"
-        ? ["install", "--frozen-lockfile"]
-        : ["run", command];
-  return runAppProcess(arguments_, directory, appEnvironment, signal);
-}
-
-export async function runAppProcess(
-  args: readonly string[],
-  directory: string,
-  appEnvironment?: Record<string, string>,
-  signal?: AbortSignal,
-): Promise<number> {
   const env = copyProcessEnv();
   for (const key of Object.keys(env)) {
     if (key.startsWith("ALTERTABLE_")) delete env[key];
@@ -72,7 +57,13 @@ export async function runAppProcess(
   // command and supports `bun` calls inside the project's scripts.
   env.BUN_BE_BUN = "1";
 
-  const child = Bun.spawn([process.execPath, ...args], {
+  const arguments_ =
+    command === "install"
+      ? ["install"]
+      : command === "install-frozen"
+        ? ["install", "--frozen-lockfile"]
+        : ["run", command];
+  const child = Bun.spawn([process.execPath, ...arguments_], {
     cwd: directory,
     env,
     stdin: "inherit",
