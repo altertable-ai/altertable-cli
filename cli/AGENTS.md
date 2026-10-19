@@ -14,6 +14,8 @@ Executor-oriented notes for working in the TypeScript CLI subtree.
 
 Preferred — from repo root:
 
+Install dependencies separately with `bun run setup` from the repository root before verification.
+
 ```bash
 ./scripts/verify.sh --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
 ./scripts/verify.sh            # full gate (mirrors CI minus native compile)

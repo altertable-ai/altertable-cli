@@ -22,6 +22,8 @@ For data app starter, distribution, and browser work, follow [data-app/AGENTS.md
 
 ## Start here
 
+Install dependencies separately with `bun run setup` from the repository root before verification.
+
 ```bash
 git submodule update --init --recursive   # first checkout only
 ./scripts/verify.sh --quick               # focused CLI changes, including coverage

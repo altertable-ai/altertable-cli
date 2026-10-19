@@ -6,7 +6,7 @@ The CLI is a TypeScript/Bun project in `cli/`. The entrypoint `bin/altertable` i
 
 1. Fork and clone the repository
 2. Initialize submodules: `git submodule update --init --recursive`
-3. Install dependencies: `cd cli && bun install`
+3. Install dependencies: `bun run setup` (from the repository root)
 4. Install the [Oxc VS Code extension](https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode) (works in Cursor) for format-on-save and lint diagnostics
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build, compile, and release details.
@@ -15,7 +15,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for build, compile, and release details.
 
 1. Create a branch from `main`
 2. Edit `cli/src/**`
-3. Run checks: `./scripts/verify.sh` (use `--quick` for iterative CLI-only work; full verify before opening PR)
+3. Run checks: `bun run check:package` (use `bun run check` for iterative work; full gate before opening PR)
 4. Run integration tests when touching lakehouse HTTP paths: `./scripts/verify.sh --integration` (mock at `:15000`)
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.)
 6. Update `CHANGELOG.md` under `[Unreleased]` when the change is user-facing

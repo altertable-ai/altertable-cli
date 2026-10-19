@@ -3,7 +3,6 @@ import { dataAppDirectory } from '@/commands/app/lib/distribution.ts';
 
 for (const project of ['starter', 'tests']) {
   const commands = [
-    ['install', '--frozen-lockfile'],
     ...['typecheck', 'lint', 'format:check'].map(name => ['run', name]),
     ...(project === 'starter' ? [['run', 'build']] : []),
   ];

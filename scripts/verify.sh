@@ -45,7 +45,6 @@ check_mock_server() {
 
 cd "${REPO_ROOT}/cli"
 
-run_step "install deps" bun install --frozen-lockfile
 run_step "typecheck" bun run typecheck
 run_step "top-level test typecheck" bun node_modules/typescript-checker/bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint

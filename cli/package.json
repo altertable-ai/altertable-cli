@@ -1,7 +1,7 @@
 {
   "name": "@altertable/cli",
   "version": "1.12.0",
-  "description": "Altertable CLI \u2014 query and manage your data platform",
+  "description": "Altertable CLI — query and manage your data platform",
   "homepage": "https://github.com/altertable-ai/altertable-cli#readme",
   "bugs": {
     "url": "https://github.com/altertable-ai/altertable-cli/issues"
@@ -41,11 +41,12 @@
     "release:smoke": "bun run scripts/release.ts smoke",
     "release:verify": "bun run scripts/release.ts verify",
     "release:upload-github": "bun run scripts/publish-release.ts upload-github",
-    "pack:check": "bun run build && bun pm pack --dry-run",
+    "pack:check": "bun run build && bun run scripts/check-package.ts",
     "knip": "knip --no-config-hints",
     "knip:production": "knip --production --no-config-hints",
     "data-app:check": "bun run scripts/check-data-app.ts",
-    "data-app:test:browser": "cd ../data-app/tests && bun run test"
+    "data-app:test:browser": "cd ../data-app/tests && bun run test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
