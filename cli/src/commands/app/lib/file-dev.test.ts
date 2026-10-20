@@ -48,13 +48,11 @@ throw new Error("must not execute");`
   );
   const starter = JSON.parse(dataAppPayload.starter['package.json']!);
   expect(manifest.dependencies).toEqual(starter.dependencies);
-  expect(manifest.scripts).toEqual({ dev: 'bun server.ts' });
+  expect(manifest.scripts).toEqual({ dev: 'data-app-preview' });
   expect(await readFile(join(directory, 'bun.lock'), 'utf8')).toBe(
     dataAppPayload.starter['bun.lock']!
   );
-  expect(await readFile(join(directory, 'server.ts'), 'utf8')).toContain(
-    '@altertable/data-app-bun/preview'
-  );
+  expect(existsSync(join(directory, 'server.ts'))).toBe(false);
   expect(
     await prepare(app('{ organization: "acme", environment: "production" }'))
   ).toBe(directory);

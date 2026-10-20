@@ -35,6 +35,11 @@ Each consumer declares only the packages it uses:
 | `@altertable/data-app-react` | Starter UI and browser-test fixtures                             |
 | `@altertable/data-app-bun`   | Starter local server and single-file preview                     |
 
+`app dev --file` runs the published `data-app-preview` launcher from
+`@altertable/data-app-bun` in a cached project with the starter's pinned dependencies.
+The CLI verifies profile scope and supplies a credential proxy; the launcher owns
+preview startup and shutdown.
+
 Browser-test fixtures live under `starter/` and resolve React authoring from the starter's
 own dependencies. Keep the browser-test server's manifest limited to its direct dependencies.
 

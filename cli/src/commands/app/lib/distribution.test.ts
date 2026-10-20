@@ -48,9 +48,9 @@ test('distribution embeds a deterministic starter with an exact package pin and 
     JSON.parse(files['package.json']!).dependencies['@altertable/data-app']
   ).toBe(recommendedDataAppVersion());
   expect(JSON.parse(files['package.json']!).dependencies).toMatchObject({
-    '@altertable/data-app': '0.72.0',
-    '@altertable/data-app-react': '0.72.0',
-    '@altertable/data-app-bun': '0.72.0',
+    '@altertable/data-app': '0.73.0',
+    '@altertable/data-app-react': '0.73.0',
+    '@altertable/data-app-bun': '0.73.0',
   });
   expect(files['src/main.tsx']).toContain("from '@altertable/data-app-react'");
   expect(files['src/preview.ts']).toContain(
