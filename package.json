@@ -17,5 +17,6 @@
     "knip": "bun run --cwd cli knip",
     "knip:production": "bun run --cwd cli knip:production"
   },
-  "packageManager": "bun@1.4.3"
+  "packageManager": "bun@1.4.3",
+  "version": "1.13.0"
 }
