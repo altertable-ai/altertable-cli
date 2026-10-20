@@ -1,5 +1,5 @@
 {
-  "name": "altertable-cli-development",
+  "name": "altertable-cli-workspace",
   "private": true,
   "scripts": {
     "build": "bun run --cwd cli build",
