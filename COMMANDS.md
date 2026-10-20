@@ -777,7 +777,7 @@ altertable append status
 
 | Argument | Description |
 | --- | --- |
-| `<DATA>` | JSON object, array, or @file Required. |
+| `<DATA>` | JSON object, array, or @file (@- for stdin) Required. |
 
 **Options**
 
@@ -891,7 +891,7 @@ altertable query show|cancel
 
 | Argument | Description |
 | --- | --- |
-| `<STATEMENT>` | SQL statement to run Required. |
+| `<STATEMENT>` | SQL statement to run, or @file (@- for stdin) Required. |
 
 **Options**
 
@@ -921,6 +921,7 @@ altertable query show|cancel
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json
 altertable query "SELECT 1" --format csv --output results.csv
+altertable query @report.sql --format csv --output results.csv
 altertable query show <query-id>
 ```
 

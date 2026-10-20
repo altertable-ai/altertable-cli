@@ -1,17 +1,8 @@
-import { readFileSync } from 'node:fs';
-
 import { CliError } from '@/lib/errors.ts';
+import { readFileArgument } from '@/lib/file-argument.ts';
 
 export function parseAppendJsonContent(dataArg: string): string {
-  let jsonContent = dataArg;
-  if (jsonContent.startsWith('@')) {
-    const filePath = jsonContent.slice(1);
-    try {
-      jsonContent = readFileSync(filePath, 'utf8');
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
-  }
+  const jsonContent = readFileArgument(dataArg);
 
   const firstCharacter = jsonContent.trimStart()[0];
   if (firstCharacter !== '{' && firstCharacter !== '[') {

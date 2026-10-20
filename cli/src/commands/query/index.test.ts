@@ -211,6 +211,22 @@ describe('query command', () => {
     );
   });
 
+  test('sends a statement read from @file', async () => {
+    const sqlPath = workspace.writeFile(
+      'report.sql',
+      'SELECT id FROM analytics.main.users\n'
+    );
+    workspace.writeMocks([
+      { urlPattern: '/query', method: 'POST', body: QUERY_RESPONSE },
+    ]);
+
+    await runCommandWithTestRuntime(['query', `@${sqlPath}`]);
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? '')).toEqual({
+      statement: 'SELECT id FROM analytics.main.users\n',
+      compute_size: 'AUTO',
+    });
+  });
   test('URL-encodes query identifiers', async () => {
     const queryId = 'query/id+special';
     const encodedQueryId = encodeURIComponent(queryId);

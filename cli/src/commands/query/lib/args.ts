@@ -9,7 +9,7 @@ import {
 export const queryRunArgs = defineArguments({
   statement: {
     type: 'positional',
-    description: 'SQL statement to run',
+    description: 'SQL statement to run, or @file (@- for stdin)',
     required: false,
     directRequired: true,
   },

@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { parseAppendJsonContent } from '@/commands/append/lib/data.ts';
 import { CliError } from '@/lib/errors.ts';
@@ -11,6 +14,16 @@ describe('parseAppendJsonContent', () => {
 
   test('rejects non-JSON data', () => {
     expect(() => parseAppendJsonContent('not-json')).toThrow(CliError);
+  });
+
+  test('reads JSON from @file', () => {
+    const path = join(tmpdir(), `altertable-append-${process.pid}.json`);
+    writeFileSync(path, '[{"id":1}]');
+    try {
+      expect(parseAppendJsonContent(`@${path}`)).toBe('[{"id":1}]');
+    } finally {
+      rmSync(path, { force: true });
+    }
   });
 
   test('reports a missing input file', () => {

@@ -3,7 +3,7 @@ import { defineArguments } from '@/lib/command.ts';
 export const appendRunArgs = defineArguments({
   data: {
     type: 'positional',
-    description: 'JSON object, array, or @file',
+    description: 'JSON object, array, or @file (@- for stdin)',
     required: true,
   },
   to: {

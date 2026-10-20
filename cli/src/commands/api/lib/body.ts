@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { CliError, ParseError } from '@/lib/errors.ts';
+import { readFileArgument } from '@/lib/file-argument.ts';
 
 const BODY_METHOD_NAMES = ['POST', 'PATCH', 'PUT'] as const;
 const BODY_METHODS = new Set<string>(BODY_METHOD_NAMES);
@@ -105,18 +106,7 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
       ? parsed
       : { kind: 'exact_json_integer', json };
   }
-  if (value === '@-') {
-    return readFileSync(0, 'utf8');
-  }
-  if (value.startsWith('@')) {
-    const filePath = value.slice(1);
-    try {
-      return readFileSync(filePath, 'utf8');
-    } catch {
-      throw new CliError(`File not found: ${filePath}`);
-    }
-  }
-  return value;
+  return readFileArgument(value);
 }
 
 function parseRawFields(
