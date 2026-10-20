@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Preview a single-file data app locally with `altertable app dev --file index.tsx`. The file's `defineDataApp` scope must match the selected profile, and queries run through the CLI's loopback proxy.
+
 ### Fixed
 
 - Complete stdin-based credential configuration before exiting on Windows.
@@ -23,6 +27,8 @@ If credentials were saved inside a project, sign in again after upgrading and re
 - Query engine error records now fail human/table, Markdown, JSON, and agent output with the engine message instead of a success summary. Lakehouse HTTP errors preserve plain-text details, and interrupted streams report network errors consistently. CSV, JSONL, and Parquet exports can contain partial output on failure; check the exit status before consuming them. A server socket closure without an error body cannot expose the engine's message.
 
 ### Changed
+
+- Use the published 0.72.0 manifest extractor and Bun preview server for single-file data app development; align starter and browser-test packages at 0.72.0.
 
 - Generate data apps with the split core, React, and Bun packages at 0.71.0; keep declared data-app packages aligned during upgrades.
 

@@ -43,7 +43,14 @@ export async function smokeDataApp(
     await reservation.stop(true);
     const url = `http://127.0.0.1:${port}`;
     const child = Bun.spawn(
-      [...command, 'app', 'dev', '--dir', app, '--port', String(port)],
+      [
+        ...command,
+        'app',
+        'dev',
+        ...(singleFile ? ['--file', join(app, 'index.tsx')] : ['--dir', app]),
+        '--port',
+        String(port),
+      ],
       {
         cwd: directory,
         env,
@@ -163,7 +170,7 @@ export async function smokeDataApp(
       '@altertable/data-app-react',
       '@altertable/data-app-bun',
     ]) {
-      if (manifest.dependencies?.[name] !== '0.71.0')
+      if (manifest.dependencies?.[name] !== '0.72.0')
         throw new Error(
           `Packaged starter must pin ${name} to the tested release`
         );
@@ -221,11 +228,6 @@ import { mountDataApp } from "@altertable/data-app-react";
 const app = declareApp({ title: "File preview smoke", description: "Smoke test", scope: { organization: "Test", environment: "test" }, queries: {} });
 function View() { return <p>File preview smoke</p>; }
 mountDataApp({ app, component: View });`
-    );
-    manifest.scripts.dev = 'bun src/preview.ts';
-    await Bun.write(
-      join(app, 'package.json'),
-      `${JSON.stringify(manifest, null, 2)}\n`
     );
     await preview(true);
   } finally {

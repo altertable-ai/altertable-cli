@@ -5,7 +5,7 @@
     "": {
       "name": "data-app-browser-tests",
       "dependencies": {
-        "@altertable/data-app": "0.71.0",
+        "@altertable/data-app": "0.72.0",
       },
       "devDependencies": {
         "@playwright/test": "1.63.0",
@@ -16,7 +16,7 @@
     },
   },
   "packages": {
-    "@altertable/data-app": ["@altertable/data-app@0.71.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-2v4vy3BJnKHFp7LJ60xwSipBrwZED+6v+iFKmKYy0k3hHEf5iUjApR7NwUJVNC5dJxDoQPLGLesQZrA18VoOuw=="],
+    "@altertable/data-app": ["@altertable/data-app@0.72.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-F1wgk5ANgxrl2y48w2D0PpWkv8SHTiPapBbmGrlrb4OQjgj2JAjmitVBUW/luMj0M3E7hwVAjOvld4JT6KbloQ=="],
 
     "@internationalized/date": ["@internationalized/date@3.12.4", "", { "dependencies": { "@swc/helpers": "^0.5.0" } }, "sha512-M1dEn4c1U1HsSlaVR8upZtSqvXrTkHDfv18H01uCSJyjVLDxnBR38v/fMxecmlwXKR4i9HeZcmgQAPE6A+aGJQ=="],
 

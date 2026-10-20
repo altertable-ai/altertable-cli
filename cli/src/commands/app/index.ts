@@ -17,6 +17,7 @@ export const appCommand = defineCommand({
     examples: [
       'altertable app create my-app',
       'altertable app dev',
+      'altertable app dev --file index.tsx',
       'altertable app lint',
       'altertable app build',
       'altertable app upgrade',
