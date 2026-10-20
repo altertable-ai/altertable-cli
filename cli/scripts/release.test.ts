@@ -51,6 +51,7 @@ const repositoryRoot = join(import.meta.dir, '../..');
 
 type WorkflowStep = {
   env?: Record<string, unknown>;
+  if?: string;
   name?: string;
   run?: string;
   uses?: string;
@@ -735,6 +736,93 @@ describe('release infrastructure wiring', () => {
       );
     }
   });
+
+  test('prepares release PRs only after publication has supplied a baseline tag', async () => {
+    const workflow = await readWorkflow('release-please.yml');
+    const preparation = workflow.jobs['release-please'] ?? {};
+    const pullRequest = workflow.jobs['release-pull-request'] ?? {};
+    const releaseAction = preparation.steps?.find(step => step.uses);
+    const pullRequestAction = pullRequest.steps?.find(step => step.uses);
+
+    expect(releaseAction?.with?.['skip-github-pull-request']).toBe(true);
+    expect(workflowNeeds(pullRequest)).toEqual([
+      'release-context',
+      'release-artifacts',
+    ]);
+    expect(pullRequest.if).toContain('!cancelled()');
+    expect(pullRequest.if).toContain(
+      "needs.release-context.result == 'success'"
+    );
+    expect(pullRequest.if).toContain(
+      "needs.release-artifacts.result == 'success' ||"
+    );
+    expect(pullRequest.if).toContain(
+      "needs.release-context.outputs.should_release != 'true'"
+    );
+    expect(pullRequestAction?.if).toBe(
+      "steps.baseline.outputs.ready == 'true'"
+    );
+    expect(pullRequestAction?.with?.['skip-github-release']).toBe(true);
+    expect(pullRequestAction?.uses).toBe(releaseAction?.uses);
+    expect(
+      workflowStepIndex(pullRequest, 'Check release baseline tag')
+    ).toBeLessThan(workflowStepIndex(pullRequest, 'Prepare release PR'));
+  });
+
+  test.each([
+    { tagExists: true, apiFails: '', ready: true, exitCode: 0 },
+    { tagExists: false, apiFails: '', ready: false, exitCode: 0 },
+    { tagExists: true, apiFails: 'manifest', ready: false, exitCode: 1 },
+    { tagExists: true, apiFails: 'tags', ready: false, exitCode: 1 },
+  ])(
+    'checks the live manifest baseline before generating a PR: %j',
+    async scenario => {
+      const workflow = await readWorkflow('release-please.yml');
+      const script = workflow.jobs['release-pull-request']?.steps?.find(
+        step => step.name === 'Check release baseline tag'
+      )?.run;
+      if (!script) throw new Error('Missing release baseline check');
+      const directory = await mkdtemp(join(tmpdir(), 'release-baseline-'));
+      temporaryDirectories.push(directory);
+      const outputPath = join(directory, 'output');
+      await Bun.write(outputPath, '');
+      // Only GitHub is mocked; execute the workflow's actual shell script.
+      const githubStub = `
+      gh() {
+        case "$2" in
+          'repos/example/repository/contents/.release-please-manifest.json?ref=main')
+            if [[ "$API_FAILS" == 'manifest' ]]; then return 1; fi
+            echo '1.13.0'
+            ;;
+          'repos/example/repository/git/matching-refs/tags/v1.13.0')
+            if [[ "$API_FAILS" == 'tags' ]]; then return 1; fi
+            echo "$TAG_EXISTS"
+            ;;
+          *) return 99 ;;
+        esac
+      }
+    `;
+      const process = Bun.spawn(['bash', '-c', githubStub + script], {
+        env: {
+          ...Bun.env,
+          GITHUB_REPOSITORY: 'example/repository',
+          GITHUB_OUTPUT: outputPath,
+          API_FAILS: scenario.apiFails,
+          TAG_EXISTS: String(scenario.tagExists),
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      const stdout = await new Response(process.stdout).text();
+      expect(await process.exited).toBe(scenario.exitCode);
+      expect(await readFile(outputPath, 'utf8')).toBe(
+        scenario.ready ? 'ready=true\n' : ''
+      );
+      if (!scenario.tagExists) {
+        expect(stdout).toContain('complete release publication');
+      }
+    }
+  );
 
   test('builds release publication from only the orchestration checkout', async () => {
     const workflow = await readWorkflow('release-please.yml');
