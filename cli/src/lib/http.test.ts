@@ -1,9 +1,20 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { setCliContext } from "@/context.ts";
-import { CliError, HttpError, NetworkError, TimeoutError } from "@/lib/errors.ts";
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { setCliContext } from '@/context.ts';
+import {
+  CliError,
+  HttpError,
+  NetworkError,
+  TimeoutError,
+} from '@/lib/errors.ts';
+import {
+  computeRetryDelayMs,
+  isRetryableMethod,
+  parseRetryAfterMs,
+} from '@/lib/http-retry.ts';
 import {
   buildFetchInit,
   getSharedDispatcher,
@@ -14,22 +25,21 @@ import {
   resolveFetchTimeoutMs,
   resolveReadTimeoutMs,
   shouldIgnoreSslErrors,
-} from "@/lib/http.ts";
-import { computeRetryDelayMs, isRetryableMethod, parseRetryAfterMs } from "@/lib/http-retry.ts";
-import { redactResponseBodyForDebug } from "@/lib/redact.ts";
-import { delay } from "@/test-utils/time.ts";
+} from '@/lib/http.ts';
+import { redactResponseBodyForDebug } from '@/lib/redact.ts';
+import { delay } from '@/test-utils/time.ts';
 
-const fakeBearerKey = "atm_fake_test_key_for_redaction";
-const fakeBasicToken = "fake_basic_token_value";
+const fakeBearerKey = 'atm_fake_test_key_for_redaction';
+const fakeBasicToken = 'fake_basic_token_value';
 
-let testHome = "";
-let mockFile = "";
-let logFile = "";
+let testHome = '';
+let mockFile = '';
+let logFile = '';
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-http-test-"));
-  mockFile = join(testHome, "mocks.json");
-  logFile = join(testHome, "http.log");
+  testHome = mkdtempSync(join(tmpdir(), 'altertable-http-test-'));
+  mockFile = join(testHome, 'mocks.json');
+  logFile = join(testHome, 'http.log');
   process.env.ALTERTABLE_MOCK_HTTP_FILE = mockFile;
   process.env.ALTERTABLE_HTTP_LOG = logFile;
   setCliContext({ debug: false, json: false, agent: false });
@@ -41,222 +51,228 @@ afterEach(() => {
   delete process.env.ALTERTABLE_HTTP_LOG;
 });
 
-describe("http redaction", () => {
-  test("redactHeaderValue redacts Authorization", () => {
-    expect(redactHeaderValue("Authorization", `Bearer ${fakeBearerKey}`)).toBe("[REDACTED]");
-    expect(redactHeaderValue("authorization", fakeBasicToken)).toBe("[REDACTED]");
-    expect(redactHeaderValue("Content-Type", "application/json")).toBe("application/json");
+describe('http redaction', () => {
+  test('redactHeaderValue redacts Authorization', () => {
+    expect(redactHeaderValue('Authorization', `Bearer ${fakeBearerKey}`)).toBe(
+      '[REDACTED]'
+    );
+    expect(redactHeaderValue('authorization', fakeBasicToken)).toBe(
+      '[REDACTED]'
+    );
+    expect(redactHeaderValue('Content-Type', 'application/json')).toBe(
+      'application/json'
+    );
   });
 
-  test("redactAuthHeader redacts bearer and basic auth headers", () => {
+  test('redactAuthHeader redacts bearer and basic auth headers', () => {
     expect(redactAuthHeader(`Authorization: Bearer ${fakeBearerKey}`)).toBe(
-      "Authorization: [REDACTED]",
+      'Authorization: [REDACTED]'
     );
     expect(redactAuthHeader(`Authorization: Basic ${fakeBasicToken}`)).toBe(
-      "Authorization: [REDACTED]",
+      'Authorization: [REDACTED]'
     );
   });
 
-  test("logHttpRequest redacts auth values in ALTERTABLE_HTTP_LOG", async () => {
+  test('logHttpRequest redacts auth values in ALTERTABLE_HTTP_LOG', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/test-redact",
-          method: "GET",
-          body: "{}",
+          urlPattern: '/test-redact',
+          method: 'GET',
+          body: '{}',
         },
-      ]),
+      ])
     );
 
     await httpSend({
-      method: "GET",
-      url: "https://example.com/test-redact",
+      method: 'GET',
+      url: 'https://example.com/test-redact',
       authHeader: `Authorization: Bearer ${fakeBearerKey}`,
     });
 
-    const logContent = readFileSync(logFile, "utf8");
-    expect(logContent).toContain("AUTH=Authorization: [REDACTED]");
+    const logContent = readFileSync(logFile, 'utf8');
+    expect(logContent).toContain('AUTH=Authorization: [REDACTED]');
     expect(logContent).not.toContain(fakeBearerKey);
     expect(logContent).not.toContain(fakeBasicToken);
   });
 
-  test("logHttpRequest redacts sensitive fields from JSON payloads", async () => {
-    const secretPassword = "super-secret-post-password";
+  test('logHttpRequest redacts sensitive fields from JSON payloads', async () => {
+    const secretPassword = 'super-secret-post-password';
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/post-secret",
-          method: "POST",
-          body: "{}",
+          urlPattern: '/post-secret',
+          method: 'POST',
+          body: '{}',
         },
-      ]),
+      ])
     );
 
     await httpSend({
-      method: "POST",
-      url: "https://example.com/post-secret",
-      authHeader: "Authorization: Bearer test",
-      body: JSON.stringify({ password: secretPassword, label: "credential" }),
+      method: 'POST',
+      url: 'https://example.com/post-secret',
+      authHeader: 'Authorization: Bearer test',
+      body: JSON.stringify({ password: secretPassword, label: 'credential' }),
     });
 
-    const logContent = readFileSync(logFile, "utf8");
+    const logContent = readFileSync(logFile, 'utf8');
     expect(logContent).not.toContain(secretPassword);
-    expect(logContent).toContain("[REDACTED]");
+    expect(logContent).toContain('[REDACTED]');
   });
 });
 
-describe("httpSend errors", () => {
-  test("missing mock response rejects with CliError", async () => {
+describe('httpSend errors', () => {
+  test('missing mock response rejects with CliError', async () => {
     writeFileSync(mockFile, JSON.stringify([]));
 
     return expect(
       httpSend({
-        method: "GET",
-        url: "https://example.com/missing",
-        authHeader: "Authorization: Bearer test",
-      }),
+        method: 'GET',
+        url: 'https://example.com/missing',
+        authHeader: 'Authorization: Bearer test',
+      })
     ).rejects.toBeInstanceOf(CliError);
   });
 
-  test("non-2xx mock response rejects with HttpError", async () => {
+  test('non-2xx mock response rejects with HttpError', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/server-error",
-          method: "GET",
+          urlPattern: '/server-error',
+          method: 'GET',
           status: 500,
-          body: JSON.stringify({ message: "internal failure" }),
+          body: JSON.stringify({ message: 'internal failure' }),
         },
-      ]),
+      ])
     );
 
     try {
       await httpSend({
-        method: "GET",
-        url: "https://example.com/server-error",
-        authHeader: "Authorization: Bearer test",
+        method: 'GET',
+        url: 'https://example.com/server-error',
+        authHeader: 'Authorization: Bearer test',
         retry: false,
       });
-      expect.unreachable("httpSend should have rejected");
+      expect.unreachable('httpSend should have rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(HttpError);
       const httpError = error as HttpError;
       expect(httpError.status).toBe(500);
-      expect(httpError.parsedDetail).toBe("internal failure");
+      expect(httpError.parsedDetail).toBe('internal failure');
     }
   });
 });
 
-describe("http retry policy", () => {
-  test("isRetryableMethod allows GET HEAD DELETE only", () => {
-    expect(isRetryableMethod("GET")).toBe(true);
-    expect(isRetryableMethod("HEAD")).toBe(true);
-    expect(isRetryableMethod("DELETE")).toBe(true);
-    expect(isRetryableMethod("POST")).toBe(false);
-    expect(isRetryableMethod("PUT")).toBe(false);
+describe('http retry policy', () => {
+  test('isRetryableMethod allows GET HEAD DELETE only', () => {
+    expect(isRetryableMethod('GET')).toBe(true);
+    expect(isRetryableMethod('HEAD')).toBe(true);
+    expect(isRetryableMethod('DELETE')).toBe(true);
+    expect(isRetryableMethod('POST')).toBe(false);
+    expect(isRetryableMethod('PUT')).toBe(false);
   });
 
-  test("parseRetryAfterMs parses delay seconds", () => {
-    expect(parseRetryAfterMs("2")).toBe(2_000);
+  test('parseRetryAfterMs parses delay seconds', () => {
+    expect(parseRetryAfterMs('2')).toBe(2_000);
     expect(parseRetryAfterMs(null)).toBeUndefined();
   });
 
-  test("computeRetryDelayMs uses exponential backoff", () => {
+  test('computeRetryDelayMs uses exponential backoff', () => {
     expect(computeRetryDelayMs(0, null)).toBe(500);
     expect(computeRetryDelayMs(1, null)).toBe(1_000);
   });
 
-  test("GET retries retriable status codes until success", async () => {
+  test('GET retries retriable status codes until success', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/retry-get",
-          method: "GET",
+          urlPattern: '/retry-get',
+          method: 'GET',
           status: 503,
-          body: "temporary",
+          body: 'temporary',
         },
         {
-          urlPattern: "/retry-get",
-          method: "GET",
+          urlPattern: '/retry-get',
+          method: 'GET',
           status: 503,
-          body: "temporary",
+          body: 'temporary',
         },
         {
-          urlPattern: "/retry-get",
-          method: "GET",
+          urlPattern: '/retry-get',
+          method: 'GET',
           status: 200,
-          body: "ok",
+          body: 'ok',
         },
-      ]),
+      ])
     );
 
     const response = await httpSend({
-      method: "GET",
-      url: "https://example.com/retry-get",
-      authHeader: "Authorization: Bearer test",
+      method: 'GET',
+      url: 'https://example.com/retry-get',
+      authHeader: 'Authorization: Bearer test',
     });
-    expect(response).toBe("ok");
+    expect(response).toBe('ok');
   });
 
-  test("GET does not retry non-retriable 400 responses", async () => {
+  test('GET does not retry non-retriable 400 responses', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/bad-request",
-          method: "GET",
+          urlPattern: '/bad-request',
+          method: 'GET',
           status: 400,
-          body: JSON.stringify({ message: "bad input" }),
+          body: JSON.stringify({ message: 'bad input' }),
         },
         {
-          urlPattern: "/bad-request",
-          method: "GET",
+          urlPattern: '/bad-request',
+          method: 'GET',
           status: 200,
-          body: "ok",
+          body: 'ok',
         },
-      ]),
+      ])
     );
 
     return expect(
       httpSend({
-        method: "GET",
-        url: "https://example.com/bad-request",
-        authHeader: "Authorization: Bearer test",
-      }),
+        method: 'GET',
+        url: 'https://example.com/bad-request',
+        authHeader: 'Authorization: Bearer test',
+      })
     ).rejects.toBeInstanceOf(HttpError);
   });
 
-  test("POST does not retry by default", async () => {
+  test('POST does not retry by default', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/post-mutation",
-          method: "POST",
+          urlPattern: '/post-mutation',
+          method: 'POST',
           status: 503,
-          body: "temporary",
+          body: 'temporary',
         },
         {
-          urlPattern: "/post-mutation",
-          method: "POST",
+          urlPattern: '/post-mutation',
+          method: 'POST',
           status: 200,
-          body: "ok",
+          body: 'ok',
         },
-      ]),
+      ])
     );
 
     try {
       await httpSend({
-        method: "POST",
-        url: "https://example.com/post-mutation",
-        authHeader: "Authorization: Bearer test",
-        body: "{}",
+        method: 'POST',
+        url: 'https://example.com/post-mutation',
+        authHeader: 'Authorization: Bearer test',
+        body: '{}',
       });
-      expect.unreachable("httpSend should have rejected");
+      expect.unreachable('httpSend should have rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(HttpError);
       expect((error as HttpError).status).toBe(503);
@@ -264,27 +280,27 @@ describe("http retry policy", () => {
   });
 });
 
-describe("TimeoutError", () => {
-  test("TimeoutError extends NetworkError", () => {
+describe('TimeoutError', () => {
+  test('TimeoutError extends NetworkError', () => {
     const error = new TimeoutError();
     expect(error).toBeInstanceOf(TimeoutError);
-    expect(error.name).toBe("TimeoutError");
-    expect(error.message).toBe("Request timed out.");
+    expect(error.name).toBe('TimeoutError');
+    expect(error.message).toBe('Request timed out.');
   });
 });
 
-describe("network error context", () => {
-  test("includes the method and URL of the failed request", async () => {
+describe('network error context', () => {
+  test('includes the method and URL of the failed request', async () => {
     // Bypass the mock harness so we hit the real fetch path against a closed port.
     delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
     let caught: unknown;
     try {
       await httpSend({
-        method: "POST",
-        url: "http://127.0.0.1:1/oauth/token",
-        authHeader: "",
-        body: "grant_type=authorization_code",
-        contentType: "application/x-www-form-urlencoded",
+        method: 'POST',
+        url: 'http://127.0.0.1:1/oauth/token',
+        authHeader: '',
+        body: 'grant_type=authorization_code',
+        contentType: 'application/x-www-form-urlencoded',
         maxAttempts: 1,
         connectTimeoutMs: 2000,
       });
@@ -292,58 +308,65 @@ describe("network error context", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(NetworkError);
-    expect((caught as Error).message).toContain("POST http://127.0.0.1:1/oauth/token");
+    expect((caught as Error).message).toContain(
+      'POST http://127.0.0.1:1/oauth/token'
+    );
   });
 });
 
-describe("context timeout resolution", () => {
-  test("resolveFetchTimeoutMs uses context read timeout override", () => {
-    setCliContext({ debug: false, json: false, agent: false, readTimeoutMs: 30_000 });
+describe('context timeout resolution', () => {
+  test('resolveFetchTimeoutMs uses context read timeout override', () => {
+    setCliContext({
+      debug: false,
+      json: false,
+      agent: false,
+      readTimeoutMs: 30_000,
+    });
     expect(
       resolveFetchTimeoutMs({
-        method: "GET",
-        url: "https://example.com",
-        authHeader: "Authorization: Bearer test",
-      }),
+        method: 'GET',
+        url: 'https://example.com',
+        authHeader: 'Authorization: Bearer test',
+      })
     ).toBe(5_000 + 30_000);
   });
 
-  test("stream read timeout 0 uses connect-only abort when context unset", () => {
+  test('stream read timeout 0 uses connect-only abort when context unset', () => {
     setCliContext({ debug: false, json: false, agent: false });
     expect(
       resolveReadTimeoutMs(
         {
-          method: "POST",
-          url: "https://example.com/query",
-          authHeader: "Authorization: Bearer test",
+          method: 'POST',
+          url: 'https://example.com/query',
+          authHeader: 'Authorization: Bearer test',
         },
-        0,
-      ),
+        0
+      )
     ).toBe(0);
     expect(
       resolveFetchTimeoutMs({
-        method: "POST",
-        url: "https://example.com/query",
-        authHeader: "Authorization: Bearer test",
+        method: 'POST',
+        url: 'https://example.com/query',
+        authHeader: 'Authorization: Bearer test',
         readTimeoutMs: 0,
-      }),
+      })
     ).toBe(5_000);
   });
 });
 
-describe("shared dispatcher", () => {
-  test("getSharedDispatcher returns the same instance", () => {
+describe('shared dispatcher', () => {
+  test('getSharedDispatcher returns the same instance', () => {
     const first = getSharedDispatcher();
     const second = getSharedDispatcher();
     expect(first).toBe(second);
   });
 });
 
-describe("ignore ssl errors", () => {
+describe('ignore ssl errors', () => {
   const request = {
-    method: "GET",
-    url: "https://app.altertable.test/rest/v1/whoami",
-    authHeader: "Authorization: Bearer test",
+    method: 'GET',
+    url: 'https://app.altertable.test/rest/v1/whoami',
+    authHeader: 'Authorization: Bearer test',
   };
 
   afterEach(() => {
@@ -351,7 +374,7 @@ describe("ignore ssl errors", () => {
     setCliContext({ debug: false, json: false, agent: false });
   });
 
-  test("verification stays on by default", () => {
+  test('verification stays on by default', () => {
     expect(shouldIgnoreSslErrors()).toBe(false);
     const init = buildFetchInit(request, {}, AbortSignal.timeout(1_000)) as {
       tls?: unknown;
@@ -361,8 +384,13 @@ describe("ignore ssl errors", () => {
     expect(init.dispatcher).toBe(getSharedDispatcher());
   });
 
-  test("the global flag disables verification for Bun and undici transports", () => {
-    setCliContext({ debug: false, json: false, agent: false, ignoreSslErrors: true });
+  test('the global flag disables verification for Bun and undici transports', () => {
+    setCliContext({
+      debug: false,
+      json: false,
+      agent: false,
+      ignoreSslErrors: true,
+    });
     expect(shouldIgnoreSslErrors()).toBe(true);
     const init = buildFetchInit(request, {}, AbortSignal.timeout(1_000)) as {
       tls?: { rejectUnauthorized: boolean };
@@ -372,36 +400,36 @@ describe("ignore ssl errors", () => {
     expect(init.dispatcher).not.toBe(getSharedDispatcher());
   });
 
-  test("ALTERTABLE_IGNORE_SSL_ERRORS disables verification without the flag", () => {
-    process.env.ALTERTABLE_IGNORE_SSL_ERRORS = "true";
+  test('ALTERTABLE_IGNORE_SSL_ERRORS disables verification without the flag', () => {
+    process.env.ALTERTABLE_IGNORE_SSL_ERRORS = 'true';
     expect(shouldIgnoreSslErrors()).toBe(true);
   });
 });
 
-describe("httpSendStream mocks", () => {
-  test("chunked mock stream splits body by newline", async () => {
+describe('httpSendStream mocks', () => {
+  test('chunked mock stream splits body by newline', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/query",
-          method: "POST",
+          urlPattern: '/query',
+          method: 'POST',
           chunked: true,
           body: '{"statement":"SELECT 1"}\n["id"]\n[1]',
         },
-      ]),
+      ])
     );
 
     const stream = await httpSendStream({
-      method: "POST",
-      url: "https://example.com/query",
-      authHeader: "Authorization: Bearer test",
-      body: "{}",
+      method: 'POST',
+      url: 'https://example.com/query',
+      authHeader: 'Authorization: Bearer test',
+      body: '{}',
     });
 
     const reader = stream.getReader();
     const decoder = new TextDecoder();
-    let combined = "";
+    let combined = '';
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
@@ -414,39 +442,42 @@ describe("httpSendStream mocks", () => {
   });
 });
 
-describe("httpSendStream live timeouts", () => {
-  test("readTimeoutMs 0 does not abort body after connect timeout once response is returned", async () => {
+describe('httpSendStream live timeouts', () => {
+  test('readTimeoutMs 0 does not abort body after connect timeout once response is returned', async () => {
     delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
     const originalFetch = globalThis.fetch;
     const encoder = new TextEncoder();
 
     globalThis.fetch = Object.assign(
-      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      async (
+        _url: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1]
+      ) => {
         const signal = init?.signal;
         return new Response(
           new ReadableStream<Uint8Array>({
             async start(controller) {
               await delay(20);
               if (signal?.aborted) {
-                controller.error(new Error("stream was aborted"));
+                controller.error(new Error('stream was aborted'));
                 return;
               }
-              controller.enqueue(encoder.encode("ok"));
+              controller.enqueue(encoder.encode('ok'));
               controller.close();
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       },
-      { preconnect: originalFetch.preconnect },
+      { preconnect: originalFetch.preconnect }
     );
 
     try {
       const stream = await httpSendStream({
-        method: "POST",
-        url: "https://example.com/query",
-        authHeader: "Authorization: Bearer test",
-        body: "{}",
+        method: 'POST',
+        url: 'https://example.com/query',
+        authHeader: 'Authorization: Bearer test',
+        body: '{}',
         connectTimeoutMs: 5,
         readTimeoutMs: 0,
       });
@@ -455,41 +486,46 @@ describe("httpSendStream live timeouts", () => {
       const { done, value } = await reader.read();
 
       expect(done).toBe(false);
-      expect(new TextDecoder().decode(value)).toBe("ok");
+      expect(new TextDecoder().decode(value)).toBe('ok');
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("positive readTimeoutMs aborts when stream body takes too long", async () => {
+  test('positive readTimeoutMs aborts when stream body takes too long', async () => {
     delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
     const originalFetch = globalThis.fetch;
     let abortObserved = false;
 
     globalThis.fetch = Object.assign(
-      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      async (
+        _url: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1]
+      ) => {
         const signal = init?.signal;
         return new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
-              signal?.addEventListener("abort", () => {
+              signal?.addEventListener('abort', () => {
                 abortObserved = true;
-                controller.error(new DOMException("stream timed out", "AbortError"));
+                controller.error(
+                  new DOMException('stream timed out', 'AbortError')
+                );
               });
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       },
-      { preconnect: originalFetch.preconnect },
+      { preconnect: originalFetch.preconnect }
     );
 
     try {
       const stream = await httpSendStream({
-        method: "POST",
-        url: "https://example.com/query",
-        authHeader: "Authorization: Bearer test",
-        body: "{}",
+        method: 'POST',
+        url: 'https://example.com/query',
+        authHeader: 'Authorization: Bearer test',
+        body: '{}',
         connectTimeoutMs: 50,
         readTimeoutMs: 5,
       });
@@ -497,12 +533,12 @@ describe("httpSendStream live timeouts", () => {
       const reader = stream.getReader();
       try {
         await reader.read();
-        expect.unreachable("stream read should have timed out");
+        expect.unreachable('stream read should have timed out');
       } catch (error) {
         expect(error).toBeInstanceOf(TimeoutError);
         expect((error as TimeoutError).exitCode).toBe(9);
         expect((error as TimeoutError).message).toBe(
-          "Request timed out: POST https://example.com/query",
+          'Request timed out: POST https://example.com/query'
         );
       }
       expect(abortObserved).toBe(true);
@@ -511,44 +547,49 @@ describe("httpSendStream live timeouts", () => {
     }
   });
 
-  test("positive readTimeoutMs also aborts stalled error response bodies", async () => {
+  test('positive readTimeoutMs also aborts stalled error response bodies', async () => {
     delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
     const originalFetch = globalThis.fetch;
 
     globalThis.fetch = Object.assign(
-      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      async (
+        _url: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1]
+      ) => {
         const signal = init?.signal;
         return new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
-              signal?.addEventListener("abort", () => {
-                controller.error(new DOMException("error body timed out", "AbortError"));
+              signal?.addEventListener('abort', () => {
+                controller.error(
+                  new DOMException('error body timed out', 'AbortError')
+                );
               });
             },
           }),
-          { status: 500 },
+          { status: 500 }
         );
       },
-      { preconnect: originalFetch.preconnect },
+      { preconnect: originalFetch.preconnect }
     );
 
     try {
       expect(
         httpSendStream({
-          method: "POST",
-          url: "https://example.com/query",
-          authHeader: "Authorization: Bearer test",
-          body: "{}",
+          method: 'POST',
+          url: 'https://example.com/query',
+          authHeader: 'Authorization: Bearer test',
+          body: '{}',
           connectTimeoutMs: 50,
           readTimeoutMs: 5,
-        }),
+        })
       ).rejects.toBeInstanceOf(TimeoutError);
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("reports peer-aborted streams as network errors instead of timeouts", async () => {
+  test('reports peer-aborted streams as network errors instead of timeouts', async () => {
     delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
     const originalFetch = globalThis.fetch;
 
@@ -557,27 +598,27 @@ describe("httpSendStream live timeouts", () => {
         new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
-              controller.error(new DOMException("peer aborted", "AbortError"));
+              controller.error(new DOMException('peer aborted', 'AbortError'));
             },
           }),
-          { status: 200 },
+          { status: 200 }
         ),
-      { preconnect: originalFetch.preconnect },
+      { preconnect: originalFetch.preconnect }
     );
 
     try {
       const stream = await httpSendStream({
-        method: "POST",
-        url: "https://example.com/query",
-        authHeader: "Authorization: Bearer test",
-        body: "{}",
+        method: 'POST',
+        url: 'https://example.com/query',
+        authHeader: 'Authorization: Bearer test',
+        body: '{}',
         connectTimeoutMs: 50,
         readTimeoutMs: 50,
       });
 
       try {
         await stream.getReader().read();
-        expect.unreachable("stream read should have failed");
+        expect.unreachable('stream read should have failed');
       } catch (error) {
         expect(error).toBeInstanceOf(NetworkError);
         expect(error).not.toBeInstanceOf(TimeoutError);
@@ -588,57 +629,60 @@ describe("httpSendStream live timeouts", () => {
   });
 });
 
-describe("debug response redaction", () => {
-  test("redactResponseBodyForDebug removes password fields from JSON", () => {
-    const body = JSON.stringify({ credential: { id: "c1" }, password: "leaked-secret" });
-    const redacted = redactResponseBodyForDebug(body);
-    expect(redacted).not.toContain("leaked-secret");
-    expect(redacted).toContain("[REDACTED]");
-  });
-
-  test("redactResponseBodyForDebug redacts OAuth access and refresh tokens", () => {
+describe('debug response redaction', () => {
+  test('redactResponseBodyForDebug removes password fields from JSON', () => {
     const body = JSON.stringify({
-      access_token: "acc-leak",
-      refresh_token: "ref-leak",
-      token_type: "Bearer",
+      credential: { id: 'c1' },
+      password: 'leaked-secret',
     });
     const redacted = redactResponseBodyForDebug(body);
-    expect(redacted).not.toContain("acc-leak");
-    expect(redacted).not.toContain("ref-leak");
-    expect(redacted).toContain("[REDACTED]");
+    expect(redacted).not.toContain('leaked-secret');
+    expect(redacted).toContain('[REDACTED]');
+  });
+
+  test('redactResponseBodyForDebug redacts OAuth access and refresh tokens', () => {
+    const body = JSON.stringify({
+      access_token: 'acc-leak',
+      refresh_token: 'ref-leak',
+      token_type: 'Bearer',
+    });
+    const redacted = redactResponseBodyForDebug(body);
+    expect(redacted).not.toContain('acc-leak');
+    expect(redacted).not.toContain('ref-leak');
+    expect(redacted).toContain('[REDACTED]');
   });
 });
 
-describe("retry-after header", () => {
-  test("honors Retry-After on retriable responses", async () => {
+describe('retry-after header', () => {
+  test('honors Retry-After on retriable responses', async () => {
     writeFileSync(
       mockFile,
       JSON.stringify([
         {
-          urlPattern: "/retry-after",
-          method: "GET",
+          urlPattern: '/retry-after',
+          method: 'GET',
           status: 503,
-          body: "temporary",
-          retryAfter: "0",
+          body: 'temporary',
+          retryAfter: '0',
         },
         {
-          urlPattern: "/retry-after",
-          method: "GET",
+          urlPattern: '/retry-after',
+          method: 'GET',
           status: 200,
-          body: "ok",
+          body: 'ok',
         },
-      ]),
+      ])
     );
 
     const startMs = Date.now();
     const response = await httpSend({
-      method: "GET",
-      url: "https://example.com/retry-after",
-      authHeader: "Authorization: Bearer test",
+      method: 'GET',
+      url: 'https://example.com/retry-after',
+      authHeader: 'Authorization: Bearer test',
     });
     const elapsedMs = Date.now() - startMs;
 
-    expect(response).toBe("ok");
+    expect(response).toBe('ok');
     expect(elapsedMs).toBeLessThan(500);
   });
 });

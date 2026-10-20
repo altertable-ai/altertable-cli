@@ -1,10 +1,13 @@
-import { randomUUID } from "node:crypto";
-import { copyFile, mkdir, rename, stat } from "node:fs/promises";
-import { join } from "node:path";
-import { smokeDataApp } from "@/../scripts/smoke-data-app.ts";
-import packageJson from "../package.json" with { type: "json" };
-import { buildNpmBundle, NPM_BUNDLE_OPTIONS, NPM_BUNDLE_PATH } from "@/../scripts/npm-bundle.ts";
-import { VERSION } from "@/version.ts";
+import { randomUUID } from 'node:crypto';
+import { copyFile, mkdir, rename, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import { CLI_REFERENCE_SCHEMA_VERSION } from '@/../scripts/command-reference.ts';
+import {
+  buildNpmBundle,
+  NPM_BUNDLE_OPTIONS,
+  NPM_BUNDLE_PATH,
+} from '@/../scripts/npm-bundle.ts';
 import {
   findReleaseTargetByBunTarget,
   findReleaseTargetByPlatform,
@@ -16,29 +19,32 @@ import {
   RELEASE_TARGETS,
   releaseCiMatrix,
   type ReleaseTarget,
-} from "@/../scripts/release-manifest.ts";
-import { CLI_REFERENCE_SCHEMA_VERSION } from "@/../scripts/command-reference.ts";
+} from '@/../scripts/release-manifest.ts';
+import { smokeDataApp } from '@/../scripts/smoke-data-app.ts';
+import { VERSION } from '@/version.ts';
+
+import packageJson from '../package.json' with { type: 'json' };
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 3;
-export const SUPPORTED_BUN_RUNTIME_RANGE = ">=1.1.0";
+export const SUPPORTED_BUN_RUNTIME_RANGE = '>=1.1.0';
 
 export const HARDENED_COMPILE_FLAGS = [
-  "--compile",
-  "--minify",
-  "--bytecode",
-  "--format=esm",
-  "--sourcemap=inline",
-  "--reject-unresolved",
-  "--no-compile-autoload-dotenv",
-  "--no-compile-autoload-bunfig",
+  '--compile',
+  '--minify',
+  '--bytecode',
+  '--format=esm',
+  '--sourcemap=inline',
+  '--reject-unresolved',
+  '--no-compile-autoload-dotenv',
+  '--no-compile-autoload-bunfig',
 ] as const;
 
 export { NPM_BUNDLE_OPTIONS as JAVASCRIPT_BUNDLE_OPTIONS };
 
-const repositoryRoot = join(import.meta.dir, "../..");
+const repositoryRoot = join(import.meta.dir, '../..');
 const entrypoint = NPM_BUNDLE_PATH;
-const defaultOutputDirectory = join(repositoryRoot, "dist");
-const bunVersionFile = join(repositoryRoot, ".bun-version");
+const defaultOutputDirectory = join(repositoryRoot, 'dist');
+const bunVersionFile = join(repositoryRoot, '.bun-version');
 
 type PackageJson = typeof packageJson & {
   engines: { bun: string };
@@ -46,7 +52,7 @@ type PackageJson = typeof packageJson & {
 };
 
 export type ReleaseArtifact = {
-  kind: "native" | "javascript" | "documentation";
+  kind: 'native' | 'javascript' | 'documentation';
   file: string;
   bytes: number;
   sha256: string;
@@ -54,20 +60,20 @@ export type ReleaseArtifact = {
   bunTarget?: string;
   recipe:
     | {
-        builder: "bun-build-executable";
+        builder: 'bun-build-executable';
         bunVersion: string;
         target: string;
         flags: readonly string[];
       }
     | {
-        builder: "bun-build";
+        builder: 'bun-build';
         bunVersion: string;
-        target: "bun";
+        target: 'bun';
         minify: boolean;
-        sourcemap: "none";
+        sourcemap: 'none';
       }
     | {
-        builder: "command-reference";
+        builder: 'command-reference';
         schemaVersion: number;
       };
 };
@@ -100,28 +106,30 @@ export async function readToolchainContract(): Promise<ToolchainContract> {
   };
 }
 
-export async function assertToolchain(actualBunVersion = Bun.version): Promise<ToolchainContract> {
+export async function assertToolchain(
+  actualBunVersion = Bun.version
+): Promise<ToolchainContract> {
   const contract = await readToolchainContract();
   const expectedPackageManager = `bun@${contract.bunVersion}`;
 
   if (contract.packageManager !== expectedPackageManager) {
     throw new Error(
-      `packageManager must be ${expectedPackageManager}; received ${contract.packageManager}.`,
+      `packageManager must be ${expectedPackageManager}; received ${contract.packageManager}.`
     );
   }
   if (contract.enginesBun !== SUPPORTED_BUN_RUNTIME_RANGE) {
     throw new Error(
-      `engines.bun must preserve the supported runtime range ${SUPPORTED_BUN_RUNTIME_RANGE}; received ${contract.enginesBun}.`,
+      `engines.bun must preserve the supported runtime range ${SUPPORTED_BUN_RUNTIME_RANGE}; received ${contract.enginesBun}.`
     );
   }
   if (actualBunVersion !== contract.bunVersion) {
     throw new Error(
-      `Release builds require Bun ${contract.bunVersion}; received ${actualBunVersion}.`,
+      `Release builds require Bun ${contract.bunVersion}; received ${actualBunVersion}.`
     );
   }
   if (packageJson.version !== VERSION) {
     throw new Error(
-      `cli/package.json version (${packageJson.version}) must match cli/src/version.ts (${VERSION}).`,
+      `cli/package.json version (${packageJson.version}) must match cli/src/version.ts (${VERSION}).`
     );
   }
   return contract;
@@ -129,14 +137,19 @@ export async function assertToolchain(actualBunVersion = Bun.version): Promise<T
 
 export function assertReleaseTag(tag: string): void {
   if (tag !== expectedReleaseTag) {
-    throw new Error(`Release tag must be ${expectedReleaseTag}; received ${tag}.`);
+    throw new Error(
+      `Release tag must be ${expectedReleaseTag}; received ${tag}.`
+    );
   }
 }
 
-export function compileCommand(target: ReleaseTarget, outputPath: string): string[] {
+export function compileCommand(
+  target: ReleaseTarget,
+  outputPath: string
+): string[] {
   return [
     process.execPath,
-    "build",
+    'build',
     entrypoint,
     ...HARDENED_COMPILE_FLAGS,
     `--target=${target.bunTarget}`,
@@ -146,34 +159,36 @@ export function compileCommand(target: ReleaseTarget, outputPath: string): strin
 
 export function darwinSignatureCommand(
   target: ReleaseTarget,
-  executable: string,
+  executable: string
 ): string[] | undefined {
-  if (target.os !== "darwin") return undefined;
-  return ["codesign", "--force", "--sign", "-", "--timestamp=none", executable];
+  if (target.os !== 'darwin') return undefined;
+  return ['codesign', '--force', '--sign', '-', '--timestamp=none', executable];
 }
 
 export function signatureVerificationCommand(
   target: ReleaseTarget,
-  executable: string,
+  executable: string
 ): string[] | undefined {
-  if (target.os !== "darwin") return undefined;
-  return ["codesign", "--verify", "--strict", executable];
+  if (target.os !== 'darwin') return undefined;
+  return ['codesign', '--verify', '--strict', executable];
 }
 
 export function nativeReleaseTarget(
   platform: NodeJS.Platform = process.platform,
-  architecture: string = process.arch,
+  architecture: string = process.arch
 ): (typeof RELEASE_TARGETS)[number] {
   const target = findReleaseTargetByPlatform(`${platform}-${architecture}`);
   if (!target) {
-    throw new Error(`Unsupported native release platform: ${platform}-${architecture}.`);
+    throw new Error(
+      `Unsupported native release platform: ${platform}-${architecture}.`
+    );
   }
   return target;
 }
 
 export async function compileReleaseTarget(
   target: ReleaseTarget,
-  outputDirectory = defaultOutputDirectory,
+  outputDirectory = defaultOutputDirectory
 ): Promise<string> {
   await assertToolchain();
   await mkdir(outputDirectory, { recursive: true });
@@ -187,7 +202,7 @@ export async function compileReleaseTarget(
 }
 
 export async function buildJavaScriptBundle(
-  outputDirectory = defaultOutputDirectory,
+  outputDirectory = defaultOutputDirectory
 ): Promise<string> {
   await assertToolchain();
   await mkdir(outputDirectory, { recursive: true });
@@ -195,14 +210,17 @@ export async function buildJavaScriptBundle(
   await buildNpmBundle();
   await copyFile(NPM_BUNDLE_PATH, outputPath);
   await assertNonemptyFile(outputPath);
-  if ((await sha256(Bun.file(NPM_BUNDLE_PATH))) !== (await sha256(Bun.file(outputPath)))) {
-    throw new Error("GitHub and npm JavaScript release bundles differ.");
+  if (
+    (await sha256(Bun.file(NPM_BUNDLE_PATH))) !==
+    (await sha256(Bun.file(outputPath)))
+  ) {
+    throw new Error('GitHub and npm JavaScript release bundles differ.');
   }
   return outputPath;
 }
 
 export async function stageCommandReferenceAssets(
-  outputDirectory = defaultOutputDirectory,
+  outputDirectory = defaultOutputDirectory
 ): Promise<ReleaseArtifact[]> {
   await mkdir(outputDirectory, { recursive: true });
   const sourcePaths = [
@@ -216,12 +234,12 @@ export async function stageCommandReferenceAssets(
   };
   if (reference.cliVersion !== VERSION) {
     throw new Error(
-      `${RELEASE_CLI_REFERENCE_ASSET} version must be ${VERSION}; received ${String(reference.cliVersion)}.`,
+      `${RELEASE_CLI_REFERENCE_ASSET} version must be ${VERSION}; received ${String(reference.cliVersion)}.`
     );
   }
   if (reference.schemaVersion !== CLI_REFERENCE_SCHEMA_VERSION) {
     throw new Error(
-      `${RELEASE_CLI_REFERENCE_ASSET} schema version must be ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(reference.schemaVersion)}.`,
+      `${RELEASE_CLI_REFERENCE_ASSET} schema version must be ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(reference.schemaVersion)}.`
     );
   }
 
@@ -231,7 +249,7 @@ export async function stageCommandReferenceAssets(
   const schemaVersion = schema.properties?.schemaVersion?.const;
   if (schemaVersion !== CLI_REFERENCE_SCHEMA_VERSION) {
     throw new Error(
-      `${RELEASE_CLI_REFERENCE_SCHEMA_ASSET} must describe schema version ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(schemaVersion)}.`,
+      `${RELEASE_CLI_REFERENCE_SCHEMA_ASSET} must describe schema version ${CLI_REFERENCE_SCHEMA_VERSION}; received ${String(schemaVersion)}.`
     );
   }
 
@@ -245,16 +263,16 @@ export async function stageCommandReferenceAssets(
       await assertNonemptyFile(outputPath);
       const file = Bun.file(outputPath);
       return {
-        kind: "documentation",
+        kind: 'documentation',
         file: fileName,
         bytes: file.size,
         sha256: await sha256(file),
         recipe: {
-          builder: "command-reference",
+          builder: 'command-reference',
           schemaVersion: CLI_REFERENCE_SCHEMA_VERSION,
         },
       };
-    }),
+    })
   );
 }
 
@@ -262,7 +280,7 @@ export async function buildAllReleaseArtifacts(
   options: {
     outputDirectory?: string;
     tag?: string;
-  } = {},
+  } = {}
 ): Promise<ReleaseMetadata> {
   await assertToolchain();
   const outputDirectory = options.outputDirectory ?? defaultOutputDirectory;
@@ -278,7 +296,7 @@ export async function buildAllReleaseArtifacts(
 
 export async function writeReleaseMetadata(
   outputDirectory = defaultOutputDirectory,
-  tag = expectedReleaseTag,
+  tag = expectedReleaseTag
 ): Promise<ReleaseMetadata> {
   await assertToolchain();
   assertReleaseTag(tag);
@@ -290,27 +308,30 @@ export async function writeReleaseMetadata(
         throw new Error(`Missing or empty release artifact: ${target.asset}.`);
       }
       return {
-        kind: "native",
+        kind: 'native',
         file: target.asset,
         bytes: file.size,
         sha256: await sha256(file),
         platform: target.platform,
         bunTarget: target.bunTarget,
         recipe: {
-          builder: "bun-build-executable",
+          builder: 'bun-build-executable',
           bunVersion: Bun.version,
           target: target.bunTarget,
           flags: HARDENED_COMPILE_FLAGS,
         },
       };
-    }),
+    })
   );
 
   const bundle = Bun.file(join(outputDirectory, RELEASE_BUNDLE_ASSET));
   if (!(await bundle.exists()) || bundle.size === 0) {
-    throw new Error(`Missing or empty release artifact: ${RELEASE_BUNDLE_ASSET}.`);
+    throw new Error(
+      `Missing or empty release artifact: ${RELEASE_BUNDLE_ASSET}.`
+    );
   }
-  const documentationArtifacts = await stageCommandReferenceAssets(outputDirectory);
+  const documentationArtifacts =
+    await stageCommandReferenceAssets(outputDirectory);
 
   const metadata: ReleaseMetadata = {
     schemaVersion: RELEASE_MANIFEST_SCHEMA_VERSION,
@@ -323,12 +344,12 @@ export async function writeReleaseMetadata(
     artifacts: [
       ...nativeArtifacts,
       {
-        kind: "javascript",
+        kind: 'javascript',
         file: RELEASE_BUNDLE_ASSET,
         bytes: bundle.size,
         sha256: await sha256(bundle),
         recipe: {
-          builder: "bun-build",
+          builder: 'bun-build',
           bunVersion: Bun.version,
           ...NPM_BUNDLE_OPTIONS,
         },
@@ -341,7 +362,10 @@ export async function writeReleaseMetadata(
   await writeAtomic(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
 
   const checksumEntries = [
-    ...metadata.artifacts.map((artifact) => ({ file: artifact.file, sha256: artifact.sha256 })),
+    ...metadata.artifacts.map(artifact => ({
+      file: artifact.file,
+      sha256: artifact.sha256,
+    })),
     {
       file: RELEASE_METADATA_ASSET,
       sha256: await sha256(Bun.file(metadataPath)),
@@ -349,7 +373,7 @@ export async function writeReleaseMetadata(
   ].sort((left, right) => left.file.localeCompare(right.file));
   await writeAtomic(
     join(outputDirectory, RELEASE_CHECKSUMS_ASSET),
-    `${checksumEntries.map((entry) => `${entry.sha256}  ${entry.file}`).join("\n")}\n`,
+    `${checksumEntries.map(entry => `${entry.sha256}  ${entry.file}`).join('\n')}\n`
   );
 
   return metadata;
@@ -369,51 +393,53 @@ async function writeAtomic(path: string, contents: string): Promise<void> {
 }
 
 async function sha256(file: Blob): Promise<string> {
-  const hasher = new Bun.CryptoHasher("sha256");
+  const hasher = new Bun.CryptoHasher('sha256');
   hasher.update(await file.arrayBuffer());
-  return hasher.digest("hex");
+  return hasher.digest('hex');
 }
 
 async function run(command: string[]): Promise<void> {
   const child = Bun.spawn(command, {
     cwd: repositoryRoot,
-    stdout: "inherit",
-    stderr: "inherit",
+    stdout: 'inherit',
+    stderr: 'inherit',
   });
   const exitCode = await child.exited;
   if (exitCode !== 0) {
-    throw new Error(`Command failed (${exitCode}): ${command.join(" ")}`);
+    throw new Error(`Command failed (${exitCode}): ${command.join(' ')}`);
   }
 }
 
 async function runCapture(command: string[]): Promise<string> {
   const child = Bun.spawn(command, {
     cwd: repositoryRoot,
-    stdout: "pipe",
-    stderr: "inherit",
+    stdout: 'pipe',
+    stderr: 'inherit',
   });
   const output = await new Response(child.stdout).text();
   const exitCode = await child.exited;
   if (exitCode !== 0) {
-    throw new Error(`Command failed (${exitCode}): ${command.join(" ")}`);
+    throw new Error(`Command failed (${exitCode}): ${command.join(' ')}`);
   }
   return output;
 }
 
 export async function smokeReleaseTarget(
   target: ReleaseTarget,
-  outputDirectory = defaultOutputDirectory,
+  outputDirectory = defaultOutputDirectory
 ): Promise<void> {
   const executable = join(outputDirectory, target.asset);
   await assertNonemptyFile(executable);
   const verifySignature = signatureVerificationCommand(target, executable);
   if (verifySignature) await run(verifySignature);
-  const version = (await runCapture([executable, "--version"])).trim();
+  const version = (await runCapture([executable, '--version'])).trim();
   if (version !== VERSION) {
-    throw new Error(`${target.asset} reported version ${version}; expected ${VERSION}.`);
+    throw new Error(
+      `${target.asset} reported version ${version}; expected ${VERSION}.`
+    );
   }
-  const help = await runCapture([executable, "--help"]);
-  if (!help.includes("Altertable CLI") || !help.includes("Commands")) {
+  const help = await runCapture([executable, '--help']);
+  if (!help.includes('Altertable CLI') || !help.includes('Commands')) {
     throw new Error(`${target.asset} returned incomplete help output.`);
   }
   await smokeDataApp([executable]);
@@ -421,86 +447,96 @@ export async function smokeReleaseTarget(
 }
 
 function optionValue(arguments_: string[], name: string): string | undefined {
-  return arguments_.find((argument) => argument.startsWith(`${name}=`))?.slice(`${name}=`.length);
+  return arguments_
+    .find(argument => argument.startsWith(`${name}=`))
+    ?.slice(`${name}=`.length);
 }
 
 async function main(arguments_: string[]): Promise<void> {
   const command = arguments_[0];
-  if (command === "matrix") {
+  if (command === 'matrix') {
     console.log(JSON.stringify(releaseCiMatrix()));
     return;
   }
 
-  if (command === "verify") {
+  if (command === 'verify') {
     await assertToolchain();
-    const tag = optionValue(arguments_, "--tag");
+    const tag = optionValue(arguments_, '--tag');
     if (tag) {
       assertReleaseTag(tag);
     }
-    console.log(`Release contract verified for Bun ${Bun.version} and ${expectedReleaseTag}.`);
+    console.log(
+      `Release contract verified for Bun ${Bun.version} and ${expectedReleaseTag}.`
+    );
     return;
   }
 
-  if (command === "finalize") {
-    const outputDirectory = optionValue(arguments_, "--output-dir") ?? defaultOutputDirectory;
+  if (command === 'finalize') {
+    const outputDirectory =
+      optionValue(arguments_, '--output-dir') ?? defaultOutputDirectory;
     const metadata = await writeReleaseMetadata(
       outputDirectory,
-      optionValue(arguments_, "--tag") ?? expectedReleaseTag,
+      optionValue(arguments_, '--tag') ?? expectedReleaseTag
     );
     console.log(`Finalized ${metadata.artifacts.length} release artifacts.`);
     return;
   }
 
-  if (command === "smoke") {
-    const requestedTarget = optionValue(arguments_, "--target");
-    const target = requestedTarget ? findReleaseTargetByBunTarget(requestedTarget) : undefined;
+  if (command === 'smoke') {
+    const requestedTarget = optionValue(arguments_, '--target');
+    const target = requestedTarget
+      ? findReleaseTargetByBunTarget(requestedTarget)
+      : undefined;
     if (!target) {
       throw new Error(
         requestedTarget
           ? `Unsupported Bun release target: ${requestedTarget}.`
-          : "smoke requires --target=<target>.",
+          : 'smoke requires --target=<target>.'
       );
     }
     await smokeReleaseTarget(
       target,
-      optionValue(arguments_, "--output-dir") ?? defaultOutputDirectory,
+      optionValue(arguments_, '--output-dir') ?? defaultOutputDirectory
     );
     return;
   }
 
-  if (command !== "build") {
+  if (command !== 'build') {
     throw new Error(
-      "Usage: release.ts <matrix|verify|build|finalize|smoke> [--native|--bundle|--all|--target=<target>]",
+      'Usage: release.ts <matrix|verify|build|finalize|smoke> [--native|--bundle|--all|--target=<target>]'
     );
   }
 
-  const outputDirectory = optionValue(arguments_, "--output-dir") ?? defaultOutputDirectory;
-  if (arguments_.includes("--all")) {
+  const outputDirectory =
+    optionValue(arguments_, '--output-dir') ?? defaultOutputDirectory;
+  if (arguments_.includes('--all')) {
     const metadata = await buildAllReleaseArtifacts({
       outputDirectory,
-      tag: optionValue(arguments_, "--tag"),
+      tag: optionValue(arguments_, '--tag'),
     });
-    console.log(`Built and finalized ${metadata.artifacts.length} release artifacts.`);
+    console.log(
+      `Built and finalized ${metadata.artifacts.length} release artifacts.`
+    );
     return;
   }
 
-  if (arguments_.includes("--bundle")) {
+  if (arguments_.includes('--bundle')) {
     const outputPath = await buildJavaScriptBundle(outputDirectory);
     console.log(`Built ${outputPath} (Bun JavaScript bundle).`);
     return;
   }
 
-  const requestedTarget = optionValue(arguments_, "--target");
+  const requestedTarget = optionValue(arguments_, '--target');
   const target = requestedTarget
     ? findReleaseTargetByBunTarget(requestedTarget)
-    : arguments_.includes("--native")
+    : arguments_.includes('--native')
       ? nativeReleaseTarget()
       : undefined;
   if (!target) {
     throw new Error(
       requestedTarget
         ? `Unsupported Bun release target: ${requestedTarget}.`
-        : "build requires --native, --bundle, --all, or --target=<target>.",
+        : 'build requires --native, --bundle, --all, or --target=<target>.'
     );
   }
 

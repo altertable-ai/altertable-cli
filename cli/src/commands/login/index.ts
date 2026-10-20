@@ -1,15 +1,18 @@
-import { defineCommand } from "@/lib/command.ts";
-import { assertRetrieved, ConfigurationError } from "@/lib/errors.ts";
-import { getCliContext, isJsonOutput, setCliContext } from "@/context.ts";
-import { assertAllowedApiBase } from "@/lib/url-policy.ts";
-import { refreshCliRuntimeContext, type OutputSink } from "@/lib/runtime.ts";
-import { httpSend } from "@/lib/http.ts";
-import { resolveManagementApiRoot } from "@/lib/config.ts";
-import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { runLoginFlow, type TokenResponse } from "@/lib/oauth-flow.ts";
-import { storeOAuthTokens } from "@/lib/oauth-profile.ts";
-import type { WhoamiResponse } from "@/lib/management/model.ts";
-import { formatWhoamiPrincipalLine } from "@/lib/management/render.ts";
+import { getCliContext, isJsonOutput, setCliContext } from '@/context.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { resolveManagementApiRoot } from '@/lib/config.ts';
+import { assertRetrieved, ConfigurationError } from '@/lib/errors.ts';
+import { httpSend } from '@/lib/http.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import type { WhoamiResponse } from '@/lib/management/model.ts';
+import { formatWhoamiPrincipalLine } from '@/lib/management/render.ts';
+import { runLoginFlow, type TokenResponse } from '@/lib/oauth-flow.ts';
+import { storeOAuthTokens } from '@/lib/oauth-profile.ts';
+import {
+  profileExists,
+  resolveWorkingProfile,
+  setActiveProfile,
+} from '@/lib/profile-store.ts';
 import {
   assertNoEnvConfigMode,
   createEmptyProfile,
@@ -17,9 +20,9 @@ import {
   deriveServiceAccountProfileName,
   profileHasAnyAuthConfigured,
   updateProfile,
-} from "@/lib/profile/model.ts";
-import { profileExists, resolveWorkingProfile, setActiveProfile } from "@/lib/profile-store.ts";
-import { secretSet } from "@/lib/secrets.ts";
+} from '@/lib/profile/model.ts';
+import { refreshCliRuntimeContext, type OutputSink } from '@/lib/runtime.ts';
+import { secretSet } from '@/lib/secrets.ts';
 import {
   fetchEnvironmentCatalogs,
   parseServiceAccountScope,
@@ -29,65 +32,69 @@ import {
   type ServiceAccountAccessMode,
   type ServiceAccountRoleAssignment,
   type ServiceAccountScope,
-} from "@/lib/service-account-provision.ts";
-import { document, section, span, table } from "@/ui/document.ts";
-import { renderDocumentText } from "@/ui/renderers/terminal.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
+} from '@/lib/service-account-provision.ts';
+import { assertAllowedApiBase } from '@/lib/url-policy.ts';
+import { document, section, span, table } from '@/ui/document.ts';
+import { renderDocumentText } from '@/ui/renderers/terminal.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
 
 export const loginCommand = defineCommand({
   metadata: {
-    name: "login",
-    commandGroup: "platform",
-    description: "Sign in with your browser (OAuth) and store the session.",
+    name: 'login',
+    commandGroup: 'platform',
+    description: 'Sign in with your browser (OAuth) and store the session.',
     examples: [
-      "altertable login",
-      "altertable login --org acme --env staging",
-      "altertable login --replace-profile",
+      'altertable login',
+      'altertable login --org acme --env staging',
+      'altertable login --replace-profile',
       'altertable login --service-account "CI Bot" --scope analytics:ro',
       'altertable login --service-account "CI Bot" --scope ro',
     ],
   },
   args: {
-    "control-plane-url": {
-      type: "string",
+    'control-plane-url': {
+      type: 'string',
       description:
-        "Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai",
+        'Control-plane server root to log in against; saved to the profile only on success (the CLI appends /oauth and /rest/v1). Default: https://app.altertable.ai',
     },
-    "data-plane-url": {
-      type: "string",
+    'data-plane-url': {
+      type: 'string',
       description:
-        "Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai",
+        'Data-plane base URL saved to the profile only on successful login. Default: https://api.altertable.ai',
     },
-    "allow-insecure-http": {
-      type: "boolean",
+    'allow-insecure-http': {
+      type: 'boolean',
       description:
-        "Allow http:// URLs other than localhost for --control-plane-url (for development only)",
+        'Allow http:// URLs other than localhost for --control-plane-url (for development only)',
     },
-    "replace-profile": {
-      type: "boolean",
-      description: "Store the login session in the current profile instead of switching profiles",
+    'replace-profile': {
+      type: 'boolean',
+      description:
+        'Store the login session in the current profile instead of switching profiles',
     },
     org: {
-      type: "string",
-      valueHint: "SLUG",
-      description: "Preselect this organization in the browser authorization page",
+      type: 'string',
+      valueHint: 'SLUG',
+      description:
+        'Preselect this organization in the browser authorization page',
     },
     env: {
-      type: "string",
-      valueHint: "SLUG",
-      description: "Preselect this environment in the browser authorization page",
-    },
-    "service-account": {
-      type: "string",
-      valueHint: "LABEL",
+      type: 'string',
+      valueHint: 'SLUG',
       description:
-        "Create an environment-scoped service account with this label and store its access token instead of your login session",
+        'Preselect this environment in the browser authorization page',
+    },
+    'service-account': {
+      type: 'string',
+      valueHint: 'LABEL',
+      description:
+        'Create an environment-scoped service account with this label and store its access token instead of your login session',
     },
     scope: {
-      type: "string",
-      valueHint: "MODE|CATALOG:MODE,...",
+      type: 'string',
+      valueHint: 'MODE|CATALOG:MODE,...',
       description:
-        "Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.",
+        'Request a service account limited to `ro` or `rw` on every catalog, or to specific catalogs, e.g. `analytics:ro,staging:rw` (requires --service-account). The catalog access the server actually grants is reported on success.',
     },
   },
   run: ({ args, sink }) => runLogin(args as LoginArgs, sink),
@@ -100,10 +107,10 @@ function isInteractiveTerminal(): boolean {
 function assertInteractiveLogin(): void {
   if (isJsonOutput(getCliContext()) || !isInteractiveTerminal()) {
     throw new ConfigurationError(
-      "altertable login needs an interactive terminal with a browser and does not support --json or --agent.\n" +
-        "For headless setups, pipe a management key:\n" +
+      'altertable login needs an interactive terminal with a browser and does not support --json or --agent.\n' +
+        'For headless setups, pipe a management key:\n' +
         `  printf '%s' "$KEY" | altertable profile configure --api-key-stdin --env <name>\n` +
-        "Or set ALTERTABLE_API_KEY and ALTERTABLE_ENV.",
+        'Or set ALTERTABLE_API_KEY and ALTERTABLE_ENV.'
     );
   }
 }
@@ -111,31 +118,37 @@ function assertInteractiveLogin(): void {
 type LoginProfileMetadata = {
   environment: string;
   profileName: string;
-  profileAction: "created" | "reused" | "replaced" | "unchanged";
+  profileAction: 'created' | 'reused' | 'replaced' | 'unchanged';
 };
 
-type LoginProfileAction = LoginProfileMetadata["profileAction"];
+type LoginProfileAction = LoginProfileMetadata['profileAction'];
 
 const LOGIN_PROFILE_MESSAGES = {
-  created: "created profile",
-  reused: "using existing profile",
-  replaced: "replaced current profile with",
-  unchanged: "using profile",
+  created: 'created profile',
+  reused: 'using existing profile',
+  replaced: 'replaced current profile with',
+  unchanged: 'using profile',
 } satisfies Record<LoginProfileAction, string>;
 
-function loginProfileName(whoami: WhoamiResponse, environment: string, fallback: string): string {
+function loginProfileName(
+  whoami: WhoamiResponse,
+  environment: string,
+  fallback: string
+): string {
   const organizationSlug = whoami.organization?.slug;
-  return organizationSlug ? deriveProfileName(organizationSlug, environment) : fallback;
+  return organizationSlug
+    ? deriveProfileName(organizationSlug, environment)
+    : fallback;
 }
 
 function selectLoginProfile(
   whoami: WhoamiResponse,
   environment: string,
-  replaceCurrentProfile: boolean,
-): Pick<LoginProfileMetadata, "profileName" | "profileAction"> {
+  replaceCurrentProfile: boolean
+): Pick<LoginProfileMetadata, 'profileName' | 'profileAction'> {
   const currentProfile = resolveWorkingProfile(getCliContext().profile);
   if (replaceCurrentProfile) {
-    return { profileName: currentProfile, profileAction: "replaced" };
+    return { profileName: currentProfile, profileAction: 'replaced' };
   }
 
   // Sign into the current profile while it has no credentials of its own yet — a
@@ -144,20 +157,20 @@ function selectLoginProfile(
   // clobber an existing session. (Env credentials never reach here — login is
   // refused up front while they are set.)
   if (!profileHasAnyAuthConfigured(currentProfile)) {
-    return { profileName: currentProfile, profileAction: "unchanged" };
+    return { profileName: currentProfile, profileAction: 'unchanged' };
   }
 
   const targetProfile = loginProfileName(whoami, environment, currentProfile);
   if (targetProfile === currentProfile) {
-    return { profileName: targetProfile, profileAction: "unchanged" };
+    return { profileName: targetProfile, profileAction: 'unchanged' };
   }
 
   let profileAction: LoginProfileAction;
   if (profileExists(targetProfile)) {
-    profileAction = "reused";
+    profileAction = 'reused';
   } else {
     createEmptyProfile(targetProfile);
-    profileAction = "created";
+    profileAction = 'created';
   }
   setActiveProfile(targetProfile);
   setCliContext({ ...getCliContext(), profile: targetProfile });
@@ -166,19 +179,23 @@ function selectLoginProfile(
 }
 
 function requireWhoamiEnvironment(whoami: WhoamiResponse): string {
-  return assertRetrieved(whoami.environment_slug, "login", "whoami.environment_slug");
+  return assertRetrieved(
+    whoami.environment_slug,
+    'login',
+    'whoami.environment_slug'
+  );
 }
 
 function storeLoginProfileMetadata(
   whoami: WhoamiResponse,
   args: LoginArgs,
-  controlPlane: string,
+  controlPlane: string
 ): LoginProfileMetadata {
   const environment = requireWhoamiEnvironment(whoami);
   const { profileName, profileAction } = selectLoginProfile(
     whoami,
     environment,
-    Boolean(args["replace-profile"]),
+    Boolean(args['replace-profile'])
   );
   updateProfile(profileName, {
     environment,
@@ -188,7 +205,7 @@ function storeLoginProfileMetadata(
     principalName: whoami.principal?.name,
     principalEmail: whoami.principal?.email ?? undefined,
     principalSlug: whoami.principal?.slug ?? undefined,
-    ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
+    ...(args['data-plane-url'] ? { dataPlane: args['data-plane-url'] } : {}),
     controlPlane,
   });
 
@@ -196,13 +213,13 @@ function storeLoginProfileMetadata(
 }
 
 type LoginArgs = {
-  "data-plane-url"?: string;
-  "control-plane-url"?: string;
-  "allow-insecure-http"?: boolean;
-  "replace-profile"?: boolean;
+  'data-plane-url'?: string;
+  'control-plane-url'?: string;
+  'allow-insecure-http'?: boolean;
+  'replace-profile'?: boolean;
   org?: string;
   env?: string;
-  "service-account"?: string;
+  'service-account'?: string;
   scope?: string;
 };
 
@@ -213,14 +230,14 @@ type ServiceAccountLoginRequest = {
 
 function resolveLoginEndpoints(
   args: LoginArgs,
-  profileName: string,
+  profileName: string
 ): { controlPlane: string; oauthBase: string; managementApiBase: string } {
-  const override = args["control-plane-url"];
+  const override = args['control-plane-url'];
   const controlPlane = override
-    ? override.replace(/\/$/, "")
+    ? override.replace(/\/$/, '')
     : resolveManagementApiRoot(profileName);
   assertAllowedApiBase(controlPlane, {
-    allowInsecureHttp: Boolean(args["allow-insecure-http"]),
+    allowInsecureHttp: Boolean(args['allow-insecure-http']),
   });
   return {
     controlPlane,
@@ -233,44 +250,50 @@ function resolveLoginEndpoints(
 // auth, which may still be a different org's session — decides who we are.
 async function fetchLoginWhoami(
   oauthResponse: TokenResponse,
-  managementApiBase: string,
+  managementApiBase: string
 ): Promise<WhoamiResponse> {
   const body = await httpSend({
-    method: "GET",
-    url: `${managementApiBase}${encodeManagementEndpoint("/whoami")}`,
+    method: 'GET',
+    url: `${managementApiBase}${encodeManagementEndpoint('/whoami')}`,
     authHeader: `Authorization: Bearer ${oauthResponse.access_token}`,
-    authPlane: "management",
+    authPlane: 'management',
   });
   return JSON.parse(body) as WhoamiResponse;
 }
 
 function applyLoginDataPlaneUrl(args: LoginArgs): void {
-  if (args["data-plane-url"]) {
-    assertAllowedApiBase(args["data-plane-url"], {
-      allowInsecureHttp: Boolean(args["allow-insecure-http"]),
+  if (args['data-plane-url']) {
+    assertAllowedApiBase(args['data-plane-url'], {
+      allowInsecureHttp: Boolean(args['allow-insecure-http']),
     });
   }
 }
 
-function parseServiceAccountLoginArgs(args: LoginArgs): ServiceAccountLoginRequest | undefined {
-  const label = args["service-account"];
+function parseServiceAccountLoginArgs(
+  args: LoginArgs
+): ServiceAccountLoginRequest | undefined {
+  const label = args['service-account'];
   if (args.scope !== undefined && label === undefined) {
-    throw new ConfigurationError("--scope requires --service-account.");
+    throw new ConfigurationError('--scope requires --service-account.');
   }
   if (label === undefined) {
     return undefined;
   }
-  if (args["replace-profile"]) {
+  if (args['replace-profile']) {
     throw new ConfigurationError(
-      "--service-account cannot be combined with --replace-profile; a service account always gets its own profile.",
+      '--service-account cannot be combined with --replace-profile; a service account always gets its own profile.'
     );
   }
   if (label.trim().length === 0) {
-    throw new ConfigurationError("--service-account requires a non-empty label.");
+    throw new ConfigurationError(
+      '--service-account requires a non-empty label.'
+    );
   }
   return {
     label: label.trim(),
-    ...(args.scope === undefined ? {} : { scope: parseServiceAccountScope(args.scope) }),
+    ...(args.scope === undefined
+      ? {}
+      : { scope: parseServiceAccountScope(args.scope) }),
   };
 }
 
@@ -284,14 +307,18 @@ function activateDerivedProfile(profileName: string): void {
 }
 
 function catalogAccessMode(
-  assignment: ServiceAccountRoleAssignment,
+  assignment: ServiceAccountRoleAssignment
 ): ServiceAccountAccessMode | null {
-  if (assignment.role === "catalog:writer") return "rw";
-  if (assignment.role === "catalog:reader") return "ro";
+  if (assignment.role === 'catalog:writer') return 'rw';
+  if (assignment.role === 'catalog:reader') return 'ro';
   return null;
 }
 
-type CatalogAccessRow = { name: string; slug: string; access: ServiceAccountAccessMode };
+type CatalogAccessRow = {
+  name: string;
+  slug: string;
+  access: ServiceAccountAccessMode;
+};
 
 /**
  * Lists the catalogs the service account can reach, by name. Role assignments
@@ -300,7 +327,7 @@ type CatalogAccessRow = { name: string; slug: string; access: ServiceAccountAcce
  */
 function summarizeCatalogAccess(
   created: EnvironmentServiceAccountResponse,
-  catalogs: Map<string, EnvironmentCatalog>,
+  catalogs: Map<string, EnvironmentCatalog>
 ): CatalogAccessRow[] {
   const rows = new Map<string, CatalogAccessRow>();
   for (const assignment of created.role_assignments ?? []) {
@@ -308,7 +335,7 @@ function summarizeCatalogAccess(
     const catalog = catalogs.get(assignment.resource_id);
     if (!access || !catalog) continue;
     const existing = rows.get(assignment.resource_id);
-    if (!existing || access === "rw") {
+    if (!existing || access === 'rw') {
       rows.set(assignment.resource_id, { ...catalog, access });
     }
   }
@@ -322,14 +349,18 @@ function formatCatalogAccessTable(rows: CatalogAccessRow[]): string {
         table({
           rows,
           columns: [
-            { header: "CATALOG", cell: (row) => [span(row.name, "strong")], flex: true },
-            { header: "SLUG", cell: (row) => [span(row.slug, "accent")] },
-            { header: "ACCESS", cell: (row) => [span(row.access, "subtle")] },
+            {
+              header: 'CATALOG',
+              cell: row => [span(row.name, 'strong')],
+              flex: true,
+            },
+            { header: 'SLUG', cell: row => [span(row.slug, 'accent')] },
+            { header: 'ACCESS', cell: row => [span(row.access, 'subtle')] },
           ],
-          emptyMessage: "",
-        }),
-      ),
-    ),
+          emptyMessage: '',
+        })
+      )
+    )
   );
 }
 
@@ -340,13 +371,13 @@ async function completeServiceAccountLogin(
   controlPlane: string,
   managementApiBase: string,
   request: ServiceAccountLoginRequest,
-  sink: OutputSink,
+  sink: OutputSink
 ): Promise<void> {
   const environment = requireWhoamiEnvironment(whoami);
   const organizationSlug = assertRetrieved(
     whoami.organization?.slug,
-    "login",
-    "whoami.organization.slug",
+    'login',
+    'whoami.organization.slug'
   );
 
   const created = await provisionEnvironmentServiceAccount({
@@ -360,21 +391,21 @@ async function completeServiceAccountLogin(
   const profileName = deriveServiceAccountProfileName(
     organizationSlug,
     environment,
-    created.service_account.slug,
+    created.service_account.slug
   );
   activateDerivedProfile(profileName);
   updateProfile(profileName, {
     environment,
     organizationSlug,
     organizationName: whoami.organization?.name,
-    principalType: "ServiceAccount",
+    principalType: 'ServiceAccount',
     principalName: created.service_account.label,
     principalSlug: created.service_account.slug,
-    ...(args["data-plane-url"] ? { dataPlane: args["data-plane-url"] } : {}),
+    ...(args['data-plane-url'] ? { dataPlane: args['data-plane-url'] } : {}),
     controlPlane,
   });
 
-  secretSet("oauth/access-token", created.service_oauth_token, profileName);
+  secretSet('oauth/access-token', created.service_oauth_token, profileName);
 
   const catalogs = await fetchEnvironmentCatalogs({
     managementApiBase,
@@ -384,14 +415,14 @@ async function completeServiceAccountLogin(
   const catalogAccess = summarizeCatalogAccess(created, catalogs);
   const lines = [
     renderDisplayText([
-      span("✓", "success"),
+      span('✓', 'success'),
       span(
-        ` Created service account "${created.service_account.label}" — profile "${profileName}" is now active; environment "${environment}".`,
+        ` Created service account "${created.service_account.label}" — profile "${profileName}" is now active; environment "${environment}".`
       ),
     ]),
   ];
   if (catalogAccess.length > 0) {
-    lines.push("", renderDisplayText([span("Catalog access", "subtle")]));
+    lines.push('', renderDisplayText([span('Catalog access', 'subtle')]));
     lines.push(formatCatalogAccessTable(catalogAccess));
   }
   if (request.scope && (created.role_assignments ?? []).length === 0) {
@@ -399,9 +430,9 @@ async function completeServiceAccountLogin(
       renderDisplayText([
         span(
           "! The server reported no role assignments, so the requested restriction could not be confirmed. Check the service account's access before using this token.",
-          "warning",
+          'warning'
         ),
-      ]),
+      ])
     );
   }
   for (const line of lines) {
@@ -411,7 +442,7 @@ async function completeServiceAccountLogin(
 
 async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const serviceAccountRequest = parseServiceAccountLoginArgs(args);
-  for (const flag of ["org", "env"] as const) {
+  for (const flag of ['org', 'env'] as const) {
     if (args[flag] !== undefined && args[flag].trim().length === 0) {
       throw new ConfigurationError(`--${flag} requires a non-empty slug.`);
     }
@@ -423,7 +454,7 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const currentProfile = resolveWorkingProfile(getCliContext().profile);
   const { controlPlane, oauthBase, managementApiBase } = resolveLoginEndpoints(
     args,
-    currentProfile,
+    currentProfile
   );
 
   // Past this point the flow is profile-free so it can't accidentally read another org's stored session.
@@ -441,7 +472,7 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
       controlPlane,
       managementApiBase,
       serviceAccountRequest,
-      sink,
+      sink
     );
     return;
   }
@@ -450,7 +481,7 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const { environment, profileName, profileAction } = storeLoginProfileMetadata(
     whoami,
     args,
-    controlPlane,
+    controlPlane
   );
   storeOAuthTokens(oauthResponse, profileName);
   refreshCliRuntimeContext(getCliContext());
@@ -459,8 +490,10 @@ async function runLogin(args: LoginArgs, sink: OutputSink): Promise<void> {
   const profileMessage = `${LOGIN_PROFILE_MESSAGES[profileAction]} "${profileName}"`;
   sink.writeHuman(
     renderDisplayText([
-      span("✓", "success"),
-      span(` Logged in (${identity}) — ${profileMessage}; environment "${environment}".`),
-    ]),
+      span('✓', 'success'),
+      span(
+        ` Logged in (${identity}) — ${profileMessage}; environment "${environment}".`
+      ),
+    ])
   );
 }

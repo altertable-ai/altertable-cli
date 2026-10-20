@@ -1,4 +1,4 @@
-export const QUERY_LAYOUT_OPTIONS = ["auto", "table", "line"] as const;
+export const QUERY_LAYOUT_OPTIONS = ['auto', 'table', 'line'] as const;
 
 export type QueryLayout = (typeof QUERY_LAYOUT_OPTIONS)[number];
 

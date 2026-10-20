@@ -1,6 +1,6 @@
 # Agent guide — `cli/`
 
-Repo-level router: [../AGENTS.md](../AGENTS.md). Run `./scripts/verify.sh` from repo root.
+Repo-level router: [../AGENTS.md](../AGENTS.md). Run `bun run check` from repo root.
 
 Executor-oriented notes for working in the TypeScript CLI subtree.
 
@@ -14,10 +14,12 @@ Executor-oriented notes for working in the TypeScript CLI subtree.
 
 Preferred — from repo root:
 
+Install dependencies separately with `bun run setup` from the repository root before verification.
+
 ```bash
-./scripts/verify.sh --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
-./scripts/verify.sh            # full gate (mirrors CI minus native compile)
-./scripts/verify.sh --integration   # + tests/integration.e2e.ts (mock at :15000)
+bun run check --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
+bun run check            # full gate (mirrors CI minus native compile)
+bun run check --integration   # + tests/integration.e2e.ts (mock at :15000)
 ```
 
 Manual equivalents from `cli/`:
@@ -167,13 +169,17 @@ metadata; do not inspect or rewrite raw argv in parent handlers.
 Minimal pattern (management HTTP command):
 
 ```typescript
-import { defineCommand } from "@/lib/command.ts";
-import { sendHttp } from "@/lib/http-request.ts";
+import { defineCommand } from '@/lib/command.ts';
+import { sendHttp } from '@/lib/http-request.ts';
 
 export const myfeatureCommand = defineCommand({
-  meta: { name: "myfeature", description: "…" },
+  meta: { name: 'myfeature', description: '…' },
   async run({ execution, sink }) {
-    const request = { plane: "management", method: "GET", endpoint: "/path" } as const;
+    const request = {
+      plane: 'management',
+      method: 'GET',
+      endpoint: '/path',
+    } as const;
     const response = await sendHttp(request, execution);
     sink.writeJson(JSON.parse(response));
   },
@@ -206,7 +212,7 @@ Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder 
 | lib pure function    | `cd cli && bun test path/to.test.ts`             |
 | command validation   | colocated `src/commands/<family>/<name>.test.ts` |
 | HTTP behavior        | mock file via `ALTERTABLE_MOCK_HTTP_FILE`        |
-| end-to-end lakehouse | `./scripts/verify.sh --integration`              |
+| end-to-end lakehouse | `bun run check --integration`                    |
 | completion structure | `cd cli && bun test src/commands/completion`     |
 
 Test env vars: `ALTERTABLE_CONFIG_HOME`, `ALTERTABLE_SECRET_BACKEND=file`, `ALTERTABLE_MOCK_HTTP_FILE`, `ALTERTABLE_HTTP_LOG`.

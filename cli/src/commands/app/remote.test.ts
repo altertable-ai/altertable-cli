@@ -1,17 +1,18 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { runCommandWithTestRuntime } from "@/test-utils/cli.ts";
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+
+import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 import {
   createLakehouseTestWorkspace,
   type LakehouseTestWorkspace,
-} from "@/test-utils/lakehouse.ts";
+} from '@/test-utils/lakehouse.ts';
 
 let workspace: LakehouseTestWorkspace;
 
 beforeEach(() => {
-  workspace = createLakehouseTestWorkspace("app-remote");
-  process.env.ALTERTABLE_API_KEY = "atm_test";
-  process.env.ALTERTABLE_ENV = "env-1";
-  process.env.ALTERTABLE_MANAGEMENT_API_BASE = "https://app.example.com";
+  workspace = createLakehouseTestWorkspace('app-remote');
+  process.env.ALTERTABLE_API_KEY = 'atm_test';
+  process.env.ALTERTABLE_ENV = 'env-1';
+  process.env.ALTERTABLE_MANAGEMENT_API_BASE = 'https://app.example.com';
 });
 
 afterEach(() => {
@@ -21,35 +22,48 @@ afterEach(() => {
   workspace.cleanup();
 });
 
-const INDEX_TSX = "export default function App() { return <div>Hello</div>; }\n";
+const INDEX_TSX =
+  'export default function App() { return <div>Hello</div>; }\n';
 
 function writeAppFile() {
-  return workspace.writeFile("index.tsx", INDEX_TSX);
+  return workspace.writeFile('index.tsx', INDEX_TSX);
 }
 
-describe("app validate", () => {
-  test("posts the source from disk and exits non-zero when the API returns errors", async () => {
+describe('app validate', () => {
+  test('posts the source from disk and exits non-zero when the API returns errors', async () => {
     const file = writeAppFile();
     workspace.writeMocks([
       {
-        urlPattern: "/data_apps/validate",
-        method: "POST",
+        urlPattern: '/data_apps/validate',
+        method: 'POST',
         body: JSON.stringify({
-          errors: [{ message: "Unexpected token", line: 3, column: 7, source: "esbuild" }],
+          errors: [
+            {
+              message: 'Unexpected token',
+              line: 3,
+              column: 7,
+              source: 'esbuild',
+            },
+          ],
           warnings: [],
         }),
       },
     ]);
 
-    const result = await runCommandWithTestRuntime(["app", "validate", "--file", file], {
-      debug: false,
-      json: true,
-      agent: false,
-    });
+    const result = await runCommandWithTestRuntime(
+      ['app', 'validate', '--file', file],
+      {
+        debug: false,
+        json: true,
+        agent: false,
+      }
+    );
 
     expect(result.exitCode).toBe(6);
     expect(JSON.parse(result.stdout[0]!)).toEqual({
-      errors: [{ message: "Unexpected token", line: 3, column: 7, source: "esbuild" }],
+      errors: [
+        { message: 'Unexpected token', line: 3, column: 7, source: 'esbuild' },
+      ],
       warnings: [],
     });
     expect(JSON.parse(workspace.readPayloads()[0]!)).toEqual({
@@ -57,95 +71,109 @@ describe("app validate", () => {
     });
   });
 
-  test("reports a valid app", async () => {
+  test('reports a valid app', async () => {
     const file = writeAppFile();
     workspace.writeMocks([
       {
-        urlPattern: "/data_apps/validate",
-        method: "POST",
+        urlPattern: '/data_apps/validate',
+        method: 'POST',
         body: JSON.stringify({ errors: [], warnings: [] }),
       },
     ]);
 
-    const result = await runCommandWithTestRuntime(["app", "validate", "--file", file], {
-      debug: false,
-      json: false,
-      agent: false,
-    });
+    const result = await runCommandWithTestRuntime(
+      ['app', 'validate', '--file', file],
+      {
+        debug: false,
+        json: false,
+        agent: false,
+      }
+    );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.join("\n")).toContain("Data app is valid.");
+    expect(result.stdout.join('\n')).toContain('Data app is valid.');
   });
 });
 
-describe("app publish", () => {
-  test("creates a data app from source", async () => {
+describe('app publish', () => {
+  test('creates a data app from source', async () => {
     const file = writeAppFile();
     workspace.writeMocks([
       {
-        urlPattern: "/environments/env-1/data_apps",
-        method: "POST",
+        urlPattern: '/environments/env-1/data_apps',
+        method: 'POST',
         body: JSON.stringify({
           data_app: {
-            slug: "APP-1",
-            url: "https://app.example.com/apps/APP-1",
-            title: "Revenue explorer",
+            slug: 'APP-1',
+            url: 'https://app.example.com/apps/APP-1',
+            title: 'Revenue explorer',
           },
         }),
       },
     ]);
 
     const result = await runCommandWithTestRuntime(
-      ["app", "publish", "--title", "Revenue explorer", "--file", file],
-      { debug: false, json: true, agent: false },
+      ['app', 'publish', '--title', 'Revenue explorer', '--file', file],
+      { debug: false, json: true, agent: false }
     );
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout[0]!)).toEqual({
-      slug: "APP-1",
-      url: "https://app.example.com/apps/APP-1",
+      slug: 'APP-1',
+      url: 'https://app.example.com/apps/APP-1',
     });
     expect(JSON.parse(workspace.readPayloads()[0]!)).toMatchObject({
-      title: "Revenue explorer",
+      title: 'Revenue explorer',
       index_tsx: INDEX_TSX,
     });
   });
 });
 
-describe("app update", () => {
-  test("patches only the provided fields", async () => {
+describe('app update', () => {
+  test('patches only the provided fields', async () => {
     const file = writeAppFile();
     workspace.writeMocks([
       {
-        urlPattern: "/data_apps/APP-1",
-        method: "PATCH",
+        urlPattern: '/data_apps/APP-1',
+        method: 'PATCH',
         body: JSON.stringify({
-          data_app: { slug: "APP-1", url: "https://app.example.com/apps/APP-1", title: "Stories" },
+          data_app: {
+            slug: 'APP-1',
+            url: 'https://app.example.com/apps/APP-1',
+            title: 'Stories',
+          },
         }),
       },
     ]);
 
-    const result = await runCommandWithTestRuntime(["app", "update", "APP-1", "--file", file], {
-      debug: false,
-      json: true,
-      agent: false,
-    });
+    const result = await runCommandWithTestRuntime(
+      ['app', 'update', 'APP-1', '--file', file],
+      {
+        debug: false,
+        json: true,
+        agent: false,
+      }
+    );
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout[0]!)).toEqual({
-      slug: "APP-1",
-      url: "https://app.example.com/apps/APP-1",
+      slug: 'APP-1',
+      url: 'https://app.example.com/apps/APP-1',
     });
-    expect(JSON.parse(workspace.readPayloads()[0]!)).toEqual({ index_tsx: INDEX_TSX });
+    expect(JSON.parse(workspace.readPayloads()[0]!)).toEqual({
+      index_tsx: INDEX_TSX,
+    });
   });
 
-  test("requires at least one field to change", async () => {
-    const error = await runCommandWithTestRuntime(["app", "update", "APP-1"]).catch(
-      (caught: unknown) => caught,
-    );
+  test('requires at least one field to change', async () => {
+    const error = await runCommandWithTestRuntime([
+      'app',
+      'update',
+      'APP-1',
+    ]).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      "Provide at least one of --title, --description, or --file.",
+      'Provide at least one of --title, --description, or --file.'
     );
   });
 });

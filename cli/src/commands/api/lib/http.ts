@@ -2,14 +2,14 @@ import {
   formatApiFieldValue,
   resolveApiRequestPayload,
   type ParsedApiField,
-} from "@/commands/api/lib/body.ts";
-import type { CommandOutputMode } from "@/lib/command-output.ts";
-import { CliError } from "@/lib/errors.ts";
-import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { parseManagementOutputFormat } from "@/lib/tabular-result.ts";
-import type { OutputSink } from "@/lib/runtime.ts";
-import type { ExecutionContext } from "@/lib/execution-context.ts";
-import { sendHttp, type HttpRequest } from "@/lib/http-request.ts";
+} from '@/commands/api/lib/body.ts';
+import type { CommandOutputMode } from '@/lib/command-output.ts';
+import { CliError } from '@/lib/errors.ts';
+import type { ExecutionContext } from '@/lib/execution-context.ts';
+import { sendHttp, type HttpRequest } from '@/lib/http-request.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
+import { parseManagementOutputFormat } from '@/lib/tabular-result.ts';
 
 export type ApiHttpArgs = {
   method?: string;
@@ -37,17 +37,17 @@ export type ApiHttpResult = {
 
 export function buildApiHttpRequest(resolved: ResolvedApiHttp): HttpRequest {
   return {
-    plane: "management",
+    plane: 'management',
     method: resolved.method,
     endpoint: resolved.endpoint,
     body: resolved.body,
-    contentType: resolved.body ? "application/json" : undefined,
+    contentType: resolved.body ? 'application/json' : undefined,
   };
 }
 
 export async function executeApiHttp(
   resolved: ResolvedApiHttp,
-  execution: ExecutionContext,
+  execution: ExecutionContext
 ): Promise<ApiHttpResult> {
   return {
     method: resolved.method,
@@ -59,24 +59,26 @@ export async function executeApiHttp(
 export function normalizeApiEndpoint(endpoint: string, env?: string): string {
   const trimmed = endpoint.trim();
   if (trimmed.length === 0) {
-    throw new CliError("Endpoint path is required, e.g. /whoami.");
+    throw new CliError('Endpoint path is required, e.g. /whoami.');
   }
   if (/^https?:\/\//i.test(trimmed)) {
-    throw new CliError("Pass a path relative to /rest/v1, not a full URL.");
+    throw new CliError('Pass a path relative to /rest/v1, not a full URL.');
   }
 
-  let path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  let path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   if (env) {
-    path = path.replaceAll("{environment_id}", env);
+    path = path.replaceAll('{environment_id}', env);
   }
   return path;
 }
 
-function hasFields(fields: Record<string, string> | string[] | string | undefined): boolean {
+function hasFields(
+  fields: Record<string, string> | string[] | string | undefined
+): boolean {
   if (fields === undefined) {
     return false;
   }
-  if (typeof fields === "string") {
+  if (typeof fields === 'string') {
     return fields.length > 0;
   }
   if (Array.isArray(fields)) {
@@ -96,10 +98,10 @@ function resolveApiMethod(args: ApiHttpArgs): string {
     hasFields(args.typedFields) ||
     hasFields(args.fields)
   ) {
-    return "POST";
+    return 'POST';
   }
 
-  return "GET";
+  return 'GET';
 }
 
 function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
@@ -107,7 +109,7 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
     return endpoint;
   }
 
-  const separator = endpoint.includes("?") ? "&" : "?";
+  const separator = endpoint.includes('?') ? '&' : '?';
   const searchParams = new URLSearchParams();
   for (const field of fields) {
     searchParams.append(field.key, formatApiFieldValue(field.value));
@@ -117,11 +119,14 @@ function appendQueryFields(endpoint: string, fields: ParsedApiField[]): string {
 
 export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
   if (!args.endpoint) {
-    throw new CliError("Endpoint path is required, e.g. /whoami.");
+    throw new CliError('Endpoint path is required, e.g. /whoami.');
   }
 
   const method = resolveApiMethod(args);
-  const endpoint = normalizeApiEndpoint(args.endpoint, args.env ? String(args.env) : undefined);
+  const endpoint = normalizeApiEndpoint(
+    args.endpoint,
+    args.env ? String(args.env) : undefined
+  );
   const payload = resolveApiRequestPayload({
     method,
     input: args.input ? String(args.input) : undefined,
@@ -141,11 +146,11 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
 
 export function apiHttpResultOutput(
   result: ApiHttpResult,
-  sink: OutputSink,
+  sink: OutputSink
 ): CommandOutputMode | undefined {
-  if (result.method === "DELETE" && result.response.trim().length === 0) {
+  if (result.method === 'DELETE' && result.response.trim().length === 0) {
     if (sink.json) {
-      return { kind: "deleted", message: "" };
+      return { kind: 'deleted', message: '' };
     }
     return;
   }
@@ -155,8 +160,10 @@ export function apiHttpResultOutput(
   }
 
   return {
-    kind: "tabular",
+    kind: 'tabular',
     body: result.response,
-    format: result.format ? parseManagementOutputFormat(result.format) : undefined,
+    format: result.format
+      ? parseManagementOutputFormat(result.format)
+      : undefined,
   };
 }

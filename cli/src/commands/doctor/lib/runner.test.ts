@@ -1,14 +1,18 @@
-import { describe, expect, test } from "bun:test";
-import { ConfigurationError, HttpError } from "@/lib/errors.ts";
-import type { DoctorCheck, DoctorCheckContext } from "@/commands/doctor/lib/model.ts";
-import { runDoctorChecks } from "@/commands/doctor/lib/runner.ts";
+import { describe, expect, test } from 'bun:test';
+
+import type {
+  DoctorCheck,
+  DoctorCheckContext,
+} from '@/commands/doctor/lib/model.ts';
+import { runDoctorChecks } from '@/commands/doctor/lib/runner.ts';
+import { ConfigurationError, HttpError } from '@/lib/errors.ts';
 
 function createDoctorContext(offline = false): DoctorCheckContext {
   return {
     offline,
     interactive: false,
     execution: {
-      profile: "test",
+      profile: 'test',
       cli: { debug: false, json: true, agent: false },
       output: {
         json: true,
@@ -24,218 +28,238 @@ function createDoctorContext(offline = false): DoctorCheckContext {
   };
 }
 
-async function expectRejection(promise: Promise<unknown>, message: string): Promise<void> {
+async function expectRejection(
+  promise: Promise<unknown>,
+  message: string
+): Promise<void> {
   const error = await promise.then(
     () => undefined,
-    (thrown: unknown) => thrown,
+    (thrown: unknown) => thrown
   );
   expect(error).toBeInstanceOf(Error);
   expect((error as Error).message).toContain(message);
 }
 
-describe("runDoctorChecks", () => {
-  test("aggregates outcomes and isolates thrown check errors", async () => {
+describe('runDoctorChecks', () => {
+  test('aggregates outcomes and isolates thrown check errors', async () => {
     const checks: DoctorCheck[] = [
       {
-        id: "passing",
-        label: "Passing",
-        run: () => ({ status: "pass", message: "Ready." }),
+        id: 'passing',
+        label: 'Passing',
+        run: () => ({ status: 'pass', message: 'Ready.' }),
       },
       {
-        id: "failing",
-        label: "Failing",
+        id: 'failing',
+        label: 'Failing',
         run() {
-          throw new ConfigurationError("Missing.");
+          throw new ConfigurationError('Missing.');
         },
-        remediation: (context) => {
-          expect(context.execution.profile).toBe("test");
-          return ["Configure it."];
+        remediation: context => {
+          expect(context.execution.profile).toBe('test');
+          return ['Configure it.'];
         },
       },
       {
-        id: "dependent",
-        label: "Dependent",
-        requires: ["failing"],
-        run: () => ({ status: "pass", message: "Should not run." }),
+        id: 'dependent',
+        label: 'Dependent',
+        requires: ['failing'],
+        run: () => ({ status: 'pass', message: 'Should not run.' }),
       },
     ];
 
     const report = await runDoctorChecks(checks, createDoctorContext());
 
     expect(report.healthy).toBe(false);
-    expect(report.summary).toEqual({ passed: 1, warnings: 0, failed: 1, skipped: 1 });
+    expect(report.summary).toEqual({
+      passed: 1,
+      warnings: 0,
+      failed: 1,
+      skipped: 1,
+    });
     expect(report.checks[1]).toMatchObject({
-      id: "failing",
-      status: "fail",
-      code: "configuration_error",
-      message: "Missing.",
-      remediation: ["Configure it."],
+      id: 'failing',
+      status: 'fail',
+      code: 'configuration_error',
+      message: 'Missing.',
+      remediation: ['Configure it.'],
     });
     expect(report.checks[2]).toMatchObject({
-      status: "skipped",
-      message: "Blocked by failing.",
+      status: 'skipped',
+      message: 'Blocked by failing.',
     });
   });
 
-  test("supports intentional skips without making the report unhealthy", async () => {
+  test('supports intentional skips without making the report unhealthy', async () => {
     const report = await runDoctorChecks(
       [
         {
-          id: "network",
-          label: "Network",
-          skip: ({ offline }) => (offline ? "Offline mode." : undefined),
-          run: () => ({ status: "pass", message: "Connected." }),
+          id: 'network',
+          label: 'Network',
+          skip: ({ offline }) => (offline ? 'Offline mode.' : undefined),
+          run: () => ({ status: 'pass', message: 'Connected.' }),
         },
       ],
-      createDoctorContext(true),
+      createDoctorContext(true)
     );
 
     expect(report.healthy).toBe(true);
     expect(report.summary.skipped).toBe(1);
-    expect(report.checks[0]).toMatchObject({ status: "skipped", message: "Offline mode." });
+    expect(report.checks[0]).toMatchObject({
+      status: 'skipped',
+      message: 'Offline mode.',
+    });
   });
 
-  test("keeps warning-only reports healthy", async () => {
+  test('keeps warning-only reports healthy', async () => {
     const report = await runDoctorChecks(
       [
         {
-          id: "warning",
-          label: "Warning",
-          run: () => ({ status: "warn", message: "Degraded but usable." }),
+          id: 'warning',
+          label: 'Warning',
+          run: () => ({ status: 'warn', message: 'Degraded but usable.' }),
         },
       ],
-      createDoctorContext(),
+      createDoctorContext()
     );
 
     expect(report.healthy).toBe(true);
-    expect(report.summary).toEqual({ passed: 0, warnings: 1, failed: 0, skipped: 0 });
+    expect(report.summary).toEqual({
+      passed: 0,
+      warnings: 1,
+      failed: 0,
+      skipped: 0,
+    });
   });
 
-  test("runs independent checks concurrently and preserves report order", async () => {
+  test('runs independent checks concurrently and preserves report order', async () => {
     const started: string[] = [];
     let finishFirst!: () => void;
     let finishSecond!: () => void;
-    const firstFinished = new Promise<void>((resolve) => {
+    const firstFinished = new Promise<void>(resolve => {
       finishFirst = resolve;
     });
-    const secondFinished = new Promise<void>((resolve) => {
+    const secondFinished = new Promise<void>(resolve => {
       finishSecond = resolve;
     });
 
     const reportPromise = runDoctorChecks(
       [
         {
-          id: "first",
-          label: "First",
+          id: 'first',
+          label: 'First',
           async run() {
-            started.push("first");
+            started.push('first');
             await firstFinished;
-            return { status: "pass", message: "First done." };
+            return { status: 'pass', message: 'First done.' };
           },
         },
         {
-          id: "second",
-          label: "Second",
+          id: 'second',
+          label: 'Second',
           async run() {
-            started.push("second");
+            started.push('second');
             await secondFinished;
-            return { status: "pass", message: "Second done." };
+            return { status: 'pass', message: 'Second done.' };
           },
         },
         {
-          id: "dependent",
-          label: "Dependent",
-          requires: ["first", "second"],
+          id: 'dependent',
+          label: 'Dependent',
+          requires: ['first', 'second'],
           run() {
-            started.push("dependent");
-            return { status: "pass", message: "Dependent done." };
+            started.push('dependent');
+            return { status: 'pass', message: 'Dependent done.' };
           },
         },
       ],
-      createDoctorContext(),
+      createDoctorContext()
     );
 
     await Promise.resolve();
-    expect(started).toEqual(["first", "second"]);
+    expect(started).toEqual(['first', 'second']);
 
     finishSecond();
     await Promise.resolve();
-    expect(started).toEqual(["first", "second"]);
+    expect(started).toEqual(['first', 'second']);
 
     finishFirst();
     const report = await reportPromise;
 
-    expect(started).toEqual(["first", "second", "dependent"]);
-    expect(report.checks.map((check) => check.id)).toEqual(["first", "second", "dependent"]);
+    expect(started).toEqual(['first', 'second', 'dependent']);
+    expect(report.checks.map(check => check.id)).toEqual([
+      'first',
+      'second',
+      'dependent',
+    ]);
   });
 
-  test("preserves HTTP status and CLI error details", async () => {
+  test('preserves HTTP status and CLI error details', async () => {
     const report = await runDoctorChecks(
       [
         {
-          id: "http",
-          label: "HTTP",
+          id: 'http',
+          label: 'HTTP',
           run() {
             throw new HttpError({
               status: 401,
               body: '{"message":"Token expired"}',
-              method: "GET",
-              url: "https://example.com/whoami",
-              parsedDetail: "Token expired",
-              authPlane: "management",
+              method: 'GET',
+              url: 'https://example.com/whoami',
+              parsedDetail: 'Token expired',
+              authPlane: 'management',
             });
           },
         },
         {
-          id: "config",
-          label: "Config",
+          id: 'config',
+          label: 'Config',
           run() {
-            throw new ConfigurationError("Invalid configuration.", {
-              details: "The profile file is unreadable.",
+            throw new ConfigurationError('Invalid configuration.', {
+              details: 'The profile file is unreadable.',
             });
           },
         },
       ],
-      createDoctorContext(),
+      createDoctorContext()
     );
 
     expect(report.checks[0]).toMatchObject({
-      status: "fail",
-      code: "auth_failed",
+      status: 'fail',
+      code: 'auth_failed',
       http_status: 401,
-      details: "Token expired",
+      details: 'Token expired',
     });
     expect(report.checks[1]).toMatchObject({
-      status: "fail",
-      code: "configuration_error",
-      details: "The profile file is unreadable.",
+      status: 'fail',
+      code: 'configuration_error',
+      details: 'The profile file is unreadable.',
     });
   });
 
-  test("rejects duplicate and forward dependency ids", async () => {
+  test('rejects duplicate and forward dependency ids', async () => {
     const duplicate: DoctorCheck = {
-      id: "same",
-      label: "Same",
-      run: () => ({ status: "pass", message: "Ready." }),
+      id: 'same',
+      label: 'Same',
+      run: () => ({ status: 'pass', message: 'Ready.' }),
     };
     await expectRejection(
       runDoctorChecks([duplicate, duplicate], createDoctorContext()),
-      "Duplicate doctor check id",
+      'Duplicate doctor check id'
     );
     await expectRejection(
       runDoctorChecks(
         [
           {
-            id: "first",
-            label: "First",
-            requires: ["later"],
-            run: () => ({ status: "pass", message: "Ready." }),
+            id: 'first',
+            label: 'First',
+            requires: ['later'],
+            run: () => ({ status: 'pass', message: 'Ready.' }),
           },
-          { ...duplicate, id: "later" },
+          { ...duplicate, id: 'later' },
         ],
-        createDoctorContext(),
+        createDoctorContext()
       ),
-      "requires unknown or later check",
+      'requires unknown or later check'
     );
   });
 });

@@ -1,19 +1,23 @@
-import { defineCommand } from "@/lib/command.ts";
-import { catalogsCreateCommand } from "@/commands/catalogs/create.ts";
-import { requireManagementPlane } from "@/lib/auth.ts";
-import { fetchManagementCatalogRows } from "@/lib/management/catalogs.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { formatCatalogsSummary, formatCatalogsTable } from "@/lib/management/render.ts";
-import { span } from "@/ui/document.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
+import { catalogsCreateCommand } from '@/commands/catalogs/create.ts';
+import { requireManagementPlane } from '@/lib/auth.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { fetchManagementCatalogRows } from '@/lib/management/catalogs.ts';
+import {
+  formatCatalogsSummary,
+  formatCatalogsTable,
+} from '@/lib/management/render.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
 
 export const catalogCommand = defineCommand({
   metadata: {
-    name: "catalog",
-    commandGroup: "platform",
-    invocations: ["direct", "subcommand"],
-    description: "Manage catalogs (databases and connections) in the current environment.",
-    examples: ["altertable catalog", "altertable catalog create Analytics"],
+    name: 'catalog',
+    commandGroup: 'platform',
+    invocations: ['direct', 'subcommand'],
+    description:
+      'Manage catalogs (databases and connections) in the current environment.',
+    examples: ['altertable catalog', 'altertable catalog create Analytics'],
   },
   subcommands: {
     create: catalogsCreateCommand,
@@ -21,20 +25,22 @@ export const catalogCommand = defineCommand({
   async run({ execution, sink }) {
     const rows = await fetchManagementCatalogRows(
       requireManagementPlane(execution.profile, {
-        requirement: "Listing catalogs requires the management API",
+        requirement: 'Listing catalogs requires the management API',
       }),
-      execution,
+      execution
     );
     const summary = formatCatalogsSummary(rows);
     await writeCommandOutput(
       {
-        kind: "normalized",
+        kind: 'normalized',
         data: { catalogs: rows, ...(summary !== null ? { summary } : {}) },
         humanText: formatCatalogsTable(rows),
         metadataLines:
-          summary !== null ? ["", renderDisplayText([span(summary, "subtle")])] : undefined,
+          summary !== null
+            ? ['', renderDisplayText([span(summary, 'subtle')])]
+            : undefined,
       },
-      sink,
+      sink
     );
   },
 });
@@ -42,9 +48,9 @@ export const catalogCommand = defineCommand({
 export const catalogsCommand = defineCommand({
   ...catalogCommand,
   metadata: {
-    name: "catalogs",
+    name: 'catalogs',
     hidden: true,
-    description: "Alias for altertable catalog.",
-    invocations: ["direct", "subcommand"],
+    description: 'Alias for altertable catalog.',
+    invocations: ['direct', 'subcommand'],
   },
 });

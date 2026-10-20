@@ -1,8 +1,8 @@
-import { buildMainCommand } from "@/cli.ts";
-import type { CliContext } from "@/context.ts";
-import { executeCommand } from "@/lib/command-parser.ts";
-import { createCliRuntime, type CliRuntime } from "@/lib/runtime.ts";
-import { runWithCliRuntime } from "@/test-utils/runtime.ts";
+import { buildMainCommand } from '@/cli.ts';
+import type { CliContext } from '@/context.ts';
+import { executeCommand } from '@/lib/command-parser.ts';
+import { createCliRuntime, type CliRuntime } from '@/lib/runtime.ts';
+import { runWithCliRuntime } from '@/test-utils/runtime.ts';
 
 export type CliTestHarness = {
   runtime: CliRuntime;
@@ -13,19 +13,19 @@ export type CliTestHarness = {
 };
 
 export function createCliTestHarness(
-  context: CliContext = { debug: false, json: false, agent: false },
+  context: CliContext = { debug: false, json: false, agent: false }
 ): CliTestHarness {
   const runtime = createCliRuntime(context);
   const stdout: string[] = [];
   const stderr: string[] = [];
-  runtime.output.writeStderr = (line) => stderr.push(line);
-  runtime.output.writeJson = (data) => stdout.push(JSON.stringify(data));
-  runtime.output.writeRaw = (body) => stdout.push(body);
-  runtime.output.writeBytes = (body) => {
-    stdout.push(Buffer.from(body).toString("utf8"));
+  runtime.output.writeStderr = line => stderr.push(line);
+  runtime.output.writeJson = data => stdout.push(JSON.stringify(data));
+  runtime.output.writeRaw = body => stdout.push(body);
+  runtime.output.writeBytes = body => {
+    stdout.push(Buffer.from(body).toString('utf8'));
   };
-  runtime.output.writeHuman = (text) => stdout.push(text);
-  runtime.output.writeMetadata = (lines) => stderr.push(...lines);
+  runtime.output.writeHuman = text => stdout.push(text);
+  runtime.output.writeMetadata = lines => stderr.push(...lines);
 
   return {
     runtime,
@@ -34,7 +34,7 @@ export function createCliTestHarness(
     exitCode: 0,
     async run(rawArgs) {
       const result = await runWithCliRuntime(runtime, () =>
-        executeCommand(buildMainCommand(), rawArgs),
+        executeCommand(buildMainCommand(), rawArgs)
       );
       this.exitCode = result.exitCode;
     },
@@ -43,7 +43,7 @@ export function createCliTestHarness(
 
 export async function runCommandWithTestRuntime(
   rawArgs: string[],
-  context: CliContext = { debug: false, json: true, agent: false },
+  context: CliContext = { debug: false, json: true, agent: false }
 ): Promise<CliTestHarness> {
   const harness = createCliTestHarness(context);
   await harness.run(rawArgs);

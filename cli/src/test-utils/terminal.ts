@@ -1,13 +1,13 @@
-import { setTerminalColorMode } from "@/ui/terminal/styles.ts";
+import { setTerminalColorMode } from '@/ui/terminal/styles.ts';
 
 const TERMINAL_ENV_KEYS = [
-  "ALTERTABLE_COLOR",
-  "CI",
-  "FORCE_COLOR",
-  "NO_COLOR",
-  "OSC_HYPERLINK",
-  "TERM",
-  "TEST",
+  'ALTERTABLE_COLOR',
+  'CI',
+  'FORCE_COLOR',
+  'NO_COLOR',
+  'OSC_HYPERLINK',
+  'TERM',
+  'TEST',
 ] as const;
 
 type TerminalEnvKey = (typeof TERMINAL_ENV_KEYS)[number];
@@ -21,8 +21,8 @@ export type TerminalTestState = {
 export function snapshotTerminalState(): TerminalTestState {
   return {
     env: Object.fromEntries(
-      TERMINAL_ENV_KEYS.map((key) => [key, process.env[key]]),
-    ) as TerminalTestState["env"],
+      TERMINAL_ENV_KEYS.map(key => [key, process.env[key]])
+    ) as TerminalTestState['env'],
     stdoutIsTTY: process.stdout.isTTY,
     stderrIsTTY: process.stderr.isTTY,
   };
@@ -37,11 +37,11 @@ export function restoreTerminalState(state: TerminalTestState): void {
       process.env[key] = value;
     }
   }
-  Object.defineProperty(process.stdout, "isTTY", {
+  Object.defineProperty(process.stdout, 'isTTY', {
     value: state.stdoutIsTTY,
     configurable: true,
   });
-  Object.defineProperty(process.stderr, "isTTY", {
+  Object.defineProperty(process.stderr, 'isTTY', {
     value: state.stderrIsTTY,
     configurable: true,
   });
@@ -53,13 +53,19 @@ export function forceTerminalColorForTests(): void {
   delete process.env.CI;
   delete process.env.FORCE_COLOR;
   delete process.env.ALTERTABLE_COLOR;
-  process.env.TERM = "xterm-256color";
-  setTerminalColorMode("always");
-  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-  Object.defineProperty(process.stderr, "isTTY", { value: true, configurable: true });
+  process.env.TERM = 'xterm-256color';
+  setTerminalColorMode('always');
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value: true,
+    configurable: true,
+  });
+  Object.defineProperty(process.stderr, 'isTTY', {
+    value: true,
+    configurable: true,
+  });
 }
 
 export function forceNoTerminalColorForTests(): void {
-  setTerminalColorMode("never");
-  process.env.NO_COLOR = "1";
+  setTerminalColorMode('never');
+  process.env.NO_COLOR = '1';
 }

@@ -1,4 +1,4 @@
-export const TERMINAL_INDENT = "  ";
+export const TERMINAL_INDENT = '  ';
 export const TERMINAL_LABEL_WIDTH = 17;
 export const TERMINAL_NESTED_LABEL_WIDTH = 14;
 

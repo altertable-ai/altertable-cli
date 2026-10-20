@@ -1,17 +1,19 @@
-import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
-import { configDir, configFile, kvGet, kvSet } from "@/lib/config-files.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { configuredEnvConfig, readEnv } from "@/lib/env.ts";
+import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
 
-export const DEFAULT_PROFILE_NAME = "default";
-const PROFILE_ID_KEY = "profile_id";
-const PROFILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+import { configDir, configFile, kvGet, kvSet } from '@/lib/config-files.ts';
+import { configuredEnvConfig, readEnv } from '@/lib/env.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+
+export const DEFAULT_PROFILE_NAME = 'default';
+const PROFILE_ID_KEY = 'profile_id';
+const PROFILE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 // Reserved pseudo-profile: the identity in effect when credentials come from
 // environment variables rather than a stored profile. Never a real directory.
-export const FROM_ENV_PSEUDOPROFILE_NAME = "_from_env";
+export const FROM_ENV_PSEUDOPROFILE_NAME = '_from_env';
 
 const RESERVED_PROFILE_NAMES = new Set<string>([FROM_ENV_PSEUDOPROFILE_NAME]);
 
@@ -26,31 +28,32 @@ export function isFromEnvProfile(name: string): boolean {
 // secret backend, OAuth, mock/log) are deliberately excluded.
 export function envConfigMode(): boolean {
   return Boolean(
-    readEnv("ALTERTABLE_API_KEY") ||
-    readEnv("ALTERTABLE_BASIC_AUTH_TOKEN") ||
-    (readEnv("ALTERTABLE_LAKEHOUSE_USERNAME") && readEnv("ALTERTABLE_LAKEHOUSE_PASSWORD")) ||
-    readEnv("ALTERTABLE_ENV") ||
-    readEnv("ALTERTABLE_API_BASE") ||
-    readEnv("ALTERTABLE_MANAGEMENT_API_BASE"),
+    readEnv('ALTERTABLE_API_KEY') ||
+    readEnv('ALTERTABLE_BASIC_AUTH_TOKEN') ||
+    (readEnv('ALTERTABLE_LAKEHOUSE_USERNAME') &&
+      readEnv('ALTERTABLE_LAKEHOUSE_PASSWORD')) ||
+    readEnv('ALTERTABLE_ENV') ||
+    readEnv('ALTERTABLE_API_BASE') ||
+    readEnv('ALTERTABLE_MANAGEMENT_API_BASE')
   );
 }
 
 export const PROFILE_CONFIG_KEYS = [
-  "user",
-  "api_key_env",
-  "api_base",
-  "management_api_base",
-  "organization_slug",
-  "organization_name",
-  "principal_type",
-  "principal_name",
-  "principal_email",
-  "principal_slug",
-  "created_at",
-  "updated_at",
-  "last_verified_at",
-  "oauth_expiry",
-  "lakehouse_credential_expiry",
+  'user',
+  'api_key_env',
+  'api_base',
+  'management_api_base',
+  'organization_slug',
+  'organization_name',
+  'principal_type',
+  'principal_name',
+  'principal_email',
+  'principal_slug',
+  'created_at',
+  'updated_at',
+  'last_verified_at',
+  'oauth_expiry',
+  'lakehouse_credential_expiry',
 ] as const;
 
 export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
@@ -58,22 +61,22 @@ export type ProfileConfigKey = (typeof PROFILE_CONFIG_KEYS)[number];
 const SAFE_PROFILE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
 
 export function profilesDir(): string {
-  return join(configDir(), "profiles");
+  return join(configDir(), 'profiles');
 }
 
 export function assertSafeProfileName(name: string): void {
   if (name.length === 0) {
-    throw new ConfigurationError("Profile name cannot be empty.");
+    throw new ConfigurationError('Profile name cannot be empty.');
   }
-  if (name === "." || name === "..") {
+  if (name === '.' || name === '..') {
     throw new ConfigurationError(`Invalid profile name: ${name}`);
   }
-  if (name.includes("/") || name.includes("\\") || name.includes(sep)) {
+  if (name.includes('/') || name.includes('\\') || name.includes(sep)) {
     throw new ConfigurationError(`Invalid profile name: ${name}`);
   }
   if (!SAFE_PROFILE_NAME_PATTERN.test(name)) {
     throw new ConfigurationError(
-      `Invalid profile name: ${name}. Use only letters, digits, dots, underscores, and hyphens.`,
+      `Invalid profile name: ${name}. Use only letters, digits, dots, underscores, and hyphens.`
     );
   }
   if (RESERVED_PROFILE_NAMES.has(name)) {
@@ -99,7 +102,7 @@ export function profileDir(name: string): string {
 }
 
 export function profileConfigFile(name: string): string {
-  return join(profileDir(name), "config");
+  return join(profileDir(name), 'config');
 }
 
 export function profileExists(name: string): boolean {
@@ -135,8 +138,8 @@ export function ensureProfilesLayout(): void {
     mkdirSync(profileDir(DEFAULT_PROFILE_NAME), { recursive: true });
     ensureProfileId(DEFAULT_PROFILE_NAME);
   }
-  if (kvGet(configFile(), "active_profile").length === 0) {
-    kvSet(configFile(), "active_profile", DEFAULT_PROFILE_NAME);
+  if (kvGet(configFile(), 'active_profile').length === 0) {
+    kvSet(configFile(), 'active_profile', DEFAULT_PROFILE_NAME);
   }
 }
 
@@ -145,7 +148,7 @@ export function getActiveProfileName(): string {
     return FROM_ENV_PSEUDOPROFILE_NAME;
   }
   ensureProfilesLayout();
-  const active = kvGet(configFile(), "active_profile");
+  const active = kvGet(configFile(), 'active_profile');
   if (active.length > 0 && profileExists(active)) {
     return active;
   }
@@ -158,28 +161,30 @@ export function setActiveProfile(name: string): void {
   if (!profileExists(name)) {
     throw new ConfigurationError(`Profile not found: ${name}`);
   }
-  kvSet(configFile(), "active_profile", name);
+  kvSet(configFile(), 'active_profile', name);
 }
 
 // Env configuration isolates the active identity; an explicit --profile /
 // ALTERTABLE_PROFILE selection alongside it is a contradiction, so refuse it
 // rather than silently pick a side.
 function assertNoProfileSelectionInEnvMode(override: string | undefined): void {
-  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
+  const explicit = override ?? readEnv('ALTERTABLE_PROFILE') ?? '';
   if (explicit.length === 0) {
     return;
   }
-  const selector = override ? "--profile" : "ALTERTABLE_PROFILE";
-  const lines = configuredEnvConfig().map(({ name, display }) => `  ${name.padEnd(32)} ${display}`);
+  const selector = override ? '--profile' : 'ALTERTABLE_PROFILE';
+  const lines = configuredEnvConfig().map(
+    ({ name, display }) => `  ${name.padEnd(32)} ${display}`
+  );
   throw new ConfigurationError(
     [
       `Cannot select profile "${explicit}" through ${selector}: environment configuration is active, so stored profiles are ignored.`,
-      "",
-      "Currently configured:",
+      '',
+      'Currently configured:',
       ...lines,
-      "",
-      "Unset these variables to use stored profiles, or drop the profile selection.",
-    ].join("\n"),
+      '',
+      'Unset these variables to use stored profiles, or drop the profile selection.',
+    ].join('\n')
   );
 }
 
@@ -191,7 +196,7 @@ export function resolveWorkingProfile(override?: string): string {
 
   ensureProfilesLayout();
 
-  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
+  const explicit = override ?? readEnv('ALTERTABLE_PROFILE') ?? '';
 
   if (explicit.length > 0) {
     assertSafeProfileName(explicit);
@@ -210,7 +215,7 @@ export function resolveProfileReference(override?: string): string {
     return FROM_ENV_PSEUDOPROFILE_NAME;
   }
 
-  const explicit = override ?? readEnv("ALTERTABLE_PROFILE") ?? "";
+  const explicit = override ?? readEnv('ALTERTABLE_PROFILE') ?? '';
   if (explicit.length > 0) {
     assertSafeProfileName(explicit);
     if (explicit !== DEFAULT_PROFILE_NAME && !profileExists(explicit)) {
@@ -219,7 +224,7 @@ export function resolveProfileReference(override?: string): string {
     return explicit;
   }
 
-  const active = kvGet(configFile(), "active_profile");
+  const active = kvGet(configFile(), 'active_profile');
   if (active.length > 0) {
     assertSafeProfileName(active);
     return active;
@@ -233,8 +238,8 @@ export function listProfileNames(): string[] {
     return [];
   }
   return readdirSync(profilesDir(), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
     .sort();
 }
 
@@ -254,12 +259,16 @@ export function ensureProfileExists(name: string): void {
 export function configGet(key: string, profileName: string): string {
   // Env config never reads stored values — the whole point of the isolation.
   if (isFromEnvProfile(profileName)) {
-    return "";
+    return '';
   }
   return kvGet(profileConfigFile(profileName), key);
 }
 
-export function configSet(key: string, value: string, profileName: string): void {
+export function configSet(
+  key: string,
+  value: string,
+  profileName: string
+): void {
   // The env pseudo-profile has no directory. Profile-mutating commands are
   // refused in env mode; the only writes that reach here are internal caches
   // (e.g. lakehouse credential expiry), which are simply ephemeral — drop them.
@@ -272,12 +281,11 @@ export function configSet(key: string, value: string, profileName: string): void
 }
 
 export function readProfileConfigRecord(
-  name: string,
+  name: string
 ): Record<ProfileConfigKey, string | undefined> {
-  const config = Object.fromEntries(PROFILE_CONFIG_KEYS.map((key) => [key, undefined])) as Record<
-    ProfileConfigKey,
-    string | undefined
-  >;
+  const config = Object.fromEntries(
+    PROFILE_CONFIG_KEYS.map(key => [key, undefined])
+  ) as Record<ProfileConfigKey, string | undefined>;
   if (isFromEnvProfile(name)) {
     return config;
   }

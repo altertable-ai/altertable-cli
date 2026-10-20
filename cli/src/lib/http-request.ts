@@ -1,15 +1,21 @@
-import { HttpError, type AuthPlane } from "@/lib/errors.ts";
-import { httpSend, httpSendStream, type HttpSendOptions } from "@/lib/http.ts";
-import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
-import { getLakehouseAuthHeader, getManagementAuthHeader } from "@/lib/auth.ts";
-import { resolveApiBase, resolveManagementApiBase } from "@/lib/config.ts";
-import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
+import { getLakehouseAuthHeader, getManagementAuthHeader } from '@/lib/auth.ts';
+import { resolveApiBase, resolveManagementApiBase } from '@/lib/config.ts';
+import { HttpError, type AuthPlane } from '@/lib/errors.ts';
+import {
+  optionalAuth,
+  type ExecutionContext,
+} from '@/lib/execution-context.ts';
+import { httpSend, httpSendStream, type HttpSendOptions } from '@/lib/http.ts';
 import {
   canRecoverLakehouseAuth,
   hasManagementCredentials,
   provisionLakehouseCredential,
-} from "@/lib/lakehouse-provision.ts";
+} from '@/lib/lakehouse-provision.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import {
+  ensureFreshAccessToken,
+  hasOAuthSession,
+} from '@/lib/oauth-profile.ts';
 
 type PlaneUrlBuilder = (endpoint: string, context: ExecutionContext) => string;
 
@@ -32,20 +38,24 @@ export type HttpRequest = {
 };
 
 const PLANE_URL_BUILDERS = {
-  lakehouse: (endpoint, context) => `${resolveApiBase(context.profile)}${endpoint}`,
+  lakehouse: (endpoint, context) =>
+    `${resolveApiBase(context.profile)}${endpoint}`,
   management: (endpoint, context) =>
     `${resolveManagementApiBase(context.profile)}${encodeManagementEndpoint(endpoint)}`,
 } satisfies Record<AuthPlane, PlaneUrlBuilder>;
 
-function resolvePlaneUrl(request: HttpRequest, context: ExecutionContext): string {
+function resolvePlaneUrl(
+  request: HttpRequest,
+  context: ExecutionContext
+): string {
   return PLANE_URL_BUILDERS[request.plane](request.endpoint, context);
 }
 
 async function resolveRequestAuthHeader(
   request: HttpRequest,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): Promise<string> {
-  if (request.plane === "management") {
+  if (request.plane === 'management') {
     if (request.authRecovery !== false && hasOAuthSession(context.profile)) {
       await ensureFreshAccessToken(context.profile);
     }
@@ -55,7 +65,10 @@ async function resolveRequestAuthHeader(
   if (existing) {
     return existing;
   }
-  if (request.authRecovery !== false && hasManagementCredentials(context.profile)) {
+  if (
+    request.authRecovery !== false &&
+    hasManagementCredentials(context.profile)
+  ) {
     // In env config mode this throws instead of minting a credential.
     return provisionLakehouseCredential(context);
   }
@@ -64,7 +77,7 @@ async function resolveRequestAuthHeader(
 
 async function toHttpSendOptions(
   request: HttpRequest,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): Promise<HttpSendOptions> {
   return {
     method: request.method,
@@ -84,12 +97,12 @@ async function toHttpSendOptions(
 function isRecoverableLakehouseAuthFailure(
   request: HttpRequest,
   error: unknown,
-  profileName: string,
+  profileName: string
 ): boolean {
   return (
     error instanceof HttpError &&
     error.status === 401 &&
-    request.plane === "lakehouse" &&
+    request.plane === 'lakehouse' &&
     request.authRecovery !== false &&
     // A stream body was consumed by the failed attempt and cannot be resent.
     !(request.body instanceof ReadableStream) &&
@@ -100,7 +113,7 @@ function isRecoverableLakehouseAuthFailure(
 async function sendWithAuthRecovery<T>(
   request: HttpRequest,
   context: ExecutionContext,
-  send: (options: HttpSendOptions) => Promise<T>,
+  send: (options: HttpSendOptions) => Promise<T>
 ): Promise<T> {
   const options = await toHttpSendOptions(request, context);
   try {
@@ -120,13 +133,16 @@ async function sendWithAuthRecovery<T>(
   }
 }
 
-export async function sendHttp(request: HttpRequest, context: ExecutionContext): Promise<string> {
+export async function sendHttp(
+  request: HttpRequest,
+  context: ExecutionContext
+): Promise<string> {
   return sendWithAuthRecovery(request, context, httpSend);
 }
 
 export async function sendHttpStream(
   request: HttpRequest,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): Promise<ReadableStream<Uint8Array>> {
   return sendWithAuthRecovery(request, context, httpSendStream);
 }

@@ -1,15 +1,15 @@
-import { isJsonOutput } from "@/context.ts";
-import { span } from "@/ui/document.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
+import { isJsonOutput } from '@/context.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
 
 export type ProgressHandle = {
   done: (message?: string) => void;
   fail: (message?: string) => void;
 };
 
-export type ProgressStatus = "active" | "success" | "error";
+export type ProgressStatus = 'active' | 'success' | 'error';
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const SPINNER_INTERVAL_MS = 80;
 
 const noopHandle: ProgressHandle = {
@@ -27,25 +27,31 @@ export function shouldShowProgress(): boolean {
   return true;
 }
 
-export function formatUploadProgress(sentBytes: number, totalBytes: number): string {
+export function formatUploadProgress(
+  sentBytes: number,
+  totalBytes: number
+): string {
   if (totalBytes <= 0) {
-    return renderDisplayText([span(`Uploading ${sentBytes} bytes`, "muted")]);
+    return renderDisplayText([span(`Uploading ${sentBytes} bytes`, 'muted')]);
   }
 
   const percent = Math.min(100, Math.round((sentBytes / totalBytes) * 100));
   return renderDisplayText([
-    span(`Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`, "muted"),
+    span(`Uploading ${percent}% (${sentBytes}/${totalBytes} bytes)`, 'muted'),
   ]);
 }
 
-export function formatProgressStatus(status: ProgressStatus, message: string): string {
-  if (status === "success") {
-    return renderDisplayText([span("✓", "success"), span(` ${message}`)]);
+export function formatProgressStatus(
+  status: ProgressStatus,
+  message: string
+): string {
+  if (status === 'success') {
+    return renderDisplayText([span('✓', 'success'), span(` ${message}`)]);
   }
-  if (status === "error") {
-    return renderDisplayText([span("✗", "error"), span(` ${message}`)]);
+  if (status === 'error') {
+    return renderDisplayText([span('✗', 'error'), span(` ${message}`)]);
   }
-  return renderDisplayText([span(message, "muted")]);
+  return renderDisplayText([span(message, 'muted')]);
 }
 
 export type UploadProgressReporter = {
@@ -53,7 +59,9 @@ export type UploadProgressReporter = {
   clear: () => void;
 };
 
-export function createUploadProgressReporter(totalBytes: number): UploadProgressReporter {
+export function createUploadProgressReporter(
+  totalBytes: number
+): UploadProgressReporter {
   if (!shouldShowProgress()) {
     return {
       report() {},
@@ -66,14 +74,16 @@ export function createUploadProgressReporter(totalBytes: number): UploadProgress
   function report(sentBytes: number, total: number) {
     const line = formatUploadProgress(sentBytes, total);
     const padding =
-      previousLineLength > line.length ? " ".repeat(previousLineLength - line.length) : "";
+      previousLineLength > line.length
+        ? ' '.repeat(previousLineLength - line.length)
+        : '';
     process.stderr.write(`\r${line}${padding}`);
     previousLineLength = line.length;
   }
 
   function clear() {
     if (previousLineLength > 0) {
-      process.stderr.write(`\r${" ".repeat(previousLineLength)}\r`);
+      process.stderr.write(`\r${' '.repeat(previousLineLength)}\r`);
       previousLineLength = 0;
     }
   }
@@ -87,15 +97,15 @@ export function startProgress(message: string): ProgressHandle {
     return noopHandle;
   }
 
-  const label = message.endsWith("…") ? message : `${message}…`;
+  const label = message.endsWith('…') ? message : `${message}…`;
   let frameIndex = 0;
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
   function writeFrame() {
-    const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? "⠋";
+    const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? '⠋';
     frameIndex += 1;
     process.stderr.write(
-      `\r${renderDisplayText([span(frame, "accent")])} ${formatProgressStatus("active", label)}`,
+      `\r${renderDisplayText([span(frame, 'accent')])} ${formatProgressStatus('active', label)}`
     );
   }
 
@@ -107,12 +117,12 @@ export function startProgress(message: string): ProgressHandle {
       clearInterval(intervalId);
       intervalId = undefined;
     }
-    process.stderr.write(`\r${" ".repeat(label.length + 4)}\r`);
+    process.stderr.write(`\r${' '.repeat(label.length + 4)}\r`);
     if (finalMessage !== undefined && finalMessage.length > 0) {
       process.stderr.write(`${finalMessage}\n`);
       return;
     }
-    process.stderr.write("\n");
+    process.stderr.write('\n');
   }
 
   return {

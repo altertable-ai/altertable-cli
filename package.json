@@ -1,0 +1,21 @@
+{
+  "name": "altertable-cli-workspace",
+  "private": true,
+  "scripts": {
+    "build": "bun run --cwd cli build",
+    "dev": "bun run --cwd cli dev",
+    "typecheck": "bun run --cwd cli typecheck",
+    "lint": "bun run --cwd cli lint",
+    "lint:fix": "bun run --cwd cli lint:fix",
+    "format": "bun run --cwd cli format",
+    "format:check": "bun run --cwd cli format:check",
+    "test": "bun run --cwd cli test",
+    "test:watch": "bun run --cwd cli test:watch",
+    "setup": "bun install --cwd cli --frozen-lockfile && bun install --cwd data-app/starter --frozen-lockfile && bun install --cwd data-app/tests --frozen-lockfile",
+    "check": "./scripts/verify.sh",
+    "check:package": "bun run --cwd cli pack:check",
+    "knip": "bun run --cwd cli knip",
+    "knip:production": "bun run --cwd cli knip:production"
+  },
+  "packageManager": "bun@1.4.3"
+}

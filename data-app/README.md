@@ -61,11 +61,11 @@ app imports; authors update their source as needed, run `app lint`, and restart 
 ## Verify
 
 ```fish
+bun run setup
 bun run --cwd cli data-app:check
-bun install --cwd data-app/tests --frozen-lockfile
 bun run --cwd cli data-app:test:browser
-./scripts/verify.sh --quick
-./scripts/verify.sh
+bun run check --quick
+bun run check
 ```
 
 Install Playwright Chromium with `bunx playwright install chromium` from `data-app/tests/`

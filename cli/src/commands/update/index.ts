@@ -1,12 +1,8 @@
-import { CLI_PACKAGE_METADATA } from "@/package-metadata.ts";
-import { span } from "@/ui/document.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
-import { VERSION } from "@/version.ts";
-import { asCliArgString } from "@/lib/cli-args.ts";
-import { writeCommandOutput } from "@/lib/command-output.ts";
-import { defineCommand } from "@/lib/command.ts";
-import { CliError } from "@/lib/errors.ts";
-import type { OutputSink } from "@/lib/runtime.ts";
+import { asCliArgString } from '@/lib/cli-args.ts';
+import { writeCommandOutput } from '@/lib/command-output.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { CliError } from '@/lib/errors.ts';
+import type { OutputSink } from '@/lib/runtime.ts';
 import {
   checkForUpdate,
   compareVersions,
@@ -18,29 +14,37 @@ import {
   releaseUrlForSource,
   resolveUpdateSource,
   type UpdateCheckResult,
-} from "@/lib/updater.ts";
+} from '@/lib/updater.ts';
+import { CLI_PACKAGE_METADATA } from '@/package-metadata.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
+import { VERSION } from '@/version.ts';
 
 export const updateCommand = defineCommand({
   metadata: {
-    name: "update",
-    alias: ["upgrade"],
-    commandGroup: "platform",
-    description: "Update Altertable CLI to the latest release.",
-    examples: ["altertable update", "altertable update --check", "altertable update 1.2.0 --force"],
+    name: 'update',
+    alias: ['upgrade'],
+    commandGroup: 'platform',
+    description: 'Update Altertable CLI to the latest release.',
+    examples: [
+      'altertable update',
+      'altertable update --check',
+      'altertable update 1.2.0 --force',
+    ],
   },
   args: {
     version: {
-      type: "positional",
-      description: "Specific version to install (default: latest).",
+      type: 'positional',
+      description: 'Specific version to install (default: latest).',
       required: false,
     },
     check: {
-      type: "boolean",
-      description: "Check for an update without installing it.",
+      type: 'boolean',
+      description: 'Check for an update without installing it.',
     },
     force: {
-      type: "boolean",
-      description: "Reinstall or downgrade to the selected release.",
+      type: 'boolean',
+      description: 'Reinstall or downgrade to the selected release.',
     },
   },
   async run({ args, sink }) {
@@ -59,13 +63,16 @@ export type UpdateCommandDependencies = {
   installCliUpdate: typeof installCliUpdate;
 };
 
-const DEFAULT_DEPENDENCIES: UpdateCommandDependencies = { checkForUpdate, installCliUpdate };
+const DEFAULT_DEPENDENCIES: UpdateCommandDependencies = {
+  checkForUpdate,
+  installCliUpdate,
+};
 
 function buildTargetResult(targetVersion: string): UpdateCheckResult {
   const version = normalizeVersion(targetVersion);
   if (!isValidVersion(version)) {
     throw new CliError(`Invalid update version: ${targetVersion}.`, {
-      details: "Expected a semantic version such as 1.2.0 or 1.3.0-rc.1.",
+      details: 'Expected a semantic version such as 1.2.0 or 1.3.0-rc.1.',
     });
   }
   const source = resolveUpdateSource();
@@ -83,22 +90,22 @@ function buildTargetResult(targetVersion: string): UpdateCheckResult {
 async function writeUpdateCheck(
   result: UpdateCheckResult,
   targetVersion: string,
-  sink: OutputSink,
+  sink: OutputSink
 ): Promise<void> {
   await writeCommandOutput(
     {
-      kind: "normalized",
+      kind: 'normalized',
       data: result,
       humanText: formatUpdateResult(result, targetVersion),
     },
-    sink,
+    sink
   );
 }
 
 export async function executeUpdateCommand(
   args: UpdateCommandArgs,
   sink: OutputSink,
-  dependencies: UpdateCommandDependencies = DEFAULT_DEPENDENCIES,
+  dependencies: UpdateCommandDependencies = DEFAULT_DEPENDENCIES
 ): Promise<void> {
   const targetVersion = asCliArgString(args.version);
   const result = targetVersion
@@ -115,7 +122,9 @@ export async function executeUpdateCommand(
     targetVersion &&
     compareVersions(result.latest_version, result.current_version) < 0
   ) {
-    throw new CliError(`Target version v${result.latest_version} is older than v${VERSION}.`);
+    throw new CliError(
+      `Target version v${result.latest_version} is older than v${VERSION}.`
+    );
   }
   if (!args.force && !result.update_available) {
     await writeUpdateCheck(result, targetVersion, sink);
@@ -126,68 +135,78 @@ export async function executeUpdateCommand(
     sink.writeMetadata([formatUpdateAnnouncement(result)]);
   }
   const installed = await dependencies.installCliUpdate(result.latest_version, {
-    stdio: sink.json ? "pipe" : "inherit",
+    stdio: sink.json ? 'pipe' : 'inherit',
   });
   await writeCommandOutput(
     {
-      kind: "normalized",
+      kind: 'normalized',
       data: installed,
       humanText: formatInstalledUpdate(result, installed.verified_version),
     },
-    sink,
+    sink
   );
 }
 
 function formatUpdateAnnouncement(result: UpdateCheckResult): string {
   if (result.update_available) {
     return renderDisplayText([
-      span("Altertable CLI ", "strong"),
-      span(`v${result.latest_version}`, "accent"),
+      span('Altertable CLI ', 'strong'),
+      span(`v${result.latest_version}`, 'accent'),
       span(" is out! You're on "),
-      span(`v${result.current_version}`, "string"),
+      span(`v${result.current_version}`, 'string'),
     ]);
   }
 
   if (compareVersions(result.latest_version, result.current_version) === 0) {
     return renderDisplayText([
-      span("Reinstalling Altertable CLI ", "strong"),
-      span(`v${result.current_version}`, "accent"),
-      span("."),
+      span('Reinstalling Altertable CLI ', 'strong'),
+      span(`v${result.current_version}`, 'accent'),
+      span('.'),
     ]);
   }
 
   return renderDisplayText([
-    span("Downgrading Altertable CLI to ", "strong"),
-    span(`v${result.latest_version}`, "accent"),
+    span('Downgrading Altertable CLI to ', 'strong'),
+    span(`v${result.latest_version}`, 'accent'),
     span(". You're on "),
-    span(`v${result.current_version}`, "string"),
+    span(`v${result.current_version}`, 'string'),
   ]);
 }
 
-function formatInstalledUpdate(result: UpdateCheckResult, installedVersion: string): string {
+function formatInstalledUpdate(
+  result: UpdateCheckResult,
+  installedVersion: string
+): string {
   const repositoryUrl = `https://github.com/${CLI_PACKAGE_METADATA.repositorySlug}`;
   const version = `v${normalizeVersion(installedVersion)}`;
   const currentVersion = `v${normalizeVersion(result.current_version)}`;
   const comparison = compareVersions(installedVersion, result.current_version);
-  let outcome = "Reinstalled.";
+  let outcome = 'Reinstalled.';
   if (comparison > 0) {
-    outcome = "Upgraded.";
+    outcome = 'Upgraded.';
   } else if (comparison < 0) {
-    outcome = "Downgraded.";
+    outcome = 'Downgraded.';
   }
   const lines = [
     outcome,
-    "",
+    '',
     `Release notes for Altertable CLI ${version}:`,
-    "",
-    renderDisplayText([span(`  ${repositoryUrl}/releases/tag/${version}`, "accent")]),
-    "",
-    "Report any bugs:",
-    "",
+    '',
+    renderDisplayText([
+      span(`  ${repositoryUrl}/releases/tag/${version}`, 'accent'),
+    ]),
+    '',
+    'Report any bugs:',
+    '',
     `  ${repositoryUrl}/issues`,
   ];
   if (comparison !== 0) {
-    lines.push("", "Commit log:", "", `  ${repositoryUrl}/compare/${currentVersion}...${version}`);
+    lines.push(
+      '',
+      'Commit log:',
+      '',
+      `  ${repositoryUrl}/compare/${currentVersion}...${version}`
+    );
   }
-  return lines.join("\n");
+  return lines.join('\n');
 }

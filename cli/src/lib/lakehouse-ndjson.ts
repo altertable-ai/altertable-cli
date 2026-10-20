@@ -1,5 +1,5 @@
-import { ParseError, QueryError } from "@/lib/errors.ts";
-import { readTextStreamLines } from "@/lib/stream-lines.ts";
+import { ParseError, QueryError } from '@/lib/errors.ts';
+import { readTextStreamLines } from '@/lib/stream-lines.ts';
 
 export type LakehouseQueryMetadata = {
   statement?: string;
@@ -35,7 +35,9 @@ export type LakehouseQueryStreamResult = {
 
 function isColumnNameArray(value: unknown): value is string[] {
   return (
-    Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string")
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(entry => typeof entry === 'string')
   );
 }
 
@@ -43,18 +45,24 @@ function isColumnObjectArray(value: unknown): value is LakehouseColumn[] {
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every((entry) => typeof entry === "object" && entry !== null && !Array.isArray(entry))
+    value.every(
+      entry =>
+        typeof entry === 'object' && entry !== null && !Array.isArray(entry)
+    )
   );
 }
 
-function parseMetadataLine(line: string, lineNumber: number): LakehouseQueryMetadata {
+function parseMetadataLine(
+  line: string,
+  lineNumber: number
+): LakehouseQueryMetadata {
   const parsedMetadata = parseProtocolLine(line, lineNumber);
   if (
-    typeof parsedMetadata !== "object" ||
+    typeof parsedMetadata !== 'object' ||
     parsedMetadata === null ||
     Array.isArray(parsedMetadata)
   ) {
-    throw new ParseError("Query response metadata must be a JSON object.", {
+    throw new ParseError('Query response metadata must be a JSON object.', {
       details: `Line ${lineNumber}: ${line}`,
     });
   }
@@ -63,7 +71,7 @@ function parseMetadataLine(line: string, lineNumber: number): LakehouseQueryMeta
 
 function parseOptionalColumnsLine(
   line: string,
-  lineNumber: number,
+  lineNumber: number
 ): string[] | LakehouseColumn[] | undefined {
   const parsedLine = parseProtocolLine(line, lineNumber);
   if (isColumnNameArray(parsedLine) || isColumnObjectArray(parsedLine)) {
@@ -79,18 +87,21 @@ function parseProtocolLine(line: string, lineNumber: number): unknown {
   try {
     value = JSON.parse(line);
   } catch (error) {
-    throw new ParseError(`Failed to parse query response at line ${lineNumber}.`, {
-      details: line,
-      cause: error,
-    });
+    throw new ParseError(
+      `Failed to parse query response at line ${lineNumber}.`,
+      {
+        details: line,
+        cause: error,
+      }
+    );
   }
   if (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
     !Array.isArray(value) &&
     Object.keys(value).length === 1 &&
-    "error" in value &&
-    typeof value.error === "string"
+    'error' in value &&
+    typeof value.error === 'string'
   ) {
     throw new QueryError(value.error);
   }
@@ -113,7 +124,9 @@ function trimTrailingEmptyLines(lines: string[]): string[] {
   return trimmedLines;
 }
 
-export async function parseLakehouseQueryHeader(lineSource: AsyncIterable<string>): Promise<{
+export async function parseLakehouseQueryHeader(
+  lineSource: AsyncIterable<string>
+): Promise<{
   metadata: LakehouseQueryMetadata;
   columns: string[] | LakehouseColumn[];
   lineIterator: AsyncIterator<string, void, undefined>;
@@ -124,7 +137,7 @@ export async function parseLakehouseQueryHeader(lineSource: AsyncIterable<string
   try {
     const firstResult = await lineIterator.next();
     if (firstResult.done || firstResult.value.trim().length === 0) {
-      throw new ParseError("Query response is empty.");
+      throw new ParseError('Query response is empty.');
     }
 
     const metadata = parseMetadataLine(firstResult.value, 1);
@@ -134,7 +147,10 @@ export async function parseLakehouseQueryHeader(lineSource: AsyncIterable<string
 
     const secondResult = await lineIterator.next();
     if (!secondResult.done) {
-      const parsedColumns = parseOptionalColumnsLine(secondResult.value, lineNumber);
+      const parsedColumns = parseOptionalColumnsLine(
+        secondResult.value,
+        lineNumber
+      );
       if (parsedColumns !== undefined) {
         columns = parsedColumns;
         lineNumber += 1;
@@ -156,20 +172,22 @@ export async function parseLakehouseQueryHeader(lineSource: AsyncIterable<string
   }
 }
 
-export function parseLakehouseQueryResponse(responseBody: string): LakehouseQueryResult {
+export function parseLakehouseQueryResponse(
+  responseBody: string
+): LakehouseQueryResult {
   const trimmedBody = responseBody.trimEnd();
   if (trimmedBody.length === 0) {
-    throw new ParseError("Query response is empty.");
+    throw new ParseError('Query response is empty.');
   }
 
-  const lines = trimTrailingEmptyLines(trimmedBody.split("\n"));
+  const lines = trimTrailingEmptyLines(trimmedBody.split('\n'));
   if (lines.length === 0) {
-    throw new ParseError("Query response is empty.");
+    throw new ParseError('Query response is empty.');
   }
 
   const metadataLine = lines[0];
   if (metadataLine === undefined) {
-    throw new ParseError("Query response is empty.");
+    throw new ParseError('Query response is empty.');
   }
 
   const metadata = parseMetadataLine(metadataLine, 1);
@@ -180,7 +198,10 @@ export function parseLakehouseQueryResponse(responseBody: string): LakehouseQuer
   if (lineIndex < lines.length) {
     const columnsLine = lines[lineIndex];
     if (columnsLine !== undefined) {
-      const parsedColumns = parseOptionalColumnsLine(columnsLine, lineIndex + 1);
+      const parsedColumns = parseOptionalColumnsLine(
+        columnsLine,
+        lineIndex + 1
+      );
       if (parsedColumns !== undefined) {
         columns = parsedColumns;
         lineIndex += 1;
@@ -200,7 +221,7 @@ export function parseLakehouseQueryResponse(responseBody: string): LakehouseQuer
 }
 
 export async function* parseLakehouseQueryStream(
-  stream: ReadableStream<Uint8Array>,
+  stream: ReadableStream<Uint8Array>
 ): AsyncGenerator<LakehouseRow, LakehouseQueryStreamResult, undefined> {
   const header = await parseLakehouseQueryHeader(readTextStreamLines(stream));
   const rows: LakehouseRow[] = [];

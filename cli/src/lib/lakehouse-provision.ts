@@ -1,34 +1,46 @@
-import type { components } from "@/generated/openapi-types.ts";
+import type { components } from '@/generated/openapi-types.ts';
 import {
   basicAuthHeader,
   basicAuthToken,
   getManagementAuthHeader,
   hasLakehouseEnvCredentials,
   requireManagementEnv,
-} from "@/lib/auth.ts";
-import { configGet, configSet, resolveManagementApiBase } from "@/lib/config.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { optionalAuth, type ExecutionContext } from "@/lib/execution-context.ts";
-import { isFromEnvProfile } from "@/lib/profile-store.ts";
-import { httpSend } from "@/lib/http.ts";
-import { encodeManagementEndpoint } from "@/lib/management-endpoint.ts";
-import { ensureFreshAccessToken, hasOAuthSession } from "@/lib/oauth-profile.ts";
-import { parseApiJson } from "@/lib/parse-api-json.ts";
-import { secretSet } from "@/lib/secrets.ts";
-import { span } from "@/ui/document.ts";
-import { renderDisplayText } from "@/ui/terminal/styles.ts";
-import { USER_AGENT } from "@/version.ts";
+} from '@/lib/auth.ts';
+import {
+  configGet,
+  configSet,
+  resolveManagementApiBase,
+} from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+import {
+  optionalAuth,
+  type ExecutionContext,
+} from '@/lib/execution-context.ts';
+import { httpSend } from '@/lib/http.ts';
+import { encodeManagementEndpoint } from '@/lib/management-endpoint.ts';
+import {
+  ensureFreshAccessToken,
+  hasOAuthSession,
+} from '@/lib/oauth-profile.ts';
+import { parseApiJson } from '@/lib/parse-api-json.ts';
+import { isFromEnvProfile } from '@/lib/profile-store.ts';
+import { secretSet } from '@/lib/secrets.ts';
+import { span } from '@/ui/document.ts';
+import { renderDisplayText } from '@/ui/terminal/styles.ts';
+import { USER_AGENT } from '@/version.ts';
 
 const CREDENTIAL_LABEL = USER_AGENT;
 const CREDENTIAL_TTL_MS = 2 * 60 * 60 * 1000;
 const PRINCIPAL_CREDENTIAL_COLLECTIONS: Record<string, string> = {
-  User: "users",
-  ServiceAccount: "service_accounts",
+  User: 'users',
+  ServiceAccount: 'service_accounts',
 };
 
 // hasOwn, not a bare lookup: `principal.type` is server-supplied, and keys like
 // "constructor" would otherwise resolve to a truthy Object.prototype member.
-function principalCredentialCollection(principalType: string | undefined): string | undefined {
+function principalCredentialCollection(
+  principalType: string | undefined
+): string | undefined {
   if (
     principalType === undefined ||
     !Object.hasOwn(PRINCIPAL_CREDENTIAL_COLLECTIONS, principalType)
@@ -52,7 +64,7 @@ export function canRecoverLakehouseAuth(profileName: string): boolean {
   return (
     !isFromEnvProfile(profileName) &&
     !hasLakehouseEnvCredentials() &&
-    configGet("lakehouse_credential_expiry", profileName) !== "" &&
+    configGet('lakehouse_credential_expiry', profileName) !== '' &&
     hasManagementCredentials(profileName)
   );
 }
@@ -61,7 +73,7 @@ async function sendManagementRequest(
   context: ExecutionContext,
   method: string,
   endpoint: string,
-  body?: string,
+  body?: string
 ): Promise<unknown> {
   if (hasOAuthSession(context.profile)) {
     await ensureFreshAccessToken(context.profile);
@@ -71,15 +83,17 @@ async function sendManagementRequest(
     url: `${resolveManagementApiBase(context.profile)}${encodeManagementEndpoint(endpoint)}`,
     authHeader: getManagementAuthHeader(context.profile),
     body,
-    contentType: body === undefined ? undefined : "application/json",
-    authPlane: "management",
+    contentType: body === undefined ? undefined : 'application/json',
+    authPlane: 'management',
   });
   return parseApiJson(response);
 }
 
 const pendingCredentials = new Map<string, Promise<string>>();
 
-export function provisionLakehouseCredential(context: ExecutionContext): Promise<string> {
+export function provisionLakehouseCredential(
+  context: ExecutionContext
+): Promise<string> {
   const pending = pendingCredentials.get(context.profile);
   if (pending) return pending;
   const renewal = createLakehouseCredential(context).finally(() => {
@@ -89,52 +103,56 @@ export function provisionLakehouseCredential(context: ExecutionContext): Promise
   return renewal;
 }
 
-async function createLakehouseCredential(context: ExecutionContext): Promise<string> {
+async function createLakehouseCredential(
+  context: ExecutionContext
+): Promise<string> {
   if (isFromEnvProfile(context.profile)) {
     throw new ConfigurationError(
-      "Lakehouse credentials are not auto-provisioned while environment configuration is active. Set ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD.",
+      'Lakehouse credentials are not auto-provisioned while environment configuration is active. Set ALTERTABLE_BASIC_AUTH_TOKEN or ALTERTABLE_LAKEHOUSE_USERNAME/PASSWORD.'
     );
   }
   context.output.writeMetadata([
-    renderDisplayText([span("Refreshing lakehouse credentials...", "muted")]),
+    renderDisplayText([span('Refreshing lakehouse credentials...', 'muted')]),
   ]);
   const env = requireManagementEnv(context.profile);
   const whoami = (await sendManagementRequest(
     context,
-    "GET",
-    "/whoami",
-  )) as components["schemas"]["WhoamiResponse"];
+    'GET',
+    '/whoami'
+  )) as components['schemas']['WhoamiResponse'];
   const principal = whoami.principal;
   const principalCollection = principalCredentialCollection(principal?.type);
   if (!principal?.id || !principalCollection) {
     throw new ConfigurationError(
-      "Cannot auto-create lakehouse credentials for this identity. Run 'altertable profile configure'.",
+      "Cannot auto-create lakehouse credentials for this identity. Run 'altertable profile configure'."
     );
   }
 
   const expiresAt = new Date(Date.now() + CREDENTIAL_TTL_MS).toISOString();
   const created = (await sendManagementRequest(
     context,
-    "POST",
+    'POST',
     `/${principalCollection}/${principal.id}/environments/${env}/credentials`,
-    JSON.stringify({ label: CREDENTIAL_LABEL, expires_at: expiresAt }),
-  )) as components["schemas"]["CreateCredentialResponse"];
+    JSON.stringify({ label: CREDENTIAL_LABEL, expires_at: expiresAt })
+  )) as components['schemas']['CreateCredentialResponse'];
 
   const username = created.credential?.username;
   const password = created.password;
   if (!username || !password) {
     throw new ConfigurationError(
-      "Credential creation response was missing a username or password.",
+      'Credential creation response was missing a username or password.'
     );
   }
 
-  const expiryMs = Date.parse(created.credential?.expires_at ?? "");
+  const expiryMs = Date.parse(created.credential?.expires_at ?? '');
   if (Number.isNaN(expiryMs)) {
-    throw new ConfigurationError("Credential creation response was missing an expiry.");
+    throw new ConfigurationError(
+      'Credential creation response was missing an expiry.'
+    );
   }
 
   const token = basicAuthToken(username, password);
-  secretSet("lakehouse/basic-token", token, context.profile);
-  configSet("lakehouse_credential_expiry", String(expiryMs), context.profile);
+  secretSet('lakehouse/basic-token', token, context.profile);
+  configSet('lakehouse_credential_expiry', String(expiryMs), context.profile);
   return basicAuthHeader(token);
 }

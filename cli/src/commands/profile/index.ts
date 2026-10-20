@@ -1,29 +1,29 @@
-import { defineCommand } from "@/lib/command.ts";
-import { profileConfigureCommand } from "@/commands/profile/configure.ts";
-import { profileCurrentCommand } from "@/commands/profile/current.ts";
-import { profileDeleteCommand } from "@/commands/profile/delete.ts";
-import { profileEnvCommand } from "@/commands/profile/env.ts";
-import { profileListCommand } from "@/commands/profile/list.ts";
-import { profileRenameCommand } from "@/commands/profile/rename.ts";
-import { profileShowCommand } from "@/commands/profile/show.ts";
-import { profileStatusCommand } from "@/commands/profile/status.ts";
-import { profileSwitchCommand } from "@/commands/profile/switch.ts";
+import { profileConfigureCommand } from '@/commands/profile/configure.ts';
+import { profileCurrentCommand } from '@/commands/profile/current.ts';
+import { profileDeleteCommand } from '@/commands/profile/delete.ts';
+import { profileEnvCommand } from '@/commands/profile/env.ts';
+import { profileListCommand } from '@/commands/profile/list.ts';
+import { profileRenameCommand } from '@/commands/profile/rename.ts';
+import { profileShowCommand } from '@/commands/profile/show.ts';
+import { profileStatusCommand } from '@/commands/profile/status.ts';
+import { profileSwitchCommand } from '@/commands/profile/switch.ts';
+import { defineCommand } from '@/lib/command.ts';
 
 export const profileCommand = defineCommand({
   metadata: {
-    name: "profile",
-    commandGroup: "platform",
-    description: "Manage named profiles and stored credentials.",
+    name: 'profile',
+    commandGroup: 'platform',
+    description: 'Manage named profiles and stored credentials.',
     examples: [
-      "altertable profile show",
-      "altertable profile configure",
-      "altertable profile configure acme_production --api-key atm_xxx --env production",
-      "altertable profile configure --scope lakehouse",
-      "altertable profile list",
-      "altertable profile switch",
-      "altertable profile status",
+      'altertable profile show',
+      'altertable profile configure',
+      'altertable profile configure acme_production --api-key atm_xxx --env production',
+      'altertable profile configure --scope lakehouse',
+      'altertable profile list',
+      'altertable profile switch',
+      'altertable profile status',
       'eval "$(altertable profile env acme_staging)"',
-      "altertable --profile acme_staging profile show",
+      'altertable --profile acme_staging profile show',
     ],
   },
   subcommands: {
@@ -43,8 +43,8 @@ export const profileCommand = defineCommand({
 });
 
 function throwNoProfileCommand(): never {
-  const error = new Error("No command specified.") as Error & { code: string };
-  error.name = "CLIError";
-  error.code = "E_NO_COMMAND";
+  const error = new Error('No command specified.') as Error & { code: string };
+  error.name = 'CLIError';
+  error.code = 'E_NO_COMMAND';
   throw error;
 }

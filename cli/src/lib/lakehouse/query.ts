@@ -1,12 +1,16 @@
-import type { ExecutionContext } from "@/lib/execution-context.ts";
+import type { ExecutionContext } from '@/lib/execution-context.ts';
+import {
+  sendHttp,
+  sendHttpStream,
+  type HttpRequest,
+} from '@/lib/http-request.ts';
 import {
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
   type LakehouseQueryResult,
-} from "@/lib/lakehouse-ndjson.ts";
-import { sendHttp, sendHttpStream, type HttpRequest } from "@/lib/http-request.ts";
+} from '@/lib/lakehouse-ndjson.ts';
 
-export type LakehouseApiQueryFormat = "csv" | "jsonl" | "parquet";
+export type LakehouseApiQueryFormat = 'csv' | 'jsonl' | 'parquet';
 
 export type LakehouseQueryInput = {
   statement: string;
@@ -39,21 +43,21 @@ function buildQueryPayload(input: LakehouseQueryInput): Record<string, string> {
 
 export function buildLakehouseQueryRequest(
   input: LakehouseQueryInput,
-  streaming: boolean,
+  streaming: boolean
 ): HttpRequest {
   return {
-    plane: "lakehouse",
-    method: "POST",
-    endpoint: "/query",
+    plane: 'lakehouse',
+    method: 'POST',
+    endpoint: '/query',
     body: JSON.stringify(buildQueryPayload(input)),
-    contentType: "application/json",
+    contentType: 'application/json',
     ...(streaming ? { retry: false } : {}),
     ...input.httpOptions,
   };
 }
 
 async function collectQueryStream(
-  stream: ReadableStream<Uint8Array>,
+  stream: ReadableStream<Uint8Array>
 ): Promise<LakehouseQueryResult> {
   const parser = parseLakehouseQueryStream(stream);
   while (true) {
@@ -65,7 +69,7 @@ async function collectQueryStream(
 export async function executeLakehouseQuery(
   input: LakehouseQueryInput,
   execution: ExecutionContext,
-  streaming: boolean,
+  streaming: boolean
 ): Promise<LakehouseQueryResult> {
   const request = buildLakehouseQueryRequest(input, streaming);
   if (streaming) {
@@ -76,29 +80,34 @@ export async function executeLakehouseQuery(
 
 export async function executeLakehouseQueryBytes(
   input: LakehouseQueryInput,
-  execution: ExecutionContext,
+  execution: ExecutionContext
 ): Promise<ReadableStream<Uint8Array>> {
   return sendHttpStream(buildLakehouseQueryRequest(input, true), execution);
 }
 
 export function buildLakehouseQueryShowRequest(queryId: string): HttpRequest {
   return {
-    plane: "lakehouse",
-    method: "GET",
+    plane: 'lakehouse',
+    method: 'GET',
     endpoint: `/query/${encodeURIComponent(queryId)}`,
     retry: true,
   };
 }
 
-export function buildLakehouseQueryCancelRequest(input: LakehouseCancelInput): HttpRequest {
+export function buildLakehouseQueryCancelRequest(
+  input: LakehouseCancelInput
+): HttpRequest {
   const params = new URLSearchParams({ session_id: input.sessionId });
   return {
-    plane: "lakehouse",
-    method: "DELETE",
+    plane: 'lakehouse',
+    method: 'DELETE',
     endpoint: `/query/${encodeURIComponent(input.queryId)}?${params.toString()}`,
   };
 }
 
 export function buildLakehouseVerifyRequest(): HttpRequest {
-  return { ...buildLakehouseQueryRequest({ statement: "SELECT 1" }, false), retry: true };
+  return {
+    ...buildLakehouseQueryRequest({ statement: 'SELECT 1' }, false),
+    retry: true,
+  };
 }

@@ -1,21 +1,24 @@
-import { buildCompletionModel, type CompletionModel } from "@/commands/completion/lib/model.ts";
+import {
+  buildCompletionModel,
+  type CompletionModel,
+} from '@/commands/completion/lib/model.ts';
 import type {
   CompletionContext,
   CompletionFlag,
   CompletionNode,
-} from "@/commands/completion/lib/spec.ts";
-import { aliasFlagToken } from "@/lib/command-descriptor.ts";
+} from '@/commands/completion/lib/spec.ts';
+import { aliasFlagToken } from '@/lib/command-descriptor.ts';
 
-const FISH_BINARY_NAME = "altertable";
+const FISH_BINARY_NAME = 'altertable';
 
 export function mergeCompletionFlags(
   nodeFlags: readonly CompletionFlag[],
-  rootFlags: readonly CompletionFlag[],
+  rootFlags: readonly CompletionFlag[]
 ): CompletionFlag[] {
   const flags = new Map<string, CompletionFlag>();
   for (const flag of [
     ...nodeFlags,
-    ...rootFlags.filter((rootFlag) => rootFlag.scope !== "root-only"),
+    ...rootFlags.filter(rootFlag => rootFlag.scope !== 'root-only'),
   ]) {
     flags.set(flag.name, flag);
   }
@@ -23,51 +26,55 @@ export function mergeCompletionFlags(
 }
 
 function formatNameList(names: readonly string[]): string {
-  return names.join(" ");
+  return names.join(' ');
 }
 
 function flagForms(flag: CompletionFlag): string[] {
-  return flag.alias ? [aliasFlagToken(flag.alias), `--${flag.name}`] : [`--${flag.name}`];
+  return flag.alias
+    ? [aliasFlagToken(flag.alias), `--${flag.name}`]
+    : [`--${flag.name}`];
 }
 
-export function formatBashFlagWordList(flags: readonly CompletionFlag[]): string {
-  return flags.flatMap(flagForms).join(" ");
+export function formatBashFlagWordList(
+  flags: readonly CompletionFlag[]
+): string {
+  return flags.flatMap(flagForms).join(' ');
 }
 
 function formatFlagValueSpecList(flags: readonly CompletionFlag[]): string {
   return flags
-    .filter((flag) => flag.values && flag.values.length > 0)
-    .map((flag) => {
-      const names = flagForms(flag).join("|");
-      return `"${names}=${flag.values?.join(",")}"`;
+    .filter(flag => flag.values && flag.values.length > 0)
+    .map(flag => {
+      const names = flagForms(flag).join('|');
+      return `"${names}=${flag.values?.join(',')}"`;
     })
-    .join(" ");
+    .join(' ');
 }
 
 function formatPath(segments: readonly string[]): string {
-  return segments.join("/");
+  return segments.join('/');
 }
 
 function formatShellCasePatterns(values: ReadonlySet<string>): string {
-  return [...values].map((value) => `'${value}'`).join("|");
+  return [...values].map(value => `'${value}'`).join('|');
 }
 
 function formatEqualsCasePatterns(values: ReadonlySet<string>): string {
-  return [...values].map((value) => `${value}=*`).join("|");
+  return [...values].map(value => `${value}=*`).join('|');
 }
 
 function formatSubcommandEdgePatterns(model: CompletionModel): string {
   return [...model.subcommandEdges]
     .sort()
-    .map((edge) => `'${edge}'`)
-    .join("|");
+    .map(edge => `'${edge}'`)
+    .join('|');
 }
 
 function formatSoleDirectEdgePatterns(model: CompletionModel): string {
   const patterns = [...model.soleDirectEdges]
     .sort()
-    .map((edge) => `'${edge}'`)
-    .join("|");
+    .map(edge => `'${edge}'`)
+    .join('|');
   return patterns || "'__altertable_no_sole_direct_operand__'";
 }
 
@@ -85,12 +92,14 @@ function formatBashNormalizer(model: CompletionModel): string {
         fi
         ((index += 1))
         ;;`
-    : "";
-  const ignoredPatterns = [equalsValueFlags, booleanFlags].filter(Boolean).join("|");
+    : '';
+  const ignoredPatterns = [equalsValueFlags, booleanFlags]
+    .filter(Boolean)
+    .join('|');
   const ignoredFlagCase = ignoredPatterns
     ? `      ${ignoredPatterns})
         ;;`
-    : "";
+    : '';
 
   return `_altertable_is_subcommand() {
   case "$1|$2" in
@@ -173,7 +182,7 @@ ${ignoredFlagCase}
 
 function formatBashContextBlock(
   context: CompletionContext,
-  rootFlags: readonly CompletionFlag[],
+  rootFlags: readonly CompletionFlag[]
 ): string {
   const flags = mergeCompletionFlags(context.flags, rootFlags);
   const flagWords = formatBashFlagWordList(flags);
@@ -183,17 +192,17 @@ function formatBashContextBlock(
         return
       fi
 `
-    : "";
+    : '';
   const positionalBlocks = context.positionals
     .map((positional, index) => {
-      if (positional.completion === "finite" && positional.values?.length) {
+      if (positional.completion === 'finite' && positional.values?.length) {
         return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
-        COMPREPLY=( $(compgen -W "${formatNameList([...positional.values, ...flagWords.split(" ")])}" -- "\${currentWord}") )
+        COMPREPLY=( $(compgen -W "${formatNameList([...positional.values, ...flagWords.split(' ')])}" -- "\${currentWord}") )
         return
       fi
 `;
       }
-      if (positional.completion === "file") {
+      if (positional.completion === 'file') {
         return `      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq ${index} ]]; then
         COMPREPLY=()
         while IFS= read -r completion; do
@@ -206,10 +215,13 @@ function formatBashContextBlock(
       fi
 `;
       }
-      return "";
+      return '';
     })
-    .join("");
-  const initialWords = formatNameList([...context.subcommands, ...flagWords.split(" ")]).trim();
+    .join('');
+  const initialWords = formatNameList([
+    ...context.subcommands,
+    ...flagWords.split(' '),
+  ]).trim();
 
   return `    '${formatPath(context.segments)}')
 ${flagValueBlock}      if [[ \${ALTERTABLE_EXPECTS_FLAG_VALUE} -eq 1 ]]; then
@@ -226,13 +238,15 @@ ${positionalBlocks}      if [[ \${#ALTERTABLE_POSITIONAL_WORDS[@]} -eq 0 ]]; the
 
 export function formatBashCompletion(spec: CompletionNode): string {
   const model = buildCompletionModel(spec);
-  const topLevelCommands = formatNameList(spec.subcommands.map((command) => command.name));
+  const topLevelCommands = formatNameList(
+    spec.subcommands.map(command => command.name)
+  );
   const rootFlagWords = formatBashFlagWordList(spec.flags);
   const rootFlagValueSpecs = formatFlagValueSpecList(spec.flags);
   const normalizer = formatBashNormalizer(model);
   const contexts = model.contexts
-    .map((context) => formatBashContextBlock(context, spec.flags))
-    .join("\n");
+    .map(context => formatBashContextBlock(context, spec.flags))
+    .join('\n');
 
   return `# altertable bash completion
 # Preferred install: altertable completion install bash
@@ -273,7 +287,7 @@ _altertable_completions() {
   _altertable_normalize_words
 
   if [[ -z "\${ALTERTABLE_COMMAND_PATH_STRING}" ]]; then
-    ${rootFlagValueSpecs ? `if _altertable_complete_flag_value ${rootFlagValueSpecs}; then return; fi` : ""}
+    ${rootFlagValueSpecs ? `if _altertable_complete_flag_value ${rootFlagValueSpecs}; then return; fi` : ''}
     if [[ \${ALTERTABLE_EXPECTS_FLAG_VALUE} -eq 1 ]]; then return; fi
     COMPREPLY=( $(compgen -W "${topLevelCommands} ${rootFlagWords}" -- "\${currentWord}") )
     return
@@ -302,12 +316,14 @@ function formatZshNormalizer(model: CompletionModel): string {
         fi
         (( index += 1 ))
         ;;`
-    : "";
-  const ignoredPatterns = [equalsValueFlags, booleanFlags].filter(Boolean).join("|");
+    : '';
+  const ignoredPatterns = [equalsValueFlags, booleanFlags]
+    .filter(Boolean)
+    .join('|');
   const ignoredFlagCase = ignoredPatterns
     ? `      ${ignoredPatterns})
         ;;`
-    : "";
+    : '';
 
   return `_altertable_is_subcommand() {
   case "$1|$2" in
@@ -390,7 +406,7 @@ ${ignoredFlagCase}
 
 function formatZshContextBlock(
   context: CompletionContext,
-  rootFlags: readonly CompletionFlag[],
+  rootFlags: readonly CompletionFlag[]
 ): string {
   const flags = mergeCompletionFlags(context.flags, rootFlags);
   const flagWords = formatBashFlagWordList(flags);
@@ -398,17 +414,17 @@ function formatZshContextBlock(
   const flagValueBlock = flagValueSpecs
     ? `      if _altertable_complete_flag_value ${flagValueSpecs}; then return; fi
 `
-    : "";
+    : '';
   const positionalBlocks = context.positionals
     .map((positional, index) => {
-      if (positional.completion === "finite" && positional.values?.length) {
+      if (positional.completion === 'finite' && positional.values?.length) {
         return `      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == ${index} )); then
-        _altertable_add_words ${formatNameList([...positional.values, ...flagWords.split(" ")])}
+        _altertable_add_words ${formatNameList([...positional.values, ...flagWords.split(' ')])}
         return
       fi
 `;
       }
-      if (positional.completion === "file") {
+      if (positional.completion === 'file') {
         return `      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == ${index} )); then
         _altertable_add_words ${flagWords}
         _files
@@ -416,10 +432,13 @@ function formatZshContextBlock(
       fi
 `;
       }
-      return "";
+      return '';
     })
-    .join("");
-  const initialWords = formatNameList([...context.subcommands, ...flagWords.split(" ")]).trim();
+    .join('');
+  const initialWords = formatNameList([
+    ...context.subcommands,
+    ...flagWords.split(' '),
+  ]).trim();
 
   return `    '${formatPath(context.segments)}')
 ${flagValueBlock}      if (( ALTERTABLE_EXPECTS_FLAG_VALUE )); then return; fi
@@ -434,13 +453,15 @@ ${positionalBlocks}      if (( \${#ALTERTABLE_POSITIONAL_WORDS[@]} == 0 )); then
 
 export function formatZshCompletion(spec: CompletionNode): string {
   const model = buildCompletionModel(spec);
-  const topLevelCommands = formatNameList(spec.subcommands.map((command) => command.name));
+  const topLevelCommands = formatNameList(
+    spec.subcommands.map(command => command.name)
+  );
   const rootFlagWords = formatBashFlagWordList(spec.flags);
   const rootFlagValueSpecs = formatFlagValueSpecList(spec.flags);
   const normalizer = formatZshNormalizer(model);
   const contexts = model.contexts
-    .map((context) => formatZshContextBlock(context, spec.flags))
-    .join("\n");
+    .map(context => formatZshContextBlock(context, spec.flags))
+    .join('\n');
 
   return `#compdef altertable
 # altertable zsh completion
@@ -490,7 +511,7 @@ _altertable() {
   _altertable_normalize_words
 
   if [[ -z "\${ALTERTABLE_COMMAND_PATH_STRING}" ]]; then
-    ${rootFlagValueSpecs ? `if _altertable_complete_flag_value ${rootFlagValueSpecs}; then return; fi` : ""}
+    ${rootFlagValueSpecs ? `if _altertable_complete_flag_value ${rootFlagValueSpecs}; then return; fi` : ''}
     if (( ALTERTABLE_EXPECTS_FLAG_VALUE )); then return; fi
     _altertable_add_words ${topLevelCommands} ${rootFlagWords}
     return
@@ -508,45 +529,62 @@ fi
 }
 
 function escapeFishDescription(description: string): string {
-  return description.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  return description.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 export function formatFishPathCondition(
   segments: readonly string[],
-  positionalCount: number | "any" = "any",
+  positionalCount: number | 'any' = 'any'
 ): string {
   return `__altertable_using_context '${formatPath(segments)}' '${positionalCount}'`;
 }
 
-function formatFishFlagCompleteLine(flag: CompletionFlag, condition?: string): string {
+function formatFishFlagCompleteLine(
+  flag: CompletionFlag,
+  condition?: string
+): string {
   // fish takes short flags via -s and every long form via its own -l.
-  const aliasFlag = flag.alias ? `${flag.alias.length === 1 ? " -s " : " -l "}${flag.alias}` : "";
-  const description = flag.description ? ` -d '${escapeFishDescription(flag.description)}'` : "";
+  const aliasFlag = flag.alias
+    ? `${flag.alias.length === 1 ? ' -s ' : ' -l '}${flag.alias}`
+    : '';
+  const description = flag.description
+    ? ` -d '${escapeFishDescription(flag.description)}'`
+    : '';
   const values =
-    flag.values && flag.values.length > 0 ? ` -f -r -a "${flag.values.join(" ")}"` : "";
-  const conditionArg = condition ? ` -n "${condition}"` : "";
+    flag.values && flag.values.length > 0
+      ? ` -f -r -a "${flag.values.join(' ')}"`
+      : '';
+  const conditionArg = condition ? ` -n "${condition}"` : '';
   return `complete -c ${FISH_BINARY_NAME}${aliasFlag} -l ${flag.name}${description}${values}${conditionArg}`;
 }
 
 function formatFishNormalizer(model: CompletionModel): string {
-  const valueFlags = [...model.valueFlags].map((flag) => `'${flag}'`).join(" ");
-  const equalsValueFlags = [...model.valueFlags].map((flag) => `'${flag}=*'`).join(" ");
-  const booleanFlags = [...model.booleanFlags].map((flag) => `'${flag}'`).join(" ");
+  const valueFlags = [...model.valueFlags].map(flag => `'${flag}'`).join(' ');
+  const equalsValueFlags = [...model.valueFlags]
+    .map(flag => `'${flag}=*'`)
+    .join(' ');
+  const booleanFlags = [...model.booleanFlags]
+    .map(flag => `'${flag}'`)
+    .join(' ');
   const edges = [...model.subcommandEdges]
     .sort()
-    .map((edge) => `'${edge}'`)
-    .join(" ");
+    .map(edge => `'${edge}'`)
+    .join(' ');
   const soleDirectEdges =
     [...model.soleDirectEdges]
       .sort()
-      .map((edge) => `'${edge}'`)
-      .join(" ") || "'__altertable_no_sole_direct_operand__'";
+      .map(edge => `'${edge}'`)
+      .join(' ') || "'__altertable_no_sole_direct_operand__'";
   const valueFlagCase = valueFlags
     ? `      case ${valueFlags}
         set index (math $index + 1)`
-    : "";
-  const ignoredPatterns = [equalsValueFlags, booleanFlags].filter(Boolean).join(" ");
-  const ignoredFlagCase = ignoredPatterns ? `      case ${ignoredPatterns}` : "";
+    : '';
+  const ignoredPatterns = [equalsValueFlags, booleanFlags]
+    .filter(Boolean)
+    .join(' ');
+  const ignoredFlagCase = ignoredPatterns
+    ? `      case ${ignoredPatterns}`
+    : '';
 
   return `function __altertable_is_subcommand
   switch "$argv[1]|$argv[2]"
@@ -628,33 +666,37 @@ end`;
 
 export function formatFishCompletion(spec: CompletionNode): string {
   const model = buildCompletionModel(spec);
-  const topLevelCommands = formatNameList(spec.subcommands.map((command) => command.name));
+  const topLevelCommands = formatNameList(
+    spec.subcommands.map(command => command.name)
+  );
   const normalizer = formatFishNormalizer(model);
   const rootFlagLines = spec.flags
-    .map((flag) =>
+    .map(flag =>
       formatFishFlagCompleteLine(
         flag,
-        flag.scope === "root-only" ? formatFishPathCondition([], 0) : undefined,
-      ),
+        flag.scope === 'root-only' ? formatFishPathCondition([], 0) : undefined
+      )
     )
-    .join("\n");
+    .join('\n');
   const contextLines: string[] = [];
 
   for (const context of model.contexts) {
     if (context.subcommands.length > 0) {
       const condition = formatFishPathCondition(context.segments, 0);
       contextLines.push(
-        `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(context.subcommands)}"`,
+        `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(context.subcommands)}"`
       );
     }
     for (const [index, positional] of context.positionals.entries()) {
       const condition = formatFishPathCondition(context.segments, index);
-      if (positional.completion === "finite" && positional.values?.length) {
+      if (positional.completion === 'finite' && positional.values?.length) {
         contextLines.push(
-          `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(positional.values)}"`,
+          `complete -c ${FISH_BINARY_NAME} -f -n "${condition}" -a "${formatNameList(positional.values)}"`
         );
-      } else if (positional.completion === "file") {
-        contextLines.push(`complete -c ${FISH_BINARY_NAME} -F -n "${condition}"`);
+      } else if (positional.completion === 'file') {
+        contextLines.push(
+          `complete -c ${FISH_BINARY_NAME} -F -n "${condition}"`
+        );
       }
     }
     const flagCondition = formatFishPathCondition(context.segments);
@@ -671,6 +713,6 @@ ${normalizer}
 
 ${rootFlagLines}
 complete -c ${FISH_BINARY_NAME} -f -n "${formatFishPathCondition([], 0)}" -a "${topLevelCommands}"
-${contextLines.join("\n")}
+${contextLines.join('\n')}
 `;
 }

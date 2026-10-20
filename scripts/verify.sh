@@ -17,11 +17,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown flag: $1" >&2
-      echo "Usage: $0 [--quick] [--integration]" >&2
+      echo "Usage: $0 [--quick | --integration]" >&2
       exit 1
       ;;
   esac
 done
+
+if [[ "${QUICK}" == true && "${RUN_INTEGRATION}" == true ]]; then
+  echo "--quick and --integration cannot be combined." >&2
+  echo "Use --integration to run the full gate with integration tests." >&2
+  exit 1
+fi
 
 run_step() {
   local name="$1"
@@ -45,18 +51,17 @@ check_mock_server() {
 
 cd "${REPO_ROOT}/cli"
 
-run_step "install deps" bun install --frozen-lockfile
 run_step "typecheck" bun run typecheck
-run_step "top-level test typecheck" ./node_modules/.bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
+run_step "top-level test typecheck" bun node_modules/typescript-checker/bin/tsc -p "${REPO_ROOT}/tsconfig.tests.json"
 run_step "lint" bun run lint
 run_step "format:check" bun run format:check
 run_step "data app checks" bun run data-app:check
 run_step "generated artifact drift check" bun run generate:check
 run_step "unit tests with coverage" bun run test:coverage
+cd "${REPO_ROOT}"
 run_step "knip" bun run knip
 run_step "knip (production)" bun run knip:production
 
-cd "${REPO_ROOT}"
 run_step "top-level JS tests" bun test "${REPO_ROOT}"/tests/*.test.ts
 
 if [[ "${QUICK}" == true ]]; then
@@ -66,10 +71,7 @@ fi
 
 cd "${REPO_ROOT}/cli"
 run_step "data app browser tests" bun run data-app:test:browser
-run_step "build" bun run build
-run_step "pack:check" bun run pack:check
-
-run_step "npm bundle smoke test" bun run scripts/smoke-npm-bundle.ts
+run_step "package checks" bun run --cwd "${REPO_ROOT}" check:package
 
 if [[ "${RUN_INTEGRATION}" == true ]]; then
   check_mock_server

@@ -1,7 +1,15 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import {
   configDir,
   configFile,
@@ -15,15 +23,15 @@ import {
   kvUnset,
   resolveApiBase,
   resolveManagementApiBase,
-} from "@/lib/config.ts";
-import { ConfigurationError } from "@/lib/errors.ts";
-import { profileConfigFile } from "@/lib/profile-store.ts";
+} from '@/lib/config.ts';
+import { ConfigurationError } from '@/lib/errors.ts';
+import { profileConfigFile } from '@/lib/profile-store.ts';
 
-let testHome = "";
-const profileName = "default";
+let testHome = '';
+const profileName = 'default';
 
 beforeEach(() => {
-  testHome = mkdtempSync(join(tmpdir(), "altertable-config-test-"));
+  testHome = mkdtempSync(join(tmpdir(), 'altertable-config-test-'));
   process.env.ALTERTABLE_CONFIG_HOME = testHome;
 });
 
@@ -35,85 +43,91 @@ afterEach(() => {
   delete process.env.ALTERTABLE_ALLOW_INSECURE_HTTP;
 });
 
-describe("config", () => {
-  test("stores key-value config in protected files", () => {
-    const filePath = join(testHome, "sample");
+describe('config', () => {
+  test('stores key-value config in protected files', () => {
+    const filePath = join(testHome, 'sample');
 
-    kvSet(filePath, "user", "alice");
-    kvSet(filePath, "user", "bob");
+    kvSet(filePath, 'user', 'alice');
+    kvSet(filePath, 'user', 'bob');
 
-    expect(kvGet(filePath, "user")).toBe("bob");
+    expect(kvGet(filePath, 'user')).toBe('bob');
     expect(statSync(filePath).mode & 0o777).toBe(0o600);
-    expect(configGet("missing", profileName)).toBe("");
+    expect(configGet('missing', profileName)).toBe('');
   });
 
-  test("reports configuration I/O failures instead of treating them as missing files", () => {
-    const directoryPath = join(testHome, "not-a-file");
+  test('reports configuration I/O failures instead of treating them as missing files', () => {
+    const directoryPath = join(testHome, 'not-a-file');
     mkdirSync(directoryPath);
 
-    expect(() => kvGet(directoryPath, "user")).toThrow(ConfigurationError);
-    expect(() => kvSet(directoryPath, "user", "alice")).toThrow(ConfigurationError);
-    expect(() => kvUnset(directoryPath, "user")).toThrow(ConfigurationError);
+    expect(() => kvGet(directoryPath, 'user')).toThrow(ConfigurationError);
+    expect(() => kvSet(directoryPath, 'user', 'alice')).toThrow(
+      ConfigurationError
+    );
+    expect(() => kvUnset(directoryPath, 'user')).toThrow(ConfigurationError);
   });
 
-  test("resolves API bases from defaults, stored config, and environment overrides", () => {
-    expect(resolveApiBase(profileName)).toBe("https://api.altertable.ai");
-    expect(resolveManagementApiBase(profileName)).toBe("https://app.altertable.ai/rest/v1");
+  test('resolves API bases from defaults, stored config, and environment overrides', () => {
+    expect(resolveApiBase(profileName)).toBe('https://api.altertable.ai');
+    expect(resolveManagementApiBase(profileName)).toBe(
+      'https://app.altertable.ai/rest/v1'
+    );
 
-    configSet("api_base", "http://localhost:1111/", profileName);
-    configSet("management_api_base", "http://localhost:13000/", profileName);
-    expect(resolveApiBase(profileName)).toBe("http://localhost:1111");
-    expect(resolveManagementApiBase(profileName)).toBe("http://localhost:13000/rest/v1");
+    configSet('api_base', 'http://localhost:1111/', profileName);
+    configSet('management_api_base', 'http://localhost:13000/', profileName);
+    expect(resolveApiBase(profileName)).toBe('http://localhost:1111');
+    expect(resolveManagementApiBase(profileName)).toBe(
+      'http://localhost:13000/rest/v1'
+    );
 
-    process.env.ALTERTABLE_API_BASE = "http://localhost:2222";
-    expect(resolveApiBase(profileName)).toBe("http://localhost:2222");
+    process.env.ALTERTABLE_API_BASE = 'http://localhost:2222';
+    expect(resolveApiBase(profileName)).toBe('http://localhost:2222');
   });
 
-  test("requires an opt-in for insecure non-local API bases", () => {
-    process.env.ALTERTABLE_API_BASE = "http://192.168.1.5";
-    expect(() => resolveApiBase(profileName)).toThrow("Insecure HTTP URL");
+  test('requires an opt-in for insecure non-local API bases', () => {
+    process.env.ALTERTABLE_API_BASE = 'http://192.168.1.5';
+    expect(() => resolveApiBase(profileName)).toThrow('Insecure HTTP URL');
 
-    process.env.ALTERTABLE_ALLOW_INSECURE_HTTP = "true";
-    expect(resolveApiBase(profileName)).toBe("http://192.168.1.5");
+    process.env.ALTERTABLE_ALLOW_INSECURE_HTTP = 'true';
+    expect(resolveApiBase(profileName)).toBe('http://192.168.1.5');
   });
 
-  test("reads valid query display defaults and ignores invalid values", () => {
-    kvSet(configFile(), "query_max_width", "48");
-    kvSet(configFile(), "query_layout", "line");
-    kvSet(configFile(), "query_pager", "always");
+  test('reads valid query display defaults and ignores invalid values', () => {
+    kvSet(configFile(), 'query_max_width', '48');
+    kvSet(configFile(), 'query_layout', 'line');
+    kvSet(configFile(), 'query_pager', 'always');
     expect(getQueryDefaultMaxColumnWidth()).toBe(48);
-    expect(getQueryDefaultLayout()).toBe("line");
-    expect(getQueryDefaultPager()).toBe("always");
+    expect(getQueryDefaultLayout()).toBe('line');
+    expect(getQueryDefaultPager()).toBe('always');
 
-    kvSet(configFile(), "query_max_width", "4");
-    kvSet(configFile(), "query_layout", "invalid");
-    kvSet(configFile(), "query_pager", "sometimes");
+    kvSet(configFile(), 'query_max_width', '4');
+    kvSet(configFile(), 'query_layout', 'invalid');
+    kvSet(configFile(), 'query_pager', 'sometimes');
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
     expect(getQueryDefaultPager()).toBeUndefined();
   });
 
-  test("keeps global query defaults outside profile config", () => {
-    kvSet(configFile(), "query_layout", "line");
-    configSet("api_key_env", "staging", "staging");
+  test('keeps global query defaults outside profile config', () => {
+    kvSet(configFile(), 'query_layout', 'line');
+    configSet('api_key_env', 'staging', 'staging');
 
-    expect(kvGet(join(testHome, "config"), "query_layout")).toBe("line");
-    expect(kvGet(profileConfigFile("staging"), "query_layout")).toBe("");
+    expect(kvGet(join(testHome, 'config'), 'query_layout')).toBe('line');
+    expect(kvGet(profileConfigFile('staging'), 'query_layout')).toBe('');
   });
 
-  test("uses ALTERTABLE_CONFIG_HOME for profile config", () => {
+  test('uses ALTERTABLE_CONFIG_HOME for profile config', () => {
     expect(configDir()).toBe(testHome);
-    configSet("user", "x", profileName);
+    configSet('user', 'x', profileName);
 
-    const configFile = join(testHome, "profiles", "default", "config");
+    const configFile = join(testHome, 'profiles', 'default', 'config');
     expect(existsSync(configFile)).toBe(true);
-    expect(readFileSync(configFile, "utf8")).toContain("user=x");
+    expect(readFileSync(configFile, 'utf8')).toContain('user=x');
   });
 });
 
 for (const { name, value } of [
-  { name: "unset", value: undefined },
-  { name: "empty", value: "" },
+  { name: 'unset', value: undefined },
+  { name: 'empty', value: '' },
 ]) {
   test(`uses the OS home directory when HOME is ${name}`, () => {
     const previous = {
@@ -126,7 +140,7 @@ for (const { name, value } of [
       delete process.env.XDG_CONFIG_HOME;
       if (value === undefined) delete process.env.HOME;
       else process.env.HOME = value;
-      expect(configDir()).toBe(join(homedir(), ".config", "altertable"));
+      expect(configDir()).toBe(join(homedir(), '.config', 'altertable'));
     } finally {
       for (const [name, value] of Object.entries(previous)) {
         if (value === undefined) delete process.env[name];

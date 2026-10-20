@@ -6,6 +6,55 @@ The Bun runtime used by contributors, CI, and release builds is pinned in [`.bun
 
 GitHub Actions use the Node.js LTS version pinned in [`.node-version`](.node-version).
 
+From the repository root:
+
+```fish
+bun run setup                 # frozen installs for CLI and isolated consumers
+bun run dev -- --help         # same as bin/altertable
+bun run build                 # npm bundle in cli/dist/cli.js
+bun run typecheck
+bun run lint
+bun run lint:fix
+bun run format
+bun run format:check
+bun run test                  # Bun CLI unit tests, no watch
+bun run test:watch
+bun run knip                  # unused code, exports, and dependencies
+bun run knip:production       # production reachability
+bun run check                 # full canonical gate, including consumers and packages
+bun run check --quick         # focused gate without browser/package smoke tests
+bun run check:package         # focused build, pack, and extracted-consumer smoke
+```
+
+The root is a private command entry point, not a workspace: `cli/bun.lock` and the
+starter and browser-test lockfiles remain independent. Individual commands above
+operate on the CLI; the canonical check also covers top-level tests and the data app
+consumers. Install dependencies explicitly with `bun run setup` before checking;
+verification does not install development dependencies. Artifact smoke tests still
+install generated apps to exercise the real consumer path.
+
+CLI tests intentionally use `bun test` because they exercise Bun APIs and the CLI's
+runtime. The Bun build plugin embeds the offline starter in both npm and native
+artifacts; retaining it avoids introducing another build tool and plugin adapter.
+Formatting uses single quotes, ES5 trailing commas, unparenthesized single arrow
+parameters, an 80-column print width, and LF line endings. Import sorting is enabled while
+package JSON key order is preserved (`sortPackageJson: false` in Oxfmt 0.71).
+Generated API files stay
+under their generators' control.
+
+Typechecking uses TypeScript 7.0.2. The CLI installs that compiler under the explicit
+`typescript-checker` alias because `openapi-typescript` still needs the TypeScript
+6.0.3 JavaScript compiler API to generate identical API types. Its `typescript`
+dependency stays at 6.0.3 for generation only; both CLI and top-level test checks
+invoke the version 7 compiler explicitly. Knip excludes this alias from unused
+dependency detection because it is executed by its installed file path.
+
+`check:package` builds once, packs and extracts the CLI, and runs the full generated-app
+consumer smoke against the extracted executable. It does not run repository unit tests,
+Playwright tests, or lakehouse integration. The full `check` invokes it once.
+
+Additional commands from `cli/`:
+
 ```bash
 cd cli
 bun install
@@ -23,7 +72,7 @@ bun run generate:commands      # regenerate Markdown, JSON, and JSON Schema comm
 bun run generate:check         # non-mutating generated-artifact drift check
 bun run spec:refresh           # fetch hosted OpenAPI spec (see specs/rest/SPEC.md) + generate
 bun run build                  # bundle to cli/dist/cli.js
-bun run pack:check             # build + dry-run pack (verify publish contents)
+bun run pack:check             # build, pack, extract, and smoke-test the npm artifact
 ```
 
 The CLI reference wire contract is rendered from the command-reference module into
@@ -46,7 +95,7 @@ The JS bundle is the npm `bin` entry and a GitHub Release asset:
 cd cli
 bun run build                  # writes cli/dist/cli.js
 bun run scripts/smoke-npm-bundle.ts
-bun run pack:check             # ensures dist/ is the only packed file
+bun run pack:check             # smoke-test the actual packed executable and offline scaffold
 ```
 
 ## Compile native binaries
@@ -106,7 +155,7 @@ On push to `main`, `.github/workflows/release-please.yml`:
    The completed GitHub Release becomes public only after npm publication succeeds.
 
 Both `.github/workflows/test.yml` and the release workflow call `.github/workflows/verify.yml`, which
-runs the repository and integration gates and executes the npm bundle on the minimum supported Bun
+runs `bun run check --integration` and executes the npm bundle on the minimum supported Bun
 runtime. Branch CI then loads its native compile matrix from the typed release manifest and
 smoke-tests every Linux and macOS release target. Main-branch verification is never cancelled by a
 newer push. Workflows use explicit permissions, pinned runners/actions, concurrency controls, and job
@@ -177,12 +226,12 @@ The stored profile records only the URLs, not the flag, so subsequent commands a
 
 ## Verify (agents and contributors)
 
-From repo root, one script mirrors CI (minus native binary compile):
+From the repository root, the canonical command mirrors CI (minus native binary compile):
 
-```bash
-./scripts/verify.sh --quick        # typecheck, lint, format, knip, coverage, generated-artifact drift
-./scripts/verify.sh                # + build, pack:check, top-level black-box tests
-./scripts/verify.sh --integration  # + tests/integration.e2e.ts (requires mock at :15000)
+```fish
+bun run check --quick        # typecheck, lint, format, knip, coverage, drift, black-box tests
+bun run check                # + browser tests, package build, and consumer smoke
+bun run check --integration  # + tests/integration.e2e.ts (requires mock at :15000)
 ```
 
 See [AGENTS.md](AGENTS.md) and [cli/AGENTS.md](cli/AGENTS.md) for agent-oriented docs.

@@ -1,15 +1,17 @@
+import { parse } from 'yaml';
+
 // The bundled asset lives outside src/, so the @ alias cannot resolve it.
 // oxlint-disable-next-line no-relative-import-paths/no-relative-import-paths
-import openapiYaml from "../../openapi/openapi.yaml" with { type: "text" };
-import { parse } from "yaml";
+import openapiYaml from '../../openapi/openapi.yaml' with { type: 'text' };
 
-const OPENAPI_SOURCE_HEADER_PATTERN = /^# AUTO-GENERATED[^\n]*\n(?:# [^\n]*\n)*/;
+const OPENAPI_SOURCE_HEADER_PATTERN =
+  /^# AUTO-GENERATED[^\n]*\n(?:# [^\n]*\n)*/;
 
 export function stripOpenapiSourceHeader(yaml: string): string {
-  if (!yaml.startsWith("# AUTO-GENERATED")) {
+  if (!yaml.startsWith('# AUTO-GENERATED')) {
     return yaml;
   }
-  return yaml.replace(OPENAPI_SOURCE_HEADER_PATTERN, "");
+  return yaml.replace(OPENAPI_SOURCE_HEADER_PATTERN, '');
 }
 
 export function getOpenapiSpecYaml(): string {

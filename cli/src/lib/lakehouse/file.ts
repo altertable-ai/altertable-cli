@@ -1,5 +1,6 @@
-import { statSync } from "node:fs";
-import { CliError } from "@/lib/errors.ts";
+import { statSync } from 'node:fs';
+
+import { CliError } from '@/lib/errors.ts';
 
 export function getFileSizeBytes(filePath: string): number {
   try {

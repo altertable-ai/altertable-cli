@@ -1,16 +1,16 @@
 export type DisplayTextStyle =
-  | "strong"
-  | "accent"
-  | "string"
-  | "boolean"
-  | "number"
-  | "muted"
-  | "subtle"
-  | "success"
-  | "warning"
-  | "error"
-  | "heading"
-  | "httpMethod";
+  | 'strong'
+  | 'accent'
+  | 'string'
+  | 'boolean'
+  | 'number'
+  | 'muted'
+  | 'subtle'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'heading'
+  | 'httpMethod';
 
 export type DisplaySpan = {
   text: string;
@@ -41,15 +41,15 @@ export type DisplayTableOptions<Row> = {
 
 export type DisplayBlock =
   | {
-      kind: "rows";
+      kind: 'rows';
       rows: readonly DisplayRow[];
     }
   | {
-      kind: "table";
+      kind: 'table';
       table: DisplayTable;
     }
   | {
-      kind: "text";
+      kind: 'text';
       lines: readonly DisplayText[];
     };
 
@@ -69,18 +69,22 @@ export type DisplayTable<Row = unknown> = {
 };
 
 export function rows(rows: readonly DisplayRow[]): DisplayBlock {
-  return { kind: "rows", rows };
+  return { kind: 'rows', rows };
 }
 
 export function table<Row>(displayTable: DisplayTable<Row>): DisplayBlock {
-  return { kind: "table", table: displayTable as DisplayTable };
+  return { kind: 'table', table: displayTable as DisplayTable };
 }
 
 export function text(lines: readonly DisplayText[]): DisplayBlock {
-  return { kind: "text", lines };
+  return { kind: 'text', lines };
 }
 
-export function span(text: string, style?: DisplayTextStyle, href?: string): DisplaySpan {
+export function span(
+  text: string,
+  style?: DisplayTextStyle,
+  href?: string
+): DisplaySpan {
   return {
     text,
     ...(style ? { style } : {}),
@@ -92,6 +96,8 @@ export function section(...blocks: readonly DisplayBlock[]): DisplaySection {
   return { blocks };
 }
 
-export function document(...sections: readonly DisplaySection[]): DisplayDocument {
+export function document(
+  ...sections: readonly DisplaySection[]
+): DisplayDocument {
   return { sections };
 }

@@ -1,7 +1,7 @@
-export const HELP_FLAGS = ["--help", "-h"] as const;
-export const VERSION_FLAGS = ["--version", "-v"] as const;
+export const HELP_FLAGS = ['--help', '-h'] as const;
+export const VERSION_FLAGS = ['--version', '-v'] as const;
 
-export type EarlyBootstrapExitId = "help" | "version";
+export type EarlyBootstrapExitId = 'help' | 'version';
 
 export type EarlyBootstrapExit = {
   id: EarlyBootstrapExitId;
@@ -9,31 +9,38 @@ export type EarlyBootstrapExit = {
   matches(rawArgs: readonly string[]): boolean;
 };
 
-function argvIncludesFlag(rawArgs: readonly string[], flags: readonly string[]): boolean {
-  const separatorIndex = rawArgs.indexOf("--");
-  const optionArgs = separatorIndex === -1 ? rawArgs : rawArgs.slice(0, separatorIndex);
-  return optionArgs.some((arg) => flags.includes(arg));
+function argvIncludesFlag(
+  rawArgs: readonly string[],
+  flags: readonly string[]
+): boolean {
+  const separatorIndex = rawArgs.indexOf('--');
+  const optionArgs =
+    separatorIndex === -1 ? rawArgs : rawArgs.slice(0, separatorIndex);
+  return optionArgs.some(arg => flags.includes(arg));
 }
 
 export const EARLY_BOOTSTRAP_EXITS: readonly EarlyBootstrapExit[] = [
   {
-    id: "help",
+    id: 'help',
     flags: HELP_FLAGS,
     matches(rawArgs) {
       return rawArgs.length === 0 || argvIncludesFlag(rawArgs, HELP_FLAGS);
     },
   },
   {
-    id: "version",
+    id: 'version',
     flags: VERSION_FLAGS,
     matches(rawArgs) {
       return (
-        rawArgs.length === 1 && VERSION_FLAGS.includes(rawArgs[0] as (typeof VERSION_FLAGS)[number])
+        rawArgs.length === 1 &&
+        VERSION_FLAGS.includes(rawArgs[0] as (typeof VERSION_FLAGS)[number])
       );
     },
   },
 ];
 
-export function findEarlyBootstrapExit(rawArgs: readonly string[]): EarlyBootstrapExit | undefined {
-  return EARLY_BOOTSTRAP_EXITS.find((exit) => exit.matches(rawArgs));
+export function findEarlyBootstrapExit(
+  rawArgs: readonly string[]
+): EarlyBootstrapExit | undefined {
+  return EARLY_BOOTSTRAP_EXITS.find(exit => exit.matches(rawArgs));
 }

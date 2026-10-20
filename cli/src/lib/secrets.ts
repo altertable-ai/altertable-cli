@@ -1,18 +1,19 @@
-import type { SpawnSyncOptions } from "node:child_process";
-import { spawnSync } from "node:child_process";
-import { chmodSync, statSync } from "node:fs";
-import { credentialsFile, kvGet, kvSet, kvUnset } from "@/lib/config.ts";
-import { CliError } from "@/lib/errors.ts";
-import { logWarn } from "@/lib/log.ts";
-import { readEnv } from "@/lib/env.ts";
+import type { SpawnSyncOptions } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, statSync } from 'node:fs';
+
+import { credentialsFile, kvGet, kvSet, kvUnset } from '@/lib/config.ts';
+import { readEnv } from '@/lib/env.ts';
+import { CliError } from '@/lib/errors.ts';
+import { logWarn } from '@/lib/log.ts';
 import {
   assertSafeProfileName,
   ensureProfileId,
   getProfileId,
   isFromEnvProfile,
-} from "@/lib/profile-store.ts";
+} from '@/lib/profile-store.ts';
 
-type SecretBackend = "macos" | "file";
+type SecretBackend = 'macos' | 'file';
 
 // `security` returns errSecItemNotFound (-25300) modulo 256 as its process status.
 const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
@@ -24,12 +25,18 @@ type SecretProcessResult = {
 };
 
 function keychainLookupFailed(result: SecretProcessResult): boolean {
-  return result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS;
+  return (
+    result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS
+  );
 }
 
 type SecretProcess = {
   platform: NodeJS.Platform;
-  spawnSync(command: string, args: string[], options: SpawnSyncOptions): SecretProcessResult;
+  spawnSync(
+    command: string,
+    args: string[],
+    options: SpawnSyncOptions
+  ): SecretProcessResult;
 };
 
 export type SecretSetOptions = {
@@ -37,7 +44,12 @@ export type SecretSetOptions = {
 };
 
 export type SecretStore = {
-  secretSet(account: string, value: string, profileName: string, options?: SecretSetOptions): void;
+  secretSet(
+    account: string,
+    value: string,
+    profileName: string,
+    options?: SecretSetOptions
+  ): void;
   secretGet(key: string, profileName: string): string;
   secretExists(key: string, profileName: string): boolean;
   secretDelete(key: string, profileName: string): void;
@@ -57,13 +69,13 @@ function fileMode(filePath: string): string {
     const stat = statSync(filePath);
     return (stat.mode & 0o777).toString(8);
   } catch {
-    return "";
+    return '';
   }
 }
 
 function requireSafeCredentialsFile(platform: NodeJS.Platform): void {
   // Windows mode bits do not describe the file's ACL permissions.
-  if (platform === "win32") return;
+  if (platform === 'win32') return;
   const filePath = credentialsFile();
   try {
     statSync(filePath);
@@ -77,7 +89,7 @@ function requireSafeCredentialsFile(platform: NodeJS.Platform): void {
   const modeNumber = Number.parseInt(mode, 8);
   if (modeNumber & 0o077) {
     throw new CliError(
-      `Refusing to read ${filePath}: permissions ${mode} are too open (group/other access). Run: chmod 600 ${filePath}`,
+      `Refusing to read ${filePath}: permissions ${mode} are too open (group/other access). Run: chmod 600 ${filePath}`
     );
   }
 }
@@ -92,91 +104,125 @@ function stableSecretKey(key: string, profileId: string): string {
 }
 
 export function createSecretStore(
-  secretProcess: SecretProcess = SYSTEM_SECRET_PROCESS,
+  secretProcess: SecretProcess = SYSTEM_SECRET_PROCESS
 ): SecretStore {
   let fileBackendWarned = false;
 
   function warnFileBackendOnce(): void {
     if (fileBackendWarned) return;
     const protection =
-      secretProcess.platform === "win32" ? "Windows ACLs are not validated" : "chmod 600";
+      secretProcess.platform === 'win32'
+        ? 'Windows ACLs are not validated'
+        : 'chmod 600';
     logWarn(
-      `No macOS keychain; storing secrets at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`,
+      `No macOS keychain; storing secrets at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`
     );
     fileBackendWarned = true;
   }
 
   function hasSecurityCommand(): boolean {
-    const result = secretProcess.spawnSync("security", ["help"], { stdio: "ignore" });
+    const result = secretProcess.spawnSync('security', ['help'], {
+      stdio: 'ignore',
+    });
     return result.status === 0 || result.error === undefined;
   }
 
   function secretBackend(): SecretBackend {
-    const override = readEnv("ALTERTABLE_SECRET_BACKEND") ?? "";
-    if (override === "file") return "file";
-    if (override === "keychain") {
-      if (secretProcess.platform === "darwin" && hasSecurityCommand()) return "macos";
+    const override = readEnv('ALTERTABLE_SECRET_BACKEND') ?? '';
+    if (override === 'file') return 'file';
+    if (override === 'keychain') {
+      if (secretProcess.platform === 'darwin' && hasSecurityCommand())
+        return 'macos';
       throw new CliError(
-        "ALTERTABLE_SECRET_BACKEND=keychain but the macOS keychain is unavailable.",
+        'ALTERTABLE_SECRET_BACKEND=keychain but the macOS keychain is unavailable.'
       );
     }
-    if (secretProcess.platform === "darwin" && hasSecurityCommand()) return "macos";
-    return "file";
+    if (secretProcess.platform === 'darwin' && hasSecurityCommand())
+      return 'macos';
+    return 'file';
   }
 
   function secretSetMacos(storageAccount: string, value: string): void {
     const result = secretProcess.spawnSync(
-      "security",
-      ["add-generic-password", "-U", "-s", "altertable", "-a", storageAccount, "-w", value],
-      { stdio: "ignore" },
+      'security',
+      [
+        'add-generic-password',
+        '-U',
+        '-s',
+        'altertable',
+        '-a',
+        storageAccount,
+        '-w',
+        value,
+      ],
+      { stdio: 'ignore' }
     );
     if (result.status !== 0) {
-      throw new CliError(`Failed to store secret in macOS keychain (${storageAccount}).`);
+      throw new CliError(
+        `Failed to store secret in macOS keychain (${storageAccount}).`
+      );
     }
   }
 
   function readStoredSecret(storageAccount: string): string {
-    if (secretBackend() === "macos") {
+    if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
-        "security",
-        ["find-generic-password", "-s", "altertable", "-a", storageAccount, "-w"],
-        { encoding: "utf8" },
+        'security',
+        [
+          'find-generic-password',
+          '-s',
+          'altertable',
+          '-a',
+          storageAccount,
+          '-w',
+        ],
+        { encoding: 'utf8' }
       );
       if (keychainLookupFailed(result)) {
-        throw new CliError(`Failed to read secret from macOS keychain (${storageAccount}).`);
+        throw new CliError(
+          `Failed to read secret from macOS keychain (${storageAccount}).`
+        );
       }
-      const keychainValue = result.status === 0 ? String(result.stdout).trim() : "";
-      if (keychainValue !== "") return keychainValue;
+      const keychainValue =
+        result.status === 0 ? String(result.stdout).trim() : '';
+      if (keychainValue !== '') return keychainValue;
     }
     requireSafeCredentialsFile(secretProcess.platform);
     return kvGet(credentialsFile(), storageAccount);
   }
 
   function storedSecretExists(storageAccount: string): boolean {
-    if (secretBackend() === "macos") {
+    if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
-        "security",
-        ["find-generic-password", "-s", "altertable", "-a", storageAccount],
-        { stdio: "ignore" },
+        'security',
+        ['find-generic-password', '-s', 'altertable', '-a', storageAccount],
+        { stdio: 'ignore' }
       );
       if (result.status === 0) return true;
       if (keychainLookupFailed(result)) {
-        throw new CliError(`Failed to inspect secret in macOS keychain (${storageAccount}).`);
+        throw new CliError(
+          `Failed to inspect secret in macOS keychain (${storageAccount}).`
+        );
       }
     }
     requireSafeCredentialsFile(secretProcess.platform);
-    return kvGet(credentialsFile(), storageAccount) !== "";
+    return kvGet(credentialsFile(), storageAccount) !== '';
   }
 
   function deleteStoredSecret(storageAccount: string): void {
-    if (secretBackend() === "macos") {
+    if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
-        "security",
-        ["delete-generic-password", "-s", "altertable", "-a", storageAccount],
-        { stdio: "ignore" },
+        'security',
+        ['delete-generic-password', '-s', 'altertable', '-a', storageAccount],
+        { stdio: 'ignore' }
       );
-      if (result.status !== 0 && result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS) {
-        throw new CliError(`Failed to delete secret from macOS keychain (${storageAccount}).`);
+      if (
+        result.status !== 0 &&
+        result.status !== KEYCHAIN_ITEM_NOT_FOUND_STATUS
+      ) {
+        throw new CliError(
+          `Failed to delete secret from macOS keychain (${storageAccount}).`
+        );
       }
     }
     kvUnset(credentialsFile(), storageAccount);
@@ -186,15 +232,18 @@ export function createSecretStore(
     account: string,
     value: string,
     profileName: string,
-    options?: SecretSetOptions,
+    options?: SecretSetOptions
   ): void {
     // Env config isolates to `_from_env`, which has no store. Profile-mutating
     // commands are refused in env mode; in-process caches are deliberately dropped.
     if (isFromEnvProfile(profileName)) return;
 
-    const storageAccount = stableSecretKey(account, ensureProfileId(profileName));
+    const storageAccount = stableSecretKey(
+      account,
+      ensureProfileId(profileName)
+    );
     const backend = secretBackend();
-    if (backend === "macos" && !options?.fromArgv) {
+    if (backend === 'macos' && !options?.fromArgv) {
       secretSetMacos(storageAccount, value);
       return;
     }
@@ -202,16 +251,16 @@ export function createSecretStore(
     const filePath = credentialsFile();
     kvSet(filePath, storageAccount, value);
     chmodSync(filePath, 0o600);
-    if (backend !== "macos") warnFileBackendOnce();
+    if (backend !== 'macos') warnFileBackendOnce();
   }
 
   function secretGet(key: string, profileName: string): string {
-    if (isFromEnvProfile(profileName)) return "";
+    if (isFromEnvProfile(profileName)) return '';
 
     const profileId = getProfileId(profileName);
     if (profileId) {
       const value = readStoredSecret(stableSecretKey(key, profileId));
-      if (value !== "") return value;
+      if (value !== '') return value;
     }
     return readStoredSecret(legacySecretKey(key, profileName));
   }
@@ -236,17 +285,20 @@ export function createSecretStore(
     deleteStoredSecret(legacySecretKey(key, profileName));
   }
 
-  function migrateProfileSecrets(profileName: string, keys: readonly string[]): void {
+  function migrateProfileSecrets(
+    profileName: string,
+    keys: readonly string[]
+  ): void {
     const profileId = ensureProfileId(profileName);
-    const legacySecrets = keys.flatMap((key) => {
+    const legacySecrets = keys.flatMap(key => {
       const value = readStoredSecret(legacySecretKey(key, profileName));
-      return value === "" ? [] : [{ key, value }];
+      return value === '' ? [] : [{ key, value }];
     });
 
     for (const { key, value } of legacySecrets) {
       const storageAccount = stableSecretKey(key, profileId);
       if (!storedSecretExists(storageAccount)) {
-        if (secretBackend() === "macos") {
+        if (secretBackend() === 'macos') {
           secretSetMacos(storageAccount, value);
         } else {
           kvSet(credentialsFile(), storageAccount, value);
@@ -260,7 +312,7 @@ export function createSecretStore(
   }
 
   function secretStoreDisplay(): string {
-    return secretBackend() === "macos" ? "MacOS keychain" : credentialsFile();
+    return secretBackend() === 'macos' ? 'MacOS keychain' : credentialsFile();
   }
 
   return {
@@ -279,7 +331,7 @@ export function secretSet(
   account: string,
   value: string,
   profileName: string,
-  options?: SecretSetOptions,
+  options?: SecretSetOptions
 ): void {
   systemSecretStore.secretSet(account, value, profileName, options);
 }
@@ -296,7 +348,10 @@ export function secretDelete(key: string, profileName: string): void {
   systemSecretStore.secretDelete(key, profileName);
 }
 
-export function migrateProfileSecrets(profileName: string, keys: readonly string[]): void {
+export function migrateProfileSecrets(
+  profileName: string,
+  keys: readonly string[]
+): void {
   systemSecretStore.migrateProfileSecrets(profileName, keys);
 }
 

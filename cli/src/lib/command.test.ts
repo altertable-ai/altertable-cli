@@ -1,39 +1,48 @@
-import { describe, expect, test } from "bun:test";
-import { defineCommand } from "@/lib/command.ts";
-import { CommandParseError, executeCommand } from "@/lib/command-parser.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
-import { runWithCliRuntime } from "@/test-utils/runtime.ts";
+import { describe, expect, test } from 'bun:test';
 
-describe("command composition", () => {
-  test("defineCommand preserves the declarative command object", () => {
-    const definition = { metadata: { name: "leaf" } };
+import { CommandParseError, executeCommand } from '@/lib/command-parser.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { createCliRuntime } from '@/lib/runtime.ts';
+import { runWithCliRuntime } from '@/test-utils/runtime.ts';
+
+describe('command composition', () => {
+  test('defineCommand preserves the declarative command object', () => {
+    const definition = { metadata: { name: 'leaf' } };
 
     expect(defineCommand(definition)).toBe(definition);
   });
 
-  test("dispatches a declarative command with injected runtime", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('dispatches a declarative command with injected runtime', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     let receivedRuntime: unknown;
     let executionIsStable = false;
     const leaf = defineCommand({
-      metadata: { name: "leaf" },
+      metadata: { name: 'leaf' },
       run(context) {
         receivedRuntime = context.runtime;
         executionIsStable = context.execution === context.execution;
       },
     });
-    const definition = { metadata: { name: "root" }, subcommands: { leaf } };
+    const definition = { metadata: { name: 'root' }, subcommands: { leaf } };
 
     const root = defineCommand(definition);
 
     expect(root).toBe(definition);
-    await runWithCliRuntime(runtime, () => executeCommand(root, ["leaf"]));
+    await runWithCliRuntime(runtime, () => executeCommand(root, ['leaf']));
     expect(receivedRuntime).toBe(runtime);
     expect(executionIsStable).toBe(true);
   });
 
   test("returns a completed command's requested exit code", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const root = defineCommand({
       subcommands: {
         check: defineCommand({
@@ -44,20 +53,31 @@ describe("command composition", () => {
       },
     });
 
-    const result = await runWithCliRuntime(runtime, () => executeCommand(root, ["check"]));
+    const result = await runWithCliRuntime(runtime, () =>
+      executeCommand(root, ['check'])
+    );
 
     expect(result.exitCode).toBe(1);
   });
 
-  test("parses global and command flags in every position", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('parses global and command flags in every position', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const received: Array<Record<string, unknown>> = [];
     const leaf = defineCommand({
-      metadata: { name: "leaf" },
+      metadata: { name: 'leaf' },
       args: {
-        mode: { type: "enum", alias: "m", options: ["fast", "safe"], default: "safe" },
-        tag: { type: "string", alias: "t", repeatable: true },
-        value: { type: "positional", required: true },
+        mode: {
+          type: 'enum',
+          alias: 'm',
+          options: ['fast', 'safe'],
+          default: 'safe',
+        },
+        tag: { type: 'string', alias: 't', repeatable: true },
+        value: { type: 'positional', required: true },
       },
       run({ args }) {
         received.push(args);
@@ -65,108 +85,124 @@ describe("command composition", () => {
     });
     const root = defineCommand({
       args: {
-        json: { type: "boolean", flagScope: "global" },
-        profile: { type: "string", flagScope: "global" },
+        json: { type: 'boolean', flagScope: 'global' },
+        profile: { type: 'string', flagScope: 'global' },
       },
       subcommands: { leaf },
     });
 
     await runWithCliRuntime(runtime, () =>
       executeCommand(root, [
-        "--profile",
-        "staging",
-        "leaf",
-        "payload",
-        "-t",
-        "one",
-        "--json",
-        "--tag=two",
-        "-m=fast",
-      ]),
+        '--profile',
+        'staging',
+        'leaf',
+        'payload',
+        '-t',
+        'one',
+        '--json',
+        '--tag=two',
+        '-m=fast',
+      ])
     );
 
     expect(received).toEqual([
       expect.objectContaining({
-        profile: "staging",
+        profile: 'staging',
         json: true,
-        mode: "fast",
-        tag: ["one", "two"],
-        value: "payload",
+        mode: 'fast',
+        tag: ['one', 'two'],
+        value: 'payload',
       }),
     ]);
   });
 
-  test("does not consume recognized flags as option values", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('does not consume recognized flags as option values', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const leaf = defineCommand({
-      metadata: { name: "leaf" },
+      metadata: { name: 'leaf' },
       args: {
-        columns: { type: "string", alias: "c" },
-        force: { type: "boolean" },
-        value: { type: "positional", required: true },
+        columns: { type: 'string', alias: 'c' },
+        force: { type: 'boolean' },
+        value: { type: 'positional', required: true },
       },
     });
     const root = defineCommand({
       args: {
-        json: { type: "boolean", flagScope: "global" },
-        profile: { type: "string", flagScope: "global" },
+        json: { type: 'boolean', flagScope: 'global' },
+        profile: { type: 'string', flagScope: 'global' },
       },
       subcommands: { leaf },
     });
 
     for (const rawArgs of [
-      ["leaf", "value", "--columns", "--json"],
-      ["leaf", "value", "-c", "--json"],
-      ["leaf", "--profile", "--force", "value"],
+      ['leaf', 'value', '--columns', '--json'],
+      ['leaf', 'value', '-c', '--json'],
+      ['leaf', '--profile', '--force', 'value'],
     ]) {
-      expect(runWithCliRuntime(runtime, () => executeCommand(root, rawArgs))).rejects.toThrow(
-        /^Missing value for/,
-      );
+      expect(
+        runWithCliRuntime(runtime, () => executeCommand(root, rawArgs))
+      ).rejects.toThrow(/^Missing value for/);
     }
   });
 
-  test("binds single-character aliases as short flags and longer ones as long flags", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('binds single-character aliases as short flags and longer ones as long flags', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const received: string[] = [];
     const root = defineCommand({
       subcommands: {
         leaf: defineCommand({
           args: {
-            "service-account": { type: "string", alias: "svc" },
-            columns: { type: "string", alias: "c" },
+            'service-account': { type: 'string', alias: 'svc' },
+            columns: { type: 'string', alias: 'c' },
           },
           run({ args }) {
-            received.push(`${String(args["service-account"])}/${String(args.columns)}`);
+            received.push(
+              `${String(args['service-account'])}/${String(args.columns)}`
+            );
           },
         }),
       },
     });
 
     for (const rawArgs of [
-      ["leaf", "--service-account", "bot", "--columns", "a"],
-      ["leaf", "--svc", "bot", "-c", "a"],
-      ["leaf", "--svc=bot", "-c=a"],
+      ['leaf', '--service-account', 'bot', '--columns', 'a'],
+      ['leaf', '--svc', 'bot', '-c', 'a'],
+      ['leaf', '--svc=bot', '-c=a'],
     ]) {
       await runWithCliRuntime(runtime, () => executeCommand(root, rawArgs));
     }
 
-    expect(received).toEqual(["bot/a", "bot/a", "bot/a"]);
+    expect(received).toEqual(['bot/a', 'bot/a', 'bot/a']);
     // A long alias is not also bound as a single-dash flag.
     expect(
-      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "-svc", "bot"])),
-    ).rejects.toThrow("Unknown option -svc");
+      runWithCliRuntime(runtime, () =>
+        executeCommand(root, ['leaf', '-svc', 'bot'])
+      )
+    ).rejects.toThrow('Unknown option -svc');
   });
 
-  test("accepts an option-like value when it is explicit", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    let received = "";
+  test('accepts an option-like value when it is explicit', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
+    let received = '';
     const root = defineCommand({
-      args: { json: { type: "boolean", flagScope: "global" } },
+      args: { json: { type: 'boolean', flagScope: 'global' } },
       subcommands: {
         leaf: defineCommand({
           args: {
-            columns: { type: "string" },
-            value: { type: "positional", required: true },
+            columns: { type: 'string' },
+            value: { type: 'positional', required: true },
           },
           run({ args }) {
             received = String(args.columns);
@@ -176,25 +212,33 @@ describe("command composition", () => {
     });
 
     await runWithCliRuntime(runtime, () =>
-      executeCommand(root, ["leaf", "value", "--columns=--json"]),
+      executeCommand(root, ['leaf', 'value', '--columns=--json'])
     );
 
-    expect(received).toBe("--json");
+    expect(received).toBe('--json');
   });
 
-  test("resolves aliases, subcommands, and intentional direct operands", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('resolves aliases, subcommands, and intentional direct operands', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const calls: string[] = [];
     const parent = defineCommand({
-      metadata: { name: "query", alias: "q" },
-      soleDirectOperands: ["show"],
+      metadata: { name: 'query', alias: 'q' },
+      soleDirectOperands: ['show'],
       args: {
-        statement: { type: "positional", required: false, directRequired: true },
+        statement: {
+          type: 'positional',
+          required: false,
+          directRequired: true,
+        },
       },
       subcommands: {
         show: defineCommand({
-          metadata: { name: "show" },
-          args: { id: { type: "positional", required: true } },
+          metadata: { name: 'show' },
+          args: { id: { type: 'positional', required: true } },
           run({ args }) {
             calls.push(`subcommand:${String(args.id)}`);
           },
@@ -207,24 +251,28 @@ describe("command composition", () => {
     const root = defineCommand({ subcommands: { query: parent } });
 
     await runWithCliRuntime(runtime, async () => {
-      await executeCommand(root, ["q", "show"]);
-      await executeCommand(root, ["query", "show", "query-1"]);
+      await executeCommand(root, ['q', 'show']);
+      await executeCommand(root, ['query', 'show', 'query-1']);
     });
 
-    expect(calls).toEqual(["direct:show", "subcommand:query-1"]);
+    expect(calls).toEqual(['direct:show', 'subcommand:query-1']);
   });
 
-  test("honors the option separator and validates the invocation contract", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-    let received = "";
+  test('honors the option separator and validates the invocation contract', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
+    let received = '';
     const root = defineCommand({
       args: {
-        version: { type: "boolean", alias: "v", flagScope: "root-only" },
+        version: { type: 'boolean', alias: 'v', flagScope: 'root-only' },
       },
       subcommands: {
         leaf: defineCommand({
-          metadata: { name: "leaf" },
-          args: { value: { type: "positional", required: true } },
+          metadata: { name: 'leaf' },
+          args: { value: { type: 'positional', required: true } },
           run({ args }) {
             received = String(args.value);
           },
@@ -232,17 +280,23 @@ describe("command composition", () => {
       },
     });
 
-    await runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "--", "--literal"]));
-    expect(received).toBe("--literal");
-
-    expect(runWithCliRuntime(runtime, () => executeCommand(root, ["--", "leaf"]))).rejects.toThrow(
-      "Unknown command leaf.",
+    await runWithCliRuntime(runtime, () =>
+      executeCommand(root, ['leaf', '--', '--literal'])
     );
+    expect(received).toBe('--literal');
+
     expect(
-      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "value", "--version"])),
+      runWithCliRuntime(runtime, () => executeCommand(root, ['--', 'leaf']))
+    ).rejects.toThrow('Unknown command leaf.');
+    expect(
+      runWithCliRuntime(runtime, () =>
+        executeCommand(root, ['leaf', 'value', '--version'])
+      )
     ).rejects.toBeInstanceOf(CommandParseError);
     expect(
-      runWithCliRuntime(runtime, () => executeCommand(root, ["leaf", "value", "extra"])),
-    ).rejects.toThrow("Unexpected argument: extra.");
+      runWithCliRuntime(runtime, () =>
+        executeCommand(root, ['leaf', 'value', 'extra'])
+      )
+    ).rejects.toThrow('Unexpected argument: extra.');
   });
 });

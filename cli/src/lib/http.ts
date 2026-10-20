@@ -1,22 +1,32 @@
-import { appendFileSync } from "node:fs";
-import { getCliContext, getConnectTimeoutMs } from "@/context.ts";
-import { USER_AGENT } from "@/version.ts";
-import { CliError, HttpError, NetworkError, TimeoutError, type AuthPlane } from "@/lib/errors.ts";
-import { logDebug, logWarn } from "@/lib/log.ts";
-import { getOutputSink } from "@/lib/runtime.ts";
+import { appendFileSync } from 'node:fs';
+
+import { getCliContext, getConnectTimeoutMs } from '@/context.ts';
+import { readEnv } from '@/lib/env.ts';
+import {
+  CliError,
+  HttpError,
+  NetworkError,
+  TimeoutError,
+  type AuthPlane,
+} from '@/lib/errors.ts';
+import {
+  delayBeforeHttpRetry,
+  MAX_RETRY_ATTEMPTS,
+  shouldRetryHttpRequest,
+} from '@/lib/http-retry.ts';
+import { logDebug, logWarn } from '@/lib/log.ts';
 import {
   redactResponseBodyForDebug,
   redactSensitiveJsonString,
   redactSensitiveJsonValue,
   truncateBodySnippet,
-} from "@/lib/redact.ts";
+} from '@/lib/redact.ts';
+import { getOutputSink } from '@/lib/runtime.ts';
 import {
-  delayBeforeHttpRetry,
-  MAX_RETRY_ATTEMPTS,
-  shouldRetryHttpRequest,
-} from "@/lib/http-retry.ts";
-import { DEFAULT_READ_TIMEOUT_MS, STREAM_READ_TIMEOUT_MS } from "@/lib/transport-defaults.ts";
-import { readEnv } from "@/lib/env.ts";
+  DEFAULT_READ_TIMEOUT_MS,
+  STREAM_READ_TIMEOUT_MS,
+} from '@/lib/transport-defaults.ts';
+import { USER_AGENT } from '@/version.ts';
 
 export type HttpSendOptions = {
   method: string;
@@ -54,7 +64,7 @@ type UndiciAgentOptions = {
 
 function createDispatcher(options: UndiciAgentOptions): unknown {
   try {
-    const undici = require("undici") as {
+    const undici = require('undici') as {
       Agent: new (options: UndiciAgentOptions) => unknown;
     };
     return new undici.Agent(options);
@@ -102,7 +112,8 @@ function getInsecureDispatcher(): unknown {
 
 export function shouldIgnoreSslErrors(): boolean {
   return (
-    getCliContext().ignoreSslErrors === true || readEnv("ALTERTABLE_IGNORE_SSL_ERRORS") === true
+    getCliContext().ignoreSslErrors === true ||
+    readEnv('ALTERTABLE_IGNORE_SSL_ERRORS') === true
   );
 }
 
@@ -114,7 +125,7 @@ function warnInsecureTlsOnce(): void {
   }
   insecureTlsWarned = true;
   logWarn(
-    "TLS certificate verification is disabled (--ignore-ssl-errors); connections are not protected against interception.",
+    'TLS certificate verification is disabled (--ignore-ssl-errors); connections are not protected against interception.'
   );
 }
 
@@ -125,7 +136,7 @@ function warnInsecureTlsOnce(): void {
 export function buildFetchInit(
   options: HttpSendOptions,
   headers: Record<string, string>,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): RequestInit {
   const ignoreSslErrors = shouldIgnoreSslErrors();
   if (ignoreSslErrors) {
@@ -137,7 +148,9 @@ export function buildFetchInit(
     headers,
     body: options.body,
     signal,
-    dispatcher: ignoreSslErrors ? getInsecureDispatcher() : getSharedDispatcher(),
+    dispatcher: ignoreSslErrors
+      ? getInsecureDispatcher()
+      : getSharedDispatcher(),
     ...(ignoreSslErrors ? { tls: { rejectUnauthorized: false } } : {}),
   } as RequestInit;
 }
@@ -148,7 +161,7 @@ function resolveConnectTimeoutMs(options: HttpSendOptions): number {
 
 export function resolveReadTimeoutMs(
   options: HttpSendOptions,
-  streamDefault = DEFAULT_READ_TIMEOUT_MS,
+  streamDefault = DEFAULT_READ_TIMEOUT_MS
 ): number {
   if (options.readTimeoutMs !== undefined) {
     return options.readTimeoutMs;
@@ -179,35 +192,43 @@ function unwrapErrorDetail(error: unknown): string {
     }
     current = (current as { cause?: unknown }).cause;
   }
-  return messages.join(": ");
+  return messages.join(': ');
 }
 
 function timeoutError(options: HttpSendOptions, cause: unknown): TimeoutError {
-  return new TimeoutError(`Request timed out: ${options.method} ${options.url}`, { cause });
+  return new TimeoutError(
+    `Request timed out: ${options.method} ${options.url}`,
+    { cause }
+  );
 }
 
-function connectionError(options: HttpSendOptions, cause: unknown): NetworkError {
+function connectionError(
+  options: HttpSendOptions,
+  cause: unknown
+): NetworkError {
   const detail = unwrapErrorDetail(cause);
-  const suffix = detail ? ` (${detail})` : "";
+  const suffix = detail ? ` (${detail})` : '';
   return new NetworkError(
     `Request failed (network error): ${options.method} ${options.url}${suffix}`,
-    { cause },
+    { cause }
   );
 }
 
 function transportError(
   options: HttpSendOptions,
   signal: AbortSignal,
-  cause: unknown,
+  cause: unknown
 ): NetworkError {
-  return signal.aborted ? timeoutError(options, cause) : connectionError(options, cause);
+  return signal.aborted
+    ? timeoutError(options, cause)
+    : connectionError(options, cause);
 }
 
 function wrapResponseStream(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
   signal: AbortSignal,
-  options: HttpStreamOptions,
+  options: HttpStreamOptions
 ): ReadableStream<Uint8Array> {
   const reader = stream.getReader();
   return new ReadableStream<Uint8Array>({
@@ -241,12 +262,13 @@ function wrapResponseStream(
 function findMatchingMock(
   mocks: MockHttpEntry[],
   options: HttpSendOptions,
-  attemptIndex: number,
+  attemptIndex: number
 ): MockHttpEntry | undefined {
-  const matchingMocks = mocks.filter((mock) => {
+  const matchingMocks = mocks.filter(mock => {
     const urlMatches = options.url.includes(mock.urlPattern);
     const methodMatches = !mock.method || mock.method === options.method;
-    const authMatches = !mock.authPattern || options.authHeader.includes(mock.authPattern);
+    const authMatches =
+      !mock.authPattern || options.authHeader.includes(mock.authPattern);
     return urlMatches && methodMatches && authMatches;
   });
 
@@ -259,7 +281,7 @@ function findMatchingMock(
 
 function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  const lines = body.split("\n");
+  const lines = body.split('\n');
 
   return new ReadableStream<Uint8Array>({
     start(controller) {
@@ -268,7 +290,8 @@ function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
         if (line === undefined) {
           continue;
         }
-        const suffix = lineIndex < lines.length - 1 ? "\n" : body.endsWith("\n") ? "\n" : "";
+        const suffix =
+          lineIndex < lines.length - 1 ? '\n' : body.endsWith('\n') ? '\n' : '';
         controller.enqueue(encoder.encode(`${line}${suffix}`));
       }
       controller.close();
@@ -276,10 +299,13 @@ function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
   });
 }
 
-async function executeMockRequest(options: HttpSendOptions, attemptIndex: number): Promise<string> {
-  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
+async function executeMockRequest(
+  options: HttpSendOptions,
+  attemptIndex: number
+): Promise<string> {
+  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
   if (!mockFile) {
-    throw new CliError("Mock HTTP file is not configured.");
+    throw new CliError('Mock HTTP file is not configured.');
   }
 
   const mocks = JSON.parse(await Bun.file(mockFile).text()) as MockHttpEntry[];
@@ -287,7 +313,9 @@ async function executeMockRequest(options: HttpSendOptions, attemptIndex: number
 
   const match = findMatchingMock(mocks, options, attemptIndex);
   if (!match) {
-    throw new CliError(`No mock HTTP response for ${options.method} ${options.url}`);
+    throw new CliError(
+      `No mock HTTP response for ${options.method} ${options.url}`
+    );
   }
 
   const status = match.status ?? 200;
@@ -301,17 +329,17 @@ async function executeMockRequest(options: HttpSendOptions, attemptIndex: number
     options.method,
     options.url,
     options.authPlane,
-    match.retryAfter ?? null,
+    match.retryAfter ?? null
   );
 }
 
 async function executeMockStream(
   options: HttpStreamOptions,
-  attemptIndex: number,
+  attemptIndex: number
 ): Promise<ReadableStream<Uint8Array>> {
-  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
+  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
   if (!mockFile) {
-    throw new CliError("Mock HTTP file is not configured.");
+    throw new CliError('Mock HTTP file is not configured.');
   }
 
   const mocks = JSON.parse(await Bun.file(mockFile).text()) as MockHttpEntry[];
@@ -319,7 +347,9 @@ async function executeMockStream(
 
   const match = findMatchingMock(mocks, options, attemptIndex);
   if (!match) {
-    throw new CliError(`No mock HTTP response for ${options.method} ${options.url}`);
+    throw new CliError(
+      `No mock HTTP response for ${options.method} ${options.url}`
+    );
   }
 
   const status = match.status ?? 200;
@@ -330,7 +360,7 @@ async function executeMockStream(
       options.method,
       options.url,
       options.authPlane,
-      match.retryAfter ?? null,
+      match.retryAfter ?? null
     );
   }
 
@@ -347,15 +377,18 @@ async function executeMockStream(
   });
 }
 
-export function redactHeaderValue(headerName: string, headerValue: string): string {
-  if (headerName.toLowerCase() === "authorization") {
-    return "[REDACTED]";
+export function redactHeaderValue(
+  headerName: string,
+  headerValue: string
+): string {
+  if (headerName.toLowerCase() === 'authorization') {
+    return '[REDACTED]';
   }
   return headerValue;
 }
 
 export function redactAuthHeader(authHeader: string): string {
-  const colonIndex = authHeader.indexOf(": ");
+  const colonIndex = authHeader.indexOf(': ');
   if (colonIndex === -1) {
     return authHeader;
   }
@@ -365,38 +398,38 @@ export function redactAuthHeader(authHeader: string): string {
 }
 
 function logHttpRequest(options: HttpSendOptions): void {
-  const logPath = readEnv("ALTERTABLE_HTTP_LOG");
+  const logPath = readEnv('ALTERTABLE_HTTP_LOG');
   if (!logPath) {
     return;
   }
 
-  let payload = "";
-  if (typeof options.body === "string") {
+  let payload = '';
+  if (typeof options.body === 'string') {
     payload = redactSensitiveJsonString(options.body);
   } else if (options.body instanceof Blob) {
-    payload = "@blob";
+    payload = '@blob';
   } else if (options.body !== undefined) {
-    payload = "@stream";
+    payload = '@stream';
   }
 
   appendFileSync(
     logPath,
-    `METHOD=${options.method}\nURL=${options.url}\nAUTH=${redactAuthHeader(options.authHeader)}\nPAYLOAD=${payload}\n---\n`,
+    `METHOD=${options.method}\nURL=${options.url}\nAUTH=${redactAuthHeader(options.authHeader)}\nPAYLOAD=${payload}\n---\n`
   );
 }
 
 function httpExtractBodyDetail(body: string): string | undefined {
   const trimmed = body.trimStart();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(body) as {
         error?: { message?: string } | string;
         message?: string;
       };
       const detail =
-        (typeof parsed.error === "object" && parsed.error?.message) ||
-        (typeof parsed.message === "string" ? parsed.message : "") ||
-        (typeof parsed.error === "string" ? parsed.error : "");
+        (typeof parsed.error === 'object' && parsed.error?.message) ||
+        (typeof parsed.message === 'string' ? parsed.message : '') ||
+        (typeof parsed.error === 'string' ? parsed.error : '');
       if (detail) {
         return detail;
       }
@@ -419,7 +452,7 @@ function throwHttpError(
   method: string,
   url: string,
   authPlane?: AuthPlane,
-  retryAfterHeader?: string | null,
+  retryAfterHeader?: string | null
 ): never {
   throw new HttpError({
     status,
@@ -428,29 +461,33 @@ function throwHttpError(
     url,
     parsedDetail:
       httpExtractBodyDetail(body) ??
-      (authPlane === "lakehouse" && body.trim() ? truncateBodySnippet(body) : undefined),
+      (authPlane === 'lakehouse' && body.trim()
+        ? truncateBodySnippet(body)
+        : undefined),
     authPlane,
     retryAfterHeader,
   });
 }
 
-export function buildRequestHeaders(options: HttpSendOptions): Record<string, string> {
+export function buildRequestHeaders(
+  options: HttpSendOptions
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
-  const colonIndex = options.authHeader.indexOf(": ");
+  const colonIndex = options.authHeader.indexOf(': ');
   if (colonIndex !== -1) {
     const authName = options.authHeader.slice(0, colonIndex);
     const authValue = options.authHeader.slice(colonIndex + 2);
     headers[authName] = authValue;
   }
 
-  headers["User-Agent"] = USER_AGENT;
+  headers['User-Agent'] = USER_AGENT;
   Object.assign(headers, options.extraHeaders);
 
   if (options.contentType) {
-    headers["Content-Type"] = options.contentType;
-  } else if (typeof options.body === "string" && options.body.length > 0) {
-    headers["Content-Type"] = "application/json";
+    headers['Content-Type'] = options.contentType;
+  } else if (typeof options.body === 'string' && options.body.length > 0) {
+    headers['Content-Type'] = 'application/json';
   }
 
   return headers;
@@ -476,12 +513,17 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
 
   logHttpDebug([
     `> ${options.method} ${options.url}`,
-    ...Object.entries(headers).map(([key, value]) => `> ${key}: ${redactHeaderValue(key, value)}`),
+    ...Object.entries(headers).map(
+      ([key, value]) => `> ${key}: ${redactHeaderValue(key, value)}`
+    ),
   ]);
 
   let response: Response;
   try {
-    response = await fetch(options.url, buildFetchInit(options, headers, signal));
+    response = await fetch(
+      options.url,
+      buildFetchInit(options, headers, signal)
+    );
   } catch (error) {
     throw transportError(options, signal, error);
   }
@@ -508,11 +550,13 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
     options.method,
     options.url,
     options.authPlane,
-    response.headers.get("Retry-After"),
+    response.headers.get('Retry-After')
   );
 }
 
-async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableStream<Uint8Array>> {
+async function executeLiveStream(
+  options: HttpStreamOptions
+): Promise<ReadableStream<Uint8Array>> {
   const headers = buildRequestHeaders(options);
   const connectTimeoutMs = resolveConnectTimeoutMs(options);
   const readTimeoutMs = resolveReadTimeoutMs(options, STREAM_READ_TIMEOUT_MS);
@@ -536,7 +580,10 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
 
   let response: Response;
   try {
-    response = await fetch(options.url, buildFetchInit(options, headers, abortController.signal));
+    response = await fetch(
+      options.url,
+      buildFetchInit(options, headers, abortController.signal)
+    );
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
@@ -545,12 +592,17 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
 
   if (response.status >= 200 && response.status < 300) {
     if (!response.body) {
-      throw new NetworkError("Response body is missing.");
+      throw new NetworkError('Response body is missing.');
     }
     if (readTimeoutMs > 0) {
       startTimeout(readTimeoutMs);
     }
-    return wrapResponseStream(response.body, clearActiveTimeout, abortController.signal, options);
+    return wrapResponseStream(
+      response.body,
+      clearActiveTimeout,
+      abortController.signal,
+      options
+    );
   }
 
   if (readTimeoutMs > 0) {
@@ -571,13 +623,13 @@ async function executeLiveStream(options: HttpStreamOptions): Promise<ReadableSt
     options.method,
     options.url,
     options.authPlane,
-    response.headers.get("Retry-After"),
+    response.headers.get('Retry-After')
   );
 }
 
 export async function httpSend(options: HttpSendOptions): Promise<string> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
-  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
+  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
 
   for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
     try {
@@ -587,8 +639,18 @@ export async function httpSend(options: HttpSendOptions): Promise<string> {
       return await executeLiveRequest(options);
     } catch (error) {
       if (error instanceof HttpError) {
-        if (shouldRetryHttpRequest(options, error.status, attemptIndex, maxAttempts)) {
-          await delayBeforeHttpRetry(attemptIndex, error.retryAfterHeader ?? null);
+        if (
+          shouldRetryHttpRequest(
+            options,
+            error.status,
+            attemptIndex,
+            maxAttempts
+          )
+        ) {
+          await delayBeforeHttpRetry(
+            attemptIndex,
+            error.retryAfterHeader ?? null
+          );
           continue;
         }
       }
@@ -597,14 +659,14 @@ export async function httpSend(options: HttpSendOptions): Promise<string> {
     }
   }
 
-  throw new NetworkError("Request failed after retries.");
+  throw new NetworkError('Request failed after retries.');
 }
 
 export async function httpSendStream(
-  options: HttpStreamOptions,
+  options: HttpStreamOptions
 ): Promise<ReadableStream<Uint8Array>> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
-  const mockFile = readEnv("ALTERTABLE_MOCK_HTTP_FILE");
+  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
 
   for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
     try {
@@ -614,8 +676,18 @@ export async function httpSendStream(
       return await executeLiveStream(options);
     } catch (error) {
       if (error instanceof HttpError) {
-        if (shouldRetryHttpRequest(options, error.status, attemptIndex, maxAttempts)) {
-          await delayBeforeHttpRetry(attemptIndex, error.retryAfterHeader ?? null);
+        if (
+          shouldRetryHttpRequest(
+            options,
+            error.status,
+            attemptIndex,
+            maxAttempts
+          )
+        ) {
+          await delayBeforeHttpRetry(
+            attemptIndex,
+            error.retryAfterHeader ?? null
+          );
           continue;
         }
       }
@@ -624,5 +696,5 @@ export async function httpSendStream(
     }
   }
 
-  throw new NetworkError("Request failed after retries.");
+  throw new NetworkError('Request failed after retries.');
 }

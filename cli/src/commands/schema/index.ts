@@ -1,44 +1,56 @@
-import { stringArg } from "@/lib/args.ts";
-import { defineCommand } from "@/lib/command.ts";
-import { parseQueryOutputOptions } from "@/lib/query-output-args.ts";
-import { writePagedOutput } from "@/lib/pager.ts";
-import { writeQueryOutput } from "@/lib/query-output.ts";
-import { executeLakehouseQuery } from "@/lib/lakehouse/query.ts";
-import { buildSchemaTreeView } from "@/commands/schema/lib/views.ts";
-import { schemaArgs } from "@/commands/schema/lib/args.ts";
-import { renderTreeText } from "@/ui/renderers/terminal.ts";
+import { schemaArgs } from '@/commands/schema/lib/args.ts';
+import { buildSchemaTreeView } from '@/commands/schema/lib/views.ts';
+import { stringArg } from '@/lib/args.ts';
+import { defineCommand } from '@/lib/command.ts';
+import { executeLakehouseQuery } from '@/lib/lakehouse/query.ts';
+import { writePagedOutput } from '@/lib/pager.ts';
+import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
+import { writeQueryOutput } from '@/lib/query-output.ts';
+import { renderTreeText } from '@/ui/renderers/terminal.ts';
 
 export const schemaCommand = defineCommand({
   metadata: {
-    name: "schema",
-    commandGroup: "query",
-    description: "List schemas, tables, and columns for a catalog.",
-    examples: ["altertable schema analytics", "altertable schema analytics --json"],
+    name: 'schema',
+    commandGroup: 'query',
+    description: 'List schemas, tables, and columns for a catalog.',
+    examples: [
+      'altertable schema analytics',
+      'altertable schema analytics --json',
+    ],
   },
   args: schemaArgs,
   async run({ args, rawArgs, execution, sink }) {
-    const catalog = stringArg(args, "catalog");
-    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(args, {
-      agent: execution.cli.agent,
-      json: sink.json,
-      rawArgs,
-    });
+    const catalog = stringArg(args, 'catalog');
+    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
+      args,
+      {
+        agent: execution.cli.agent,
+        json: sink.json,
+        rawArgs,
+      }
+    );
     const queryInput = {
       statement: buildSchemaStatement(catalog),
     };
     const result = await executeLakehouseQuery(
       queryInput,
       execution,
-      format !== "json" && !sink.json,
+      format !== 'json' && !sink.json
     );
-    if (format !== "human" || sink.json) {
-      await writeQueryOutput(result, format, sink, displayOptions, pagerOptions);
+    if (format !== 'human' || sink.json) {
+      await writeQueryOutput(
+        result,
+        format,
+        sink,
+        displayOptions,
+        pagerOptions
+      );
       return;
     }
     await writePagedOutput(
       renderTreeText(buildSchemaTreeView(result, catalog)),
       pagerOptions,
-      sink,
+      sink
     );
   },
 });

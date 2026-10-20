@@ -1,16 +1,21 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { NetworkError, getCliExitCode } from "@/lib/errors.ts";
-import { writeQueryDestination } from "@/lib/query-destination.ts";
-import { createCliRuntime } from "@/lib/runtime.ts";
+import { describe, expect, spyOn, test } from 'bun:test';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-describe("writeQueryDestination", () => {
-  test("writes opaque stdout bytes without UTF-8 round-trip or trailing newline", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+import { NetworkError, getCliExitCode } from '@/lib/errors.ts';
+import { writeQueryDestination } from '@/lib/query-destination.ts';
+import { createCliRuntime } from '@/lib/runtime.ts';
+
+describe('writeQueryDestination', () => {
+  test('writes opaque stdout bytes without UTF-8 round-trip or trailing newline', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const written: Uint8Array[] = [];
-    runtime.output.writeBytes = (body) => {
+    runtime.output.writeBytes = body => {
       written.push(body);
     };
 
@@ -28,9 +33,9 @@ describe("writeQueryDestination", () => {
     expect(written[0]).toEqual(parquetLike);
   });
 
-  test("writes opaque file bytes unchanged", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
-    const path = join(dir, "out.parquet");
+  test('writes opaque file bytes unchanged', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'altertable-query-dest-'));
+    const path = join(dir, 'out.parquet');
     try {
       const parquetLike = new Uint8Array([0x50, 0x41, 0x52, 0x31, 0x00, 0xff]);
       const stream = new ReadableStream<Uint8Array>({
@@ -47,10 +52,14 @@ describe("writeQueryDestination", () => {
     }
   });
 
-  test("writes multi-chunk streams incrementally without buffering", async () => {
-    const runtime = createCliRuntime({ debug: false, json: false, agent: false });
+  test('writes multi-chunk streams incrementally without buffering', async () => {
+    const runtime = createCliRuntime({
+      debug: false,
+      json: false,
+      agent: false,
+    });
     const written: Uint8Array[] = [];
-    runtime.output.writeBytes = (body) => {
+    runtime.output.writeBytes = body => {
       written.push(body);
     };
 
@@ -74,9 +83,9 @@ describe("writeQueryDestination", () => {
     expect(written).toEqual(chunks);
   });
 
-  test("writes multi-chunk streams to a file without loss", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
-    const path = join(dir, "out.parquet");
+  test('writes multi-chunk streams to a file without loss', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'altertable-query-dest-'));
+    const path = join(dir, 'out.parquet');
     try {
       const chunks = [
         new Uint8Array([0x50, 0x41]),
@@ -94,19 +103,23 @@ describe("writeQueryDestination", () => {
 
       await writeQueryDestination(stream, { outputPath: path });
       expect(new Uint8Array(readFileSync(path))).toEqual(
-        new Uint8Array([0x50, 0x41, 0x52, 0x31, 0x00, 0xff]),
+        new Uint8Array([0x50, 0x41, 0x52, 0x31, 0x00, 0xff])
       );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  test.each(["sync", "async", "cancel-error"])(
-    "cancels the source and preserves a failed output write: %s",
-    async (mode) => {
-      const runtime = createCliRuntime({ debug: false, json: false, agent: false });
-      const writeError = new Error("broken pipe");
+  test.each(['sync', 'async', 'cancel-error'])(
+    'cancels the source and preserves a failed output write: %s',
+    async mode => {
+      const runtime = createCliRuntime({
+        debug: false,
+        json: false,
+        agent: false,
+      });
+      const writeError = new Error('broken pipe');
       runtime.output.writeBytes =
-        mode === "async"
+        mode === 'async'
           ? async () => {
               throw writeError;
             }
@@ -120,7 +133,7 @@ describe("writeQueryDestination", () => {
         },
         cancel(reason) {
           cancellationReason = reason;
-          if (mode === "cancel-error") throw new Error("cancel failed");
+          if (mode === 'cancel-error') throw new Error('cancel failed');
         },
       });
       let failure: unknown;
@@ -132,11 +145,11 @@ describe("writeQueryDestination", () => {
       expect(failure).toBe(writeError);
       expect(cancellationReason).toBe(writeError);
       expect(stream.locked).toBe(false);
-    },
+    }
   );
 
-  test("cancels the source when opening an output file fails", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
+  test('cancels the source when opening an output file fails', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'altertable-query-dest-'));
     let canceled = false;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -148,7 +161,9 @@ describe("writeQueryDestination", () => {
     });
     let failure: unknown;
     try {
-      await writeQueryDestination(stream, { outputPath: join(dir, "missing", "out.csv") });
+      await writeQueryDestination(stream, {
+        outputPath: join(dir, 'missing', 'out.csv'),
+      });
     } catch (error) {
       failure = error;
     } finally {
@@ -158,30 +173,32 @@ describe("writeQueryDestination", () => {
     expect(canceled).toBe(true);
     expect(stream.locked).toBe(false);
   });
-  test.each(["transport", "write", "none"])(
-    "preserves the primary failure when file finalization fails: %s",
-    async (mode) => {
-      const dir = mkdtempSync(join(tmpdir(), "altertable-query-dest-"));
-      const file = Bun.file(join(dir, "out.csv"));
+  test.each(['transport', 'write', 'none'])(
+    'preserves the primary failure when file finalization fails: %s',
+    async mode => {
+      const dir = mkdtempSync(join(tmpdir(), 'altertable-query-dest-'));
+      const file = Bun.file(join(dir, 'out.csv'));
       const writer = file.writer();
       const closeWriter = writer.end.bind(writer);
       const primaryError =
-        mode === "transport" ? new NetworkError("connection lost") : new Error("write failed");
-      const cleanupError = new Error("finalization failed");
-      const fileSpy = spyOn(Bun, "file").mockReturnValue(file);
-      const writerSpy = spyOn(file, "writer").mockReturnValue(writer);
-      const endSpy = spyOn(writer, "end").mockImplementation(() => {
+        mode === 'transport'
+          ? new NetworkError('connection lost')
+          : new Error('write failed');
+      const cleanupError = new Error('finalization failed');
+      const fileSpy = spyOn(Bun, 'file').mockReturnValue(file);
+      const writerSpy = spyOn(file, 'writer').mockReturnValue(writer);
+      const endSpy = spyOn(writer, 'end').mockImplementation(() => {
         throw cleanupError;
       });
       const writeSpy =
-        mode === "write"
-          ? spyOn(writer, "write").mockImplementation(() => {
+        mode === 'write'
+          ? spyOn(writer, 'write').mockImplementation(() => {
               throw primaryError;
             })
           : undefined;
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
-          if (mode === "transport") controller.error(primaryError);
+          if (mode === 'transport') controller.error(primaryError);
           else {
             controller.enqueue(Uint8Array.of(1));
             controller.close();
@@ -201,9 +218,9 @@ describe("writeQueryDestination", () => {
         await closeWriter();
         rmSync(dir, { recursive: true, force: true });
       }
-      expect(failure).toBe(mode === "none" ? cleanupError : primaryError);
-      expect(getCliExitCode(failure)).toBe(mode === "transport" ? 9 : 1);
+      expect(failure).toBe(mode === 'none' ? cleanupError : primaryError);
+      expect(getCliExitCode(failure)).toBe(mode === 'transport' ? 9 : 1);
       expect(stream.locked).toBe(false);
-    },
+    }
   );
 });

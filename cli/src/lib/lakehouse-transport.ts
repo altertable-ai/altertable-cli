@@ -1,6 +1,9 @@
-import { type HttpSendOptions } from "@/lib/http.ts";
-import { createUploadProgressReporter, shouldShowProgress } from "@/lib/progress.ts";
-import type { HttpRequest } from "@/lib/http-request.ts";
+import type { HttpRequest } from '@/lib/http-request.ts';
+import { type HttpSendOptions } from '@/lib/http.ts';
+import {
+  createUploadProgressReporter,
+  shouldShowProgress,
+} from '@/lib/progress.ts';
 
 export type LakehouseAppendOptions = {
   sync?: boolean;
@@ -41,25 +44,27 @@ export type LakehouseUploadRequestScope = {
   release: () => void;
 };
 
-export function buildLakehouseAppendRequest(input: LakehouseAppendRequestInput): HttpRequest {
+export function buildLakehouseAppendRequest(
+  input: LakehouseAppendRequestInput
+): HttpRequest {
   const params = new URLSearchParams({
     catalog: input.catalog,
     schema: input.schema,
     table: input.table,
   });
   if (input.options?.sync) {
-    params.set("sync", "true");
+    params.set('sync', 'true');
   }
   return {
-    plane: "lakehouse",
-    method: "POST",
+    plane: 'lakehouse',
+    method: 'POST',
     endpoint: `/append?${params.toString()}`,
     body: input.jsonContent,
   };
 }
 
 export function createLakehouseUploadRequest(
-  input: LakehouseUploadRequestInput,
+  input: LakehouseUploadRequestInput
 ): LakehouseUploadRequestScope {
   const params = new URLSearchParams({
     catalog: input.catalog,
@@ -71,7 +76,7 @@ export function createLakehouseUploadRequest(
 }
 
 export function createLakehouseUpsertRequest(
-  input: LakehouseUpsertRequestInput,
+  input: LakehouseUpsertRequestInput
 ): LakehouseUploadRequestScope {
   const params = new URLSearchParams({
     catalog: input.catalog,
@@ -84,7 +89,7 @@ export function createLakehouseUpsertRequest(
 
 function createLakehouseFileRequest(
   input: LakehouseUploadRequestInput | LakehouseUpsertRequestInput,
-  endpoint: string,
+  endpoint: string
 ): LakehouseUploadRequestScope {
   const file = Bun.file(input.filePath);
   let body: Blob | ReadableStream = input.contentType ? file : file.stream();
@@ -96,7 +101,7 @@ function createLakehouseFileRequest(
       input.fileSizeBytes,
       (sentBytes, totalBytes) => {
         uploadProgress.report(sentBytes, totalBytes);
-      },
+      }
     );
   } else {
     uploadProgress = createUploadProgressReporter(0);
@@ -104,8 +109,8 @@ function createLakehouseFileRequest(
 
   return {
     request: {
-      plane: "lakehouse",
-      method: "POST",
+      plane: 'lakehouse',
+      method: 'POST',
       endpoint,
       body,
       contentType: input.contentType,
@@ -118,7 +123,7 @@ function createLakehouseFileRequest(
 function wrapStreamWithByteProgress(
   source: ReadableStream<Uint8Array>,
   totalBytes: number,
-  onBytesSent: (sentBytes: number, totalBytes: number) => void,
+  onBytesSent: (sentBytes: number, totalBytes: number) => void
 ): ReadableStream<Uint8Array> {
   const reader = source.getReader();
   let sentBytes = 0;
