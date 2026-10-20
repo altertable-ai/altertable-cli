@@ -1,6 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { extractDataAppManifest } from "@altertable/data-app-manifest";
 import serverScript from "@/commands/app/lib/file-dev-server.ts.txt";
 import { recommendedDataAppVersion } from "@/commands/app/lib/package.ts";
 import { dataAppPayload } from "@/commands/app/lib/payload.ts";
@@ -12,6 +11,8 @@ import { ConfigurationError } from "@/lib/errors.ts";
 /** Prepare a regular dev project backed by the starter's pinned runtime. */
 export async function prepareFilePreview(file: string, profile: string): Promise<string> {
   const source = await readRequiredFile(file, "source");
+  // Keep the TypeScript compiler off the startup path of other CLI commands.
+  const { extractDataAppManifest } = await import("@altertable/data-app-manifest");
   const { manifest, diagnostics } = extractDataAppManifest(source);
   if (!manifest) {
     const details = diagnostics
