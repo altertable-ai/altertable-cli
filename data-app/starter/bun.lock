@@ -5,9 +5,9 @@
     "": {
       "name": "data-app-starter",
       "dependencies": {
-        "@altertable/data-app": "0.71.0",
-        "@altertable/data-app-bun": "0.71.0",
-        "@altertable/data-app-react": "0.71.0",
+        "@altertable/data-app": "0.72.0",
+        "@altertable/data-app-bun": "0.72.0",
+        "@altertable/data-app-react": "0.72.0",
         "react": "19.3.0",
         "react-dom": "19.3.0",
       },
@@ -23,11 +23,11 @@
     },
   },
   "packages": {
-    "@altertable/data-app": ["@altertable/data-app@0.71.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-2v4vy3BJnKHFp7LJ60xwSipBrwZED+6v+iFKmKYy0k3hHEf5iUjApR7NwUJVNC5dJxDoQPLGLesQZrA18VoOuw=="],
+    "@altertable/data-app": ["@altertable/data-app@0.72.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-F1wgk5ANgxrl2y48w2D0PpWkv8SHTiPapBbmGrlrb4OQjgj2JAjmitVBUW/luMj0M3E7hwVAjOvld4JT6KbloQ=="],
 
-    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.71.0", "", { "dependencies": { "@altertable/data-app": "0.71.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" } }, "sha512-uxYbvGeWhfRAVfdWAHWDKDW17csmpQocIK/STewR5Cb+X7HS51CJY/hdXSKXBBMsejMH6CW69oy49PBOnq1rTw=="],
+    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.72.0", "", { "dependencies": { "@altertable/data-app": "0.72.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" } }, "sha512-fMjSn8TIBo5oSQbimlHHyfUauZ/xxKvKCl7Jze7xUrIPSLccZXAesHjBIHwoKmKjXstBheWp47asrjooN5pLgw=="],
 
-    "@altertable/data-app-react": ["@altertable/data-app-react@0.71.0", "", { "dependencies": { "@altertable/data-app": "0.71.0", "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.0", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.48.0", "react-aria-components": "1.21.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-1qT4h94ZUWUh6dkJnqpo1a+b0HNSdZeu6Fs32bIQQy/qZyevPhuE0HKK2O6pEgzcQmYJPlUKmxTn7HquKtprNQ=="],
+    "@altertable/data-app-react": ["@altertable/data-app-react@0.72.0", "", { "dependencies": { "@altertable/data-app": "0.72.0", "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.0", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.48.0", "react-aria-components": "1.21.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-SEJ3tHdZ6oUZm+pJLiesfnknYQfSd3/Aymhip3qA08gu3uJCQ1I2ocXLmzj6zcZZXFmtDwGhkWprVGXiomtxGA=="],
 
     "@altertable/lakehouse": ["@altertable/lakehouse@0.4.1", "", {}, "sha512-m7d15cWt+WUGW7lVw2KYGD+Se8MzO25G7SWSuFd+OasBxWmOJNa2IrgvOHGVEbnZ+kexTUy9NjAGQ69sG4V91w=="],
 

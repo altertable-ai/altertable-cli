@@ -8,6 +8,7 @@ import { ConfigurationError } from "@/lib/errors.ts";
 export function assertAppScope(
   scope: unknown,
   profile: { organization?: string; organizationName?: string; environment?: string },
+  source = "app.json",
 ): void {
   const value = scope as { organization?: unknown; environment?: unknown } | null;
   if (
@@ -21,9 +22,19 @@ export function assertAppScope(
     (Boolean(profile.environment) && value.environment !== profile.environment)
   ) {
     throw new ConfigurationError(
-      "app.json scope does not match the selected profile. Select the matching profile or update the app scope before querying.",
+      `${source} scope does not match the selected profile. Select the matching profile or update the app scope before querying.`,
     );
   }
+}
+
+export function profileAppScope(profile: string) {
+  return {
+    organization: configGet("organization_slug", profile).trim(),
+    organizationName: configGet("organization_name", profile).trim(),
+    environment: isFromEnvProfile(profile)
+      ? readEnv("ALTERTABLE_ENV")
+      : configGet("api_key_env", profile).trim(),
+  };
 }
 
 export async function checkAppScope(directory: string, profile: string): Promise<void> {
@@ -33,11 +44,5 @@ export async function checkAppScope(directory: string, profile: string): Promise
   } catch {
     throw new ConfigurationError("Cannot read a valid app.json for profile scope verification.");
   }
-  assertAppScope(manifest?.scope, {
-    organization: configGet("organization_slug", profile).trim(),
-    organizationName: configGet("organization_name", profile).trim(),
-    environment: isFromEnvProfile(profile)
-      ? readEnv("ALTERTABLE_ENV")
-      : configGet("api_key_env", profile).trim(),
-  });
+  assertAppScope(manifest?.scope, profileAppScope(profile));
 }

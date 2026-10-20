@@ -1,0 +1,17 @@
+import { localLakehouse } from "@altertable/data-app-bun";
+import { serveAppFile } from "@altertable/data-app-bun/preview";
+
+const preview = await serveAppFile({
+  file: process.env.ALTERTABLE_APP_FILE,
+  port: Number(process.env.PORT),
+  lakehouse: localLakehouse(),
+  resolveDependency: (specifier) => Bun.resolveSync(specifier, import.meta.dir),
+});
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, async () => {
+    await preview.stop();
+    process.exit(0);
+  });
+}
+console.log(`Data app running at ${preview.url} (${process.env.ALTERTABLE_APP_FILE})`);

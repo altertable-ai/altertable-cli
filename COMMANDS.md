@@ -423,7 +423,7 @@ altertable app create|dev|build|lint|upgrade|validate|publish|update
 **Subcommands**
 
 - `create` — Create a local data app project with a live connection check.
-- `dev` — Preview a data app locally with lakehouse access.
+- `dev` — Preview a local data app directory, or a single-file data app, with lakehouse access.
 - `build` — Typecheck and build a local data app without Altertable credentials.
 - `lint` — Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
 - `upgrade` — Update a local data app's package to the CLI's tested version.
@@ -436,6 +436,7 @@ altertable app create|dev|build|lint|upgrade|validate|publish|update
 ```bash
 altertable app create my-app
 altertable app dev
+altertable app dev --file index.tsx
 altertable app lint
 altertable app build
 altertable app upgrade
@@ -477,7 +478,7 @@ altertable --profile production app create product-pulse
 
 #### `altertable app dev`
 
-Preview a data app locally with lakehouse access.
+Preview a local data app directory, or a single-file data app, with lakehouse access.
 
 **Usage**
 
@@ -490,7 +491,8 @@ altertable app dev [options]
 | Option | Description |
 | --- | --- |
 | `--dir <DIR>` | App directory (default: current directory). |
-| `--port <PORT>` | Local dev server port (1–65535; default: app setting). |
+| `--file <FILE>` | Path to a single-file React data app (index.tsx) to preview instead of --dir. Queries are declared in the file via defineDataApp. |
+| `--port <PORT>` | Local dev server port (1–65535; default: app setting, or 25837 for --file). |
 
 **Examples**
 
@@ -498,6 +500,7 @@ altertable app dev [options]
 altertable app dev
 altertable app dev --port 3022
 altertable --profile staging app dev --dir ./my-app
+altertable app dev --file ./index.tsx
 ```
 
 #### `altertable app build`
