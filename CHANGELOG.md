@@ -39,6 +39,21 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.13.0](https://github.com/altertable-ai/altertable-cli/compare/v1.12.0...v1.13.0) (2026-10-20)
+
+
+### Features
+
+* **app:** adopt split data-app packages ([#160](https://github.com/altertable-ai/altertable-cli/issues/160)) ([7725d45](https://github.com/altertable-ai/altertable-cli/commit/7725d4566cd9dfcb521d008d4868c0c23c1223fc))
+* **apps:** preview single-file data apps with app dev --file ([#141](https://github.com/altertable-ai/altertable-cli/issues/141)) ([7dbc130](https://github.com/altertable-ai/altertable-cli/commit/7dbc130a0e4d3b1894eee1c5cacb049a804b0357))
+* **query:** read SQL from [@file](https://github.com/file) or stdin (@-) ([#163](https://github.com/altertable-ai/altertable-cli/issues/163)) ([1b0a5e9](https://github.com/altertable-ai/altertable-cli/commit/1b0a5e97c1c6e039d06145ad3414d4648abb69f3))
+
+
+### Bug Fixes
+
+* **config:** keep credential storage independent of working directories ([#158](https://github.com/altertable-ai/altertable-cli/issues/158)) ([4902463](https://github.com/altertable-ai/altertable-cli/commit/4902463ee7d9ff46471e97c25eccd412d54a32d1))
+* **query:** surface engine errors and preserve stream failures ([#159](https://github.com/altertable-ai/altertable-cli/issues/159)) ([f892be8](https://github.com/altertable-ai/altertable-cli/commit/f892be85e102201d54f8f7b8406305ad6acf5fe5))
+
 ## [1.12.0](https://github.com/altertable-ai/altertable-cli/compare/v1.11.0...v1.12.0) (2026-10-18)
 
 
