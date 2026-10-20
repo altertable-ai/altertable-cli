@@ -211,6 +211,49 @@ describe('query command', () => {
     );
   });
 
+  test('sends a statement read from --file', async () => {
+    const sqlPath = workspace.writeFile(
+      'report.sql',
+      'SELECT id FROM analytics.main.users\n'
+    );
+    workspace.writeMocks([
+      { urlPattern: '/query', method: 'POST', body: QUERY_RESPONSE },
+    ]);
+
+    await runCommandWithTestRuntime(['query', '--file', sqlPath]);
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? '')).toEqual({
+      statement: 'SELECT id FROM analytics.main.users\n',
+      compute_size: 'AUTO',
+    });
+  });
+
+  test('rejects a positional statement together with --file', async () => {
+    const sqlPath = workspace.writeFile('report.sql', 'SELECT 1');
+    expect(
+      runCommandWithTestRuntime(['query', 'SELECT 1', '--file', sqlPath])
+    ).rejects.toThrow('Provide either a SQL statement or --file, not both.');
+  });
+
+  test('requires a statement or --file', async () => {
+    expect(runCommandWithTestRuntime(['query'])).rejects.toThrow(
+      'Provide a SQL statement, e.g. altertable query "SELECT 1" or altertable query --file report.sql.'
+    );
+  });
+
+  test('rejects a missing --file path', async () => {
+    expect(
+      runCommandWithTestRuntime(['query', '--file', '/no/such/report.sql'])
+    ).rejects.toThrow('File not found: /no/such/report.sql');
+  });
+
+  test('rejects an empty --file', async () => {
+    const sqlPath = workspace.writeFile('empty.sql', '  \n');
+    expect(
+      runCommandWithTestRuntime(['query', '--file', sqlPath])
+    ).rejects.toThrow(`SQL file is empty: ${sqlPath}`);
+  });
+
   test('URL-encodes query identifiers', async () => {
     const queryId = 'query/id+special';
     const encodedQueryId = encodeURIComponent(queryId);

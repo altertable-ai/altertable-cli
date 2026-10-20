@@ -1525,7 +1525,7 @@
           "command": "altertable query",
           "description": "Run SQL queries against the lakehouse.",
           "usage": [
-            "altertable query [options] <STATEMENT>",
+            "altertable query [options] [STATEMENT]",
             "altertable query show|cancel"
           ],
           "aliases": [],
@@ -1535,7 +1535,7 @@
               "aliases": [],
               "type": "positional",
               "description": "SQL statement to run",
-              "required": true,
+              "required": false,
               "repeatable": false,
               "scope": "command",
               "values": [],
@@ -1543,6 +1543,16 @@
             }
           ],
           "options": [
+            {
+              "name": "file",
+              "aliases": [],
+              "type": "string",
+              "description": "Path to a file containing the SQL statement; use - for stdin",
+              "required": false,
+              "repeatable": false,
+              "scope": "command",
+              "values": []
+            },
             {
               "name": "format",
               "aliases": [],
@@ -1684,6 +1694,7 @@
             "altertable query \"SELECT id, email, plan FROM analytics.main.users LIMIT 10\"",
             "altertable query \"SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10\" --json",
             "altertable query \"SELECT 1\" --format csv --output results.csv",
+            "altertable query --file report.sql --format csv --output results.csv",
             "altertable query show <query-id>"
           ],
           "subcommands": [

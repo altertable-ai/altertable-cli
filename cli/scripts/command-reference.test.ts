@@ -62,7 +62,7 @@ describe('command reference', () => {
     const reference = renderCommandReferenceMarkdown(await resolveReference());
 
     expect(reference).toContain(
-      '```bash\naltertable query [options] <STATEMENT>\naltertable query show|cancel\n```'
+      '```bash\naltertable query [options] [STATEMENT]\naltertable query show|cancel\n```'
     );
     expect(reference).toContain('```bash\naltertable profile env [NAME]\n```');
     expect(reference).toContain(

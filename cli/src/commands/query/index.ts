@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+
 import { queryCancelCommand } from '@/commands/query/cancel.ts';
 import { queryRunArgs } from '@/commands/query/lib/args.ts';
 import { queryShowCommand } from '@/commands/query/show.ts';
-import { optionalStringArg } from '@/lib/args.ts';
+import { optionalStringArg, type ParsedArgsRecord } from '@/lib/args.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
 import {
@@ -25,6 +27,7 @@ export const queryCommand = defineCommand({
       'altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"',
       'altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json',
       'altertable query "SELECT 1" --format csv --output results.csv',
+      'altertable query --file report.sql --format csv --output results.csv',
       'altertable query show <query-id>',
     ],
   },
@@ -34,12 +37,7 @@ export const queryCommand = defineCommand({
     cancel: queryCancelCommand,
   },
   async run({ args, rawArgs, execution, sink }) {
-    const statement = optionalStringArg(args, 'statement');
-    if (statement === undefined) {
-      throw new CliError(
-        'Provide a SQL statement, e.g. altertable query "SELECT 1".'
-      );
-    }
+    const statement = resolveStatement(args);
     const {
       format,
       displayOptions,
@@ -85,3 +83,40 @@ export const queryCommand = defineCommand({
     );
   },
 });
+
+function resolveStatement(args: ParsedArgsRecord): string {
+  const statement = optionalStringArg(args, 'statement');
+  const filePath = optionalStringArg(args, 'file');
+  if (statement !== undefined && filePath !== undefined) {
+    throw new CliError('Provide either a SQL statement or --file, not both.');
+  }
+  if (statement !== undefined) {
+    return statement;
+  }
+  if (filePath === undefined) {
+    throw new CliError(
+      'Provide a SQL statement, e.g. altertable query "SELECT 1" or altertable query --file report.sql.'
+    );
+  }
+
+  const contents = readSqlFile(filePath);
+  if (contents.trim() === '') {
+    throw new CliError(
+      filePath === '-'
+        ? 'SQL from stdin is empty.'
+        : `SQL file is empty: ${filePath}`
+    );
+  }
+  return contents;
+}
+
+function readSqlFile(filePath: string): string {
+  if (filePath === '-') {
+    return readFileSync(0, 'utf8');
+  }
+  try {
+    return readFileSync(filePath, 'utf8');
+  } catch {
+    throw new CliError(`File not found: ${filePath}`);
+  }
+}

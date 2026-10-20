@@ -210,7 +210,7 @@ describe('renderAltertableUsage', () => {
 
     expect(help.command).toBe('altertable query');
     expect(help.usage).toEqual([
-      'altertable query [flags] <STATEMENT>',
+      'altertable query [flags] [STATEMENT]',
       'altertable query show|cancel',
     ]);
     expect(help.arguments).toContainEqual(
@@ -248,7 +248,7 @@ describe('renderAltertableUsage', () => {
 
     const queryUsage = await renderAltertableUsage(query, queryParent);
     expect(queryUsage).toContain(
-      'Usage\n    altertable query [flags] <STATEMENT>\n    altertable query show|cancel'
+      'Usage\n    altertable query [flags] [STATEMENT]\n    altertable query show|cancel'
     );
     expect(queryUsage).not.toContain('[STATEMENT] show|cancel');
 

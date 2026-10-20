@@ -287,7 +287,7 @@ describe('command descriptor', () => {
       expect.objectContaining({
         name: 'statement',
         parserRequired: false,
-        required: true,
+        required: false,
       })
     );
     expect(append?.arguments).toEqual(

@@ -883,7 +883,7 @@ Run SQL queries against the lakehouse.
 **Usage**
 
 ```bash
-altertable query [options] <STATEMENT>
+altertable query [options] [STATEMENT]
 altertable query show|cancel
 ```
 
@@ -891,12 +891,13 @@ altertable query show|cancel
 
 | Argument | Description |
 | --- | --- |
-| `<STATEMENT>` | SQL statement to run Required. |
+| `[STATEMENT]` | SQL statement to run |
 
 **Options**
 
 | Option | Description |
 | --- | --- |
+| `--file <FILE>` | Path to a file containing the SQL statement; use - for stdin |
 | `--format <CSV\|JSONL\|PARQUET\|MARKDOWN>` | Result format: csv, jsonl, and parquet stream from the API; markdown is rendered by the CLI. Use global --json for structured JSON Values: csv, jsonl, parquet, markdown. |
 | `--layout <AUTO\|TABLE\|LINE>` | Human layout: auto, table, or line Values: auto, table, line. |
 | `--columns <COLUMNS>` | Comma-separated columns to show |
@@ -921,6 +922,7 @@ altertable query show|cancel
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json
 altertable query "SELECT 1" --format csv --output results.csv
+altertable query --file report.sql --format csv --output results.csv
 altertable query show <query-id>
 ```
 

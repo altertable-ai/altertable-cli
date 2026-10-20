@@ -11,7 +11,11 @@ export const queryRunArgs = defineArguments({
     type: 'positional',
     description: 'SQL statement to run',
     required: false,
-    directRequired: true,
+  },
+  file: {
+    type: 'string',
+    description: 'Path to a file containing the SQL statement; use - for stdin',
+    completion: 'file',
   },
   ...queryApiResultFormatArgs,
   ...queryDisplayArgs,
