@@ -335,6 +335,10 @@ You can also override endpoints per-command with flags:
 ```bash
 altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 
+# Read SQL from a file, or from stdin with @-
+altertable query @report.sql
+cat report.sql | altertable query @-
+
 # Human layout and script-friendly formats
 altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10"
 altertable query "SELECT event, user_id, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --layout auto

@@ -8,7 +8,7 @@ const lakehouseEnv = {
   ALTERTABLE_LAKEHOUSE_PASSWORD: "testpass",
 } as const;
 
-describe("altertable query --file", () => {
+describe("altertable query @-", () => {
   let workspace: TestWorkspace;
 
   beforeAll(async () => {
@@ -21,7 +21,7 @@ describe("altertable query --file", () => {
       { method: "POST", urlPattern: "/query", body: QUERY_RESPONSE },
     ]);
 
-    const result = await workspace.runCommand("altertable --json query --file -", {
+    const result = await workspace.runCommand("altertable --json query @-", {
       stdin: "SELECT 99 FROM dual",
       env: lakehouseEnv,
     });
@@ -33,7 +33,7 @@ describe("altertable query --file", () => {
   });
 
   test("rejects empty stdin", async () => {
-    const result = await workspace.runCommand("altertable --json query --file -", {
+    const result = await workspace.runCommand("altertable --json query @-", {
       stdin: "  \n",
       env: lakehouseEnv,
     });
