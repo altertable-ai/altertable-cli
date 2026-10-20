@@ -5,7 +5,7 @@
     "": {
       "name": "cli",
       "dependencies": {
-        "@altertable/data-app-manifest": "0.72.0",
+        "@altertable/data-app-manifest": "0.73.0",
         "@clack/prompts": "1.7.0",
         "oauth4webapi": "3.8.7",
         "yaml": "2.9.0",
@@ -24,7 +24,7 @@
     },
   },
   "packages": {
-    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.72.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-404JXukgR2zGt52NbgDohuvtlx2kt8v54Yb8EWs2b2RjDKmOwQ2gnQJBQzAIUtsFu1Gup6awv4gc9qj7eazvPA=="],
+    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.73.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-68NC4KuB2YoyCU9+MGdRHpnUJX43D/DJ8UnmBZ7dG5LezgClBf/w7wpRfX9jx/OTwGsa0+bFgGnCLOEA+5cnqA=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 

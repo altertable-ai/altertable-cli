@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import serverScript from '@/commands/app/lib/file-dev-server.ts.txt';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
 import { dataAppPayload } from '@/commands/app/lib/payload.ts';
 import { readRequiredFile } from '@/commands/app/lib/remote.ts';
@@ -37,13 +36,12 @@ export async function prepareFilePreview(
   );
   const starter = dataAppPayload.starter;
   const packageJson = JSON.parse(starter['package.json']!);
-  packageJson.scripts = { dev: 'bun server.ts' };
+  packageJson.scripts = { dev: 'data-app-preview' };
   await mkdir(directory, { recursive: true });
   const files = {
     'package.json': `${JSON.stringify(packageJson, null, 2)}\n`,
     'bun.lock': starter['bun.lock']!,
     'bunfig.toml': starter['bunfig.toml']!,
-    'server.ts': serverScript,
   };
   await Promise.all(
     Object.entries(files).map(([name, content]) =>
