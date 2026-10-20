@@ -38,6 +38,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # Draft releases have no Git tag until artifact publication completes.
+          skip-github-pull-request: true
 
   release-context:
     name: Resolve release context
@@ -343,3 +345,44 @@ jobs:
           RELEASE_ROOT: ${{ github.workspace }}
           RELEASE_TAG: ${{ needs.release-context.outputs.tag_name }}
         run: bun run .release-orchestration/cli/scripts/publish-release.ts publish-github
+
+  release-pull-request:
+    name: Prepare next release PR
+    needs: [release-context, release-artifacts]
+    if: >-
+      !cancelled() &&
+      needs.release-context.result == 'success' &&
+      (needs.release-artifacts.result == 'success' ||
+      needs.release-context.outputs.should_release != 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check release baseline tag
+        id: baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.release-please-manifest.json?ref=main" \
+            --jq '.content | @base64d | fromjson | .["."]')"
+          tag_exists="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v${version}" \
+            --jq "any(.[]; .ref == \"refs/tags/v${version}\")")"
+          if [[ "${tag_exists}" != "true" ]]; then
+            echo "::warning::Release v${version} has no Git tag yet; complete release publication before preparing the next PR"
+            exit 0
+          fi
+          echo "ready=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare release PR
+        if: steps.baseline.outputs.ready == 'true'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
