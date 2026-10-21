@@ -51,11 +51,9 @@ export const appDevCommand = defineCommand({
       : appDirectory(args.dir);
     requireAppScripts(directory, ['dev']);
     if (!file) await checkAppScope(directory, execution.profile);
-    const installExitCode = await runAppCommand(
-      file ? 'install-frozen' : 'install',
-      directory
-    );
-    if (installExitCode !== 0) return { exitCode: EXIT_GENERIC };
+    if (!file && (await runAppCommand('install', directory)) !== 0) {
+      return { exitCode: EXIT_GENERIC };
+    }
     const proxy = startAppDevProxy(execution);
     try {
       const environment = {

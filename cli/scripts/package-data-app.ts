@@ -2,7 +2,7 @@ import type { BunPlugin } from 'bun';
 
 import { readDataAppPayload } from '@/commands/app/lib/distribution.ts';
 
-/** Both npm and native releases embed the same deterministic starter template. */
+/** Both npm and native releases embed the same deterministic project templates. */
 export function dataAppPlugin(): BunPlugin {
   return {
     name: 'data-app-starter',
