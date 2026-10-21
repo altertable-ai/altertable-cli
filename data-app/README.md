@@ -21,7 +21,8 @@ showing Connected. App queries, data context, views, and appearance remain app-o
 
 ## Ownership and distribution
 
-The CLI embeds only the starter allowlist in `cli/src/commands/app/lib/distribution.ts`.
+The CLI embeds the starter and internal file-preview project allowlists in
+`cli/src/commands/app/lib/distribution.ts`.
 Both npm and native CLI builds can scaffold an app without reading this checkout or accessing
 the network. Installing the generated app needs registry access or a populated Bun cache.
 Generated projects commit their source, package manifest, and lockfile; they do not vendor runtime
@@ -42,10 +43,10 @@ The starter owns React, ReactDOM, and its authoring tools. The package owns its 
 dependencies. The browser entry calls `injectDataAppStyles()` before mounting. The app's `AGENTS.md`
 points to the installed package guide and docs; dependency guides are not assumed to load automatically.
 
-To adopt a package release, update the exact pins for packages used in `starter/package.json` and
-`tests/package.json`, regenerate both lockfiles, and run the checks below. Never resolve `latest`
-during app creation. Develop package changes in the package repository; the CLI has no runtime
-source watcher.
+To adopt a package release, update the exact pins for packages used in `starter/package.json`,
+`tests/package.json`, and `file-preview/package.json`, regenerate their lockfiles, and run the checks
+below. Never resolve `latest` during app creation. Develop package changes in the package
+repository; the CLI has no runtime source watcher.
 
 ## Upgrades
 

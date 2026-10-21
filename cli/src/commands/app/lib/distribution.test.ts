@@ -24,8 +24,19 @@ afterEach(async () => {
 test('distribution embeds a deterministic starter with an exact package pin and no runtime', async () => {
   const payload = await readDataAppPayload();
   expect(await readDataAppPayload()).toEqual(payload);
-  expect(Object.keys(payload)).toEqual(['starter']);
+  expect(Object.keys(payload)).toEqual(['starter', 'filePreview']);
   expect(Object.keys(payload.starter)).toContain('src/App.tsx');
+  const previewPackage = JSON.parse(payload.filePreview['package.json']!);
+  const starterPackage = JSON.parse(payload.starter['package.json']!);
+  expect(previewPackage.dependencies).toEqual({
+    ...starterPackage.dependencies,
+    '@altertable/data-app-manifest': recommendedDataAppVersion(),
+  });
+  expect(payload.filePreview['bun.lock']).toContain('typescript');
+  expect(payload.filePreview['extract-manifest.js']).toContain(
+    'extractDataAppManifest'
+  );
+
   for (const path of Object.keys(payload.starter)) {
     expect(path).not.toMatch(
       /(^|\/)(tests|fixtures|node_modules|dist|\.altertable)(\/|$)|\.txt$/

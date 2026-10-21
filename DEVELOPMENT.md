@@ -89,6 +89,8 @@ git submodule update --init --recursive
 
 ## Build and package
 
+Builds enforce a 1 MiB uncompressed bundle budget in `cli/scripts/check-bundle-size.ts`.
+
 The JS bundle is the npm `bin` entry and a GitHub Release asset:
 
 ```bash

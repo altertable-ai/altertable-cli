@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.
+
 - Complete stdin-based credential configuration before exiting on Windows.
 
 - Keep profiles and credentials in the user's home directory when `HOME` is unset, and reject relative config and shell-completion directory settings.

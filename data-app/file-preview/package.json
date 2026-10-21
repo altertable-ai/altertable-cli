@@ -1,0 +1,16 @@
+{
+  "name": "data-app-file-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "data-app-preview"
+  },
+  "dependencies": {
+    "@altertable/data-app": "0.73.0",
+    "@altertable/data-app-bun": "0.73.0",
+    "@altertable/data-app-react": "0.73.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@altertable/data-app-manifest": "0.73.0"
+  }
+}

@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
+import { checkBundleSize } from '@/../scripts/check-bundle-size.ts';
 import { dataAppPlugin } from '@/../scripts/package-data-app.ts';
 
 export const NPM_BUNDLE_OPTIONS = {
@@ -29,10 +30,7 @@ export async function buildNpmBundle(
       `npm bundle failed:\n${result.logs.map(String).join('\n')}`
     );
   }
-  const output = Bun.file(outputPath);
-  if (!(await output.exists()) || output.size === 0) {
-    throw new Error(`npm bundle is missing or empty: ${outputPath}.`);
-  }
+  await checkBundleSize(outputPath);
   return outputPath;
 }
 

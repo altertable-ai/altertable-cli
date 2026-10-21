@@ -46,11 +46,11 @@ throw new Error("must not execute");`
   const manifest = JSON.parse(
     await readFile(join(directory, 'package.json'), 'utf8')
   );
-  const starter = JSON.parse(dataAppPayload.starter['package.json']!);
+  const starter = JSON.parse(dataAppPayload.filePreview['package.json']!);
   expect(manifest.dependencies).toEqual(starter.dependencies);
   expect(manifest.scripts).toEqual({ dev: 'data-app-preview' });
   expect(await readFile(join(directory, 'bun.lock'), 'utf8')).toBe(
-    dataAppPayload.starter['bun.lock']!
+    dataAppPayload.filePreview['bun.lock']!
   );
   expect(existsSync(join(directory, 'server.ts'))).toBe(false);
   expect(
@@ -58,7 +58,7 @@ throw new Error("must not execute");`
   ).toBe(directory);
 });
 
-test('rejects invalid declarations and mismatched scopes before creating the runtime', async () => {
+test('rejects invalid declarations and mismatched scopes before launching the preview', async () => {
   await rejects(
     prepare('export const app = 1;'),
     /Could not extract the data app manifest\.\n1:/
@@ -70,5 +70,5 @@ test('rejects invalid declarations and mismatched scopes before creating the run
   ]) {
     await rejects(prepare(app(scope)), /data app file scope does not match/);
   }
-  expect(existsSync(join(workspace.home, 'data-app-dev'))).toBe(false);
+  expect(existsSync(join(workspace.home, 'data-app-dev'))).toBe(true);
 });
