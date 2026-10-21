@@ -35,7 +35,6 @@ Each consumer declares only the packages it uses:
 | `@altertable/data-app`       | Starter definitions, contracts, and clients; browser-test server |
 | `@altertable/data-app-react` | Starter UI and browser-test fixtures                             |
 | `@altertable/data-app-bun`   | Starter local server and single-file preview                     |
-| `@altertable/data-app-manifest` | Internal single-file preview scope validation                 |
 
 Browser-test fixtures live under `starter/` and resolve React authoring from the starter's
 own dependencies. Keep the browser-test server's manifest limited to its direct dependencies.
@@ -46,8 +45,8 @@ points to the installed package guide and docs; dependency guides are not assume
 
 To adopt a package release, update the exact pins for packages used in `starter/package.json`,
 `tests/package.json`, and `file-preview/package.json`, regenerate their lockfiles, and run the checks
-below. Never resolve `latest` during app creation. Develop package changes in the package repository; the CLI has no runtime
-source watcher.
+below. Never resolve `latest` during app creation. Develop package changes in the package
+repository; the CLI has no runtime source watcher.
 
 ## Upgrades
 
@@ -76,13 +75,3 @@ at phone and desktop widths. CLI tests cover offline scaffolding, npm consumptio
 peer checks, and failed resolution. Release smoke checks create an app outside the checkout, install its
 frozen lockfile, and run `app lint` with the packaged CLI. The minimum Bun compatibility job
 checks scaffolding only; app builds use the repository's current toolchain.
-
-### Internal single-file preview runtime
-
-`file-preview/` owns the cached runtime used by `altertable app dev --file`.
-Its package manifest, frozen lockfile, Bun configuration, and static manifest
-extractor are embedded as project files in the CLI. Published packages, including
-manifest tooling and TypeScript, install into the cache instead of the CLI bundle.
-Keep its public runtime pins aligned with `starter/`; regenerate its lock with
-`bun install --cwd data-app/file-preview` when updating dependencies.
-Scope validation runs in this runtime before the CLI grants lakehouse access.

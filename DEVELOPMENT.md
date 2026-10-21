@@ -89,10 +89,7 @@ git submodule update --init --recursive
 
 ## Build and package
 
-Every JavaScript build enforces a **1 MiB uncompressed size budget** in
-`cli/scripts/check-bundle-size.ts`, including CI package checks and release builds.
-The bundle also feeds native compilation, so this catches dependency bloat before
-it reaches either distribution. Review bundled dependencies before raising the limit.
+Builds enforce a 900 KiB uncompressed bundle budget in `cli/scripts/check-bundle-size.ts`.
 
 The JS bundle is the npm `bin` entry and a GitHub Release asset:
 
