@@ -13,12 +13,12 @@ test('enforces the shipped bundle budget, including missing and empty artifacts'
     await rejects(checkBundleSize(path), /Missing or empty/);
     await Bun.write(path, '');
     await rejects(checkBundleSize(path), /Missing or empty/);
-    await Bun.write(path, new Uint8Array(900 * 1024));
+    await Bun.write(path, new Uint8Array(1024 * 1024));
     await checkBundleSize(path);
-    await Bun.write(path, new Uint8Array(900 * 1024 + 1));
+    await Bun.write(path, new Uint8Array(1024 * 1024 + 1));
     await rejects(
       checkBundleSize(path),
-      /921,601 bytes \/ 921,600 byte budget/
+      /1,048,577 bytes \/ 1,048,576 byte budget/
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

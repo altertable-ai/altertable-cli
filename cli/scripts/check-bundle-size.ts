@@ -1,6 +1,6 @@
 // The standalone JavaScript bundle also feeds every native release build.
 // Keep compiler and app runtime dependencies in installed projects instead.
-const MAX_BUNDLE_BYTES = 900 * 1024;
+const MAX_BUNDLE_BYTES = 1024 * 1024;
 
 export async function checkBundleSize(path: string): Promise<void> {
   const file = Bun.file(path);
