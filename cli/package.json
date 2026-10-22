@@ -49,19 +49,19 @@
     "test:watch": "bun test --watch"
   },
   "dependencies": {
-    "@clack/prompts": "1.7.0",
-    "oauth4webapi": "3.8.7",
-    "yaml": "2.9.0"
+    "@clack/prompts": "1.8.1",
+    "oauth4webapi": "3.8.8",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
-    "eslint-plugin-no-relative-import-paths": "1.6.1",
-    "knip": "6.32.2",
+    "eslint-plugin-no-relative-import-paths": "1.7.3",
+    "knip": "6.42.0",
     "openapi-typescript": "7.13.0",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
-    "oxlint-tsgolint": "7.0.2003",
-    "typescript": "6.0.3",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "typescript": "7.0.2",
     "typescript-checker": "npm:typescript@7.0.2"
   },
   "engines": {
