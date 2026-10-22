@@ -362,6 +362,30 @@ describe('shared dispatcher', () => {
   });
 });
 
+describe('native fetch timeout', () => {
+  test.each([false, true])(
+    'is disabled so long-running streams outlive 300s of silence (ignoreSslErrors=%p)',
+    ignoreSslErrors => {
+      setCliContext({
+        debug: false,
+        json: false,
+        agent: false,
+        ignoreSslErrors,
+      });
+      const init = buildFetchInit(
+        {
+          method: 'POST',
+          url: 'https://api.altertable.test/query',
+          authHeader: 'Authorization: Basic test',
+        },
+        {},
+        AbortSignal.timeout(1_000)
+      ) as { timeout?: unknown };
+      expect(init.timeout).toBe(false);
+    }
+  );
+});
+
 describe('ignore ssl errors', () => {
   const request = {
     method: 'GET',

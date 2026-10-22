@@ -59,6 +59,8 @@ type MockHttpEntry = {
 type UndiciAgentOptions = {
   keepAliveTimeout: number;
   keepAliveMaxTimeout: number;
+  headersTimeout: number;
+  bodyTimeout: number;
   connect?: { rejectUnauthorized: boolean };
 };
 
@@ -86,6 +88,8 @@ export function getSharedDispatcher(): unknown {
   sharedDispatcher = createDispatcher({
     keepAliveTimeout: 30_000,
     keepAliveMaxTimeout: 60_000,
+    headersTimeout: 0,
+    bodyTimeout: 0,
   });
 
   return sharedDispatcher;
@@ -104,6 +108,8 @@ function getInsecureDispatcher(): unknown {
   insecureDispatcher = createDispatcher({
     keepAliveTimeout: 30_000,
     keepAliveMaxTimeout: 60_000,
+    headersTimeout: 0,
+    bodyTimeout: 0,
     connect: { rejectUnauthorized: false },
   });
 
@@ -130,8 +136,12 @@ function warnInsecureTlsOnce(): void {
 }
 
 /**
- * Bun's fetch reads `tls`; Node/undici reads `dispatcher`. Set both so the
- * escape hatch works under either runtime.
+ * Bun's fetch reads `tls` and `timeout`; Node/undici reads `dispatcher`. Set
+ * both so the escape hatch works under either runtime.
+ *
+ * Both runtimes otherwise abort a response that stays silent for 300s, which
+ * kills long-running queries whatever `--read-timeout` says. The connect and
+ * read timeouts are enforced through `signal` instead.
  */
 export function buildFetchInit(
   options: HttpSendOptions,
@@ -148,6 +158,7 @@ export function buildFetchInit(
     headers,
     body: options.body,
     signal,
+    timeout: false,
     dispatcher: ignoreSslErrors
       ? getInsecureDispatcher()
       : getSharedDispatcher(),
