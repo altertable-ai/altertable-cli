@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
+
 - Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.
 
 - Complete stdin-based credential configuration before exiting on Windows.
