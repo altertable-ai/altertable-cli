@@ -50,6 +50,7 @@ const temporaryDirectories: string[] = [];
 const repositoryRoot = join(import.meta.dir, '../..');
 
 type WorkflowStep = {
+  id?: string;
   env?: Record<string, unknown>;
   if?: string;
   name?: string;
@@ -741,8 +742,12 @@ describe('release infrastructure wiring', () => {
     const workflow = await readWorkflow('release-please.yml');
     const preparation = workflow.jobs['release-please'] ?? {};
     const pullRequest = workflow.jobs['release-pull-request'] ?? {};
-    const releaseAction = preparation.steps?.find(step => step.uses);
-    const pullRequestAction = pullRequest.steps?.find(step => step.uses);
+    const releaseAction = preparation.steps?.find(step =>
+      step.uses?.startsWith('googleapis/release-please-action@')
+    );
+    const pullRequestAction = pullRequest.steps?.find(step =>
+      step.uses?.startsWith('googleapis/release-please-action@')
+    );
 
     expect(releaseAction?.with?.['skip-github-pull-request']).toBe(true);
     expect(workflowNeeds(pullRequest)).toEqual([
@@ -767,6 +772,50 @@ describe('release infrastructure wiring', () => {
     expect(
       workflowStepIndex(pullRequest, 'Check release baseline tag')
     ).toBeLessThan(workflowStepIndex(pullRequest, 'Prepare release PR'));
+  });
+
+  test('scopes release app tokens to the two Release Please jobs', async () => {
+    const workflow = await readWorkflow('release-please.yml');
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      const tokenSteps =
+        job.steps?.filter(step =>
+          step.uses?.startsWith('actions/create-github-app-token@')
+        ) ?? [];
+      if (!['release-please', 'release-pull-request'].includes(name)) {
+        expect(tokenSteps).toHaveLength(0);
+        continue;
+      }
+
+      expect(tokenSteps).toHaveLength(1);
+      const token = tokenSteps[0];
+      expect(token?.id).toBe('app-token');
+      expect(token?.with).toEqual({
+        'client-id': '${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}',
+        'private-key': '${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}',
+        owner: '${{ github.repository_owner }}',
+        repositories: '${{ github.event.repository.name }}',
+        'permission-contents': 'write',
+        'permission-issues': 'write',
+        'permission-pull-requests': 'write',
+      });
+      const release = job.steps?.find(step =>
+        step.uses?.startsWith('googleapis/release-please-action@')
+      );
+      expect(release?.with?.token).toBe('${{ steps.app-token.outputs.token }}');
+      expect(job.steps?.indexOf(token!)).toBeLessThan(
+        job.steps?.indexOf(release!) ?? -1
+      );
+      if (name === 'release-pull-request') {
+        expect(token?.if).toBe("steps.baseline.outputs.ready == 'true'");
+        expect(
+          workflowStepIndex(job, 'Check release baseline tag')
+        ).toBeLessThan(job.steps?.indexOf(token!) ?? -1);
+        expect(job.permissions).toEqual({ contents: 'read' });
+      } else {
+        expect(token?.if).toBeUndefined();
+        expect(job.permissions).toEqual({});
+      }
+    }
   });
 
   test.each([
