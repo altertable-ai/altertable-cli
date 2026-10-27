@@ -5,23 +5,23 @@
     "": {
       "name": "data-app-file-preview",
       "dependencies": {
-        "@altertable/data-app": "0.73.0",
-        "@altertable/data-app-bun": "0.73.0",
-        "@altertable/data-app-manifest": "0.73.0",
-        "@altertable/data-app-react": "0.73.0",
+        "@altertable/data-app": "0.74.0",
+        "@altertable/data-app-bun": "0.74.0",
+        "@altertable/data-app-manifest": "0.74.0",
+        "@altertable/data-app-react": "0.74.0",
         "react": "19.3.0",
         "react-dom": "19.3.0",
       },
     },
   },
   "packages": {
-    "@altertable/data-app": ["@altertable/data-app@0.73.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-JiNaFWAq0xryikh0B6rHQAEEHnxU22Hve+bOTy/6uQNBYEhkuogrXE6VoI4YBuWJdzj9KqQKO+uho+vOU7ZCIQ=="],
+    "@altertable/data-app": ["@altertable/data-app@0.74.0", "", { "dependencies": { "@internationalized/date": "3.12.4" } }, "sha512-19Y72gkpid1tKXtesofrwe4oyBUp5FknQ0smgOa1Ilx+8Y/2Xu9F4lHlhAuJU3r0zlEj2Rb/AYZcWXTfUXKZhQ=="],
 
-    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.73.0", "", { "dependencies": { "@altertable/data-app": "0.73.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" }, "bin": { "data-app-preview": "bin/preview.js" } }, "sha512-bhgXGb0AHjSpfOljD+lwiyJzr+dDqmoMhnBc6YDx2BL8hAW7iSm9dpCqpoYsQGjyLW7dISxshUIfPlZ6TRiAaw=="],
+    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.74.0", "", { "dependencies": { "@altertable/data-app": "0.74.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" }, "bin": { "data-app-preview": "bin/preview.js" } }, "sha512-zxGaxeG4hzCNcPv20a0ZgrUpFONL5fllzThSlzbYnFM2Tkva3WFP0/N70KF02SddzaboskN5ouqrdUAErq/4Dw=="],
 
-    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.73.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-68NC4KuB2YoyCU9+MGdRHpnUJX43D/DJ8UnmBZ7dG5LezgClBf/w7wpRfX9jx/OTwGsa0+bFgGnCLOEA+5cnqA=="],
+    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.74.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-PQEsKR1VpRkbXVn6LlmwlDBmPode0wlCJ9ivYlk4KKc9vgZcdHpjPuy+G+gaTKiIrYPJpxsLS0hcYxMENNoP2g=="],
 
-    "@altertable/data-app-react": ["@altertable/data-app-react@0.73.0", "", { "dependencies": { "@altertable/data-app": "0.73.0", "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.3", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.59.0", "react-aria-components": "1.22.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-EJiGeX5YSnR6+qZLR6d6WQBOCx/IIvQj1xck+s6b1A45kdLK2GozBcfexQveuBq1RGG568oIdEvY2Zzel3UXTA=="],
+    "@altertable/data-app-react": ["@altertable/data-app-react@0.74.0", "", { "dependencies": { "@altertable/data-app": "0.74.0", "@floating-ui/react": "0.27.20", "@internationalized/date": "3.12.4", "@tanstack/react-query": "5.104.3", "fflate": "0.8.3", "fuzzysort": "4.0.2", "html-to-image": "1.11.13", "lucide-react": "1.59.0", "react-aria-components": "1.22.1", "recharts": "3.10.1" }, "peerDependencies": { "react": ">=19.2.0", "react-dom": ">=19.2.0" } }, "sha512-E85+w7D1NpiJaIqLaVkHUzMU/TQxdM32NuMEvBAiPO/mclmpjSnvroU5ml/ZkMwX00b1MiKowSgKyyu6q2ckSw=="],
 
     "@altertable/lakehouse": ["@altertable/lakehouse@0.4.1", "", {}, "sha512-m7d15cWt+WUGW7lVw2KYGD+Se8MzO25G7SWSuFd+OasBxWmOJNa2IrgvOHGVEbnZ+kexTUy9NjAGQ69sG4V91w=="],
 

@@ -326,7 +326,7 @@ test('request progress appears before Refresh', async ({ page }) => {
     .boundingBox();
   expect(label!.x + label!.width).toBeLessThan(action!.x);
   release();
-  await expect(status).toBeEmpty();
+  await expect(status.getByText('Updating data')).toBeHidden();
 });
 
 test('variables sit below the header divider while actions stay in the header', async ({
@@ -350,7 +350,7 @@ test('variables sit below the header divider while actions stay in the header', 
   ).toBe(true);
 });
 
-test('mobile header pairs scope with actions and keeps the description below', async ({
+test('mobile header wraps actions below scope and keeps the description below', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -367,7 +367,7 @@ test('mobile header pairs scope with actions and keeps the description below', a
   const actionsBox = await actions.boundingBox();
   const descriptionBox = await description.boundingBox();
   expect(scopeBox!.y).toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height);
-  expect(Math.abs(scopeBox!.y - actionsBox!.y)).toBeLessThan(12);
+  expect(actionsBox!.y).toBeGreaterThanOrEqual(scopeBox!.y + scopeBox!.height);
   expect(descriptionBox!.y).toBeGreaterThanOrEqual(
     actionsBox!.y + actionsBox!.height
   );
@@ -429,10 +429,7 @@ test('grid spans respond to their container at phone, tablet, and desktop widths
       .getByTestId('spanned-grid')
       .evaluate(element => getComputedStyle(element).gap);
     expect(gap).toBe(`${Math.max(16, Math.min(24, width * 0.025))}px`);
-    const peers = await page
-      .getByTestId('peer-grid')
-      .locator(':scope > *')
-      .all();
+    const peers = await page.getByTestId('peer-grid').getByRole('region').all();
     const firstPeer = await peers[0]!.boundingBox();
     const lastPeer = await peers[2]!.boundingBox();
     expect(primary).not.toBeNull();

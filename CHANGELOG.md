@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preview a single-file data app locally with `altertable app dev --file index.tsx`. The file's `defineDataApp` scope must match the selected profile, and queries run through the CLI's loopback proxy.
 
+### Changed
+
+- Generate, preview, and upgrade data apps with data-app 0.74.0.
+
 ### Fixed
 
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
