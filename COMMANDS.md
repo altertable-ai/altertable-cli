@@ -16,7 +16,7 @@ Altertable CLI v1.13.2 • Query and manage your data platform from the terminal
 | `--no-agent` | Disable agent mode, including automatic detection |
 | `--no-color` | Disable terminal colors and styling |
 | `--profile <PROFILE>` | Use a named profile for this command only |
-| `--connect-timeout <CONNECT-TIMEOUT>` | HTTP connect timeout in seconds (default 5) |
+| `--connect-timeout <CONNECT-TIMEOUT>` | HTTP connect timeout in seconds (default 30) |
 | `--read-timeout <READ-TIMEOUT>` | HTTP read timeout in seconds (default 60; 0 = no limit for streams) |
 | `--ignore-ssl-errors` | Skip TLS certificate verification for HTTPS requests (for development only, e.g. self-signed local servers) |
 

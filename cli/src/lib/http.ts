@@ -206,10 +206,34 @@ function unwrapErrorDetail(error: unknown): string {
   return messages.join(': ');
 }
 
-function timeoutError(options: HttpSendOptions, cause: unknown): TimeoutError {
+/** Which CLI-side limit an abort came from, so the error can name the flag to raise. */
+type TimeoutBudget = {
+  flags: string;
+  durationMs: number;
+  waitingFor: string;
+};
+
+function formatDuration(durationMs: number): string {
+  return durationMs % 1_000 === 0
+    ? `${durationMs / 1_000}s`
+    : `${durationMs}ms`;
+}
+
+function timeoutError(
+  options: HttpSendOptions,
+  budget: TimeoutBudget,
+  cause: unknown
+): TimeoutError {
   return new TimeoutError(
-    `Request timed out: ${options.method} ${options.url}`,
-    { cause }
+    `CLI timed out after ${formatDuration(budget.durationMs)} ${budget.waitingFor}: ${options.method} ${options.url}`,
+    {
+      cause,
+      details: [
+        `This limit is enforced by the CLI (${budget.flags}), not reported by the server; the request may still be running server-side.`,
+        'A slow network or a long-running request can both trigger it.',
+        `Raise it with ${budget.flags.replace(' + ', ' or ')} <seconds>.`,
+      ].join('\n'),
+    }
   );
 }
 
@@ -228,10 +252,11 @@ function connectionError(
 function transportError(
   options: HttpSendOptions,
   signal: AbortSignal,
+  budget: () => TimeoutBudget,
   cause: unknown
 ): NetworkError {
   return signal.aborted
-    ? timeoutError(options, cause)
+    ? timeoutError(options, budget(), cause)
     : connectionError(options, cause);
 }
 
@@ -239,6 +264,7 @@ function wrapResponseStream(
   stream: ReadableStream<Uint8Array>,
   clearTimeoutAfterRead: () => void,
   signal: AbortSignal,
+  budget: () => TimeoutBudget,
   options: HttpStreamOptions
 ): ReadableStream<Uint8Array> {
   const reader = stream.getReader();
@@ -256,7 +282,7 @@ function wrapResponseStream(
       } catch (error) {
         clearTimeoutAfterRead();
         reader.releaseLock();
-        controller.error(transportError(options, signal, error));
+        controller.error(transportError(options, signal, budget, error));
       }
     },
     async cancel(reason) {
@@ -518,6 +544,14 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
   const headers = buildRequestHeaders(options);
   const timeoutMs = resolveFetchTimeoutMs(options);
   const signal = AbortSignal.timeout(timeoutMs);
+  const budget = (): TimeoutBudget => ({
+    flags:
+      resolveReadTimeoutMs(options) > 0
+        ? '--connect-timeout + --read-timeout'
+        : '--connect-timeout',
+    durationMs: timeoutMs,
+    waitingFor: 'waiting for the server',
+  });
 
   logHttpRequest(options);
   logDebug(`Request: ${options.method} ${options.url}`);
@@ -536,14 +570,14 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
       buildFetchInit(options, headers, signal)
     );
   } catch (error) {
-    throw transportError(options, signal, error);
+    throw transportError(options, signal, budget, error);
   }
 
   let responseBody: string;
   try {
     responseBody = await response.text();
   } catch (error) {
-    throw transportError(options, signal, error);
+    throw transportError(options, signal, budget, error);
   }
 
   logHttpDebug([
@@ -580,11 +614,23 @@ async function executeLiveStream(
     clearTimeout(timeout);
     timeout = undefined;
   };
-  const startTimeout = (durationMs: number) => {
-    clearActiveTimeout();
-    timeout = setTimeout(() => abortController.abort(), durationMs);
+  let activeBudget: TimeoutBudget = {
+    flags: '--connect-timeout',
+    durationMs: connectTimeoutMs,
+    waitingFor: 'waiting for the server to respond',
   };
-  startTimeout(connectTimeoutMs);
+  const budget = () => activeBudget;
+  const startTimeout = (next: TimeoutBudget) => {
+    clearActiveTimeout();
+    activeBudget = next;
+    timeout = setTimeout(() => abortController.abort(), next.durationMs);
+  };
+  const readBudget: TimeoutBudget = {
+    flags: '--read-timeout',
+    durationMs: readTimeoutMs,
+    waitingFor: 'reading the response',
+  };
+  startTimeout(activeBudget);
 
   logHttpRequest(options);
   logDebug(`Request: ${options.method} ${options.url}`);
@@ -598,7 +644,7 @@ async function executeLiveStream(
     clearActiveTimeout();
   } catch (error) {
     clearActiveTimeout();
-    throw transportError(options, abortController.signal, error);
+    throw transportError(options, abortController.signal, budget, error);
   }
 
   if (response.status >= 200 && response.status < 300) {
@@ -606,25 +652,26 @@ async function executeLiveStream(
       throw new NetworkError('Response body is missing.');
     }
     if (readTimeoutMs > 0) {
-      startTimeout(readTimeoutMs);
+      startTimeout(readBudget);
     }
     return wrapResponseStream(
       response.body,
       clearActiveTimeout,
       abortController.signal,
+      budget,
       options
     );
   }
 
   if (readTimeoutMs > 0) {
-    startTimeout(readTimeoutMs);
+    startTimeout(readBudget);
   }
 
   let responseBody: string;
   try {
     responseBody = await response.text();
   } catch (error) {
-    throw transportError(options, abortController.signal, error);
+    throw transportError(options, abortController.signal, budget, error);
   } finally {
     clearActiveTimeout();
   }

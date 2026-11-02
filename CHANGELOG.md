@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Generate, preview, and upgrade data apps with data-app 0.74.0.
+- Raise the default `--connect-timeout` from 5 to 30 seconds, so queries that take a few seconds to start responding no longer time out.
+- Timeout errors now name the CLI flag that fired, explain that the limit is client-side (the request may still be running on the server, and slow networks can cause it), and say how to raise it.
 
 ### Fixed
 

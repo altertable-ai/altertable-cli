@@ -27,6 +27,7 @@ import {
   shouldIgnoreSslErrors,
 } from '@/lib/http.ts';
 import { redactResponseBodyForDebug } from '@/lib/redact.ts';
+import { DEFAULT_CONNECT_TIMEOUT_MS } from '@/lib/transport-defaults.ts';
 import { delay } from '@/test-utils/time.ts';
 
 const fakeBearerKey = 'atm_fake_test_key_for_redaction';
@@ -328,7 +329,7 @@ describe('context timeout resolution', () => {
         url: 'https://example.com',
         authHeader: 'Authorization: Bearer test',
       })
-    ).toBe(5_000 + 30_000);
+    ).toBe(DEFAULT_CONNECT_TIMEOUT_MS + 30_000);
   });
 
   test('stream read timeout 0 uses connect-only abort when context unset', () => {
@@ -350,7 +351,7 @@ describe('context timeout resolution', () => {
         authHeader: 'Authorization: Bearer test',
         readTimeoutMs: 0,
       })
-    ).toBe(5_000);
+    ).toBe(DEFAULT_CONNECT_TIMEOUT_MS);
   });
 });
 
@@ -562,10 +563,50 @@ describe('httpSendStream live timeouts', () => {
         expect(error).toBeInstanceOf(TimeoutError);
         expect((error as TimeoutError).exitCode).toBe(9);
         expect((error as TimeoutError).message).toBe(
-          'Request timed out: POST https://example.com/query'
+          'CLI timed out after 5ms reading the response: POST https://example.com/query'
         );
+        expect((error as TimeoutError).details).toContain('--read-timeout');
       }
       expect(abortObserved).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('connect timeout names the CLI flag and explains it is client-side', async () => {
+    delete process.env.ALTERTABLE_MOCK_HTTP_FILE;
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = Object.assign(
+      (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('aborted', 'AbortError'));
+          });
+        }),
+      { preconnect: originalFetch.preconnect }
+    );
+
+    try {
+      await httpSendStream({
+        method: 'POST',
+        url: 'https://example.com/query',
+        authHeader: 'Authorization: Bearer test',
+        body: '{}',
+        connectTimeoutMs: 5,
+        readTimeoutMs: 0,
+      });
+      expect.unreachable('request should have timed out');
+    } catch (error) {
+      expect(error).toBeInstanceOf(TimeoutError);
+      expect((error as TimeoutError).exitCode).toBe(9);
+      expect((error as TimeoutError).message).toBe(
+        'CLI timed out after 5ms waiting for the server to respond: POST https://example.com/query'
+      );
+      const details = (error as TimeoutError).details ?? '';
+      expect(details).toContain('enforced by the CLI (--connect-timeout)');
+      expect(details).toContain('slow network');
+      expect(details).toContain('Raise it with --connect-timeout <seconds>.');
     } finally {
       globalThis.fetch = originalFetch;
     }
