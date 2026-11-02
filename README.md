@@ -506,7 +506,7 @@ These flags apply to every command and may be placed before or after commands:
 | `--no-agent`            | Disable agent mode, including automatic detection                          |
 | `--agent`               | Agent preset: structured JSON output, no pager, colors, or terminal styling |
 | `--debug`, `-d`         | Enable debug output                                                         |
-| `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `5`)                              |
+| `--connect-timeout <s>` | HTTP connect timeout in seconds (default: `30`)                             |
 | `--read-timeout <s>`    | HTTP read timeout in seconds (default: `60`; `0` = unlimited for streams)   |
 
 Per-request read timeout on `query`, `upload`, and `upsert`:

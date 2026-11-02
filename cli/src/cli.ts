@@ -86,7 +86,7 @@ const ROOT_ARGS = defineArguments({
   },
   'connect-timeout': {
     type: 'string',
-    description: 'HTTP connect timeout in seconds (default 5)',
+    description: 'HTTP connect timeout in seconds (default 30)',
     flagScope: 'global',
   },
   'read-timeout': {
