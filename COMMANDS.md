@@ -884,7 +884,7 @@ Run SQL queries against the lakehouse.
 
 ```bash
 altertable query [options] <STATEMENT>
-altertable query show|cancel
+altertable query list|show|cancel
 ```
 
 **Arguments**
@@ -912,6 +912,7 @@ altertable query show|cancel
 
 **Subcommands**
 
+- `list` — List running queries in the current environment.
 - `show` — Fetch metadata for a completed or running query.
 - `cancel` — Cancel a running query.
 
@@ -922,7 +923,18 @@ altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json
 altertable query "SELECT 1" --format csv --output results.csv
 altertable query @report.sql --format csv --output results.csv
+altertable query list
 altertable query show <query-id>
+```
+
+#### `altertable query list`
+
+List running queries in the current environment.
+
+**Usage**
+
+```bash
+altertable query list
 ```
 
 #### `altertable query show`

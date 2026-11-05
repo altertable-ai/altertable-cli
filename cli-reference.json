@@ -1526,7 +1526,7 @@
           "description": "Run SQL queries against the lakehouse.",
           "usage": [
             "altertable query [options] <STATEMENT>",
-            "altertable query show|cancel"
+            "altertable query list|show|cancel"
           ],
           "aliases": [],
           "arguments": [
@@ -1685,9 +1685,23 @@
             "altertable query \"SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10\" --json",
             "altertable query \"SELECT 1\" --format csv --output results.csv",
             "altertable query @report.sql --format csv --output results.csv",
+            "altertable query list",
             "altertable query show <query-id>"
           ],
           "subcommands": [
+            {
+              "id": "altertable-query-list",
+              "command": "altertable query list",
+              "description": "List running queries in the current environment.",
+              "usage": [
+                "altertable query list"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [],
+              "examples": [],
+              "subcommands": []
+            },
             {
               "id": "altertable-query-show",
               "command": "altertable query show",
