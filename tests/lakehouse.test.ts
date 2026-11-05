@@ -27,6 +27,26 @@ describe("lakehouse command routing", () => {
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, task_id: appendId });
   });
 
+  test("query list fetches running queries", async () => {
+    const queries = {
+      queries: [
+        {
+          id: "11111111-2222-3333-4444-555555555555",
+          started_at: "2026-11-05T17:49:18Z",
+        },
+      ],
+    };
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp([jsonMock("GET", "/queries", queries)]);
+
+    const result = await workspace.runCommand("altertable --json query list");
+
+    expect(result.exitCode).toBe(0);
+    expect(await workspace.httpLogValue("METHOD")).toBe("GET");
+    expect(await workspace.httpLogValue("URL")).toBe("https://lakehouse.example.test/queries");
+    expect(JSON.parse(result.stdout)).toEqual(queries);
+  });
+
   test("append status fetches status without append-run flags", async () => {
     await workspace.setupHttpLog();
     await workspace.setupMockHttp([jsonMock("GET", `/tasks/${appendId}`, { task_id: appendId, status: "completed" })]);

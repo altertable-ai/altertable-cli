@@ -85,6 +85,15 @@ export async function executeLakehouseQueryBytes(
   return sendHttpStream(buildLakehouseQueryRequest(input, true), execution);
 }
 
+export function buildLakehouseQueryListRequest(): HttpRequest {
+  return {
+    plane: 'lakehouse',
+    method: 'GET',
+    endpoint: '/queries',
+    retry: true,
+  };
+}
+
 export function buildLakehouseQueryShowRequest(queryId: string): HttpRequest {
   return {
     plane: 'lakehouse',

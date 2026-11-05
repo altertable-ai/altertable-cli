@@ -211,7 +211,7 @@ describe('renderAltertableUsage', () => {
     expect(help.command).toBe('altertable query');
     expect(help.usage).toEqual([
       'altertable query [flags] <STATEMENT>',
-      'altertable query show|cancel',
+      'altertable query list|show|cancel',
     ]);
     expect(help.arguments).toContainEqual(
       expect.objectContaining({ name: 'statement', type: 'positional' })
@@ -232,6 +232,7 @@ describe('renderAltertableUsage', () => {
       false
     );
     expect(help.subcommands.map(command => command.name)).toEqual([
+      'list',
       'show',
       'cancel',
     ]);
@@ -248,7 +249,7 @@ describe('renderAltertableUsage', () => {
 
     const queryUsage = await renderAltertableUsage(query, queryParent);
     expect(queryUsage).toContain(
-      'Usage\n    altertable query [flags] <STATEMENT>\n    altertable query show|cancel'
+      'Usage\n    altertable query [flags] <STATEMENT>\n    altertable query list|show|cancel'
     );
     expect(queryUsage).not.toContain('[STATEMENT] show|cancel');
 

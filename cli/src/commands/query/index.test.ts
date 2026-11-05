@@ -174,11 +174,28 @@ describe('query command', () => {
 
   test('dispatches show and cancel without run arguments', async () => {
     const queryId = '11111111-2222-3333-4444-555555555555';
+    const showBody = {
+      uuid: queryId,
+      worker: {
+        slug: 'api-worker-s-example',
+        compute_size: 'S',
+        threads: 4,
+        memory_limit_bytes: 8589934592,
+        memory_usage_bytes: 123456,
+        memory_by_tag: [
+          {
+            tag: 'BASE_TABLE',
+            memory_usage_bytes: 0,
+            temporary_storage_bytes: 0,
+          },
+        ],
+      },
+    };
     workspace.writeMocks([
       {
         urlPattern: `/query/${queryId}`,
         method: 'GET',
-        body: `{"uuid":"${queryId}"}`,
+        body: JSON.stringify(showBody),
       },
       {
         urlPattern: `/query/${queryId}`,
@@ -187,7 +204,7 @@ describe('query command', () => {
       },
     ]);
 
-    await runCommandWithTestRuntime(['query', 'show', queryId]);
+    const show = await runCommandWithTestRuntime(['query', 'show', queryId]);
     await runCommandWithTestRuntime([
       'query',
       'cancel',
@@ -196,6 +213,7 @@ describe('query command', () => {
       'session-1',
     ]);
 
+    expect(JSON.parse(show.stdout.join(''))).toEqual(showBody);
     const log = workspace.readHttpLog();
     expect(log).toContain(
       `METHOD=GET\nURL=https://example.com/query/${queryId}`
@@ -203,6 +221,85 @@ describe('query command', () => {
     expect(log).toContain(
       `METHOD=DELETE\nURL=https://example.com/query/${queryId}?session_id=session-1`
     );
+  });
+
+  test('lists running queries as a table', async () => {
+    const queries = {
+      queries: [
+        {
+          id: '11111111-2222-3333-4444-555555555555',
+          started_at: '2026-11-05T17:49:18Z',
+        },
+        {
+          id: '22222222-3333-4444-5555-666666666666',
+          started_at: '2026-11-05T17:50:00Z',
+        },
+      ],
+    };
+    workspace.writeMocks([
+      {
+        urlPattern: '/queries',
+        method: 'GET',
+        body: JSON.stringify(queries),
+      },
+    ]);
+
+    const harness = await runCommandWithTestRuntime(['query', 'list'], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+
+    expect(workspace.readHttpLog()).toContain(
+      'METHOD=GET\nURL=https://example.com/queries'
+    );
+    const output = harness.stdout.join('');
+    expect(output.indexOf('11111111-2222-33')).toBeLessThan(
+      output.indexOf('22222222-3333-44')
+    );
+    expect(output).toContain('2026-11-05T17:49:18Z');
+    expect(output).toContain('2026-11-05T17:50:00Z');
+    expect(output).toContain('started_at');
+  });
+
+  test('prints a message when no queries are running', async () => {
+    workspace.writeMocks([
+      {
+        urlPattern: '/queries',
+        method: 'GET',
+        body: '{"queries":[]}',
+      },
+    ]);
+
+    const harness = await runCommandWithTestRuntime(['query', 'list'], {
+      debug: false,
+      json: false,
+      agent: false,
+    });
+
+    expect(harness.stdout.join('')).toBe('No running queries.');
+  });
+
+  test('passes through the running query list as JSON', async () => {
+    const queries = {
+      queries: [
+        {
+          id: '11111111-2222-3333-4444-555555555555',
+          started_at: '2026-11-05T17:49:18Z',
+        },
+      ],
+    };
+    workspace.writeMocks([
+      {
+        urlPattern: '/queries',
+        method: 'GET',
+        body: JSON.stringify(queries),
+      },
+    ]);
+
+    const harness = await runCommandWithTestRuntime(['query', 'list']);
+
+    expect(JSON.parse(harness.stdout.join(''))).toEqual(queries);
   });
 
   test('requires a query id for show instead of running bare show as SQL', async () => {

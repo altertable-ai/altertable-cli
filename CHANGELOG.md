@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- List running queries with `altertable query list`.
 - Preview a single-file data app locally with `altertable app dev --file index.tsx`. The file's `defineDataApp` scope must match the selected profile, and queries run through the CLI's loopback proxy.
 
 ### Changed

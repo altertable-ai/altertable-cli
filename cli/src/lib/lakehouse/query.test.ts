@@ -13,6 +13,7 @@ import {
   type LakehouseRow,
 } from '@/lib/lakehouse-ndjson.ts';
 import {
+  buildLakehouseQueryListRequest,
   buildLakehouseQueryRequest,
   executeLakehouseQuery,
   executeLakehouseQueryBytes,
@@ -251,6 +252,17 @@ describe('parseLakehouseQueryStream', () => {
       expect(error).toBeInstanceOf(ParseError);
       expect((error as ParseError).message).toContain('line 5');
     }
+  });
+});
+
+describe('buildLakehouseQueryListRequest', () => {
+  test('GETs /queries with retry', () => {
+    expect(buildLakehouseQueryListRequest()).toEqual({
+      plane: 'lakehouse',
+      method: 'GET',
+      endpoint: '/queries',
+      retry: true,
+    });
   });
 });
 

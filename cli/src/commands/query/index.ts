@@ -1,6 +1,7 @@
 import { queryCancelCommand } from '@/commands/query/cancel.ts';
 import { queryRunArgs } from '@/commands/query/lib/args.ts';
 import { parseQueryStatement } from '@/commands/query/lib/statement.ts';
+import { queryListCommand } from '@/commands/query/list.ts';
 import { queryShowCommand } from '@/commands/query/show.ts';
 import { optionalStringArg } from '@/lib/args.ts';
 import { defineCommand } from '@/lib/command.ts';
@@ -27,11 +28,13 @@ export const queryCommand = defineCommand({
       'altertable query "SELECT event, timestamp FROM analytics.main.events ORDER BY timestamp DESC LIMIT 10" --json',
       'altertable query "SELECT 1" --format csv --output results.csv',
       'altertable query @report.sql --format csv --output results.csv',
+      'altertable query list',
       'altertable query show <query-id>',
     ],
   },
   args: queryRunArgs,
   subcommands: {
+    list: queryListCommand,
     show: queryShowCommand,
     cancel: queryCancelCommand,
   },
