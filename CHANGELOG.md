@@ -50,6 +50,13 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.14.0](https://github.com/altertable-ai/altertable-cli/compare/v1.13.3...v1.14.0) (2026-11-05)
+
+
+### Features
+
+* **query:** list running queries ([#177](https://github.com/altertable-ai/altertable-cli/issues/177)) ([55f67fb](https://github.com/altertable-ai/altertable-cli/commit/55f67fbcdbe09134e8362b7e7c0dfac5242f7145))
+
 ## [1.13.3](https://github.com/altertable-ai/altertable-cli/compare/v1.13.2...v1.13.3) (2026-11-02)
 
 
