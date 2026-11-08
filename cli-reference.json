@@ -1526,7 +1526,7 @@
           "description": "Run SQL queries against the lakehouse.",
           "usage": [
             "altertable query [options] <STATEMENT>",
-            "altertable query list|show|cancel"
+            "altertable query list|show|top|cancel"
           ],
           "aliases": [],
           "arguments": [
@@ -1686,7 +1686,8 @@
             "altertable query \"SELECT 1\" --format csv --output results.csv",
             "altertable query @report.sql --format csv --output results.csv",
             "altertable query list",
-            "altertable query show <query-id>"
+            "altertable query show <query-id>",
+            "altertable query top --watch"
           ],
           "subcommands": [
             {
@@ -1725,6 +1726,66 @@
               ],
               "options": [],
               "examples": [],
+              "subcommands": []
+            },
+            {
+              "id": "altertable-query-top",
+              "command": "altertable query top",
+              "description": "Show running queries with progress, rows, and memory; --watch refreshes live.",
+              "usage": [
+                "altertable query top [options]"
+              ],
+              "aliases": [],
+              "arguments": [],
+              "options": [
+                {
+                  "name": "watch",
+                  "aliases": [
+                    "w"
+                  ],
+                  "type": "boolean",
+                  "description": "Keep refreshing the view until interrupted (Ctrl+C)",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": []
+                },
+                {
+                  "name": "interval",
+                  "aliases": [],
+                  "type": "string",
+                  "description": "Seconds between refreshes in --watch mode",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [],
+                  "valueHint": "SECONDS",
+                  "default": "1"
+                },
+                {
+                  "name": "sort",
+                  "aliases": [],
+                  "type": "enum",
+                  "description": "Column to sort by, largest first",
+                  "required": false,
+                  "repeatable": false,
+                  "scope": "command",
+                  "values": [
+                    "elapsed",
+                    "progress",
+                    "rows",
+                    "memory",
+                    "disk"
+                  ],
+                  "default": "elapsed"
+                }
+              ],
+              "examples": [
+                "altertable query top",
+                "altertable query top --watch",
+                "altertable query top -w --interval 5",
+                "altertable query top --sort memory"
+              ],
               "subcommands": []
             },
             {

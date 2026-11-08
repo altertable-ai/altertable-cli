@@ -275,7 +275,7 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 | --------------------------- | ---------------------------- | -------------------------------- | --------------------- |
 | POST /query (streamed)      | `query "<SQL>"`              | `lakehouse.test.ts` stream tests | `integration.e2e.ts`  |
 | POST /query (buffered json) | `query --json`               | `lakehouse.test.ts`              | `integration.e2e.ts`  |
-| GET /queries                | `query list`                 | `lakehouse.test.ts`              | —                     |
+| GET /queries                | `query list`, `query top`    | `lakehouse.test.ts`              | —                     |
 | GET/DELETE /query/{id}      | `query show`, `query cancel` | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /append + GET /tasks   | `append`, `append status`    | `lakehouse.test.ts`              | `integration.e2e.ts`  |
 | POST /upload                | `upload`                     | `lakehouse.test.ts`              | `integration.e2e.ts`  |

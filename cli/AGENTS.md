@@ -135,7 +135,7 @@ altertable
 ├── catalog
 │   └── create
 ├── query <SQL>
-│   └── list, show, cancel
+│   └── list, show, top, cancel
 ├── schema, duckdb
 ├── append <DATA>
 │   └── status
