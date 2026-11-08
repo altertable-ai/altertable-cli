@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors. The explicit file backend remains available for CI.
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
 
 - Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.

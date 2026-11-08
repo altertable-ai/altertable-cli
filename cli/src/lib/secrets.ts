@@ -12,8 +12,9 @@ import {
   getProfileId,
   isFromEnvProfile,
 } from '@/lib/profile-store.ts';
+import { createWindowsCredentialStore } from '@/lib/windows-credentials.ts';
 
-type SecretBackend = 'macos' | 'file';
+type SecretBackend = 'macos' | 'windows' | 'file';
 
 // `security` returns errSecItemNotFound (-25300) modulo 256 as its process status.
 const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
@@ -107,6 +108,9 @@ export function createSecretStore(
   secretProcess: SecretProcess = SYSTEM_SECRET_PROCESS
 ): SecretStore {
   let fileBackendWarned = false;
+  const windowsCredentials = createWindowsCredentialStore(
+    secretProcess.spawnSync.bind(secretProcess)
+  );
 
   function warnFileBackendOnce(): void {
     if (fileBackendWarned) return;
@@ -130,6 +134,12 @@ export function createSecretStore(
   function secretBackend(): SecretBackend {
     const override = readEnv('ALTERTABLE_SECRET_BACKEND') ?? '';
     if (override === 'file') return 'file';
+    if (override === 'windows') {
+      if (secretProcess.platform === 'win32') return 'windows';
+      throw new CliError(
+        'ALTERTABLE_SECRET_BACKEND=windows requires Windows Credential Manager.'
+      );
+    }
     if (override === 'keychain') {
       if (secretProcess.platform === 'darwin' && hasSecurityCommand())
         return 'macos';
@@ -139,6 +149,7 @@ export function createSecretStore(
     }
     if (secretProcess.platform === 'darwin' && hasSecurityCommand())
       return 'macos';
+    if (secretProcess.platform === 'win32') return 'windows';
     return 'file';
   }
 
@@ -165,6 +176,16 @@ export function createSecretStore(
   }
 
   function readStoredSecret(storageAccount: string): string {
+    if (secretBackend() === 'windows') {
+      const value = windowsCredentials.get(storageAccount);
+      if (value !== null) return value;
+      const legacyValue = kvGet(credentialsFile(), storageAccount);
+      if (legacyValue !== '') {
+        windowsCredentials.set(storageAccount, legacyValue);
+        kvUnset(credentialsFile(), storageAccount);
+      }
+      return legacyValue;
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -192,6 +213,10 @@ export function createSecretStore(
   }
 
   function storedSecretExists(storageAccount: string): boolean {
+    if (secretBackend() === 'windows') {
+      if (windowsCredentials.exists(storageAccount)) return true;
+      return kvGet(credentialsFile(), storageAccount) !== '';
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -210,6 +235,9 @@ export function createSecretStore(
   }
 
   function deleteStoredSecret(storageAccount: string): void {
+    if (secretBackend() === 'windows') {
+      windowsCredentials.delete(storageAccount);
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -243,6 +271,11 @@ export function createSecretStore(
       ensureProfileId(profileName)
     );
     const backend = secretBackend();
+    if (backend === 'windows') {
+      windowsCredentials.set(storageAccount, value);
+      kvUnset(credentialsFile(), storageAccount);
+      return;
+    }
     if (backend === 'macos' && !options?.fromArgv) {
       secretSetMacos(storageAccount, value);
       return;
@@ -300,6 +333,8 @@ export function createSecretStore(
       if (!storedSecretExists(storageAccount)) {
         if (secretBackend() === 'macos') {
           secretSetMacos(storageAccount, value);
+        } else if (secretBackend() === 'windows') {
+          windowsCredentials.set(storageAccount, value);
         } else {
           kvSet(credentialsFile(), storageAccount, value);
           chmodSync(credentialsFile(), 0o600);
@@ -312,7 +347,10 @@ export function createSecretStore(
   }
 
   function secretStoreDisplay(): string {
-    return secretBackend() === 'macos' ? 'MacOS keychain' : credentialsFile();
+    const backend = secretBackend();
+    if (backend === 'macos') return 'MacOS keychain';
+    if (backend === 'windows') return 'Windows Credential Manager';
+    return credentialsFile();
   }
 
   return {
