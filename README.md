@@ -398,6 +398,7 @@ inside a component, for example `customer%2E360.main.users`.
 
 ```bash
 altertable query list
+altertable query top --watch
 altertable query show <query-uuid>
 altertable query cancel <query-uuid> --session-id <uuid>
 altertable append status <append-id>

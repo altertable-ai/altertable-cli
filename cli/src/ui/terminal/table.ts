@@ -37,12 +37,15 @@ function computeNaturalColumnWidths<T>(
   renderedHeaders: string[],
   renderedCells: string[][]
 ): number[] {
-  return columns.map((_column, columnIndex) => {
+  return columns.map((column, columnIndex) => {
     const values = [
       renderedHeaders[columnIndex] ?? '',
       ...renderedCells.map(cells => cells[columnIndex] ?? ''),
     ];
-    return Math.max(...values.map(value => getVisibleTextWidth(value)), 1);
+    return Math.max(
+      ...values.map(value => getVisibleTextWidth(value)),
+      column.minWidth ?? 1
+    );
   });
 }
 

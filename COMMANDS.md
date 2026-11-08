@@ -884,7 +884,7 @@ Run SQL queries against the lakehouse.
 
 ```bash
 altertable query [options] <STATEMENT>
-altertable query list|show|cancel
+altertable query list|show|top|cancel
 ```
 
 **Arguments**
@@ -914,6 +914,7 @@ altertable query list|show|cancel
 
 - `list` — List running queries in the current environment.
 - `show` — Fetch metadata for a completed or running query.
+- `top` — Show running queries with progress, rows, and memory; --watch refreshes live.
 - `cancel` — Cancel a running query.
 
 **Examples**
@@ -925,6 +926,7 @@ altertable query "SELECT 1" --format csv --output results.csv
 altertable query @report.sql --format csv --output results.csv
 altertable query list
 altertable query show <query-id>
+altertable query top --watch
 ```
 
 #### `altertable query list`
@@ -952,6 +954,33 @@ altertable query show <QUERY-ID>
 | Argument | Description |
 | --- | --- |
 | `<QUERY-ID>` | Query id returned by the API Required. |
+
+#### `altertable query top`
+
+Show running queries with progress, rows, and memory; --watch refreshes live.
+
+**Usage**
+
+```bash
+altertable query top [options]
+```
+
+**Options**
+
+| Option | Description |
+| --- | --- |
+| `-w, --watch` | Keep refreshing the view until interrupted (Ctrl+C) |
+| `--interval <SECONDS>` | Seconds between refreshes in --watch mode Default: "1". |
+| `--sort <ELAPSED\|PROGRESS\|ROWS\|MEMORY\|DISK>` | Column to sort by, largest first Values: elapsed, progress, rows, memory, disk. Default: "elapsed". |
+
+**Examples**
+
+```bash
+altertable query top
+altertable query top --watch
+altertable query top -w --interval 5
+altertable query top --sort memory
+```
 
 #### `altertable query cancel`
 

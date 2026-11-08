@@ -3,6 +3,7 @@ import { queryRunArgs } from '@/commands/query/lib/args.ts';
 import { parseQueryStatement } from '@/commands/query/lib/statement.ts';
 import { queryListCommand } from '@/commands/query/list.ts';
 import { queryShowCommand } from '@/commands/query/show.ts';
+import { queryTopCommand } from '@/commands/query/top.ts';
 import { optionalStringArg } from '@/lib/args.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
@@ -30,12 +31,14 @@ export const queryCommand = defineCommand({
       'altertable query @report.sql --format csv --output results.csv',
       'altertable query list',
       'altertable query show <query-id>',
+      'altertable query top --watch',
     ],
   },
   args: queryRunArgs,
   subcommands: {
     list: queryListCommand,
     show: queryShowCommand,
+    top: queryTopCommand,
     cancel: queryCancelCommand,
   },
   async run({ args, rawArgs, execution, sink }) {

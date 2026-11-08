@@ -29,6 +29,8 @@ export type DisplayRow = {
 export type DisplayTableColumn<Row> = {
   header: string;
   cell: (row: Row) => DisplayText;
+  /** Reserves width so live views do not shift as values grow. */
+  minWidth?: number;
   maxWidth?: number;
   flex?: boolean;
 };

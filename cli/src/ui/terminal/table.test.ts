@@ -42,6 +42,17 @@ describe('renderFixedTable', () => {
     expect(output).toBe('NAME   ROLE \nAlice  admin');
   });
 
+  test('pads columns to minWidth', () => {
+    const output = renderFixedTable(
+      [{ label: 'ab', value: 'x' }],
+      [
+        { header: 'LABEL', cell: row => row.label, minWidth: 8 },
+        { header: 'VALUE', cell: row => row.value },
+      ]
+    );
+    expect(output).toBe('LABEL     VALUE\nab        x    ');
+  });
+
   test('truncates cells when maxWidth is set', () => {
     const output = renderFixedTable(
       [{ label: 'abcdefghijklmnopqrstuvwxyz' }],
