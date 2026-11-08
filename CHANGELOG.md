@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Document the Windows PowerShell installation path, including Bun's native installer and the `bun.exe` requirement for npm launchers.
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
 
 - Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.
