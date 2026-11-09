@@ -94,6 +94,8 @@ export const UpdaterConfig = {
   timeoutsMs: {
     automatic: 900,
     manual: 10_000,
+    // Covers the full release binary body (~100 MB), not just the response headers.
+    download: 300_000,
   },
   intervalsMs: UpdaterIntervalsMs,
   automaticCheckSkipCommands: ['completion', 'doctor', 'update', 'upgrade'],
