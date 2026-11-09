@@ -263,18 +263,18 @@ Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
 `$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
 be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
 
-Credentials use macOS Keychain when available and Windows Credential Manager on
-Windows. Windows storage uses the current user's native credential vault through
-Windows PowerShell; secret values are passed over stdin, not process arguments.
-Existing Windows file credentials migrate to Credential Manager when read, and
-are removed from the file only after native storage succeeds. Native-store errors
-fail the command instead of silently saving plaintext.
+Credentials use macOS Keychain when available and the current user's Windows
+Credential Manager on Windows. Windows access goes through Windows PowerShell, with
+secret values passed over stdin rather than process arguments. Existing Windows file
+credentials move to Credential Manager when first read and leave the file only after
+native storage succeeds. Credential Manager errors fail the command instead of
+saving plaintext; each Windows secret can be at most 2,560 bytes.
 
-Other systems use a plaintext file with Unix mode `600`. You can explicitly opt
-into the file backend with `ALTERTABLE_SECRET_BACKEND=file` (for example, in CI),
-or require Windows Credential Manager with `ALTERTABLE_SECRET_BACKEND=windows`.
-Keep the configuration directory private; Windows ACLs are not checked when the
-file backend is explicitly selected.
+Other systems use a plaintext file with Unix mode `600`. Set
+`ALTERTABLE_SECRET_BACKEND=file` to use the file everywhere (for example, in CI or
+where PowerShell is restricted), or `ALTERTABLE_SECRET_BACKEND=windows` to require
+Credential Manager. Keep the configuration directory private; Windows ACLs are not
+checked when the file backend is selected.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 

@@ -1,8 +1,15 @@
 import type { SpawnSyncOptions } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { credentialsFile, kvGet, kvSet, kvUnset } from '@/lib/config.ts';
+import {
+  configDir,
+  credentialsFile,
+  kvGet,
+  kvSet,
+  kvUnset,
+} from '@/lib/config.ts';
 import { readEnv } from '@/lib/env.ts';
 import { CliError } from '@/lib/errors.ts';
 import { logWarn } from '@/lib/log.ts';
@@ -12,7 +19,10 @@ import {
   getProfileId,
   isFromEnvProfile,
 } from '@/lib/profile-store.ts';
-import { createWindowsCredentialStore } from '@/lib/windows-credentials.ts';
+import {
+  createWindowsCredentialStore,
+  fileCredentialRevision,
+} from '@/lib/windows-credentials.ts';
 
 type SecretBackend = 'macos' | 'windows' | 'file';
 
@@ -22,6 +32,7 @@ const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
 type SecretProcessResult = {
   status: number | null;
   stdout: string | Buffer;
+  stderr?: string | Buffer;
   error?: Error;
 };
 
@@ -109,7 +120,10 @@ export function createSecretStore(
 ): SecretStore {
   let fileBackendWarned = false;
   const windowsCredentials = createWindowsCredentialStore(
-    secretProcess.spawnSync.bind(secretProcess)
+    secretProcess.spawnSync.bind(secretProcess),
+    fileCredentialRevision(() =>
+      join(configDir(), 'credential-manager.revision')
+    )
   );
 
   function warnFileBackendOnce(): void {
@@ -119,7 +133,7 @@ export function createSecretStore(
         ? 'Windows ACLs are not validated'
         : 'chmod 600';
     logWarn(
-      `No macOS keychain; storing secrets at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`
+      `Storing secrets in plaintext at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`
     );
     fileBackendWarned = true;
   }

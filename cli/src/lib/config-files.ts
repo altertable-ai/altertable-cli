@@ -148,5 +148,6 @@ export function kvUnset(filePath: string, key: string): void {
     .split('\n')
     .filter(line => configKey(line) !== key)
     .join('\n');
+  if (output === content) return;
   writeConfigFileAtomically(filePath, output, 'update');
 }

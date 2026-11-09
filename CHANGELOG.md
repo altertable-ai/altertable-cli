@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Document the Windows PowerShell installation path, including Bun's native installer and the `bun.exe` requirement for npm launchers.
-- Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors. The explicit file backend remains available for CI.
+- Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors with the cause and how to opt out. `ALTERTABLE_SECRET_BACKEND=file` keeps the file backend, for example in CI.
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
 
 - Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.

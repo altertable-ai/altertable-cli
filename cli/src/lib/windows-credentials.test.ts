@@ -28,6 +28,17 @@ test.skipIf(process.platform !== 'win32')(
       store.secretDelete('api-key', 'native-test');
       expect(store.secretExists('api-key', 'native-test')).toBe(false);
 
+      // Long tokens fit because blobs are UTF-8; a fresh store reads the vault.
+      const token = 'synthetic.token-'.repeat(150);
+      store.secretSet('oauth/access-token', token, 'native-test');
+      expect(
+        createSecretStore().secretGet('oauth/access-token', 'native-test')
+      ).toBe(token);
+      store.secretDelete('oauth/access-token', 'native-test');
+      expect(
+        createSecretStore().secretExists('oauth/access-token', 'native-test')
+      ).toBe(false);
+
       // Upgrade an existing stable-profile plaintext credential, then remove it.
       const account = `profile/${getProfileId('native-test')}/api-key`;
       kvSet(credentialsFile(), account, 'synthetic legacy credential');
@@ -41,6 +52,7 @@ test.skipIf(process.platform !== 'win32')(
     } finally {
       try {
         store.secretDelete('api-key', 'native-test');
+        store.secretDelete('oauth/access-token', 'native-test');
       } finally {
         if (oldHome === undefined) delete process.env.ALTERTABLE_CONFIG_HOME;
         else process.env.ALTERTABLE_CONFIG_HOME = oldHome;
