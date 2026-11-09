@@ -196,8 +196,10 @@ Keep updater tests hermetic. Use fake `fetch` implementations and temp executabl
 ## Credential storage
 
 - **Non-secret config**: `~/.config/altertable/config`
-- **Secrets**: macOS Keychain when available, otherwise `~/.config/altertable/credentials` (`chmod 600`)
-- Override backend: `ALTERTABLE_SECRET_BACKEND=keychain|file`
+- **Secrets**: macOS Keychain when available, Windows Credential Manager on Windows, otherwise `~/.config/altertable/credentials` (`chmod 600`)
+- Override backend: `ALTERTABLE_SECRET_BACKEND=keychain|windows|file`
+- On Windows, each process lists the vault once and reuses that snapshot until another CLI process writes credentials; writes replace the random token in `credential-manager.revision` in the config directory
+- The real Credential Manager test (`cli/src/lib/windows-credentials.test.ts`) only runs on Windows; CI runs it in the user-directories Windows job
 
 ## Local deployment endpoints
 

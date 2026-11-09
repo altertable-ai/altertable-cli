@@ -1,8 +1,15 @@
 import type { SpawnSyncOptions } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { credentialsFile, kvGet, kvSet, kvUnset } from '@/lib/config.ts';
+import {
+  configDir,
+  credentialsFile,
+  kvGet,
+  kvSet,
+  kvUnset,
+} from '@/lib/config.ts';
 import { readEnv } from '@/lib/env.ts';
 import { CliError } from '@/lib/errors.ts';
 import { logWarn } from '@/lib/log.ts';
@@ -12,8 +19,12 @@ import {
   getProfileId,
   isFromEnvProfile,
 } from '@/lib/profile-store.ts';
+import {
+  createWindowsCredentialStore,
+  fileCredentialRevision,
+} from '@/lib/windows-credentials.ts';
 
-type SecretBackend = 'macos' | 'file';
+type SecretBackend = 'macos' | 'windows' | 'file';
 
 // `security` returns errSecItemNotFound (-25300) modulo 256 as its process status.
 const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
@@ -21,6 +32,7 @@ const KEYCHAIN_ITEM_NOT_FOUND_STATUS = 44;
 type SecretProcessResult = {
   status: number | null;
   stdout: string | Buffer;
+  stderr?: string | Buffer;
   error?: Error;
 };
 
@@ -107,6 +119,12 @@ export function createSecretStore(
   secretProcess: SecretProcess = SYSTEM_SECRET_PROCESS
 ): SecretStore {
   let fileBackendWarned = false;
+  const windowsCredentials = createWindowsCredentialStore(
+    secretProcess.spawnSync.bind(secretProcess),
+    fileCredentialRevision(() =>
+      join(configDir(), 'credential-manager.revision')
+    )
+  );
 
   function warnFileBackendOnce(): void {
     if (fileBackendWarned) return;
@@ -115,7 +133,7 @@ export function createSecretStore(
         ? 'Windows ACLs are not validated'
         : 'chmod 600';
     logWarn(
-      `No macOS keychain; storing secrets at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`
+      `Storing secrets in plaintext at ${credentialsFile()} (${protection}). Prefer environment variables in CI.`
     );
     fileBackendWarned = true;
   }
@@ -130,6 +148,12 @@ export function createSecretStore(
   function secretBackend(): SecretBackend {
     const override = readEnv('ALTERTABLE_SECRET_BACKEND') ?? '';
     if (override === 'file') return 'file';
+    if (override === 'windows') {
+      if (secretProcess.platform === 'win32') return 'windows';
+      throw new CliError(
+        'ALTERTABLE_SECRET_BACKEND=windows requires Windows Credential Manager.'
+      );
+    }
     if (override === 'keychain') {
       if (secretProcess.platform === 'darwin' && hasSecurityCommand())
         return 'macos';
@@ -139,6 +163,7 @@ export function createSecretStore(
     }
     if (secretProcess.platform === 'darwin' && hasSecurityCommand())
       return 'macos';
+    if (secretProcess.platform === 'win32') return 'windows';
     return 'file';
   }
 
@@ -165,6 +190,16 @@ export function createSecretStore(
   }
 
   function readStoredSecret(storageAccount: string): string {
+    if (secretBackend() === 'windows') {
+      const value = windowsCredentials.get(storageAccount);
+      if (value !== null) return value;
+      const legacyValue = kvGet(credentialsFile(), storageAccount);
+      if (legacyValue !== '') {
+        windowsCredentials.set(storageAccount, legacyValue);
+        kvUnset(credentialsFile(), storageAccount);
+      }
+      return legacyValue;
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -192,6 +227,10 @@ export function createSecretStore(
   }
 
   function storedSecretExists(storageAccount: string): boolean {
+    if (secretBackend() === 'windows') {
+      if (windowsCredentials.exists(storageAccount)) return true;
+      return kvGet(credentialsFile(), storageAccount) !== '';
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -210,6 +249,9 @@ export function createSecretStore(
   }
 
   function deleteStoredSecret(storageAccount: string): void {
+    if (secretBackend() === 'windows') {
+      windowsCredentials.delete(storageAccount);
+    }
     if (secretBackend() === 'macos') {
       const result = secretProcess.spawnSync(
         'security',
@@ -243,6 +285,11 @@ export function createSecretStore(
       ensureProfileId(profileName)
     );
     const backend = secretBackend();
+    if (backend === 'windows') {
+      windowsCredentials.set(storageAccount, value);
+      kvUnset(credentialsFile(), storageAccount);
+      return;
+    }
     if (backend === 'macos' && !options?.fromArgv) {
       secretSetMacos(storageAccount, value);
       return;
@@ -300,6 +347,8 @@ export function createSecretStore(
       if (!storedSecretExists(storageAccount)) {
         if (secretBackend() === 'macos') {
           secretSetMacos(storageAccount, value);
+        } else if (secretBackend() === 'windows') {
+          windowsCredentials.set(storageAccount, value);
         } else {
           kvSet(credentialsFile(), storageAccount, value);
           chmodSync(credentialsFile(), 0o600);
@@ -312,7 +361,10 @@ export function createSecretStore(
   }
 
   function secretStoreDisplay(): string {
-    return secretBackend() === 'macos' ? 'MacOS keychain' : credentialsFile();
+    const backend = secretBackend();
+    if (backend === 'macos') return 'MacOS keychain';
+    if (backend === 'windows') return 'Windows Credential Manager';
+    return credentialsFile();
   }
 
   return {

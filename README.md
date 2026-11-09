@@ -263,8 +263,18 @@ Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
 `$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
 be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
 
-Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
-Keep the configuration directory private.
+Credentials use macOS Keychain when available and the current user's Windows
+Credential Manager on Windows. Windows access goes through Windows PowerShell, with
+secret values passed over stdin rather than process arguments. Existing Windows file
+credentials move to Credential Manager when first read and leave the file only after
+native storage succeeds. Credential Manager errors fail the command instead of
+saving plaintext; each Windows secret can be at most 2,560 bytes.
+
+Other systems use a plaintext file with Unix mode `600`. Set
+`ALTERTABLE_SECRET_BACKEND=file` to use the file everywhere (for example, in CI or
+where PowerShell is restricted), or `ALTERTABLE_SECRET_BACKEND=windows` to require
+Credential Manager. Keep the configuration directory private; Windows ACLs are not
+checked when the file backend is selected.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 
