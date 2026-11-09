@@ -130,6 +130,11 @@ jobs:
       - name: Verify user-directory storage through CLI commands
         run: bun test tests/user-directories.test.ts
 
+      - name: Verify Windows native credential storage
+        if: runner.os == 'Windows'
+        working-directory: cli
+        run: bun test src/lib/windows-credentials.test.ts
+
       - name: Build npm bundle
         working-directory: cli
         run: bun run build

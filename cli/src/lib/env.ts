@@ -86,7 +86,9 @@ const ENV_SCHEMA = {
   ALTERTABLE_OAUTH_REDIRECT_PORT: { parse: port },
   ALTERTABLE_OAUTH_SCOPE: { parse: optional },
   ALTERTABLE_PROFILE: { parse: optional },
-  ALTERTABLE_SECRET_BACKEND: { parse: oneOf(['file', 'keychain'] as const) },
+  ALTERTABLE_SECRET_BACKEND: {
+    parse: oneOf(['file', 'keychain', 'windows'] as const),
+  },
   ALTERTABLE_UPDATE_CHECK: {
     parse: oneOf(['0', '1', 'false', 'true', 'never'] as const),
   },

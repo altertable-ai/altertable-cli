@@ -60,7 +60,7 @@ altertable query "SELECT id, email, plan FROM analytics.main.users LIMIT 10"
 
 ### Install script
 
-Recommended for most users:
+Recommended for macOS and Linux:
 
 ```bash
 curl -fsSL https://install.altertable.ai | sh
@@ -73,6 +73,31 @@ npm install -g @altertable/cli
 ```
 
 Requires [Bun](https://bun.sh) at runtime (used as the JS engine when running the npm package). You can also install the same package with `bun install -g @altertable/cli`.
+
+### Windows (PowerShell)
+
+Install Bun with its [Windows installer](https://bun.sh/docs/installation), then install the CLI with npm:
+
+```powershell
+irm https://bun.sh/install.ps1 | iex
+```
+
+Close and reopen PowerShell so the updated `PATH` is loaded, then run:
+
+```powershell
+Get-Command bun.exe
+bun --version
+npm install -g @altertable/cli
+altertable --version
+```
+
+The npm CLI requires `bun.exe` on `PATH`; Node.js cannot run the CLI bundle.
+Installing Bun with `npm install -g bun` can provide only npm's `bun.cmd` and
+`bun.ps1` shims on `PATH`, which the CLI's generated PowerShell launcher cannot
+use in place of `bun.exe`. Use Bun's Windows installer instead.
+
+The shell install script and the prebuilt binaries below are currently for macOS
+and Linux, not Windows. Windows users should use the npm installation above.
 
 ### Prebuilt binaries
 
@@ -238,8 +263,18 @@ Configuration is stored in `ALTERTABLE_CONFIG_HOME` when set, otherwise
 `$XDG_CONFIG_HOME/altertable`, otherwise `~/.config/altertable`. Directory settings must
 be absolute. The default home directory follows OS conventions (`HOME` on Unix, `USERPROFILE` on Windows).
 
-Credentials use macOS Keychain when available; the file fallback stores plaintext credentials.
-Keep the configuration directory private.
+Credentials use macOS Keychain when available and the current user's Windows
+Credential Manager on Windows. Windows access goes through Windows PowerShell, with
+secret values passed over stdin rather than process arguments. Existing Windows file
+credentials move to Credential Manager when first read and leave the file only after
+native storage succeeds. Credential Manager errors fail the command instead of
+saving plaintext; each Windows secret can be at most 2,560 bytes.
+
+Other systems use a plaintext file with Unix mode `600`. Set
+`ALTERTABLE_SECRET_BACKEND=file` to use the file everywhere (for example, in CI or
+where PowerShell is restricted), or `ALTERTABLE_SECRET_BACKEND=windows` to require
+Credential Manager. Keep the configuration directory private; Windows ACLs are not
+checked when the file backend is selected.
 
 Named profiles store credentials and endpoint overrides per environment. Global display defaults (`query_layout`, `query_max_width`, `query_pager`) stay in the root config and apply to all profiles.
 

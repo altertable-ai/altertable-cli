@@ -23,7 +23,12 @@ import {
   resolveCommandSelection,
 } from '@/lib/command-parser.ts';
 import { configFile, kvSet } from '@/lib/config.ts';
-import { ConfigurationError } from '@/lib/errors.ts';
+import {
+  ConfigurationError,
+  EXIT_NETWORK,
+  NetworkError,
+  TimeoutError,
+} from '@/lib/errors.ts';
 import { resolveProcessExecutablePath } from '@/lib/executable-path.ts';
 import { createCliRuntime } from '@/lib/runtime.ts';
 import { UpdaterConfig } from '@/lib/updater-config.ts';
@@ -122,10 +127,34 @@ function githubBinaryFetch(options: {
   binary: string;
   checksum: string;
   version?: string;
+  binaryDelayMs?: number;
+  binaryError?: unknown;
 }): typeof fetch {
   const version = options.version ?? UPDATE_TEST_VERSION;
-  return (async (url: string | URL | Request) => {
+  return (async (url: string | URL | Request, init?: RequestInit) => {
     const requestedUrl = fetchInputUrl(url);
+    if (
+      requestedUrl === LINUX_X64_DOWNLOAD_URL &&
+      (options.binaryDelayMs !== undefined || options.binaryError !== undefined)
+    ) {
+      const signal = init?.signal ?? undefined;
+      const body = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          await new Promise(done =>
+            setTimeout(done, options.binaryDelayMs ?? 0)
+          );
+          if (options.binaryError !== undefined) {
+            controller.error(options.binaryError);
+          } else if (signal?.aborted) {
+            controller.error(signal.reason);
+          } else {
+            controller.enqueue(new TextEncoder().encode(options.binary));
+            controller.close();
+          }
+        },
+      });
+      return new Response(body, { status: 200 });
+    }
     if (requestedUrl.includes(`/releases/tags/v${version}`)) {
       return new Response(JSON.stringify(githubReleaseMetadata(version)), {
         status: 200,
@@ -527,6 +556,77 @@ describe('binary self-update', () => {
     expect(result.method).toBe('github-binary');
     expect(result.verified_version).toBe(UPDATE_TEST_VERSION);
     expect(readFileSync(targetPath, 'utf8')).toBe(newBinary);
+  });
+
+  test('downloads a GitHub binary with a longer timeout than metadata requests', async () => {
+    const targetPath = join(testHome, 'altertable');
+    const newBinary = `#!/bin/sh\necho ${UPDATE_TEST_VERSION}\n`;
+    writeFileSync(targetPath, '#!/bin/sh\necho 1.0.0\n', { mode: 0o755 });
+
+    const result = await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
+      targetPath,
+      platform: 'linux-x64',
+      timeoutMs: 20,
+      downloadTimeoutMs: 5_000,
+      fetchImpl: githubBinaryFetch({
+        binary: newBinary,
+        checksum: sha256(newBinary),
+        binaryDelayMs: 60,
+      }),
+    });
+
+    expect(result.verified_version).toBe(UPDATE_TEST_VERSION);
+    expect(readFileSync(targetPath, 'utf8')).toBe(newBinary);
+  });
+
+  test('reports a GitHub binary download timeout with its cause', async () => {
+    const targetPath = join(testHome, 'altertable');
+    const originalBinary = '#!/bin/sh\necho 1.0.0\n';
+    writeFileSync(targetPath, originalBinary, { mode: 0o755 });
+
+    try {
+      await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
+        targetPath,
+        platform: 'linux-x64',
+        downloadTimeoutMs: 20,
+        fetchImpl: githubBinaryFetch({
+          binary: 'unused',
+          checksum: '0'.repeat(64),
+          binaryDelayMs: 60,
+        }),
+      });
+      throw new Error('Expected download to time out.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(TimeoutError);
+      expect((error as TimeoutError).message).toBe(
+        `Timed out downloading ${LINUX_X64_ASSET} after 0.02s.`
+      );
+      expect((error as TimeoutError).exitCode).toBe(EXIT_NETWORK);
+    }
+    expect(readFileSync(targetPath, 'utf8')).toBe(originalBinary);
+  });
+
+  test('reports GitHub binary download network failures with their cause', async () => {
+    const targetPath = join(testHome, 'altertable');
+    writeFileSync(targetPath, '#!/bin/sh\necho 1.0.0\n', { mode: 0o755 });
+
+    try {
+      await installGitHubBinaryRelease(UPDATE_TEST_VERSION, {
+        targetPath,
+        platform: 'linux-x64',
+        fetchImpl: githubBinaryFetch({
+          binary: 'unused',
+          checksum: '0'.repeat(64),
+          binaryError: new Error('connection reset by peer'),
+        }),
+      });
+      throw new Error('Expected download to fail.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(NetworkError);
+      expect((error as NetworkError).message).toBe(
+        `Unable to download ${LINUX_X64_ASSET}: connection reset by peer`
+      );
+    }
   });
 
   test('rejects GitHub binary install on checksum mismatch without replacing target', async () => {

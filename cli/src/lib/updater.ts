@@ -15,7 +15,12 @@ import type { CliContext } from '@/context.ts';
 import { isJsonOutput } from '@/context.ts';
 import { configDir, configGetGlobal } from '@/lib/config.ts';
 import { copyProcessEnv, readEnv, readEnvFrom } from '@/lib/env.ts';
-import { CliError, HttpError, NetworkError } from '@/lib/errors.ts';
+import {
+  CliError,
+  HttpError,
+  NetworkError,
+  TimeoutError,
+} from '@/lib/errors.ts';
 import { resolveProcessExecutablePath } from '@/lib/executable-path.ts';
 import { hasObjectKey } from '@/lib/object.ts';
 import type { OutputSink } from '@/lib/runtime.ts';
@@ -127,6 +132,8 @@ type InstallCliUpdateOptions = {
   targetPath?: string;
   platform?: ReleasePlatform;
   timeoutMs?: number;
+  /** Timeout for the whole release binary download, body included. */
+  downloadTimeoutMs?: number;
   fetchImpl?: typeof fetch;
   spawnImpl?: SpawnSyncImpl;
   stdio?: 'inherit' | 'pipe';
@@ -529,13 +536,55 @@ async function fetchText(
   return await response.text();
 }
 
+function isTimeoutAbort(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'TimeoutError' || error.name === 'AbortError')
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function downloadError(
+  label: string,
+  timeoutMs: number,
+  error: unknown
+): NetworkError {
+  if (isTimeoutAbort(error)) {
+    return new TimeoutError(
+      `Timed out downloading ${label} after ${timeoutMs / 1000}s.`,
+      { cause: error }
+    );
+  }
+  return new NetworkError(
+    `Unable to download ${label}: ${errorMessage(error)}`,
+    { cause: error }
+  );
+}
+
+/** Downloads a release asset; the timeout covers headers and body. */
 async function fetchBytes(
   url: string,
+  label: string,
   timeoutMs: number,
   fetchImpl: typeof fetch
 ): Promise<Uint8Array> {
-  const response = await fetchResponse(url, timeoutMs, fetchImpl);
-  return new Uint8Array(await response.arrayBuffer());
+  let response: Response;
+  try {
+    response = await fetchResponse(url, timeoutMs, fetchImpl);
+  } catch (error) {
+    if (error instanceof NetworkError) {
+      throw downloadError(label, timeoutMs, error.cause);
+    }
+    throw error;
+  }
+  try {
+    return new Uint8Array(await response.arrayBuffer());
+  } catch (error) {
+    throw downloadError(label, timeoutMs, error);
+  }
 }
 
 function readStringProperty(data: unknown, key: string): string {
@@ -938,13 +987,15 @@ async function writeVerifiedGitHubBinaryDownload(options: {
   release: GitHubBinaryRelease;
   targetPath: string;
   timeoutMs: number;
+  downloadTimeoutMs: number;
   fetchImpl: typeof fetch;
 }): Promise<string> {
   const tempPath = tempSiblingPath(options.targetPath, 'download');
   try {
     const bytes = await fetchBytes(
       options.release.assetDownloadUrl,
-      options.timeoutMs,
+      options.release.assetName,
+      options.downloadTimeoutMs,
       options.fetchImpl
     );
     writeFileSync(tempPath, bytes, { mode: 0o755 });
@@ -973,9 +1024,10 @@ async function writeVerifiedGitHubBinaryDownload(options: {
     if (error instanceof CliError) {
       throw error;
     }
-    throw new CliError('Unable to install GitHub release binary.', {
-      cause: error,
-    });
+    throw new CliError(
+      `Unable to install GitHub release binary: ${errorMessage(error)}`,
+      { cause: error }
+    );
   }
 }
 
@@ -996,6 +1048,8 @@ export async function installGitHubBinaryRelease(
     release,
     targetPath,
     timeoutMs,
+    downloadTimeoutMs:
+      options.downloadTimeoutMs ?? UpdaterConfig.timeoutsMs.download,
     fetchImpl,
   });
   try {

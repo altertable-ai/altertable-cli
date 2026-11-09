@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Document the Windows PowerShell installation path, including Bun's native installer and the `bun.exe` requirement for npm launchers.
+- Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors with the cause and how to opt out. `ALTERTABLE_SECRET_BACKEND=file` keeps the file backend, for example in CI.
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.
 
 - Keep the TypeScript manifest compiler out of CLI downloads by installing it with the cached single-file preview runtime.
@@ -50,6 +52,20 @@ If credentials were saved inside a project, sign in again after upgrading and re
 - Make CLI updates easier to scan with styled version summaries, explicit upgrade/reinstall/downgrade messages, and release notes, issue, and commit-log links.
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
+
+## [1.15.1](https://github.com/altertable-ai/altertable-cli/compare/v1.15.0...v1.15.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **update:** give binary downloads their own timeout and keep failure causes ([#184](https://github.com/altertable-ai/altertable-cli/issues/184)) ([98804ab](https://github.com/altertable-ai/altertable-cli/commit/98804ab1021f2652d8263ab8800c080ebcd9e198))
+
+## [1.15.0](https://github.com/altertable-ai/altertable-cli/compare/v1.14.0...v1.15.0) (2026-11-08)
+
+
+### Features
+
+* **query:** add `query top` to monitor running queries ([#179](https://github.com/altertable-ai/altertable-cli/issues/179)) ([81ed29e](https://github.com/altertable-ai/altertable-cli/commit/81ed29e56400628e0b02011d0b085adcf9b941c6))
 
 ## [1.14.0](https://github.com/altertable-ai/altertable-cli/compare/v1.13.3...v1.14.0) (2026-11-05)
 
