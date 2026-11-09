@@ -53,6 +53,13 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.15.2](https://github.com/altertable-ai/altertable-cli/compare/v1.15.1...v1.15.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **config:** store Windows secrets in Credential Manager ([#182](https://github.com/altertable-ai/altertable-cli/issues/182)) ([8403a07](https://github.com/altertable-ai/altertable-cli/commit/8403a07bc57d6befc383d081666459f1c903aa7f))
+
 ## [1.15.1](https://github.com/altertable-ai/altertable-cli/compare/v1.15.0...v1.15.1) (2026-11-08)
 
 
