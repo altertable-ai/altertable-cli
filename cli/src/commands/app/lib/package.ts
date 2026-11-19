@@ -12,6 +12,7 @@ export const dataAppPackages = [
   '@altertable/data-app-embed',
   '@altertable/data-app-bun',
   '@altertable/data-app-worker',
+  '@altertable/data-app-manifest',
 ] as const;
 
 type AppPackage = {

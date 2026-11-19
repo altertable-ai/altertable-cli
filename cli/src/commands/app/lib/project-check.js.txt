@@ -1,16 +1,15 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const appFile = (path) => pathToFileURL(join(process.cwd(), path)).href;
 
 async function check() {
-  const manifest = JSON.parse(await readFile("app.json", "utf8"));
+  const { dataApp: manifest } = await import(appFile("app.ts"));
   try {
     const { parseAppearance } = await import("@altertable/data-app/appearance");
     parseAppearance(manifest.appearance);
   } catch {
-    throw new Error("app.json has invalid appearance settings.");
+    throw new Error("app.ts has invalid appearance settings.");
   }
 
   let operations;
@@ -29,7 +28,7 @@ async function check() {
   for (const name of names) {
     const operation = operations[name];
     if (
-      !/^[a-z][a-z0-9-]*$/.test(name) ||
+      !name.trim() ||
       !operation ||
       typeof operation.input !== "function" ||
       typeof operation.run !== "function" ||
@@ -68,8 +67,7 @@ async function check() {
           build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, ({ path }) => {
             const normalized = path.replaceAll("\\", "/");
             const root = process.cwd().replaceAll("\\", "/");
-            if (normalized === `${root}/src/operations.ts` ||
-                normalized === `${root}/src/server.ts` ||
+            if (normalized === `${root}/src/server.ts` ||
                 /node_modules\/@altertable\/(?:data-app\/(?:dist|src)\/server\/|data-app-(?:bun|worker)\/)/.test(normalized)) {
               throw new Error("Browser code cannot import server operations or transport. Use import type for operation types.");
             }
@@ -81,24 +79,11 @@ async function check() {
   }
 
   if (process.argv[1] !== "--lakehouse") return;
-  const { createDataHandler } = await import("@altertable/data-app/server");
+  const { createDataClient } = await import("@altertable/data-app/client");
   const { localLakehouse } = await import("@altertable/data-app-bun");
-  const handle = createDataHandler(operations, async () => ({
-    lakehouse: localLakehouse(process.env),
-    canDiscloseSql: true,
-  }));
+  const client = createDataClient({ operations, lakehouse: localLakehouse(process.env) });
   for (const [name, operation] of Object.entries(operations)) {
-    for (const input of operation.checks) {
-      const response = await handle(
-        new Request(`http://localhost/api/data/${name}`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
-        }),
-      );
-      if (!response.ok)
-        throw new Error(`Live check failed for operation "${name}" (${response.status}).`);
-    }
+    for (const input of operation.checks) await client.query(name, input);
   }
 }
 

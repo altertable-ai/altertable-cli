@@ -12,7 +12,7 @@ export const appCreateCommand = defineCommand({
   metadata: {
     name: 'create',
     description:
-      'Create a local data app project with a live connection check.',
+      'Create a local data app project from the editable standalone example.',
     examples: [
       'altertable app create product-pulse',
       'altertable app create product-pulse --dir ./apps/product-pulse',
@@ -122,7 +122,7 @@ export const appCreateCommand = defineCommand({
           command => `altertable --profile ${profileName} ${command}`
         )
       : [
-          'Set organization and environment in app.json.',
+          'Set organization and environment in app.ts.',
           'Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.',
           'altertable app dev',
           'altertable app lint --lakehouse',
@@ -144,7 +144,7 @@ export const appCreateCommand = defineCommand({
       );
     else
       sink.writeHuman(
-        `Created ${title} in ${directory} with placeholder scope.\nBefore previewing, set the organization and environment in app.json and select a matching profile (or run \`altertable login --org <org> --env <env>\`).\nYou can run \`altertable app build\` from that directory now.`
+        `Created ${title} in ${directory} with placeholder scope.\nBefore previewing, set the organization and environment in app.ts and select a matching profile (or run \`altertable login --org <org> --env <env>\`).\nYou can run \`altertable app build\` from that directory now.`
       );
   },
 });

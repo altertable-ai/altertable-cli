@@ -1,77 +1,99 @@
-# Data app development
+# Data app integration
 
-`starter/` is the application copied by `altertable app create`. It pins the published
-[core, React authoring, and Bun packages](https://github.com/altertable-ai/data-app)
-to a shared version and ships a frozen lockfile. Package source, API documentation, unit tests,
-and releases belong to that repository.
-`tests/` exercises the starter and component fixtures against the installed npm package.
+The starter comes from the exact published `@altertable/data-app-examples` version in
+`cli/package.json`. Its source, guides, scripts, and tool configuration belong to the SDK.
+This repository keeps only `starter/bun.lock`, the reviewed registry resolution used for offline
+scaffolding and frozen installs. Do not edit generated files in `starter/`.
 
 ## Develop
 
-From the repository root, using Fish:
+From the repository root:
 
 ```fish
-bun install --cwd cli --frozen-lockfile
-bun install --cwd data-app/starter --frozen-lockfile
-./bin/altertable app dev --dir data-app/starter
+bun run setup
 ```
 
-Use a configured profile for live data. The starter executes a bounded connection query before
-showing Connected. App queries, data context, views, and appearance remain app-owned.
+Setup generates the disposable `starter/` project from the same payload embedded in the CLI,
+then installs its frozen dependencies. To regenerate it after changing the integration:
 
-## Ownership and distribution
+```fish
+bun run --cwd cli data-app:prepare
+```
 
-The CLI embeds the starter and internal file-preview project allowlists in
-`cli/src/commands/app/lib/distribution.ts`.
-Both npm and native CLI builds can scaffold an app without reading this checkout or accessing
-the network. Installing the generated app needs registry access or a populated Bun cache.
-Generated projects commit their source, package manifest, and lockfile; they do not vendor runtime
-source.
+With a matching configured profile, preview an app created outside this fixture:
 
-Each consumer declares only the packages it uses:
+```fish
+./bin/altertable app create my-app
+```
 
-| Package                      | Consumers                                                        |
-| ---------------------------- | ---------------------------------------------------------------- |
-| `@altertable/data-app`       | Starter definitions, contracts, and clients; browser-test server |
-| `@altertable/data-app-react` | Starter UI and browser-test fixtures                             |
-| `@altertable/data-app-bun`   | Starter local server and single-file preview                     |
+```fish
+./bin/altertable app dev --dir my-app
+```
 
-Browser-test fixtures live under `starter/` and resolve React authoring from the starter's
-own dependencies. Keep the browser-test server's manifest limited to its direct dependencies.
+The canonical standalone example uses fictional inline queries and creates no lakehouse objects.
+Its installed authoring recipe describes distinct standalone, Finding, and semantic metric apps.
+Change the upstream examples package to improve the starter.
 
-The starter owns React, ReactDOM, and its authoring tools. The package owns its implementation
-dependencies. The browser entry calls `injectDataAppStyles()` before mounting. The app's `AGENTS.md`
-points to the installed package guide and docs; dependency guides are not assumed to load automatically.
+## Distribution
 
-To adopt a package release, update the exact pins for packages used in `starter/package.json`,
-`tests/package.json`, and `file-preview/package.json`, regenerate their lockfiles, and run the checks
-below. Never resolve `latest` during app creation. Develop package changes in the package
-repository; the CLI has no runtime source watcher.
+`cli/src/commands/app/lib/distribution-source.ts` reads the published local example through
+`getExampleDirectory()`, restores `.gitignore`, adds the frozen lockfile, and prepares identity
+literals with the public manifest rewriter. `distribution.ts` inserts the requested name, title,
+organization, and environment. No source override is maintained here.
+
+Both npm and native builds embed these files with the internal `file-preview/` tooling. Creating
+an app needs neither this checkout nor registry access. Installing it needs the registry or a
+populated Bun cache. Generated apps depend on the runtime packages, not the examples package.
+The manifest compiler runs in the installed preview tooling, outside the shipped CLI bundle;
+directory and file scopes are extracted statically before receiving lakehouse access.
+
+## Adopt an SDK release
+
+Update the exact examples and manifest-tooling pins in `cli/package.json` and runtime pins in
+`file-preview/package.json` and `tests/package.json`. Regenerate the fixture from that package:
+
+```fish
+bun install --cwd cli
+```
+
+```fish
+bun run --cwd cli data-app:prepare
+```
+
+```fish
+bun install --cwd data-app/starter --lockfile-only
+```
+
+Update the other lockfiles, then run setup and the verification below. Review and commit the
+lockfiles; never resolve `latest` during app creation.
 
 ## Upgrades
 
-`app upgrade` updates declared data-app dependencies and dev dependencies in the app manifest
-and lockfile to the CLI's tested shared version. It preserves dependency placement, unrelated
-dependencies, and app code, and does not downgrade newer installations. Peer incompatibilities
-stop with an actionable error; missing required peers use starter defaults.
+`app upgrade` updates declared data-app dependencies and lockfiles to the CLI's tested version,
+preserving source, identity, dependency placement, and unrelated packages. It does not downgrade
+newer installations and restores the manifest and lockfile if resolution fails.
 
-Upgrades resolve only the lockfile and restore the original manifest and lockfile if resolution
-fails. Apps must use published packages. The command does not add data-app packages or rewrite
-app imports; authors update their source as needed, run `app lint`, and restart running previews.
+SDK 0.78 uses a shared literal `app.ts` declaration, browser-run operations, and
+`serveLocalApp({ app, page })`. Older `app.json` projects require an author-owned source migration
+using their existing identity, queries, and UI. Upgrade never replaces their source with a demo.
+Adapt the source using the installed SDK authoring recipe, run `app lint`, and restart previews.
 
 ## Verify
 
 ```fish
-bun run setup
 bun run --cwd cli data-app:check
+```
+
+```fish
 bun run --cwd cli data-app:test:browser
-bun run check --quick
+```
+
+```fish
 bun run check
 ```
 
-Install Playwright Chromium with `bunx playwright install chromium` from `data-app/tests/`
-if needed. Browser checks cover connection and request states, theme, context, and presentation
-at phone and desktop widths. CLI tests cover offline scaffolding, npm consumption, package upgrades,
-peer checks, and failed resolution. Release smoke checks create an app outside the checkout, install its
-frozen lockfile, and run `app lint` with the packaged CLI. The minimum Bun compatibility job
-checks scaffolding only; app builds use the repository's current toolchain.
+The checks build and lint the generated fixture against the real published packages. Browser
+tests exercise that fixture through the published Bun server and a mocked external lakehouse:
+filters, evidence inspection, request states, themes, and registered-query boundaries on desktop
+and phone. Component-level SDK tests belong to the SDK repository. npm and native smoke tests
+exercise create, frozen install, lint/build, directory dev, and file preview outside the checkout.

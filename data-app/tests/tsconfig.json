@@ -15,7 +15,6 @@
   },
   "include": [
     "*.ts",
-    "../starter/fixtures",
     "../starter/src/assets.d.ts"
   ]
 }

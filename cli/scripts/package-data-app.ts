@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun';
 
-import { readDataAppPayload } from '@/commands/app/lib/distribution.ts';
+import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
 
 /** Both npm and native releases embed the same deterministic project templates. */
 export function dataAppPlugin(): BunPlugin {

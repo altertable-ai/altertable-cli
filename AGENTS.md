@@ -12,7 +12,7 @@ Altertable CLI — a TypeScript/Bun command-line tool for querying and managing 
 | ---------------------- | --------------------------------------------------------- |
 | `cli/src/`             | CLI commands, HTTP clients, formatting, config            |
 | `cli/src/**/*.test.ts` | Colocated Bun unit tests for CLI logic                    |
-| `data-app/starter/`    | Runnable getting-started app copied by `app create`       |
+| `data-app/starter/`    | Generated SDK fixture; only `bun.lock` is versioned       |
 | `data-app/tests/`      | Browser tests and fixtures consuming the published package    |
 | `tests/`               | Black-box end-user CLI tests run through `bin/altertable` |
 | `specs/`               | Client API specs (submodule — read-only from this repo)   |
@@ -38,7 +38,7 @@ bun run --cwd data-app/starter build
 bun run --cwd cli data-app:test:browser
 ```
 
-The starter build requires its published package dependencies; see [data-app/README.md](data-app/README.md)
+Setup generates the starter from `@altertable/data-app-examples` and installs its dependencies; see [data-app/README.md](data-app/README.md)
 for setup and browser prerequisites. Run `bun run --cwd cli data-app:check` to check all
 three data app projects together. Use `bun run check --quick` after focused checks,
 then default `bun run check` before opening a PR.

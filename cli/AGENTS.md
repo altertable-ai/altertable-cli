@@ -53,7 +53,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 ## Conventions
 
-- For generated app authoring, edit [the starter app guide](../data-app/starter/AGENTS.md). Keep it a task router into focused authoring guides and the installed package docs. Types describe props; reserve JSDoc for constraints, ownership, security boundaries, and surprising behavior.
+- The generated starter and its authoring guides come from the pinned `@altertable/data-app-examples` package. Change examples in the SDK repository; this CLI owns distribution, identity injection, the frozen lockfile, and integration tests. See [data app integration](../data-app/README.md).
 - Runtime contracts and UI components are maintained in [the Data App repository](https://github.com/altertable-ai/data-app). This repository owns the starter and its integration with CLI commands.
 
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.

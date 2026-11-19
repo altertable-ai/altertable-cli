@@ -44,6 +44,7 @@
     "pack:check": "bun run build && bun run scripts/check-package.ts",
     "knip": "knip --no-config-hints",
     "knip:production": "knip --production --no-config-hints",
+    "data-app:prepare": "bun run scripts/prepare-data-app.ts",
     "data-app:check": "bun run scripts/check-data-app.ts",
     "data-app:test:browser": "cd ../data-app/tests && bun run test",
     "test:watch": "bun test --watch"
@@ -54,6 +55,8 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
+    "@altertable/data-app-examples": "0.78.0",
+    "@altertable/data-app-manifest": "0.78.0",
     "@types/bun": "1.4.3",
     "eslint-plugin-no-relative-import-paths": "1.6.1",
     "knip": "6.32.2",

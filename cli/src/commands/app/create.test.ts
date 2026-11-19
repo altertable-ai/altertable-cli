@@ -9,7 +9,9 @@ import {
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 
-import { readDataAppPayload } from '@/commands/app/lib/distribution.ts';
+import { extractDataAppManifest } from '@altertable/data-app-manifest';
+
+import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
 import {
   configSet,
@@ -37,7 +39,7 @@ afterEach(() => {
   else process.env.ALTERTABLE_CONFIG_HOME = previousConfigHome;
   if (previousProfile === undefined) delete process.env.ALTERTABLE_PROFILE;
   else process.env.ALTERTABLE_PROFILE = previousProfile;
-});
+}, 30_000);
 
 describe('app create', () => {
   test('scaffolds a pinned package project without registry access', async () => {
@@ -61,7 +63,7 @@ describe('app create', () => {
       },
       scopeSource: 'placeholder',
       nextSteps: [
-        'Set organization and environment in app.json.',
+        'Set organization and environment in app.ts.',
         'Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.',
         'altertable app dev',
         'altertable app lint --lakehouse',
@@ -74,14 +76,15 @@ describe('app create', () => {
       name: 'product-pulse',
       scripts: {
         typecheck: 'tsc --noEmit',
-        lint: 'oxlint --type-aware src',
-        format: 'oxfmt src',
-        'format:check': 'oxfmt --check src',
+        lint: 'oxlint --type-aware src app.ts',
+        format: 'oxfmt src app.ts',
+        'format:check': 'oxfmt --check src app.ts',
         dev: 'bun --hot src/server.ts',
       },
     });
     expect(
-      JSON.parse(readFileSync(join(directory, 'app.json'), 'utf8'))
+      extractDataAppManifest(readFileSync(join(directory, 'app.ts'), 'utf8'))
+        .manifest!
     ).toMatchObject({
       title: 'Product Pulse',
       scope: {
@@ -102,14 +105,8 @@ describe('app create', () => {
     expect(paths).toContain('src/App.tsx');
     expect(paths).toContain('.oxlintrc.json');
     expect(readFileSync(join(directory, 'AGENTS.md'), 'utf8')).toContain(
-      'https://github.com/altertable-ai/data-app/blob/main/examples/starter-local-data-app/AGENTS.md'
+      'https://github.com/altertable-ai/data-app/blob/v0.78.0/docs/app-authoring.md'
     );
-    expect(readFileSync(join(directory, 'src/App.tsx'), 'utf8')).toContain(
-      'Connectivity-only screen'
-    );
-    expect(
-      readFileSync(join(directory, 'src/operations.ts'), 'utf8')
-    ).toContain('supplies no analytical result');
     expect(
       paths.some(path => /tests|fixtures|node_modules|\.txt$/.test(path))
     ).toBe(false);
@@ -162,7 +159,8 @@ describe('app create', () => {
       ],
     });
     expect(
-      JSON.parse(readFileSync(join(directory, 'app.json'), 'utf8'))
+      extractDataAppManifest(readFileSync(join(directory, 'app.ts'), 'utf8'))
+        .manifest!
     ).toMatchObject({
       scope: { organization: 'Altertable', environment: 'production' },
     });
@@ -193,13 +191,14 @@ describe('app create', () => {
       profile: 'current',
     });
     expect(
-      JSON.parse(readFileSync(join(directory, 'app.json'), 'utf8')).scope
+      extractDataAppManifest(readFileSync(join(directory, 'app.ts'), 'utf8'))
+        .manifest!.scope
     ).toEqual({
       organization: 'Cousteau',
       environment: 'production',
     });
     expect(readFileSync(join(directory, 'src/main.tsx'), 'utf8')).toContain(
-      'mountDataApp({ app, component: App })'
+      'mountDataApp({ app: dataApp, component: App })'
     );
     expect(readFileSync(join(directory, 'src/App.tsx'), 'utf8')).not.toContain(
       '{{APP_TITLE}}'
@@ -269,9 +268,9 @@ describe('app create', () => {
 
     expect(result.exitCode).toBe(0);
     expect(
-      JSON.parse(readFileSync(join(directory, 'app.json'), 'utf8')).scope
-        .organization
-    ).toBe('Acme "North" & Co');
+      extractDataAppManifest(readFileSync(join(directory, 'app.ts'), 'utf8'))
+        .manifest!.scope
+    ).toMatchObject({ organization: 'Acme "North" & Co' });
     expect(readFileSync(join(directory, 'src/index.html'), 'utf8')).toContain(
       '<title>Altertable app</title>'
     );
@@ -412,7 +411,7 @@ describe('app create', () => {
     expect(new TextDecoder().decode(relativeImportLint.stdout)).toContain(
       'eslint(no-restricted-imports)'
     );
-  });
+  }, 60_000);
 
   test('never overwrites an existing directory', async () => {
     const directory = join(home, 'existing');
@@ -467,7 +466,7 @@ describe('app create', () => {
       { debug: false, json: false, agent: false }
     );
     expect(result.stdout.join('\n')).toContain(
-      'set the organization and environment in app.json'
+      'set the organization and environment in app.ts'
     );
     expect(result.stdout.join('\n')).toContain('`altertable app build`');
     expect(result.stdout.join('\n')).not.toContain('run altertable app dev.');

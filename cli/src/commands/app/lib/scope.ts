@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { extractAppManifest } from '@/commands/app/lib/manifest.ts';
 import { configGet } from '@/lib/config.ts';
 import { readEnv } from '@/lib/env.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
@@ -13,7 +14,7 @@ export function assertAppScope(
     organizationName?: string;
     environment?: string;
   },
-  source = 'app.json'
+  source = 'app.ts'
 ): void {
   const value = scope as {
     organization?: unknown;
@@ -53,10 +54,12 @@ export async function checkAppScope(
 ): Promise<void> {
   let manifest;
   try {
-    manifest = JSON.parse(await readFile(join(directory, 'app.json'), 'utf8'));
+    manifest = await extractAppManifest(
+      await readFile(join(directory, 'app.ts'), 'utf8')
+    );
   } catch {
     throw new ConfigurationError(
-      'Cannot read a valid app.json for profile scope verification.'
+      'Cannot read a valid app.ts for profile scope verification.'
     );
   }
   assertAppScope(manifest?.scope, profileAppScope(profile));

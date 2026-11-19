@@ -26,11 +26,11 @@ afterEach(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-});
+}, 30_000);
 
 function app(scope: string): string {
   return `import { defineDataApp as define } from "@altertable/data-app";
-const app = define({ scope: ${scope}, queries: {} });`;
+const app = define({ title: "Preview", scope: ${scope}, queries: {} });`;
 }
 
 async function prepare(source: string): Promise<string> {

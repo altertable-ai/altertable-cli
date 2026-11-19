@@ -1,82 +1,7 @@
-import { lstat, readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-/** The only repository-to-project copy boundary. Entries are files or whole directories. */
-export const starterFiles = [
-  'src',
-  'package.json',
-  'bun.lock',
-  'bunfig.toml',
-  'tsconfig.json',
-  'app.json',
-  'README.md',
-  'AGENTS.md',
-  '.gitignore',
-  '.oxlintrc.json',
-  '.oxfmtrc.json',
-] as const;
-export const dataAppDirectory = fileURLToPath(
-  new URL('../../../../../data-app/', import.meta.url)
-);
 export type DataAppPayload = {
   starter: Record<string, string>;
   filePreview: Record<string, string>;
 };
-
-function assertRelativePath(path: string): void {
-  if (
-    path.includes('\\') ||
-    path.split('/').some(part => !part || part === '.' || part === '..')
-  ) {
-    throw new Error(`Invalid distribution path: ${path}`);
-  }
-}
-
-/** Expand explicit package entries, rejecting symlinks and test/build artifacts. */
-async function readFiles(
-  directory: string,
-  entries: readonly string[]
-): Promise<Record<string, string>> {
-  const files: Record<string, string> = {};
-  async function visit(name: string): Promise<void> {
-    assertRelativePath(name);
-    if (
-      /(^|\/)(node_modules|tests?|fixtures|dist)(\/|$)|\.(test|spec)\./.test(
-        name
-      )
-    ) {
-      throw new Error(`Development artifact in distribution: ${name}`);
-    }
-    const path = join(directory, name);
-    const info = await lstat(path);
-    if (info.isSymbolicLink())
-      throw new Error(`Symlink in distribution: ${name}`);
-    if (info.isDirectory()) {
-      for (const child of (await readdir(path)).sort())
-        await visit(`${name}/${child}`);
-    } else if (info.isFile()) {
-      files[name] = await readFile(path, 'utf8');
-    } else throw new Error(`Unsupported distribution file: ${name}`);
-  }
-  for (const entry of [...entries].sort()) await visit(entry);
-  return files;
-}
-
-/** Embed project files; runtime packages are installed from npm. */
-export async function readDataAppPayload(
-  directory = dataAppDirectory
-): Promise<DataAppPayload> {
-  return {
-    starter: await readFiles(join(directory, 'starter'), starterFiles),
-    filePreview: await readFiles(join(directory, 'file-preview'), [
-      'package.json',
-      'bun.lock',
-      'bunfig.toml',
-      'extract-manifest.js',
-    ]),
-  };
-}
 
 export function createAppFiles(
   payload: DataAppPayload,
@@ -90,10 +15,16 @@ export function createAppFiles(
   const packageJson = JSON.parse(files['package.json']!);
   packageJson.name = identity.name;
   files['package.json'] = `${JSON.stringify(packageJson, null, 2)}\n`;
-  const app = JSON.parse(files['app.json']!);
-  app.title = identity.title;
-  app.scope = identity.scope;
-  files['app.json'] = `${JSON.stringify(app, null, 2)}\n`;
+  // Substitute whole string literals in the controlled template, never executable source.
+  const literals: Record<string, string> = {
+    APP_TITLE: identity.title,
+    APP_ORGANIZATION: identity.scope.organization,
+    APP_ENVIRONMENT: identity.scope.environment,
+  };
+  files['app.ts'] = files['app.ts']!.replace(
+    /'__(APP_TITLE|APP_ORGANIZATION|APP_ENVIRONMENT)__'/g,
+    (_match, key: string) => appLiteral(literals[key]!)
+  );
   // Bun's text lock is JSONC. Only its root workspace name changes during scaffolding.
   const oldName = JSON.stringify(
     JSON.parse(payload.starter['package.json']!).name
@@ -103,4 +34,15 @@ export function createAppFiles(
     `"name": ${JSON.stringify(identity.name)}`
   );
   return files;
+}
+
+function appLiteral(value: string): string {
+  return (
+    "'" +
+    JSON.stringify(value)
+      .slice(1, -1)
+      .replaceAll('\\"', '"')
+      .replaceAll("'", "\\'") +
+    "'"
+  );
 }
