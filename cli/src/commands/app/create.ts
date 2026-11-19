@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import { createAppFiles } from '@/commands/app/lib/distribution.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { readEnv } from '@/lib/env.ts';
 import { CliError } from '@/lib/errors.ts';
@@ -12,7 +12,7 @@ export const appCreateCommand = defineCommand({
   metadata: {
     name: 'create',
     description:
-      'Create a local data app project with a live connection check.',
+      'Create a local data app project from the editable standalone example.',
     examples: [
       'altertable app create product-pulse',
       'altertable app create product-pulse --dir ./apps/product-pulse',
@@ -85,6 +85,7 @@ export const appCreateCommand = defineCommand({
         : 'Your organization',
       environment: profileName ? environment : 'your environment',
     };
+    const dataAppPayload = await loadDataAppPayload();
     const files = Object.entries(
       createAppFiles(dataAppPayload, { name, title, scope })
     );
@@ -122,7 +123,7 @@ export const appCreateCommand = defineCommand({
           command => `altertable --profile ${profileName} ${command}`
         )
       : [
-          'Set organization and environment in app.json.',
+          'Set organization and environment in app.ts.',
           'Select a matching profile, or configure one with `altertable login --org <org> --env <env>`.',
           'altertable app dev',
           'altertable app lint --lakehouse',
@@ -144,7 +145,7 @@ export const appCreateCommand = defineCommand({
       );
     else
       sink.writeHuman(
-        `Created ${title} in ${directory} with placeholder scope.\nBefore previewing, set the organization and environment in app.json and select a matching profile (or run \`altertable login --org <org> --env <env>\`).\nYou can run \`altertable app build\` from that directory now.`
+        `Created ${title} in ${directory} with placeholder scope.\nBefore previewing, set the organization and environment in app.ts and select a matching profile (or run \`altertable login --org <org> --env <env>\`).\nYou can run \`altertable app build\` from that directory now.`
       );
   },
 });

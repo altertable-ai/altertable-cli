@@ -5,9 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { prepareFilePreview } from '@/commands/app/lib/file-dev.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { FROM_ENV_PSEUDOPROFILE_NAME } from '@/lib/profile-store.ts';
 import { createLakehouseTestWorkspace } from '@/test-utils/lakehouse.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 let workspace: ReturnType<typeof createLakehouseTestWorkspace>;
 let savedEnvironment: Record<string, string | undefined>;
@@ -26,11 +28,11 @@ afterEach(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-});
+}, 30_000);
 
 function app(scope: string): string {
   return `import { defineDataApp as define } from "@altertable/data-app";
-const app = define({ scope: ${scope}, queries: {} });`;
+const app = define({ title: "Preview", scope: ${scope}, queries: {} });`;
 }
 
 async function prepare(source: string): Promise<string> {

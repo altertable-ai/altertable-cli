@@ -422,7 +422,7 @@ altertable app create|dev|build|lint|upgrade|validate|publish|update
 
 **Subcommands**
 
-- `create` — Create a local data app project with a live connection check.
+- `create` — Create a local data app project from the editable standalone example.
 - `dev` — Preview a local data app directory, or a single-file data app, with lakehouse access.
 - `build` — Typecheck and build a local data app without Altertable credentials.
 - `lint` — Lint a local data app project: format, lint rules, types, contracts, build, and client credential boundary.
@@ -447,7 +447,7 @@ altertable app update APP-1 --file index.tsx
 
 #### `altertable app create`
 
-Create a local data app project with a live connection check.
+Create a local data app project from the editable standalone example.
 
 **Usage**
 

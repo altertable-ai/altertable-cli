@@ -27,7 +27,8 @@ bun run check:package         # focused build, pack, and extracted-consumer smok
 ```
 
 The root is a private command entry point, not a workspace: `cli/bun.lock` and the
-starter and browser-test lockfiles remain independent. Individual commands above
+starter and browser-test lockfiles remain independent. Setup generates the starter from the
+pinned `@altertable/data-app-examples` package; only its frozen lockfile is versioned here. Individual commands above
 operate on the CLI; the canonical check also covers top-level tests and the data app
 consumers. Install dependencies explicitly with `bun run setup` before checking;
 verification does not install development dependencies. Artifact smoke tests still
@@ -285,4 +286,4 @@ When bumping the `specs/` submodule, extend the mapped tests before merge.
 
 ## Data apps
 
-The runnable starter and package-consumer browser tests live in [`data-app/`](data-app/README.md). That guide covers starter embedding, npm package pins, package upgrades, and verification. Runtime development and releases belong to [the Data App repository](https://github.com/altertable-ai/data-app).
+The generated SDK starter fixture and package-consumer browser tests live in [`data-app/`](data-app/README.md). That guide covers starter embedding, npm package pins, package upgrades, and verification. Runtime development and releases belong to [the Data App repository](https://github.com/altertable-ai/data-app).

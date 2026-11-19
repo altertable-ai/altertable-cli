@@ -3,17 +3,18 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import {
-  createAppFiles,
-  readDataAppPayload,
-} from '@/commands/app/lib/distribution.ts';
+import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
+import { createAppFiles } from '@/commands/app/lib/distribution.ts';
 import {
   dataAppPackage,
   dataAppPackages,
   readAppLock,
   recommendedDataAppVersion,
 } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { upgradeApp } from '@/commands/app/upgrade.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -22,7 +23,7 @@ afterEach(async () => {
       .splice(0)
       .map(path => rm(path, { recursive: true, force: true }))
   );
-});
+}, 30_000);
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'package-upgrade-'));
@@ -41,7 +42,7 @@ async function fixture() {
 
 async function snapshot(directory: string) {
   return Promise.all(
-    ['package.json', 'bun.lock', 'src/App.tsx'].map(name =>
+    ['package.json', 'bun.lock', 'src/App.tsx', 'app.ts'].map(name =>
       readFile(join(directory, name), 'utf8')
     )
   );
@@ -97,7 +98,8 @@ test('an exact current pin is a no-op', async () => {
 test('failed resolution restores the manifest and lockfile', async () => {
   const directory = await fixture();
   await updateManifest(directory, pkg => {
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -116,7 +118,8 @@ test('failed resolution restores the manifest and lockfile', async () => {
 test('a stale resolved lockfile restores the manifest and lockfile', async () => {
   const directory = await fixture();
   await updateManifest(directory, pkg => {
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -149,7 +152,7 @@ test('missing peers use starter defaults while preserving custom scripts', async
   expect(
     JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'))
   ).toMatchObject({
-    dependencies: { 'react-dom': '19.3.0' },
+    dependencies: { 'react-dom': '19.3.1' },
     scripts: { custom: 'echo user-owned' },
   });
 });
@@ -159,7 +162,8 @@ test('registry upgrades pin a compatible range and preserve unrelated dependenci
   const pkg = JSON.parse(
     await readFile(join(directory, 'package.json'), 'utf8')
   );
-  pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+  pkg.dependencies[dataAppPackage] =
+    `^${recommendedDataAppVersion(dataAppPayload)}`;
   pkg.dependencies.yaml = '2.9.0';
   pkg.scripts.custom = 'echo user-owned';
   await writeFile(join(directory, 'package.json'), JSON.stringify(pkg));
@@ -184,7 +188,7 @@ test('registry upgrades pin a compatible range and preserve unrelated dependenci
   ).toMatchObject({
     dependencies: {
       yaml: '2.9.0',
-      [dataAppPackage]: recommendedDataAppVersion(),
+      [dataAppPackage]: recommendedDataAppVersion(dataAppPayload),
     },
     scripts: { custom: 'echo user-owned' },
   });
@@ -246,7 +250,7 @@ test('upgrade pins every declared split package and preserves dependency placeme
         );
         for (const name of dataAppPackages)
           packages[name] = [
-            `${name}@${recommendedDataAppVersion()}`,
+            `${name}@${recommendedDataAppVersion(dataAppPayload)}`,
             '',
             {},
             'integrity',
@@ -263,11 +267,11 @@ test('upgrade pins every declared split package and preserves dependency placeme
   );
   for (const name of dataAppPackages)
     expect(next.dependencies[name] ?? next.devDependencies[name]).toBe(
-      recommendedDataAppVersion()
+      recommendedDataAppVersion(dataAppPayload)
     );
   expect(next.dependencies['@altertable/data-app-bun']).toBeUndefined();
   expect(next.devDependencies['@altertable/data-app-bun']).toBe(
-    recommendedDataAppVersion()
+    recommendedDataAppVersion(dataAppPayload)
   );
   expect(await readFile(join(directory, 'src/App.tsx'), 'utf8')).toBe(
     appSource
@@ -278,7 +282,7 @@ test('failed split-package resolution rolls back even when core resolves correct
   const directory = await fixture();
   await updateManifest(directory, pkg => {
     pkg.dependencies['@altertable/data-app-react'] =
-      `^${recommendedDataAppVersion()}`;
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -337,7 +341,8 @@ test('portable-only upgrades do not add React or local-server packages', async (
       'react-dom',
     ])
       delete pkg.dependencies[name];
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   expect(
     await upgradeApp(directory, {
@@ -360,6 +365,52 @@ test('portable-only upgrades do not add React or local-server packages', async (
     JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'))
       .dependencies
   ).toEqual({
-    [dataAppPackage]: recommendedDataAppVersion(),
+    [dataAppPackage]: recommendedDataAppVersion(dataAppPayload),
   });
 });
+
+test('upgrades a published 0.77 app without replacing its identity or custom UI', async () => {
+  const directory = await fixture();
+  const appSource = (await readFile(join(directory, 'app.ts'), 'utf8')).replace(
+    "title: 'Test'",
+    "title: 'Retention exploration'"
+  );
+  const customView =
+    'export function App() { return <p>Custom retention exploration</p>; }\n';
+  await writeFile(join(directory, 'app.ts'), appSource);
+  await writeFile(join(directory, 'src/App.tsx'), customView);
+  await updateManifest(directory, pkg => {
+    for (const name of dataAppPackages) {
+      if (pkg.dependencies[name]) pkg.dependencies[name] = '0.77.0';
+    }
+  });
+  async function install(frozen = false) {
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        'install',
+        ...(frozen ? ['--frozen-lockfile'] : []),
+        '--ignore-scripts',
+      ],
+      { cwd: directory, stdout: 'pipe', stderr: 'pipe' }
+    );
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect({ code, failure: code ? `${stdout}\n${stderr}` : '' }).toEqual({
+      code: 0,
+      failure: '',
+    });
+  }
+  await install();
+  expect(await upgradeApp(directory)).toBe(true);
+  expect(await readFile(join(directory, 'app.ts'), 'utf8')).toBe(appSource);
+  expect(await readFile(join(directory, 'src/App.tsx'), 'utf8')).toBe(
+    customView
+  );
+  await install(true);
+  const { checkAppProject } = await import('@/commands/app/lint.ts');
+  await checkAppProject(directory);
+}, 60_000);

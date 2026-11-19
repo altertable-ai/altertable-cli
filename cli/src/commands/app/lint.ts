@@ -1,6 +1,10 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import {
+  extractAppManifest,
+  type AppManifest,
+} from '@/commands/app/lib/manifest.ts';
 import { requirePublishedDataApp } from '@/commands/app/lib/package.ts';
 import projectCheckScript from '@/commands/app/lib/project-check.js.txt';
 import {
@@ -16,12 +20,6 @@ import { resolveApiBase } from '@/lib/config.ts';
 import { copyProcessEnv } from '@/lib/env.ts';
 import { ConfigurationError, EXIT_GENERIC } from '@/lib/errors.ts';
 import { configureVerify } from '@/lib/profile-status.ts';
-
-type AppManifest = {
-  schemaVersion: 1;
-  title: string;
-  appearance?: unknown;
-};
 
 export const appLintCommand = defineCommand({
   metadata: {
@@ -87,26 +85,16 @@ export const appLintCommand = defineCommand({
 });
 
 export async function readManifest(directory: string): Promise<AppManifest> {
-  let value: unknown;
   try {
-    value = JSON.parse(await readFile(join(directory, 'app.json'), 'utf8'));
-  } catch {
+    return await extractAppManifest(
+      await readFile(join(directory, 'app.ts'), 'utf8')
+    );
+  } catch (error) {
     throw new ConfigurationError(
-      `Cannot read a valid app.json in ${directory}.`
+      `Cannot read a valid app.ts in ${directory}.`,
+      { cause: error }
     );
   }
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    !('schemaVersion' in value) ||
-    value.schemaVersion !== 1 ||
-    !('title' in value) ||
-    typeof value.title !== 'string' ||
-    !value.title.trim()
-  ) {
-    throw new ConfigurationError('app.json needs schemaVersion 1 and a title.');
-  }
-  return value as AppManifest;
 }
 
 /** Validate app-owned modules in Bun, outside the compiled CLI's module graph. */

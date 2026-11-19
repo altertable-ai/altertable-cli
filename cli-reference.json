@@ -835,7 +835,7 @@
             {
               "id": "altertable-app-create",
               "command": "altertable app create",
-              "description": "Create a local data app project with a live connection check.",
+              "description": "Create a local data app project from the editable standalone example.",
               "usage": [
                 "altertable app create [options] <NAME>"
               ],

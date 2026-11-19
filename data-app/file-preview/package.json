@@ -6,11 +6,11 @@
     "dev": "data-app-preview"
   },
   "dependencies": {
-    "@altertable/data-app": "0.74.0",
-    "@altertable/data-app-bun": "0.74.0",
-    "@altertable/data-app-react": "0.74.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@altertable/data-app-manifest": "0.74.0"
+    "@altertable/data-app": "0.78.0",
+    "@altertable/data-app-bun": "0.78.0",
+    "@altertable/data-app-react": "0.78.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@altertable/data-app-manifest": "0.78.0"
   }
 }

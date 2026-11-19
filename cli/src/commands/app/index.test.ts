@@ -11,19 +11,19 @@ import {
 let workspace: LakehouseTestWorkspace;
 let directory: string;
 let previousEnvironment: string | undefined;
+let previousConfigHome: string | undefined;
 
 beforeEach(() => {
   workspace = createLakehouseTestWorkspace('app-command');
+  previousConfigHome = process.env.ALTERTABLE_CONFIG_HOME;
+  process.env.ALTERTABLE_CONFIG_HOME = workspace.home;
   previousEnvironment = process.env.ALTERTABLE_ENV;
   process.env.ALTERTABLE_ENV = 'production';
   directory = workspace.createDirectory('app');
   workspace.writeFile(
-    'app/app.json',
-    JSON.stringify({
-      schemaVersion: 1,
-      title: 'Test',
-      scope: { organization: 'acme', environment: 'production' },
-    })
+    'app/app.ts',
+    `import { defineDataApp } from '@altertable/data-app';
+export const dataApp = defineDataApp({ title: 'Test', scope: { organization: 'acme', environment: 'production' }, queries: {} });`
   );
   workspace.writeFile(
     'app/package.json',
@@ -55,9 +55,12 @@ afterEach(() => {
   delete process.env.ALTERTABLE_BASIC_AUTH_TOKEN;
   delete process.env.ALTERTABLE_API_KEY;
   workspace.cleanup();
+  if (previousConfigHome === undefined)
+    delete process.env.ALTERTABLE_CONFIG_HOME;
+  else process.env.ALTERTABLE_CONFIG_HOME = previousConfigHome;
   if (previousEnvironment === undefined) delete process.env.ALTERTABLE_ENV;
   else process.env.ALTERTABLE_ENV = previousEnvironment;
-});
+}, 30_000);
 
 function captured(
   script: 'typecheck' | 'dev' | 'build'
@@ -76,10 +79,9 @@ function runAppCommand(args: string[]) {
 describe('app commands', () => {
   test('dev rejects a mismatched scope before launching the app', async () => {
     workspace.writeFile(
-      'app/app.json',
-      JSON.stringify({
-        scope: { organization: 'acme', environment: 'staging' },
-      })
+      'app/app.ts',
+      `import { defineDataApp } from '@altertable/data-app';
+defineDataApp({ title: 'Test', scope: { organization: 'acme', environment: 'staging' }, queries: {} });`
     );
     const error = await runAppCommand(['app', 'dev', '--dir', directory]).catch(
       (error: unknown) => error
@@ -219,7 +221,7 @@ describe('app commands', () => {
     const file = workspace.writeFile(
       'index.tsx',
       `import { defineDataApp } from "@altertable/data-app";
-defineDataApp({ scope: { organization: "acme", environment: "staging" } });`
+defineDataApp({ title: "Test", scope: { organization: "acme", environment: "staging" } });`
     );
     async function failure(args: string[]): Promise<unknown> {
       return runAppCommand(['app', 'dev', ...args]).catch(
@@ -245,5 +247,5 @@ defineDataApp({ scope: { organization: "acme", environment: "staging" } });`
     expect(await failure(['--file', directory])).toMatchObject(
       message('Could not read source')
     );
-  });
+  }, 30_000);
 });

@@ -10,6 +10,9 @@ import {
   recommendedDataAppPeers,
   requirePublishedDataApp,
 } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 let directory: string;
 beforeEach(async () => {
@@ -116,8 +119,10 @@ for (const name of dataAppPackages.slice(1)) {
 }
 
 test('React peers belong to the authoring package while core has none', () => {
-  expect(recommendedDataAppPeers([dataAppPackage])).toEqual({});
-  expect(recommendedDataAppPeers(['@altertable/data-app-react'])).toEqual({
+  expect(recommendedDataAppPeers(dataAppPayload, [dataAppPackage])).toEqual({});
+  expect(
+    recommendedDataAppPeers(dataAppPayload, ['@altertable/data-app-react'])
+  ).toEqual({
     react: '>=19.2.0',
     'react-dom': '>=19.2.0',
   });

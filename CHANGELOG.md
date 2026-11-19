@@ -15,12 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Generate, preview, and upgrade data apps with data-app 0.74.0.
+- Generate, preview, and upgrade data apps with data-app 0.78.0. New projects use the editable standalone example and a shared `app.ts` declaration; directory and file previews verify its scope statically. Upgrades preserve existing source and identity; older `app.json` projects require an author-owned source migration.
 - Raise the default `--connect-timeout` from 5 to 30 seconds, so queries that take a few seconds to start responding no longer time out.
 - Timeout errors now name the CLI flag that fired, explain that the limit is client-side (the request may still be running on the server, and slow networks can cause it), and say how to raise it.
 
 ### Fixed
 
+- Keep generated data app identities formatted when organization names contain apostrophes or quotation marks, so the first `app lint` passes.
 - Document the Windows PowerShell installation path, including Bun's native installer and the `bun.exe` requirement for npm launchers.
 - Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors with the cause and how to opt out. `ALTERTABLE_SECRET_BACKEND=file` keeps the file backend, for example in CI.
 - Stop queries that run longer than 6 minutes from failing with `Request failed (network error): … (The operation timed out.)`. `--read-timeout` is now the only limit on query streams, and `0` means no limit.

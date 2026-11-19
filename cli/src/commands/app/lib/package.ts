@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import type { DataAppPayload } from '@/commands/app/lib/distribution.ts';
 import { ConfigurationError } from '@/lib/errors.ts';
 import { isRecord } from '@/lib/object.ts';
 
@@ -12,6 +12,7 @@ export const dataAppPackages = [
   '@altertable/data-app-embed',
   '@altertable/data-app-bun',
   '@altertable/data-app-worker',
+  '@altertable/data-app-manifest',
 ] as const;
 
 type AppPackage = {
@@ -19,7 +20,9 @@ type AppPackage = {
   devDependencies?: Record<string, string>;
 };
 
-export function recommendedDataAppVersion(): string {
+export function recommendedDataAppVersion(
+  dataAppPayload: DataAppPayload
+): string {
   const version = JSON.parse(dataAppPayload.starter['package.json']!)
     .dependencies[dataAppPackage];
   if (
@@ -147,12 +150,13 @@ export function lockedVersion(
 }
 
 export function recommendedDataAppPeers(
+  dataAppPayload: DataAppPayload,
   names: readonly string[] = dataAppPackages
 ): Record<string, string> {
   const { packages } = readAppLock(
     dataAppPayload.starter['bun.lock']!,
     'CLI starter',
-    recommendedDataAppVersion()
+    recommendedDataAppVersion(dataAppPayload)
   );
   const peers: Record<string, string> = {};
   for (const name of names) {

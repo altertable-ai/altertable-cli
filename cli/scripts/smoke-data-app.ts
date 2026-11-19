@@ -2,11 +2,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
+
 /** Exercise the shipped CLI outside the checkout, including its embedded starter and published runtime. */
 export async function smokeDataApp(
   command: string[],
   scaffoldOnly = false
 ): Promise<void> {
+  const version = recommendedDataAppVersion(await loadDataAppPayload());
   const directory = await mkdtemp(join(tmpdir(), 'altertable-packaged-app-'));
   const app = join(directory, 'app');
   let upstream: Bun.Server<undefined> | undefined;
@@ -105,13 +109,15 @@ export async function smokeDataApp(
           throw new Error('File preview did not bundle the app.');
       }
       const query = await fetch(
-        `${url}${singleFile ? '/api/sql' : '/api/data/connection'}`,
+        `${url}${singleFile ? '/api/query' : '/api/query/totalCost'}`,
         {
           signal: AbortSignal.timeout(5000),
           method: 'POST',
           headers: { origin: url, 'content-type': 'application/json' },
           body: JSON.stringify(
-            singleFile ? { statement: 'select 1', limit: 1, params: {} } : {}
+            singleFile
+              ? { queryId: 'connection', limit: 1, params: {} }
+              : { limit: 1, params: { month: '2026-09', customerName: '' } }
           ),
         }
       );
@@ -120,7 +126,7 @@ export async function smokeDataApp(
         rows?: unknown[][];
         data?: unknown;
       };
-      if (singleFile ? result.rows?.[0]?.[0] !== 1 : result.data !== true)
+      if (result.rows?.[0]?.[0] !== (singleFile ? 1 : 1320000))
         throw new Error('Preview did not return the lakehouse query result.');
     } catch (error) {
       failure = error;
@@ -170,7 +176,7 @@ export async function smokeDataApp(
       '@altertable/data-app-react',
       '@altertable/data-app-bun',
     ]) {
-      if (manifest.dependencies?.[name] !== '0.74.0')
+      if (manifest.dependencies?.[name] !== version)
         throw new Error(
           `Packaged starter must pin ${name} to the tested release`
         );
@@ -188,14 +194,17 @@ export async function smokeDataApp(
     upstream = Bun.serve({
       hostname: '127.0.0.1',
       port: 0,
-      fetch(request) {
+      async fetch(request) {
         if (
           request.headers.get('authorization') !==
           `Basic ${Buffer.from('preview-user:preview-smoke-secret').toString('base64')}`
         )
           return new Response('Unauthorized', { status: 401 });
+        const { statement } = (await request.json()) as { statement: string };
         return new Response(
-          '{"query_id":"smoke"}\n[{"name":"connection_check","type":"INTEGER"}]\n[1]',
+          statement === 'SELECT 1 AS connection_check'
+            ? '{"query_id":"smoke"}\n[{"name":"connection_check","type":"INTEGER"}]\n[1]'
+            : '{"query_id":"smoke"}\n[{"name":"cost_cents","type":"BIGINT"},{"name":"customer_count","type":"BIGINT"}]\n[1320000,3]',
           {
             headers: { 'content-type': 'application/x-ndjson' },
           }
@@ -215,7 +224,7 @@ export async function smokeDataApp(
       [
         process.execPath,
         '-e',
-        'import { createDataHandler } from "@altertable/data-app/server"; import { localLakehouse } from "@altertable/data-app-bun"; if (typeof createDataHandler !== "function" || typeof localLakehouse !== "function") process.exit(1);',
+        'import { createDataClient } from "@altertable/data-app/client"; import { serveLocalApp } from "@altertable/data-app-bun"; if (typeof createDataClient !== "function" || typeof serveLocalApp !== "function") process.exit(1);',
       ],
       app
     );
@@ -225,7 +234,7 @@ export async function smokeDataApp(
       join(app, 'index.tsx'),
       `import { defineDataApp as declareApp } from "@altertable/data-app";
 import { mountDataApp } from "@altertable/data-app-react";
-const app = declareApp({ title: "File preview smoke", description: "Smoke test", scope: { organization: "Test", environment: "test" }, queries: {} });
+const app = declareApp({ title: "File preview smoke", description: "Smoke test", scope: { organization: "Test", environment: "test" }, queries: { connection: { statement: "SELECT 1 AS connection_check", params: {}, projections: { connection_check: { type: "number" } } } } });
 function View() { return <p>File preview smoke</p>; }
 mountDataApp({ app, component: View });`
     );
