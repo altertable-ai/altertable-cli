@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { runAppCommand } from '@/commands/app/lib/run.ts';
 import { configDir } from '@/lib/config-files.ts';
 import { copyProcessEnv } from '@/lib/env.ts';
@@ -16,7 +16,10 @@ export type AppManifest = {
 
 /** Parse literals in the pinned tooling process, without evaluating app code. */
 export async function extractAppManifest(source: string): Promise<AppManifest> {
-  const directory = filePreviewDirectory();
+  const dataAppPayload = await loadDataAppPayload();
+  const directory = filePreviewDirectory(
+    recommendedDataAppVersion(dataAppPayload)
+  );
   await mkdir(directory, { recursive: true });
   await Promise.all(
     Object.entries(dataAppPayload.filePreview).map(([name, content]) =>
@@ -71,6 +74,6 @@ export async function extractAppManifest(source: string): Promise<AppManifest> {
   return manifest as AppManifest;
 }
 
-export function filePreviewDirectory(): string {
-  return join(configDir(), 'data-app-dev', recommendedDataAppVersion());
+export function filePreviewDirectory(version: string): string {
+  return join(configDir(), 'data-app-dev', version);
 }

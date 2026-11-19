@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import { createAppFiles } from '@/commands/app/lib/distribution.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { readEnv } from '@/lib/env.ts';
 import { CliError } from '@/lib/errors.ts';
@@ -85,6 +85,7 @@ export const appCreateCommand = defineCommand({
         : 'Your organization',
       environment: profileName ? environment : 'your environment',
     };
+    const dataAppPayload = await loadDataAppPayload();
     const files = Object.entries(
       createAppFiles(dataAppPayload, { name, title, scope })
     );

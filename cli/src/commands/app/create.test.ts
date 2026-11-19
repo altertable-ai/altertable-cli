@@ -13,12 +13,15 @@ import { extractDataAppManifest } from '@altertable/data-app-manifest';
 
 import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import {
   configSet,
   ensureProfileExists,
   setActiveProfile,
 } from '@/lib/profile-store.ts';
 import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 let home: string;
 let previousConfigHome: string | undefined;
@@ -98,7 +101,7 @@ describe('app create', () => {
     expect(
       JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'))
         .dependencies['@altertable/data-app']
-    ).toBe(recommendedDataAppVersion());
+    ).toBe(recommendedDataAppVersion(dataAppPayload));
     expect(existsSync(join(directory, '.altertable/runtime'))).toBe(false);
     const paths = JSON.parse(result.stdout[0]!).files as string[];
     expect(paths.some(path => path.startsWith('.altertable/'))).toBe(false);
@@ -341,7 +344,7 @@ describe('app create', () => {
           'utf8'
         )
       ).version
-    ).toBe(recommendedDataAppVersion());
+    ).toBe(recommendedDataAppVersion(dataAppPayload));
     for (const name of ['data-app-react', 'data-app-bun']) {
       expect(
         JSON.parse(
@@ -350,7 +353,7 @@ describe('app create', () => {
             'utf8'
           )
         ).version
-      ).toBe(recommendedDataAppVersion());
+      ).toBe(recommendedDataAppVersion(dataAppPayload));
     }
     expect(
       existsSync(join(directory, 'node_modules/@altertable/data-app-embed'))
@@ -510,7 +513,7 @@ describe('app create', () => {
       expect(JSON.parse(result.stdout[0]!)).toEqual({
         directory,
         upgraded: false,
-        runtimeVersion: recommendedDataAppVersion(),
+        runtimeVersion: recommendedDataAppVersion(dataAppPayload),
         nextSteps: [],
       });
     }

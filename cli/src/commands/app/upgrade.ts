@@ -10,7 +10,7 @@ import {
   recommendedDataAppPeers,
   recommendedDataAppVersion,
 } from '@/commands/app/lib/package.ts';
-import { dataAppPayload } from '@/commands/app/lib/payload.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { appDirectory } from '@/commands/app/lib/run.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { copyProcessEnv } from '@/lib/env.ts';
@@ -71,7 +71,8 @@ export async function upgradeApp(
   directory: string,
   options: UpgradeOptions = {}
 ): Promise<boolean> {
-  const version = recommendedDataAppVersion();
+  const dataAppPayload = await loadDataAppPayload();
+  const version = recommendedDataAppVersion(dataAppPayload);
   const { source: originalPackage, manifest } = await readAppPackage(directory);
   const reference = manifest.dependencies?.[dataAppPackage];
   if (!reference || !/^[\d~^<>=*]/.test(reference)) {
@@ -113,7 +114,7 @@ export async function upgradeApp(
   const defaults = JSON.parse(dataAppPayload.starter['package.json']!)
     .dependencies as Record<string, string>;
   let packageChanged = names.some(name => dependencies[name] !== version);
-  const peers = recommendedDataAppPeers(names);
+  const peers = recommendedDataAppPeers(dataAppPayload, names);
   for (const [name, range] of Object.entries(peers)) {
     const existing =
       manifest.dependencies?.[name] ?? manifest.devDependencies?.[name];

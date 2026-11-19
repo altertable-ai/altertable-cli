@@ -3,12 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 
 /** Exercise the shipped CLI outside the checkout, including its embedded starter and published runtime. */
 export async function smokeDataApp(
   command: string[],
   scaffoldOnly = false
 ): Promise<void> {
+  const version = recommendedDataAppVersion(await loadDataAppPayload());
   const directory = await mkdtemp(join(tmpdir(), 'altertable-packaged-app-'));
   const app = join(directory, 'app');
   let upstream: Bun.Server<undefined> | undefined;
@@ -174,7 +176,7 @@ export async function smokeDataApp(
       '@altertable/data-app-react',
       '@altertable/data-app-bun',
     ]) {
-      if (manifest.dependencies?.[name] !== recommendedDataAppVersion())
+      if (manifest.dependencies?.[name] !== version)
         throw new Error(
           `Packaged starter must pin ${name} to the tested release`
         );

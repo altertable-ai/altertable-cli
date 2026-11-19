@@ -10,7 +10,7 @@ export function dataAppPlugin(): BunPlugin {
       build.onLoad(
         { filter: /[/\\]commands[/\\]app[/\\]lib[/\\]payload\.ts$/ },
         async () => ({
-          contents: `export const dataAppPayload = ${JSON.stringify(await readDataAppPayload())};`,
+          contents: `const dataAppPayload = ${JSON.stringify(await readDataAppPayload())}; export function loadDataAppPayload() { return Promise.resolve(dataAppPayload); }`,
           loader: 'js',
         })
       );

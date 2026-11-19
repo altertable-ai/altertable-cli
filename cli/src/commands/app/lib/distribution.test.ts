@@ -8,6 +8,9 @@ import { extractDataAppManifest } from '@altertable/data-app-manifest';
 import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
 import { createAppFiles } from '@/commands/app/lib/distribution.ts';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 test('distribution embeds a deterministic starter with an exact package pin and no runtime', async () => {
   const payload = await readDataAppPayload();
@@ -18,7 +21,7 @@ test('distribution embeds a deterministic starter with an exact package pin and 
   const starterPackage = JSON.parse(payload.starter['package.json']!);
   expect(previewPackage.dependencies).toEqual({
     ...starterPackage.dependencies,
-    '@altertable/data-app-manifest': recommendedDataAppVersion(),
+    '@altertable/data-app-manifest': recommendedDataAppVersion(dataAppPayload),
   });
   expect(payload.filePreview['bun.lock']).toContain('typescript');
   expect(payload.filePreview['extract-manifest.js']).toContain(
@@ -45,7 +48,7 @@ test('distribution embeds a deterministic starter with an exact package pin and 
   });
   expect(
     JSON.parse(files['package.json']!).dependencies['@altertable/data-app']
-  ).toBe(recommendedDataAppVersion());
+  ).toBe(recommendedDataAppVersion(dataAppPayload));
   expect(JSON.parse(files['package.json']!).dependencies).toMatchObject({
     '@altertable/data-app': '0.78.0',
     '@altertable/data-app-react': '0.78.0',

@@ -1,4 +1,12 @@
-import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
+import type { DataAppPayload } from '@/commands/app/lib/distribution.ts';
 
-// Source execution reads project templates. Release builds replace this module with literal data.
-export const dataAppPayload = await readDataAppPayload();
+let payloadPromise: Promise<DataAppPayload> | undefined;
+
+// Load SDK build tools only when an app command needs the source templates.
+// Release builds replace this module with the already embedded payload.
+export function loadDataAppPayload(): Promise<DataAppPayload> {
+  return (payloadPromise ??=
+    import('@/commands/app/lib/distribution-source.ts').then(
+      ({ readDataAppPayload }) => readDataAppPayload()
+    ));
+}

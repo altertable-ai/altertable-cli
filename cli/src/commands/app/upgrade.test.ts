@@ -11,7 +11,10 @@ import {
   readAppLock,
   recommendedDataAppVersion,
 } from '@/commands/app/lib/package.ts';
+import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { upgradeApp } from '@/commands/app/upgrade.ts';
+
+const dataAppPayload = await loadDataAppPayload();
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -95,7 +98,8 @@ test('an exact current pin is a no-op', async () => {
 test('failed resolution restores the manifest and lockfile', async () => {
   const directory = await fixture();
   await updateManifest(directory, pkg => {
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -114,7 +118,8 @@ test('failed resolution restores the manifest and lockfile', async () => {
 test('a stale resolved lockfile restores the manifest and lockfile', async () => {
   const directory = await fixture();
   await updateManifest(directory, pkg => {
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -157,7 +162,8 @@ test('registry upgrades pin a compatible range and preserve unrelated dependenci
   const pkg = JSON.parse(
     await readFile(join(directory, 'package.json'), 'utf8')
   );
-  pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+  pkg.dependencies[dataAppPackage] =
+    `^${recommendedDataAppVersion(dataAppPayload)}`;
   pkg.dependencies.yaml = '2.9.0';
   pkg.scripts.custom = 'echo user-owned';
   await writeFile(join(directory, 'package.json'), JSON.stringify(pkg));
@@ -182,7 +188,7 @@ test('registry upgrades pin a compatible range and preserve unrelated dependenci
   ).toMatchObject({
     dependencies: {
       yaml: '2.9.0',
-      [dataAppPackage]: recommendedDataAppVersion(),
+      [dataAppPackage]: recommendedDataAppVersion(dataAppPayload),
     },
     scripts: { custom: 'echo user-owned' },
   });
@@ -244,7 +250,7 @@ test('upgrade pins every declared split package and preserves dependency placeme
         );
         for (const name of dataAppPackages)
           packages[name] = [
-            `${name}@${recommendedDataAppVersion()}`,
+            `${name}@${recommendedDataAppVersion(dataAppPayload)}`,
             '',
             {},
             'integrity',
@@ -261,11 +267,11 @@ test('upgrade pins every declared split package and preserves dependency placeme
   );
   for (const name of dataAppPackages)
     expect(next.dependencies[name] ?? next.devDependencies[name]).toBe(
-      recommendedDataAppVersion()
+      recommendedDataAppVersion(dataAppPayload)
     );
   expect(next.dependencies['@altertable/data-app-bun']).toBeUndefined();
   expect(next.devDependencies['@altertable/data-app-bun']).toBe(
-    recommendedDataAppVersion()
+    recommendedDataAppVersion(dataAppPayload)
   );
   expect(await readFile(join(directory, 'src/App.tsx'), 'utf8')).toBe(
     appSource
@@ -276,7 +282,7 @@ test('failed split-package resolution rolls back even when core resolves correct
   const directory = await fixture();
   await updateManifest(directory, pkg => {
     pkg.dependencies['@altertable/data-app-react'] =
-      `^${recommendedDataAppVersion()}`;
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   const before = await snapshot(directory);
   await expectUpgradeFailure(
@@ -335,7 +341,8 @@ test('portable-only upgrades do not add React or local-server packages', async (
       'react-dom',
     ])
       delete pkg.dependencies[name];
-    pkg.dependencies[dataAppPackage] = `^${recommendedDataAppVersion()}`;
+    pkg.dependencies[dataAppPackage] =
+      `^${recommendedDataAppVersion(dataAppPayload)}`;
   });
   expect(
     await upgradeApp(directory, {
@@ -358,7 +365,7 @@ test('portable-only upgrades do not add React or local-server packages', async (
     JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'))
       .dependencies
   ).toEqual({
-    [dataAppPackage]: recommendedDataAppVersion(),
+    [dataAppPackage]: recommendedDataAppVersion(dataAppPayload),
   });
 });
 
