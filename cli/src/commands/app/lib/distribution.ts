@@ -37,12 +37,12 @@ export function createAppFiles(
 }
 
 function appLiteral(value: string): string {
+  const json = JSON.stringify(value);
+  const singleQuotes = value.split("'").length - 1;
+  const doubleQuotes = value.split('"').length - 1;
+  // Oxfmt prefers single quotes, unless double quotes require fewer escapes.
+  if (singleQuotes > doubleQuotes) return json;
   return (
-    "'" +
-    JSON.stringify(value)
-      .slice(1, -1)
-      .replaceAll('\\"', '"')
-      .replaceAll("'", "\\'") +
-    "'"
+    "'" + json.slice(1, -1).replaceAll('\\"', '"').replaceAll("'", "\\'") + "'"
   );
 }

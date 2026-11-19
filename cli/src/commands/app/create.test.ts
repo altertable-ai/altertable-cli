@@ -6,12 +6,16 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 
 import { extractDataAppManifest } from '@altertable/data-app-manifest';
 
-import { readDataAppPayload } from '@/commands/app/lib/distribution-source.ts';
+import {
+  dataAppDirectory,
+  readDataAppPayload,
+} from '@/commands/app/lib/distribution-source.ts';
 import { recommendedDataAppVersion } from '@/commands/app/lib/package.ts';
 import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import {
@@ -257,10 +261,16 @@ describe('app create', () => {
     expect(existsSync(directory)).toBe(false);
   });
 
-  test('profile display names are escaped for each generated file format', async () => {
+  test.each([
+    "O'Brien",
+    'Acme "North" & Co',
+    `A'B"C`,
+    `A'B'C"D`,
+    String.raw`O'Brien\North`,
+  ])('creates a formatted app for organization %s', async organization => {
     ensureProfileExists('special');
     configSet('organization_slug', 'acme', 'special');
-    configSet('organization_name', 'Acme "North" & Co', 'special');
+    configSet('organization_name', organization, 'special');
     configSet('api_key_env', 'production', 'special');
     const directory = join(home, 'special-app');
 
@@ -273,9 +283,29 @@ describe('app create', () => {
     expect(
       extractDataAppManifest(readFileSync(join(directory, 'app.ts'), 'utf8'))
         .manifest!.scope
-    ).toMatchObject({ organization: 'Acme "North" & Co' });
+    ).toMatchObject({ organization });
     expect(readFileSync(join(directory, 'src/index.html'), 'utf8')).toContain(
       '<title>Altertable app</title>'
+    );
+    await symlink(
+      join(dataAppDirectory, 'starter/node_modules'),
+      join(directory, 'node_modules')
+    );
+    const format = Bun.spawn([process.execPath, 'run', 'format:check'], {
+      cwd: directory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(format.stdout).text(),
+      new Response(format.stderr).text(),
+      format.exited,
+    ]);
+    expect({ exitCode, error: exitCode ? `${stdout}\n${stderr}` : '' }).toEqual(
+      {
+        exitCode: 0,
+        error: '',
+      }
     );
   });
 
@@ -319,6 +349,11 @@ describe('app create', () => {
   });
 
   test('installs the generated app with its frozen lockfile and checks authoring links and the project', async () => {
+    ensureProfileExists('quoted');
+    configSet('organization_slug', 'obrien', 'quoted');
+    configSet('organization_name', "O'Brien", 'quoted');
+    configSet('api_key_env', 'production', 'quoted');
+    setActiveProfile('quoted');
     const directory = join(home, 'first-check');
     await runCommandWithTestRuntime([
       'app',
@@ -326,7 +361,6 @@ describe('app create', () => {
       'first-check',
       '--dir',
       directory,
-      '--without-profile',
     ]);
     const install = Bun.spawnSync(
       [process.execPath, 'install', '--frozen-lockfile'],
