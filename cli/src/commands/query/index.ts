@@ -13,7 +13,10 @@ import {
   type LakehouseQueryInput,
 } from '@/lib/lakehouse/query.ts';
 import { writeQueryDestination } from '@/lib/query-destination.ts';
-import { parseQueryOutputOptions } from '@/lib/query-output-args.ts';
+import {
+  parseQueryOutputOptions,
+  validateApiNativeFormatFlags,
+} from '@/lib/query-output-args.ts';
 import {
   isApiNativeQueryFormat,
   writeQueryOutput,
@@ -41,7 +44,7 @@ export const queryCommand = defineCommand({
     top: queryTopCommand,
     cancel: queryCancelCommand,
   },
-  async run({ args, rawArgs, execution, sink }) {
+  async run({ args, explicitOptions, execution, sink }) {
     const statementArg = optionalStringArg(args, 'statement');
     if (statementArg === undefined) {
       throw new CliError(
@@ -49,6 +52,11 @@ export const queryCommand = defineCommand({
       );
     }
     const statement = parseQueryStatement(statementArg);
+    const outputContext = {
+      agent: execution.cli.agent,
+      json: sink.json,
+      explicitOptions,
+    };
     const {
       format,
       displayOptions,
@@ -58,11 +66,7 @@ export const queryCommand = defineCommand({
       dialect,
       catalog,
       schema,
-    } = parseQueryOutputOptions(args, {
-      agent: execution.cli.agent,
-      json: sink.json,
-      rawArgs,
-    });
+    } = parseQueryOutputOptions(args, outputContext);
 
     const input: LakehouseQueryInput = {
       statement,
@@ -75,6 +79,7 @@ export const queryCommand = defineCommand({
     };
 
     if (isApiNativeQueryFormat(format)) {
+      validateApiNativeFormatFlags(format, outputContext);
       const stream = await executeLakehouseQueryBytes(
         { ...input, format },
         execution

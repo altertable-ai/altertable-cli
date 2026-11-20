@@ -122,10 +122,9 @@ export async function writeQueryOutput(
   outputPath?: string
 ): Promise<void> {
   const effectiveFormat = sink.json ? 'json' : format;
-  if (isApiNativeQueryFormat(effectiveFormat)) {
-    throw new CliError(
-      `Format ${effectiveFormat} must be streamed from the lakehouse API.`
-    );
+  if (effectiveFormat === 'json' && outputPath === undefined) {
+    sink.writeJson(result);
+    return;
   }
 
   const outputText = renderQueryOutputText(
@@ -145,21 +144,7 @@ export async function writeQueryOutput(
   }
 
   if (outputPath !== undefined) {
-    if (effectiveFormat === 'json') {
-      await writeQueryDestination(
-        JSON.stringify(JSON.parse(outputText), null, 2),
-        {
-          outputPath,
-        }
-      );
-      return;
-    }
     await writeQueryDestination(outputText, { outputPath });
-    return;
-  }
-
-  if (effectiveFormat === 'json' || sink.json) {
-    sink.writeJson(JSON.parse(outputText));
     return;
   }
 

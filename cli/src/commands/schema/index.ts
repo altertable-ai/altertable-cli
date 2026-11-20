@@ -19,14 +19,14 @@ export const schemaCommand = defineCommand({
     ],
   },
   args: schemaArgs,
-  async run({ args, rawArgs, execution, sink }) {
+  async run({ args, explicitOptions, execution, sink }) {
     const catalog = stringArg(args, 'catalog');
     const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
       args,
       {
         agent: execution.cli.agent,
         json: sink.json,
-        rawArgs,
+        explicitOptions,
       }
     );
     const queryInput = {

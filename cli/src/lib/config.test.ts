@@ -105,6 +105,9 @@ describe('config', () => {
     expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
     expect(getQueryDefaultLayout()).toBeUndefined();
     expect(getQueryDefaultPager()).toBeUndefined();
+
+    kvSet(configFile(), 'query_max_width', '12.5');
+    expect(getQueryDefaultMaxColumnWidth()).toBeUndefined();
   });
 
   test('keeps global query defaults outside profile config', () => {

@@ -65,7 +65,7 @@ export type ParsedCommandArguments<
 
 export type CommandRunContext<T extends CommandArguments = CommandArguments> = {
   args: ParsedCommandArguments<T>;
-  rawArgs: string[];
+  explicitOptions: ReadonlySet<string>;
   command: Command;
   runtime: CliRuntime;
   sink: OutputSink;

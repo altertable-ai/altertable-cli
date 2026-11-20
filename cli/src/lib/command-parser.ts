@@ -356,7 +356,7 @@ function applyDefaultsAndValidate(
 function parseInvocationArguments(
   invocation: SelectedInvocation,
   tokens: readonly string[]
-): ParsedArguments {
+): { args: ParsedArguments; explicitOptions: ReadonlySet<string> } {
   const options = availableOptions(
     invocation.root.arguments,
     invocation.command.arguments
@@ -365,6 +365,7 @@ function parseInvocationArguments(
     ([, argument]) => argument.type === 'positional'
   );
   const parsed: ParsedArguments = {};
+  const explicitOptions = new Set<string>();
   let positionalIndex = 0;
   let afterSeparator = false;
 
@@ -386,6 +387,7 @@ function parseInvocationArguments(
           `${name} is only valid at the command root.`
         );
       }
+      explicitOptions.add(binding.name);
       if (takesValue(binding.argument)) {
         const inlineValue = inlineOptionValue(token);
         const value = inlineValue ?? nextOptionValue(tokens, index, options);
@@ -416,20 +418,19 @@ function parseInvocationArguments(
   if (invocation.command !== invocation.root) {
     applyDefaultsAndValidate(parsed, invocation.command.arguments);
   }
-  return parsed;
+  return { args: parsed, explicitOptions };
 }
 
 function createRunContext(
   command: Command,
-  args: ParsedArguments,
-  rawArgs: readonly string[]
+  { args, explicitOptions }: ReturnType<typeof parseInvocationArguments>
 ) {
   const runtime = getCliRuntime();
   let execution: ExecutionContext | undefined;
   return {
     command,
     args,
-    rawArgs: [...rawArgs],
+    explicitOptions,
     runtime,
     sink: runtime.output,
     get execution() {
@@ -447,11 +448,11 @@ export async function executeCommand(
   const parsed = parseInvocationArguments(invocation, rawArgs);
   let runResult: void | CommandRunResult = undefined;
   if (root.run) {
-    runResult = await root.run(createRunContext(root, parsed, rawArgs));
+    runResult = await root.run(createRunContext(root, parsed));
   }
   const selected = invocation.command.definition;
   if (selected !== root && selected.run) {
-    runResult = await selected.run(createRunContext(selected, parsed, rawArgs));
+    runResult = await selected.run(createRunContext(selected, parsed));
   }
   return {
     command: selected,

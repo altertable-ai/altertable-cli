@@ -16,7 +16,11 @@ describe('parseQueryOutputOptions', () => {
         'max-width': '24',
         pager: 'never',
       },
-      { agent: false, json: false, rawArgs: [] }
+      {
+        agent: false,
+        json: false,
+        explicitOptions: new Set(['max-width', 'pager']),
+      }
     );
 
     expect(options).toMatchObject({
@@ -33,7 +37,10 @@ describe('parseQueryOutputOptions', () => {
 
   test('derives machine-readable output from agent context', () => {
     expect(
-      parseQueryOutputOptions({}, { agent: true, json: true, rawArgs: [] })
+      parseQueryOutputOptions(
+        {},
+        { agent: true, json: true, explicitOptions: new Set() }
+      )
     ).toMatchObject({
       format: 'human',
       pagerOptions: { mode: 'never' },
@@ -46,31 +53,17 @@ describe('parseQueryOutputOptions', () => {
       () =>
         parseQueryOutputOptions(
           {},
-          { agent: true, json: true, rawArgs: ['--layout', 'table'] }
+          { agent: true, json: true, explicitOptions: new Set(['layout']) }
         ),
       () =>
         parseQueryOutputOptions(
           { 'max-width': '4' },
-          { agent: false, json: false, rawArgs: ['--max-width', '4'] }
+          { agent: false, json: false, explicitOptions: new Set(['max-width']) }
         ),
       () =>
         parseQueryOutputOptions(
           { pager: 'sometimes' },
-          { agent: false, json: false, rawArgs: ['--pager', 'sometimes'] }
-        ),
-      () =>
-        parseQueryOutputOptions(
-          { format: 'parquet' },
-          { agent: false, json: true, rawArgs: ['--format', 'parquet'] }
-        ),
-      () =>
-        parseQueryOutputOptions(
-          { format: 'csv', layout: 'table' },
-          {
-            agent: false,
-            json: false,
-            rawArgs: ['--format', 'csv', '--layout', 'table'],
-          }
+          { agent: false, json: false, explicitOptions: new Set(['pager']) }
         ),
     ]) {
       expect(run).toThrow(CliError);
@@ -90,7 +83,7 @@ describe('parseQueryOutputOptions', () => {
       {
         agent: false,
         json: false,
-        rawArgs: ['--format', 'jsonl', '--compute-size', 'L'],
+        explicitOptions: new Set(['format', 'compute-size']),
       }
     );
 
@@ -110,7 +103,7 @@ describe('parseQueryOutputOptions', () => {
       {
         agent: false,
         json: false,
-        rawArgs: ['--session-id', 'session-1', '--compute-size', 'AUTO'],
+        explicitOptions: new Set(['session-id', 'compute-size']),
       }
     );
 
