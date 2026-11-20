@@ -65,7 +65,9 @@ function normalizePromptMessage(prompt: string): string {
   return prompt.trim().replace(/:\s*$/, '');
 }
 
-function resolvePromptResult(result: string | symbol): string {
+function resolvePromptResult(
+  result: Awaited<ReturnType<typeof clackText>>
+): string {
   if (isCancel(result)) throw new PromptCancelled();
   return result;
 }
