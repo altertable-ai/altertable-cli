@@ -1,4 +1,5 @@
 import { ParseError, QueryError } from '@/lib/errors.ts';
+import { isRecord } from '@/lib/object.ts';
 import { readTextStreamLines } from '@/lib/stream-lines.ts';
 
 export type LakehouseQueryMetadata = {
@@ -27,57 +28,14 @@ export type LakehouseQueryResult = {
   rows: LakehouseRow[];
 };
 
-export type LakehouseQueryStreamResult = {
-  metadata: LakehouseQueryMetadata;
-  columns: string[] | LakehouseColumn[];
-  rows: LakehouseRow[];
-};
-
 function isColumnNameArray(value: unknown): value is string[] {
   return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(entry => typeof entry === 'string')
+    Array.isArray(value) && value.every(entry => typeof entry === 'string')
   );
 }
 
 function isColumnObjectArray(value: unknown): value is LakehouseColumn[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(
-      entry =>
-        typeof entry === 'object' && entry !== null && !Array.isArray(entry)
-    )
-  );
-}
-
-function parseMetadataLine(
-  line: string,
-  lineNumber: number
-): LakehouseQueryMetadata {
-  const parsedMetadata = parseProtocolLine(line, lineNumber);
-  if (
-    typeof parsedMetadata !== 'object' ||
-    parsedMetadata === null ||
-    Array.isArray(parsedMetadata)
-  ) {
-    throw new ParseError('Query response metadata must be a JSON object.', {
-      details: `Line ${lineNumber}: ${line}`,
-    });
-  }
-  return parsedMetadata as LakehouseQueryMetadata;
-}
-
-function parseOptionalColumnsLine(
-  line: string,
-  lineNumber: number
-): string[] | LakehouseColumn[] | undefined {
-  const parsedLine = parseProtocolLine(line, lineNumber);
-  if (isColumnNameArray(parsedLine) || isColumnObjectArray(parsedLine)) {
-    return parsedLine;
-  }
-  return undefined;
+  return Array.isArray(value) && value.every(isRecord);
 }
 
 // Default query NDJSON uses array rows and a standalone {error: string} record.
@@ -96,166 +54,74 @@ function parseProtocolLine(line: string, lineNumber: number): unknown {
     );
   }
   if (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
+    isRecord(value) &&
     Object.keys(value).length === 1 &&
-    'error' in value &&
     typeof value.error === 'string'
   ) {
-    throw new QueryError(value.error);
+    throw new QueryError(value.error, { details: `Line ${lineNumber}` });
   }
   return value;
 }
 
-function parseRowLine(line: string, lineNumber: number): LakehouseRow {
-  return parseProtocolLine(line, lineNumber) as LakehouseRow;
-}
-
-function trimTrailingEmptyLines(lines: string[]): string[] {
-  const trimmedLines = [...lines];
-  while (trimmedLines.length > 0) {
-    const lastLine = trimmedLines[trimmedLines.length - 1];
-    if (lastLine === undefined || lastLine.trim().length > 0) {
-      break;
-    }
-    trimmedLines.pop();
+function readQueryLine(
+  result: LakehouseQueryResult | undefined,
+  line: string,
+  lineNumber: number
+): LakehouseQueryResult {
+  if (line.trim().length === 0) {
+    if (result) return result;
+    throw new ParseError('Query response is empty.');
   }
-  return trimmedLines;
-}
 
-export async function parseLakehouseQueryHeader(
-  lineSource: AsyncIterable<string>
-): Promise<{
-  metadata: LakehouseQueryMetadata;
-  columns: string[] | LakehouseColumn[];
-  lineIterator: AsyncIterator<string, void, undefined>;
-  lineNumber: number;
-  pendingRowLine?: string;
-}> {
-  const lineIterator = lineSource[Symbol.asyncIterator]();
-  try {
-    const firstResult = await lineIterator.next();
-    if (firstResult.done || firstResult.value.trim().length === 0) {
-      throw new ParseError('Query response is empty.');
+  const value = parseProtocolLine(line, lineNumber);
+  if (!result) {
+    if (!isRecord(value)) {
+      throw new ParseError('Query response metadata must be a JSON object.', {
+        details: `Line ${lineNumber}: ${line}`,
+      });
     }
+    return { metadata: value, columns: [], rows: [] };
+  }
 
-    const metadata = parseMetadataLine(firstResult.value, 1);
-    let columns: string[] | LakehouseColumn[] = [];
-    let lineNumber = 2;
-    let pendingRowLine: string | undefined;
-
-    const secondResult = await lineIterator.next();
-    if (!secondResult.done) {
-      const parsedColumns = parseOptionalColumnsLine(
-        secondResult.value,
-        lineNumber
+  if (
+    lineNumber === 2 &&
+    (isColumnNameArray(value) || isColumnObjectArray(value))
+  ) {
+    result.columns = value;
+  } else {
+    if (!Array.isArray(value) && !isRecord(value)) {
+      throw new ParseError(
+        'Query response row must be a JSON array or object.',
+        {
+          details: `Line ${lineNumber}: ${line}`,
+        }
       );
-      if (parsedColumns !== undefined) {
-        columns = parsedColumns;
-        lineNumber += 1;
-      } else {
-        pendingRowLine = secondResult.value;
-      }
     }
-
-    return {
-      metadata,
-      columns,
-      lineIterator,
-      lineNumber,
-      pendingRowLine,
-    };
-  } catch (error) {
-    await lineIterator.return?.();
-    throw error;
+    result.rows.push(value);
   }
+  return result;
 }
 
 export function parseLakehouseQueryResponse(
   responseBody: string
 ): LakehouseQueryResult {
-  const trimmedBody = responseBody.trimEnd();
-  if (trimmedBody.length === 0) {
-    throw new ParseError('Query response is empty.');
+  let result: LakehouseQueryResult | undefined;
+  let lineNumber = 0;
+  for (const line of responseBody.split('\n')) {
+    result = readQueryLine(result, line, ++lineNumber);
   }
-
-  const lines = trimTrailingEmptyLines(trimmedBody.split('\n'));
-  if (lines.length === 0) {
-    throw new ParseError('Query response is empty.');
-  }
-
-  const metadataLine = lines[0];
-  if (metadataLine === undefined) {
-    throw new ParseError('Query response is empty.');
-  }
-
-  const metadata = parseMetadataLine(metadataLine, 1);
-  let columns: string[] | LakehouseColumn[] = [];
-  const rows: LakehouseRow[] = [];
-  let lineIndex = 1;
-
-  if (lineIndex < lines.length) {
-    const columnsLine = lines[lineIndex];
-    if (columnsLine !== undefined) {
-      const parsedColumns = parseOptionalColumnsLine(
-        columnsLine,
-        lineIndex + 1
-      );
-      if (parsedColumns !== undefined) {
-        columns = parsedColumns;
-        lineIndex += 1;
-      }
-    }
-  }
-
-  for (; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex];
-    if (line === undefined || line.trim().length === 0) {
-      continue;
-    }
-    rows.push(parseRowLine(line, lineIndex + 1));
-  }
-
-  return { metadata, columns, rows };
+  if (!result) throw new ParseError('Query response is empty.');
+  return result;
 }
 
-export async function* parseLakehouseQueryStream(
+export async function parseLakehouseQueryStream(
   stream: ReadableStream<Uint8Array>
-): AsyncGenerator<LakehouseRow, LakehouseQueryStreamResult, undefined> {
-  const header = await parseLakehouseQueryHeader(readTextStreamLines(stream));
-  const rows: LakehouseRow[] = [];
-  let lineNumber = header.lineNumber;
-
-  try {
-    if (header.pendingRowLine !== undefined) {
-      const pendingLineNumber = lineNumber;
-      lineNumber += 1;
-      if (header.pendingRowLine.trim().length > 0) {
-        const row = parseRowLine(header.pendingRowLine, pendingLineNumber);
-        rows.push(row);
-        yield row;
-      }
-    }
-
-    while (true) {
-      const nextLine = await header.lineIterator.next();
-      if (nextLine.done) {
-        break;
-      }
-      const line = nextLine.value;
-      const currentLineNumber = lineNumber;
-      lineNumber += 1;
-      if (line.trim().length === 0) {
-        continue;
-      }
-      const row = parseRowLine(line, currentLineNumber);
-      rows.push(row);
-      yield row;
-    }
-
-    return { metadata: header.metadata, columns: header.columns, rows };
-  } finally {
-    await header.lineIterator.return?.();
+): Promise<LakehouseQueryResult> {
+  let result: LakehouseQueryResult | undefined;
+  let lineNumber = 0;
+  for await (const line of readTextStreamLines(stream)) {
+    result = readQueryLine(result, line, ++lineNumber);
   }
+  if (!result) throw new ParseError('Query response is empty.');
+  return result;
 }

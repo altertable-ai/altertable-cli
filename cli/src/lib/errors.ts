@@ -164,8 +164,8 @@ export class ParseError extends CliError {
 }
 
 export class QueryError extends CliError {
-  constructor(message: string) {
-    super(`Query failed: ${message}`);
+  constructor(message: string, options?: CliErrorOptions) {
+    super(`Query failed: ${message}`, options);
     this.name = 'QueryError';
   }
 }

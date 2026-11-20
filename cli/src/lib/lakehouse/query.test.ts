@@ -10,7 +10,6 @@ import { httpSendStream, resolveReadTimeoutMs } from '@/lib/http.ts';
 import {
   parseLakehouseQueryResponse,
   parseLakehouseQueryStream,
-  type LakehouseRow,
 } from '@/lib/lakehouse-ndjson.ts';
 import {
   buildLakehouseQueryListRequest,
@@ -95,6 +94,22 @@ describe('parseLakehouseQueryResponse', () => {
     expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
+  test('uses an empty columns frame without adding a phantom row', async () => {
+    const body = '{"statement":"SELECT 1"}\n[]\n';
+    const result = parseLakehouseQueryResponse(body);
+    expect(result.columns).toEqual([]);
+    expect(result.rows).toEqual([]);
+    expect(await parseLakehouseQueryStream(new Blob([body]).stream())).toEqual(
+      result
+    );
+  });
+
+  test('rejects a scalar row at the protocol boundary', () => {
+    expect(() => parseLakehouseQueryResponse('{}\n["id"]\nnull')).toThrow(
+      'row must be a JSON array or object'
+    );
+  });
+
   test('throws ParseError when metadata is not an object', () => {
     expect(() => parseLakehouseQueryResponse('[]\n')).toThrow(
       'metadata must be a JSON object'
@@ -139,24 +154,8 @@ describe('parseLakehouseQueryStream', () => {
       body: '{"statement":"SELECT 1"}',
     });
 
-    const rowValues: LakehouseRow[] = [];
-    const streamParser = parseLakehouseQueryStream(byteStream);
-    while (true) {
-      const next = await streamParser.next();
-      if (next.done) {
-        expect(next.value.rows).toEqual([
-          [1, 'Alice'],
-          [2, 'Bob'],
-        ]);
-        break;
-      }
-      rowValues.push(next.value);
-    }
-
-    expect(rowValues).toEqual([
-      [1, 'Alice'],
-      [2, 'Bob'],
-    ]);
+    const result = await parseLakehouseQueryStream(byteStream);
+    expect(result).toEqual(parseLakehouseQueryResponse(SAMPLE_NDJSON));
   });
 
   test('throws ParseError when metadata line is incomplete across first chunk', async () => {
@@ -169,8 +168,7 @@ describe('parseLakehouseQueryStream', () => {
     });
 
     try {
-      const streamParser = parseLakehouseQueryStream(stream);
-      await streamParser.next();
+      await parseLakehouseQueryStream(stream);
       throw new Error('expected parse failure');
     } catch (error) {
       expect(error).toBeInstanceOf(ParseError);
@@ -185,15 +183,14 @@ describe('parseLakehouseQueryStream', () => {
     });
 
     try {
-      const streamParser = parseLakehouseQueryStream(stream);
-      await streamParser.next();
+      await parseLakehouseQueryStream(stream);
       throw new Error('expected parse failure');
     } catch (error) {
       expect(error).toBeInstanceOf(ParseError);
     }
   });
 
-  test('streams a pending first row when no columns line is present', async () => {
+  test('keeps the first row when no columns line is present', async () => {
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -206,19 +203,9 @@ describe('parseLakehouseQueryStream', () => {
       },
     });
 
-    const rowValues: LakehouseRow[] = [];
-    const streamParser = parseLakehouseQueryStream(stream);
-    while (true) {
-      const next = await streamParser.next();
-      if (next.done) {
-        expect(next.value.columns).toEqual([]);
-        expect(next.value.rows).toEqual([{ id: 1 }, { id: 2 }]);
-        break;
-      }
-      rowValues.push(next.value);
-    }
-
-    expect(rowValues).toEqual([{ id: 1 }, { id: 2 }]);
+    const result = await parseLakehouseQueryStream(stream);
+    expect(result.columns).toEqual([]);
+    expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   test('malformed row line includes line index', async () => {
@@ -242,11 +229,8 @@ describe('parseLakehouseQueryStream', () => {
       body: '{"statement":"SELECT 1"}',
     });
 
-    const streamParser = parseLakehouseQueryStream(byteStream);
-    await streamParser.next();
-    await streamParser.next();
     try {
-      await streamParser.next();
+      await parseLakehouseQueryStream(byteStream);
       throw new Error('expected parse failure');
     } catch (error) {
       expect(error).toBeInstanceOf(ParseError);
@@ -461,20 +445,17 @@ describe('NDJSON engine error records', () => {
           canceled = true;
         },
       });
-      const rows: LakehouseRow[] = [];
-      async function consume() {
-        for await (const row of parseLakehouseQueryStream(stream))
-          rows.push(row);
-      }
       let failure: unknown;
       try {
-        await consume();
+        await parseLakehouseQueryStream(stream);
       } catch (error) {
         failure = error;
       }
       expect(failure).toBeInstanceOf(QueryError);
       expect((failure as QueryError).message).toContain(message);
-      expect(rows).toEqual(body.includes('[1]') ? [[1]] : []);
+      expect((failure as QueryError).details).toBe(
+        `Line ${body.split('\n').length}`
+      );
       expect(stream.locked).toBe(false);
       expect(canceled).toBe(true);
     }
@@ -504,9 +485,7 @@ describe('streamed parse line numbers', () => {
       const stream = new Blob([body]).stream();
       let streamedFailure: unknown;
       try {
-        for await (const _row of parseLakehouseQueryStream(stream)) {
-          /* consume */
-        }
+        await parseLakehouseQueryStream(stream);
       } catch (error) {
         streamedFailure = error;
       }

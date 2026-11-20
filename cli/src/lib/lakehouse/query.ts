@@ -56,16 +56,6 @@ export function buildLakehouseQueryRequest(
   };
 }
 
-async function collectQueryStream(
-  stream: ReadableStream<Uint8Array>
-): Promise<LakehouseQueryResult> {
-  const parser = parseLakehouseQueryStream(stream);
-  while (true) {
-    const next = await parser.next();
-    if (next.done) return next.value;
-  }
-}
-
 export async function executeLakehouseQuery(
   input: LakehouseQueryInput,
   execution: ExecutionContext,
@@ -73,7 +63,7 @@ export async function executeLakehouseQuery(
 ): Promise<LakehouseQueryResult> {
   const request = buildLakehouseQueryRequest(input, streaming);
   if (streaming) {
-    return collectQueryStream(await sendHttpStream(request, execution));
+    return parseLakehouseQueryStream(await sendHttpStream(request, execution));
   }
   return parseLakehouseQueryResponse(await sendHttp(request, execution));
 }
