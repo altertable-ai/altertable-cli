@@ -58,6 +58,23 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [2.0.0](https://github.com/altertable-ai/altertable-cli/compare/v1.15.1...v2.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** Local app dev and lint require a shared literal app.ts instead of app.json. Existing projects must adapt their own declaration, operations, and local server to SDK 0.78; package upgrade preserves source and does not perform that migration.
+
+### Features
+
+* **app:** scaffold data apps from published SDK examples ([#187](https://github.com/altertable-ai/altertable-cli/issues/187)) ([97fa08b](https://github.com/altertable-ai/altertable-cli/commit/97fa08b3610bc87d97315efa5ce08d141424375f))
+
+
+### Bug Fixes
+
+* **cli:** restore query output and simplify request handling ([#189](https://github.com/altertable-ai/altertable-cli/issues/189)) ([2895b25](https://github.com/altertable-ai/altertable-cli/commit/2895b259bf76e4434f47123bb4527c638b4fd892))
+* **config:** store Windows secrets in Credential Manager ([#182](https://github.com/altertable-ai/altertable-cli/issues/182)) ([8403a07](https://github.com/altertable-ai/altertable-cli/commit/8403a07bc57d6befc383d081666459f1c903aa7f))
+
 ## [1.15.1](https://github.com/altertable-ai/altertable-cli/compare/v1.15.0...v1.15.1) (2026-11-08)
 
 
