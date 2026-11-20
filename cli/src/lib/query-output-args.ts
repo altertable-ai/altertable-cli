@@ -17,7 +17,7 @@ import {
 import {
   parseQueryResultFormat,
   type LakehouseApiQueryFormat,
-  type QueryResultFormat,
+  type QueryOutputOptions,
 } from '@/lib/query-output.ts';
 import { isQueryLayout, QUERY_LAYOUT_OPTIONS } from '@/ui/layouts/query.ts';
 
@@ -84,49 +84,12 @@ export const queryPagerArgs = defineArguments({
   },
 });
 
-export const queryRequestArgs = defineArguments({
-  'compute-size': {
-    type: 'string',
-    description: 'Compute size for the query',
-    default: 'AUTO',
-  },
-  dialect: {
-    type: 'string',
-    description:
-      'Source SQL dialect to transpile from (server default: DuckDB)',
-  },
-  catalog: {
-    type: 'string',
-    description: 'Catalog name (optional; can also come from the session)',
-  },
-  schema: {
-    type: 'string',
-    description: 'Schema name (optional; can also come from the session)',
-  },
-  output: {
-    type: 'string',
-    description: 'Write result bytes/text to this path instead of stdout',
-  },
-});
-
-export type QueryOutputOptions = {
-  format: QueryResultFormat;
-  displayOptions: QueryDisplayOptions;
-  pagerOptions: PagerOptions;
-  outputPath?: string;
-  computeSize?: string;
-  dialect?: string;
-  catalog?: string;
-  schema?: string;
-};
-
-type ParseQueryOutputOptions = {
+type QueryOutputContext = {
   agent: boolean;
-  json: boolean;
   explicitOptions: ReadonlySet<string>;
 };
 
-function validateAgentQueryFlags(options: ParseQueryOutputOptions): void {
+function validateAgentQueryFlags(options: QueryOutputContext): void {
   if (!options.agent) return;
 
   for (const flag of AGENT_INCOMPATIBLE_QUERY_FLAGS) {
@@ -140,7 +103,7 @@ function validateAgentQueryFlags(options: ParseQueryOutputOptions): void {
 
 export function validateApiNativeFormatFlags(
   format: LakehouseApiQueryFormat,
-  options: ParseQueryOutputOptions
+  options: QueryOutputContext & { json: boolean }
 ): void {
   if (options.json || options.agent) {
     throw new CliError(
@@ -199,7 +162,7 @@ function parseDisplayOptions(
 
 function parsePagerOptions(
   args: Record<string, unknown>,
-  { agent, explicitOptions }: ParseQueryOutputOptions
+  { agent, explicitOptions }: QueryOutputContext
 ): PagerOptions {
   if (agent) return { mode: 'never' };
   if (!explicitOptions.has('pager')) return resolvePagerOptions();
@@ -211,54 +174,18 @@ function parsePagerOptions(
   return resolvePagerOptions(pager as PagerMode);
 }
 
-function optionalTrimmedString(
-  args: Record<string, unknown>,
-  name: string
-): string | undefined {
-  const value = args[name];
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-}
-
-export function resolveQueryComputeSize(options: {
-  sessionId?: string;
-  computeSizeArg?: string;
-  computeSizeExplicit: boolean;
-}): string | undefined {
-  const computeSize = options.computeSizeArg ?? 'AUTO';
-
-  if (options.sessionId && !options.computeSizeExplicit) return undefined;
-  return computeSize;
-}
-
 export function parseQueryOutputOptions(
   args: Record<string, unknown>,
-  options: ParseQueryOutputOptions
+  options: QueryOutputContext
 ): QueryOutputOptions {
   validateAgentQueryFlags(options);
   const format = parseQueryResultFormat(
     args.format === undefined ? 'human' : asCliArgString(args.format)
   );
 
-  const sessionId = optionalTrimmedString(args, 'session-id');
-  const computeSize = resolveQueryComputeSize({
-    sessionId,
-    computeSizeArg:
-      args['compute-size'] === undefined
-        ? undefined
-        : asCliArgString(args['compute-size']),
-    computeSizeExplicit: options.explicitOptions.has('compute-size'),
-  });
-
   return {
     format,
     displayOptions: parseDisplayOptions(args, options.explicitOptions),
     pagerOptions: parsePagerOptions(args, options),
-    outputPath: optionalTrimmedString(args, 'output'),
-    computeSize,
-    dialect: optionalTrimmedString(args, 'dialect'),
-    catalog: optionalTrimmedString(args, 'catalog'),
-    schema: optionalTrimmedString(args, 'schema'),
   };
 }

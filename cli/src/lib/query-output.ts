@@ -1,10 +1,6 @@
 import { CliError } from '@/lib/errors.ts';
 import type { LakehouseApiQueryFormat } from '@/lib/lakehouse/query.ts';
-import {
-  resolvePagerOptions,
-  writePagedOutput,
-  type PagerOptions,
-} from '@/lib/pager.ts';
+import { writePagedOutput, type PagerOptions } from '@/lib/pager.ts';
 import { writeQueryDestination } from '@/lib/query-destination.ts';
 import {
   defaultDisplayOptions,
@@ -113,13 +109,23 @@ export function renderQueryOutputText(
   );
 }
 
+export type QueryOutputOptions = {
+  format: QueryResultFormat;
+  displayOptions: QueryDisplayOptions;
+  pagerOptions: PagerOptions;
+};
+
 export async function writeQueryOutput(
   result: import('./lakehouse-ndjson.ts').LakehouseQueryResult,
-  format: QueryResultFormat,
   sink: OutputSink,
-  displayOptions?: QueryDisplayOptions,
-  pagerOptions?: PagerOptions,
-  outputPath?: string
+  {
+    format,
+    displayOptions,
+    pagerOptions,
+    outputPath,
+  }: QueryOutputOptions & {
+    outputPath?: string;
+  }
 ): Promise<void> {
   const effectiveFormat = sink.json ? 'json' : format;
   if (effectiveFormat === 'json' && outputPath === undefined) {
@@ -132,19 +138,13 @@ export async function writeQueryOutput(
     effectiveFormat,
     displayOptions
   );
-  const usePager = format === 'human' && !sink.json && outputPath === undefined;
-
-  if (usePager) {
-    await writePagedOutput(
-      outputText,
-      pagerOptions ?? resolvePagerOptions(),
-      sink
-    );
+  if (outputPath !== undefined) {
+    await writeQueryDestination(outputText, { outputPath });
     return;
   }
 
-  if (outputPath !== undefined) {
-    await writeQueryDestination(outputText, { outputPath });
+  if (effectiveFormat === 'human') {
+    await writePagedOutput(outputText, pagerOptions, sink);
     return;
   }
 

@@ -5,6 +5,7 @@ import { queryListCommand } from '@/commands/query/list.ts';
 import { queryShowCommand } from '@/commands/query/show.ts';
 import { queryTopCommand } from '@/commands/query/top.ts';
 import { optionalStringArg } from '@/lib/args.ts';
+import { asCliArgString } from '@/lib/cli-args.ts';
 import { defineCommand } from '@/lib/command.ts';
 import { CliError } from '@/lib/errors.ts';
 import {
@@ -57,25 +58,21 @@ export const queryCommand = defineCommand({
       json: sink.json,
       explicitOptions,
     };
-    const {
-      format,
-      displayOptions,
-      pagerOptions,
-      outputPath,
-      computeSize,
-      dialect,
-      catalog,
-      schema,
-    } = parseQueryOutputOptions(args, outputContext);
-
+    const output = parseQueryOutputOptions(args, outputContext);
+    const { format } = output;
+    const outputPath = optionalStringArg(args, 'output')?.trim() || undefined;
+    const sessionId = optionalStringArg(args, 'session-id');
     const input: LakehouseQueryInput = {
       statement,
       queryId: optionalStringArg(args, 'query-id'),
-      sessionId: optionalStringArg(args, 'session-id'),
-      computeSize,
-      dialect,
-      catalog,
-      schema,
+      sessionId,
+      computeSize:
+        sessionId?.trim() && !explicitOptions.has('compute-size')
+          ? undefined
+          : asCliArgString(args['compute-size']),
+      dialect: optionalStringArg(args, 'dialect')?.trim(),
+      catalog: optionalStringArg(args, 'catalog')?.trim(),
+      schema: optionalStringArg(args, 'schema')?.trim(),
     };
 
     if (isApiNativeQueryFormat(format)) {
@@ -89,13 +86,6 @@ export const queryCommand = defineCommand({
     }
 
     const result = await executeLakehouseQuery(input, execution, !sink.json);
-    await writeQueryOutput(
-      result,
-      format,
-      sink,
-      displayOptions,
-      pagerOptions,
-      outputPath
-    );
+    await writeQueryOutput(result, sink, { ...output, outputPath });
   },
 });
