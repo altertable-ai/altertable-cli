@@ -181,6 +181,12 @@ describe('http retry policy', () => {
     expect(parseRetryAfterMs(null)).toBeUndefined();
   });
 
+  test('falls back to backoff for malformed Retry-After values', () => {
+    for (const value of ['-1', '+9999', '2.5', '2junk']) {
+      expect(computeRetryDelayMs(0, value)).toBe(500);
+    }
+  });
+
   test('computeRetryDelayMs uses exponential backoff', () => {
     expect(computeRetryDelayMs(0, null)).toBe(500);
     expect(computeRetryDelayMs(1, null)).toBe(1_000);
