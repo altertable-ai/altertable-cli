@@ -10,6 +10,39 @@ function interrupt(): void {
 }
 
 describe('runLiveView', () => {
+  test('removes its signal listener and preserves an initial write failure', async () => {
+    const sigintListeners = process.listenerCount('SIGINT');
+    const failure = new Error('Could not enter screen');
+    const writes: string[] = [];
+    const error = await runLiveView({
+      intervalMs: 1,
+      render: async () => 'frame',
+      write: text => {
+        writes.push(text);
+        if (text === ENTER_SCREEN) throw failure;
+        throw new Error('Could not leave screen');
+      },
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBe(failure);
+    expect(writes).toEqual([ENTER_SCREEN, LEAVE_SCREEN]);
+    expect(process.listenerCount('SIGINT')).toBe(sigintListeners);
+  });
+
+  test('tears down immediately when interrupted during a frame write', async () => {
+    const writes: string[] = [];
+    await runLiveView({
+      intervalMs: 60_000,
+      render: async () => 'frame',
+      write: async text => {
+        writes.push(text);
+        if (text.includes('frame')) interrupt();
+      },
+    });
+
+    expect(writes.at(-1)).toBe(LEAVE_SCREEN);
+  });
+
   test('redraws frames until Ctrl+C, then restores the terminal', async () => {
     const writes: string[] = [];
     let renders = 0;
