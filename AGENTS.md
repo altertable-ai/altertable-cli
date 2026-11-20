@@ -26,7 +26,7 @@ Install dependencies separately with `bun run setup` from the repository root be
 
 ```bash
 git submodule update --init --recursive   # first checkout only
-bun run check --quick               # focused CLI changes, including coverage
+bun run check --quick               # skip browser and packaged-artifact tests
 bun run check                         # full gate before PR (mirrors CI minus native compile)
 bun run check --integration         # lakehouse HTTP paths (mock at :15000)
 ```
@@ -50,7 +50,6 @@ then default `bun run check` before opening a PR.
 - [specs/AGENTS.md](specs/AGENTS.md) — spec submodule contribution rules (different concern)
 - [DEVELOPMENT.md](DEVELOPMENT.md) — build, compile, release, spec conformance
 - [CONTRIBUTING.md](CONTRIBUTING.md) — PR workflow
-- [plans/README.md](plans/README.md) — implementation plan index
 
 ## Do not edit
 
@@ -66,7 +65,3 @@ Initialize before first verify or spec work:
 ```bash
 git submodule update --init --recursive
 ```
-
-## Plans
-
-When completing an advisor plan from `plans/`, update its status row in [plans/README.md](plans/README.md) to DONE.
