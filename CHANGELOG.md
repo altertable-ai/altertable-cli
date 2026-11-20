@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Render CSV from `altertable schema` and honor configured query display defaults when no override is supplied. Treat SQL after `--` as an operand and reject non-integer column widths.
+- Report the response line for lakehouse query errors and restore the terminal promptly when `query top --watch` is interrupted.
+- Reject malformed data-app slugs and return an authorization error for malformed preview tokens.
+- Use standard retry backoff when a server sends a malformed `Retry-After` delay.
 - Keep generated data app identities formatted when organization names contain apostrophes or quotation marks, so the first `app lint` passes.
 - Document the Windows PowerShell installation path, including Bun's native installer and the `bun.exe` requirement for npm launchers.
 - Store Windows credentials in the current user's Credential Manager by default, migrate existing file credentials after successful native storage, and fail closed on vault errors with the cause and how to opt out. `ALTERTABLE_SECRET_BACKEND=file` keeps the file backend, for example in CI.

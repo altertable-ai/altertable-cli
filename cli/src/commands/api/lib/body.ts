@@ -36,21 +36,6 @@ function validateJsonBody(body: string): string {
   return body;
 }
 
-function normalizeFieldEntries(
-  fields: Record<string, string> | string[] | string | undefined
-): string[] {
-  if (fields === undefined) {
-    return [];
-  }
-  if (typeof fields === 'string') {
-    return [fields];
-  }
-  if (Array.isArray(fields)) {
-    return fields;
-  }
-  return Object.values(fields);
-}
-
 function parseFieldEntry(entry: string): [string, string] {
   const separatorIndex = entry.indexOf('=');
   if (separatorIndex <= 0) {
@@ -60,11 +45,6 @@ function parseFieldEntry(entry: string): [string, string] {
   }
   const key = entry.slice(0, separatorIndex);
   const value = entry.slice(separatorIndex + 1);
-  if (key.length === 0) {
-    throw new CliError(
-      `Invalid field ${JSON.stringify(entry)}. Expected key=value.`
-    );
-  }
   return [key, value];
 }
 
@@ -109,19 +89,15 @@ function parseTypedFieldValue(value: string): ApiFieldValue {
   return readFileArgument(value);
 }
 
-function parseRawFields(
-  fields: Record<string, string> | string[] | string | undefined
-): ParsedApiField[] {
-  return normalizeFieldEntries(fields).map(entry => {
+function parseRawFields(fields: readonly string[] = []): ParsedApiField[] {
+  return fields.map(entry => {
     const [key, value] = parseFieldEntry(entry);
     return { key, value };
   });
 }
 
-function parseTypedFields(
-  fields: Record<string, string> | string[] | string | undefined
-): ParsedApiField[] {
-  return normalizeFieldEntries(fields).map(entry => {
+function parseTypedFields(fields: readonly string[] = []): ParsedApiField[] {
+  return fields.map(entry => {
     const [key, value] = parseFieldEntry(entry);
     return { key, value: parseTypedFieldValue(value) };
   });
@@ -160,9 +136,8 @@ function serializeApiFields(fields: ParsedApiField[]): string {
 export type ResolveApiBodyOptions = {
   method: string;
   input?: string;
-  rawFields?: Record<string, string> | string[] | string;
-  typedFields?: Record<string, string> | string[] | string;
-  fields?: Record<string, string> | string[] | string;
+  rawFields?: readonly string[];
+  typedFields?: readonly string[];
 };
 
 export type ResolvedApiRequestPayload = {
@@ -175,59 +150,28 @@ export function resolveApiRequestPayload(
 ): ResolvedApiRequestPayload {
   const method = options.method.toUpperCase();
   const inputArg = options.input;
-  const rawFields = parseRawFields(options.rawFields ?? options.fields);
+  const rawFields = parseRawFields(options.rawFields);
   const typedFields = parseTypedFields(options.typedFields);
   const parsedFields = [...rawFields, ...typedFields];
-  const hasBody = inputArg !== undefined && inputArg !== '';
-  const hasFields = parsedFields.length > 0;
-
-  if (hasBody && hasFields) {
-    if (!BODY_METHODS.has(method)) {
-      throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`
-      );
-    }
-
-    return {
-      body: readJsonInput(String(inputArg)),
-      queryFields: parsedFields,
-    };
-  }
-
-  if (FIELD_QUERY_METHODS.has(method)) {
-    if (hasBody) {
-      throw new CliError(
-        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`
-      );
-    }
-
-    return {
-      queryFields: parsedFields,
-    };
-  }
-
   if (!BODY_METHODS.has(method)) {
-    if (hasBody || hasFields) {
+    if (inputArg) {
+      throw new CliError(
+        `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input.`
+      );
+    }
+    if (parsedFields.length > 0 && !FIELD_QUERY_METHODS.has(method)) {
       throw new CliError(
         `${method} requests do not accept a body. Use ${BODY_METHOD_LIST} for --input or request fields.`
       );
     }
-    return { queryFields: [] };
+    return { queryFields: parsedFields };
   }
 
-  if (hasBody) {
-    return {
-      body: readJsonInput(String(inputArg)),
-      queryFields: [],
-    };
+  if (inputArg) {
+    return { body: readJsonInput(inputArg), queryFields: parsedFields };
   }
-
-  if (hasFields) {
-    return {
-      body: serializeApiFields(parsedFields),
-      queryFields: [],
-    };
+  if (parsedFields.length > 0) {
+    return { body: serializeApiFields(parsedFields), queryFields: [] };
   }
-
   return { queryFields: [] };
 }

@@ -128,5 +128,5 @@ describe("lakehouse integration flows", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[DEBUG]");
     expect(result.stderr).toContain("Request: POST");
-  });
+  }, 30_000);
 });

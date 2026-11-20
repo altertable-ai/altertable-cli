@@ -19,37 +19,27 @@ export const schemaCommand = defineCommand({
     ],
   },
   args: schemaArgs,
-  async run({ args, rawArgs, execution, sink }) {
+  async run({ args, explicitOptions, execution, sink }) {
     const catalog = stringArg(args, 'catalog');
-    const { format, displayOptions, pagerOptions } = parseQueryOutputOptions(
-      args,
-      {
-        agent: execution.cli.agent,
-        json: sink.json,
-        rawArgs,
-      }
-    );
+    const output = parseQueryOutputOptions(args, {
+      agent: execution.cli.agent,
+      explicitOptions,
+    });
     const queryInput = {
       statement: buildSchemaStatement(catalog),
     };
     const result = await executeLakehouseQuery(
       queryInput,
       execution,
-      format !== 'json' && !sink.json
+      !sink.json
     );
-    if (format !== 'human' || sink.json) {
-      await writeQueryOutput(
-        result,
-        format,
-        sink,
-        displayOptions,
-        pagerOptions
-      );
+    if (output.format !== 'human' || sink.json) {
+      await writeQueryOutput(result, sink, output);
       return;
     }
     await writePagedOutput(
       renderTreeText(buildSchemaTreeView(result, catalog)),
-      pagerOptions,
+      output.pagerOptions,
       sink
     );
   },

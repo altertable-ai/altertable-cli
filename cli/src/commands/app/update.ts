@@ -45,6 +45,9 @@ export const appUpdateCommand = defineCommand({
       requirement: 'Updating a data app requires the management API',
     });
     const slug = stringArg(args, 'slug');
+    if (!slug || slug === '.' || slug === '..' || /[/\\?#]/.test(slug)) {
+      throw new CliError('Provide a data app slug, e.g. APP-1.');
+    }
     const body = await updatePayload(args);
     if (Object.keys(body).length === 0) {
       throw new CliError(

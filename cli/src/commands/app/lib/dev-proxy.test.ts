@@ -31,6 +31,12 @@ describe('data app dev proxy', () => {
       expect((await fetch(url, { method: 'POST', body: '{}' })).status).toBe(
         401
       );
+      const malformed = await fetch(url, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${'é'.repeat(64)}` },
+        body: '{}',
+      });
+      expect(malformed.status).toBe(401);
       expect(calls).toHaveLength(0);
       const headers = {
         authorization: `Bearer ${proxy.environment.ALTERTABLE_DATA_PROXY_TOKEN}`,

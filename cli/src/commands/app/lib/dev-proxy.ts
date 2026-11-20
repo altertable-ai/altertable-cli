@@ -10,16 +10,18 @@ export function startAppDevProxy(
   send: typeof sendHttpStream = sendHttpStream
 ) {
   const token = randomBytes(32).toString('hex');
+  const tokenBytes = Buffer.from(token);
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     idleTimeout: 60,
     async fetch(request) {
-      const supplied =
-        request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '';
+      const supplied = Buffer.from(
+        request.headers.get('authorization')?.replace(/^Bearer /, '') ?? ''
+      );
       const valid =
-        supplied.length === token.length &&
-        timingSafeEqual(Buffer.from(supplied), Buffer.from(token));
+        supplied.length === tokenBytes.length &&
+        timingSafeEqual(supplied, tokenBytes);
       if (!valid) return new Response('Unauthorized', { status: 401 });
       if (
         request.method !== 'POST' ||

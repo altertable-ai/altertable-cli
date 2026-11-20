@@ -57,6 +57,21 @@ function writeSchemaResponse(rows: unknown[][]): void {
 }
 
 describe('schema command', () => {
+  test('renders CSV from the standard query response', async () => {
+    writeSchemaResponse([
+      ['main', null, null, null, null, null, null, null, 0],
+    ]);
+
+    const result = await runCommandWithTestRuntime(
+      ['schema', 'analytics', '--format', 'csv'],
+      { debug: false, json: false, agent: false }
+    );
+
+    expect(result.stdout.join('\n')).toBe(
+      `${SCHEMA_COLUMNS.join(',')}\nmain,,,,,,,,0`
+    );
+  });
+
   test('sends one escaped catalog-scoped query', async () => {
     writeSchemaResponse([]);
 

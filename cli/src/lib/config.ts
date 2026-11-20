@@ -61,18 +61,19 @@ export function resolveOAuthBase(profileName: string): string {
 }
 
 const QUERY_PAGER_VALUES = new Set(['auto', 'always', 'never']);
-const MIN_QUERY_MAX_COL_WIDTH = 8;
+export const MIN_QUERY_MAX_COLUMN_WIDTH = 8;
+
+export function parseQueryMaxColumnWidth(value: string): number | undefined {
+  const width = Number(value);
+  return /^\d+$/.test(value) &&
+    Number.isSafeInteger(width) &&
+    width >= MIN_QUERY_MAX_COLUMN_WIDTH
+    ? width
+    : undefined;
+}
 
 export function getQueryDefaultMaxColumnWidth(): number | undefined {
-  const value = configGetGlobal('query_max_width');
-  if (value.length === 0) {
-    return undefined;
-  }
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < MIN_QUERY_MAX_COL_WIDTH) {
-    return undefined;
-  }
-  return parsed;
+  return parseQueryMaxColumnWidth(configGetGlobal('query_max_width'));
 }
 
 export function getQueryDefaultLayout(): QueryLayout | undefined {

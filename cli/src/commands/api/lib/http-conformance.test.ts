@@ -73,7 +73,7 @@ describe('openapi HTTP conformance', () => {
         operation.method === 'POST' ||
         operation.method === 'PATCH' ||
         operation.method === 'PUT'
-          ? { fields: ['label=default'] }
+          ? { rawFields: ['label=default'] }
           : {};
 
       await executeApiHttp(

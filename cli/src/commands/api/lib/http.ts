@@ -15,9 +15,8 @@ export type ApiHttpArgs = {
   method?: string;
   endpoint?: string;
   input?: string;
-  rawFields?: Record<string, string> | string[] | string;
-  typedFields?: Record<string, string> | string[] | string;
-  fields?: Record<string, string> | string[] | string;
+  rawFields?: readonly string[];
+  typedFields?: readonly string[];
   env?: string;
   format?: string;
 };
@@ -72,32 +71,12 @@ export function normalizeApiEndpoint(endpoint: string, env?: string): string {
   return path;
 }
 
-function hasFields(
-  fields: Record<string, string> | string[] | string | undefined
-): boolean {
-  if (fields === undefined) {
-    return false;
-  }
-  if (typeof fields === 'string') {
-    return fields.length > 0;
-  }
-  if (Array.isArray(fields)) {
-    return fields.length > 0;
-  }
-  return Object.keys(fields).length > 0;
-}
-
 function resolveApiMethod(args: ApiHttpArgs): string {
   if (args.method && args.method.trim().length > 0) {
     return args.method.toUpperCase();
   }
 
-  if (
-    args.input ||
-    hasFields(args.rawFields) ||
-    hasFields(args.typedFields) ||
-    hasFields(args.fields)
-  ) {
+  if (args.input || args.rawFields?.length || args.typedFields?.length) {
     return 'POST';
   }
 
@@ -130,7 +109,7 @@ export function resolveApiHttp(args: ApiHttpArgs): ResolvedApiHttp {
   const payload = resolveApiRequestPayload({
     method,
     input: args.input ? String(args.input) : undefined,
-    rawFields: args.rawFields ?? args.fields,
+    rawFields: args.rawFields,
     typedFields: args.typedFields,
   });
   const endpointWithQuery = appendQueryFields(endpoint, payload.queryFields);

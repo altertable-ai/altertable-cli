@@ -266,7 +266,7 @@ describe('executeApiHttp', () => {
     await runApiOperation({
       method: 'POST',
       endpoint: '/service_accounts',
-      fields: ['label=CI Bot'],
+      rawFields: ['label=CI Bot'],
     });
 
     const logContent = readFileSync(logFile, 'utf8');

@@ -19,6 +19,28 @@ beforeEach(() => {
 afterEach(() => workspace.cleanup());
 
 describe('query command', () => {
+  test('treats flag-shaped SQL after -- as an operand', async () => {
+    workspace.writeMocks([
+      { urlPattern: '/query', method: 'POST', body: QUERY_RESPONSE },
+    ]);
+
+    await runCommandWithTestRuntime(
+      ['query', '--session-id', 'session-1', '--', '--compute-size'],
+      { debug: false, json: true, agent: true }
+    );
+
+    expect(JSON.parse(workspace.readPayloads()[0] ?? '')).toEqual({
+      statement: '--compute-size',
+      session_id: 'session-1',
+    });
+  });
+
+  test('rejects a non-integer maximum column width', () => {
+    expect(
+      runCommandWithTestRuntime(['query', 'SELECT 1', '--max-width', '12.5'])
+    ).rejects.toThrow('--max-width must be an integer');
+  });
+
   test('sends statement identifiers and default compute size', async () => {
     workspace.writeMocks([
       { urlPattern: '/query', method: 'POST', body: QUERY_RESPONSE },
