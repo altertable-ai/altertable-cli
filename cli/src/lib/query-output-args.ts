@@ -1,5 +1,9 @@
 import { asCliArgString } from '@/lib/cli-args.ts';
 import { defineArguments } from '@/lib/command.ts';
+import {
+  MIN_QUERY_MAX_COLUMN_WIDTH,
+  parseQueryMaxColumnWidth,
+} from '@/lib/config.ts';
 import { CliError } from '@/lib/errors.ts';
 import {
   resolvePagerOptions,
@@ -11,13 +15,12 @@ import {
   type QueryDisplayOptions,
 } from '@/lib/query-format.ts';
 import {
-  isApiNativeQueryFormat,
   parseQueryResultFormat,
-  type QueryResultFormat,
+  type LakehouseApiQueryFormat,
+  type QueryOutputOptions,
 } from '@/lib/query-output.ts';
 import { isQueryLayout, QUERY_LAYOUT_OPTIONS } from '@/ui/layouts/query.ts';
 
-const MIN_MAX_COLUMN_WIDTH = 8;
 const PRESENTATION_RESULT_FORMAT_OPTIONS = ['csv', 'markdown'] as const;
 const QUERY_RESULT_FORMAT_OPTIONS = [
   'csv',
@@ -28,15 +31,15 @@ const QUERY_RESULT_FORMAT_OPTIONS = [
 const PAGER_MODE_OPTIONS = ['auto', 'always', 'never'] as const;
 const PAGER_MODES = new Set<PagerMode>(PAGER_MODE_OPTIONS);
 const AGENT_INCOMPATIBLE_QUERY_FLAGS = [
-  '--layout',
-  '--pager',
-  '--max-width',
+  'layout',
+  'pager',
+  'max-width',
 ] as const;
 const API_NATIVE_INCOMPATIBLE_PRESENTATION_FLAGS = [
-  '--layout',
-  '--columns',
-  '--max-width',
-  '--pager',
+  'layout',
+  'columns',
+  'max-width',
+  'pager',
 ] as const;
 
 /** Client-rendered formats shared by commands like `schema`. */
@@ -81,70 +84,27 @@ export const queryPagerArgs = defineArguments({
   },
 });
 
-export const queryRequestArgs = defineArguments({
-  'compute-size': {
-    type: 'string',
-    description: 'Compute size for the query',
-    default: 'AUTO',
-  },
-  dialect: {
-    type: 'string',
-    description:
-      'Source SQL dialect to transpile from (server default: DuckDB)',
-  },
-  catalog: {
-    type: 'string',
-    description: 'Catalog name (optional; can also come from the session)',
-  },
-  schema: {
-    type: 'string',
-    description: 'Schema name (optional; can also come from the session)',
-  },
-  output: {
-    type: 'string',
-    description: 'Write result bytes/text to this path instead of stdout',
-  },
-});
-
-export type QueryOutputOptions = {
-  format: QueryResultFormat;
-  displayOptions: QueryDisplayOptions;
-  pagerOptions: PagerOptions;
-  outputPath?: string;
-  computeSize?: string;
-  dialect?: string;
-  catalog?: string;
-  schema?: string;
-};
-
-type ParseQueryOutputOptions = {
+type QueryOutputContext = {
   agent: boolean;
-  json: boolean;
-  rawArgs: readonly string[];
+  explicitOptions: ReadonlySet<string>;
 };
 
-function hasArgvFlag(rawArgs: readonly string[], flag: string): boolean {
-  return rawArgs.some(arg => arg === flag || arg.startsWith(`${flag}=`));
-}
-
-function validateAgentQueryFlags(options: ParseQueryOutputOptions): void {
+function validateAgentQueryFlags(options: QueryOutputContext): void {
   if (!options.agent) return;
 
   for (const flag of AGENT_INCOMPATIBLE_QUERY_FLAGS) {
-    if (hasArgvFlag(options.rawArgs, flag)) {
+    if (options.explicitOptions.has(flag)) {
       throw new CliError(
-        `${flag} cannot be used with --agent. Agent mode already selects structured JSON output.`
+        `--${flag} cannot be used with --agent. Agent mode already selects structured JSON output.`
       );
     }
   }
 }
 
-function validateApiNativeFormatFlags(
-  format: QueryResultFormat,
-  options: ParseQueryOutputOptions
+export function validateApiNativeFormatFlags(
+  format: LakehouseApiQueryFormat,
+  options: QueryOutputContext & { json: boolean }
 ): void {
-  if (!isApiNativeQueryFormat(format)) return;
-
   if (options.json || options.agent) {
     throw new CliError(
       `--format ${format} cannot be combined with --json or --agent. Those flags expect structured CLI JSON output.`
@@ -152,34 +112,29 @@ function validateApiNativeFormatFlags(
   }
 
   for (const flag of API_NATIVE_INCOMPATIBLE_PRESENTATION_FLAGS) {
-    if (hasArgvFlag(options.rawArgs, flag)) {
-      throw new CliError(`${flag} cannot be used with --format ${format}.`);
+    if (options.explicitOptions.has(flag)) {
+      throw new CliError(`--${flag} cannot be used with --format ${format}.`);
     }
   }
 }
 
-function parseQueryLayout(
-  args: Record<string, unknown>
-): QueryDisplayOptions['layout'] {
-  const defaults = defaultDisplayOptions();
-  if (args.layout === undefined) return defaults.layout;
-
-  const layout = asCliArgString(args.layout);
+function parseQueryLayout(layout: string): QueryDisplayOptions['layout'] {
   if (!isQueryLayout(layout))
     throw new CliError('--layout must be auto, table, or line.');
   return layout;
 }
 
 function parseDisplayOptions(
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  explicitOptions: ReadonlySet<string>
 ): QueryDisplayOptions {
   const defaults = defaultDisplayOptions();
   let maxColumnWidth = defaults.maxColumnWidth;
-  if (args['max-width'] !== undefined) {
-    const width = Number.parseInt(asCliArgString(args['max-width']), 10);
-    if (Number.isNaN(width) || width < MIN_MAX_COLUMN_WIDTH) {
+  if (explicitOptions.has('max-width')) {
+    const width = parseQueryMaxColumnWidth(asCliArgString(args['max-width']));
+    if (width === undefined) {
       throw new CliError(
-        `--max-width must be an integer >= ${MIN_MAX_COLUMN_WIDTH}.`
+        `--max-width must be an integer >= ${MIN_QUERY_MAX_COLUMN_WIDTH}.`
       );
     }
     maxColumnWidth = width;
@@ -196,7 +151,10 @@ function parseDisplayOptions(
 
   return {
     ...defaults,
-    layout: parseQueryLayout(args),
+    layout:
+      args.layout === undefined
+        ? defaults.layout
+        : parseQueryLayout(asCliArgString(args.layout)),
     maxColumnWidth,
     columns,
   };
@@ -204,10 +162,10 @@ function parseDisplayOptions(
 
 function parsePagerOptions(
   args: Record<string, unknown>,
-  agent: boolean
+  { agent, explicitOptions }: QueryOutputContext
 ): PagerOptions {
   if (agent) return { mode: 'never' };
-  if (args.pager === undefined) return resolvePagerOptions();
+  if (!explicitOptions.has('pager')) return resolvePagerOptions();
 
   const pager = asCliArgString(args.pager);
   if (!PAGER_MODES.has(pager as PagerMode)) {
@@ -216,55 +174,18 @@ function parsePagerOptions(
   return resolvePagerOptions(pager as PagerMode);
 }
 
-function optionalTrimmedString(
-  args: Record<string, unknown>,
-  name: string
-): string | undefined {
-  const value = args[name];
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-}
-
-export function resolveQueryComputeSize(options: {
-  sessionId?: string;
-  computeSizeArg?: string;
-  computeSizeExplicit: boolean;
-}): string | undefined {
-  const computeSize = options.computeSizeArg ?? 'AUTO';
-
-  if (options.sessionId && !options.computeSizeExplicit) return undefined;
-  return computeSize;
-}
-
 export function parseQueryOutputOptions(
   args: Record<string, unknown>,
-  options: ParseQueryOutputOptions
+  options: QueryOutputContext
 ): QueryOutputOptions {
   validateAgentQueryFlags(options);
   const format = parseQueryResultFormat(
     args.format === undefined ? 'human' : asCliArgString(args.format)
   );
-  validateApiNativeFormatFlags(format, options);
-
-  const sessionId = optionalTrimmedString(args, 'session-id');
-  const computeSize = resolveQueryComputeSize({
-    sessionId,
-    computeSizeArg:
-      args['compute-size'] === undefined
-        ? undefined
-        : asCliArgString(args['compute-size']),
-    computeSizeExplicit: hasArgvFlag(options.rawArgs, '--compute-size'),
-  });
 
   return {
     format,
-    displayOptions: parseDisplayOptions(args),
-    pagerOptions: parsePagerOptions(args, options.agent),
-    outputPath: optionalTrimmedString(args, 'output'),
-    computeSize,
-    dialect: optionalTrimmedString(args, 'dialect'),
-    catalog: optionalTrimmedString(args, 'catalog'),
-    schema: optionalTrimmedString(args, 'schema'),
+    displayOptions: parseDisplayOptions(args, options.explicitOptions),
+    pagerOptions: parsePagerOptions(args, options),
   };
 }

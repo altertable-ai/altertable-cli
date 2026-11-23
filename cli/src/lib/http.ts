@@ -42,10 +42,6 @@ export type HttpSendOptions = {
   authPlane?: AuthPlane;
 };
 
-export type HttpStreamOptions = HttpSendOptions & {
-  readTimeoutMs?: number;
-};
-
 type MockHttpEntry = {
   urlPattern: string;
   method?: string;
@@ -265,7 +261,7 @@ function wrapResponseStream(
   clearTimeoutAfterRead: () => void,
   signal: AbortSignal,
   budget: () => TimeoutBudget,
-  options: HttpStreamOptions
+  options: HttpSendOptions
 ): ReadableStream<Uint8Array> {
   const reader = stream.getReader();
   return new ReadableStream<Uint8Array>({
@@ -336,15 +332,11 @@ function createChunkedMockStream(body: string): ReadableStream<Uint8Array> {
   });
 }
 
-async function executeMockRequest(
+async function readMockResponse(
+  mockFile: string,
   options: HttpSendOptions,
   attemptIndex: number
-): Promise<string> {
-  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
-  if (!mockFile) {
-    throw new CliError('Mock HTTP file is not configured.');
-  }
-
+): Promise<MockHttpEntry> {
   const mocks = JSON.parse(await Bun.file(mockFile).text()) as MockHttpEntry[];
   logHttpRequest(options);
 
@@ -356,9 +348,7 @@ async function executeMockRequest(
   }
 
   const status = match.status ?? 200;
-  if (status >= 200 && status < 300) {
-    return match.body;
-  }
+  if (status >= 200 && status < 300) return match;
 
   throwHttpError(
     status,
@@ -370,45 +360,16 @@ async function executeMockRequest(
   );
 }
 
-async function executeMockStream(
-  options: HttpStreamOptions,
-  attemptIndex: number
-): Promise<ReadableStream<Uint8Array>> {
-  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
-  if (!mockFile) {
-    throw new CliError('Mock HTTP file is not configured.');
-  }
-
-  const mocks = JSON.parse(await Bun.file(mockFile).text()) as MockHttpEntry[];
-  logHttpRequest(options);
-
-  const match = findMatchingMock(mocks, options, attemptIndex);
-  if (!match) {
-    throw new CliError(
-      `No mock HTTP response for ${options.method} ${options.url}`
-    );
-  }
-
-  const status = match.status ?? 200;
-  if (status < 200 || status >= 300) {
-    throwHttpError(
-      status,
-      match.body,
-      options.method,
-      options.url,
-      options.authPlane,
-      match.retryAfter ?? null
-    );
-  }
-
-  if (match.chunked) {
-    return createChunkedMockStream(match.body);
-  }
+function streamMockResponse({
+  body,
+  chunked,
+}: MockHttpEntry): ReadableStream<Uint8Array> {
+  if (chunked) return createChunkedMockStream(body);
 
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(encoder.encode(match.body));
+      controller.enqueue(encoder.encode(body));
       controller.close();
     },
   });
@@ -600,7 +561,7 @@ async function executeLiveRequest(options: HttpSendOptions): Promise<string> {
 }
 
 async function executeLiveStream(
-  options: HttpStreamOptions
+  options: HttpSendOptions
 ): Promise<ReadableStream<Uint8Array>> {
   const headers = buildRequestHeaders(options);
   const connectTimeoutMs = resolveConnectTimeoutMs(options);
@@ -685,74 +646,52 @@ async function executeLiveStream(
   );
 }
 
-export async function httpSend(options: HttpSendOptions): Promise<string> {
+async function sendWithRetries<T>(
+  options: HttpSendOptions,
+  sendLive: (options: HttpSendOptions) => Promise<T>,
+  formatMockResponse: (response: MockHttpEntry) => T
+): Promise<T> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
   const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
 
   for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
     try {
       if (mockFile) {
-        return await executeMockRequest(options, attemptIndex);
+        return formatMockResponse(
+          await readMockResponse(mockFile, options, attemptIndex)
+        );
       }
-      return await executeLiveRequest(options);
+      return await sendLive(options);
     } catch (error) {
-      if (error instanceof HttpError) {
-        if (
-          shouldRetryHttpRequest(
-            options,
-            error.status,
-            attemptIndex,
-            maxAttempts
-          )
-        ) {
-          await delayBeforeHttpRetry(
-            attemptIndex,
-            error.retryAfterHeader ?? null
-          );
-          continue;
-        }
+      if (
+        !(error instanceof HttpError) ||
+        !shouldRetryHttpRequest(
+          options,
+          error.status,
+          attemptIndex,
+          maxAttempts
+        )
+      ) {
+        throw error;
       }
 
-      throw error;
+      await delayBeforeHttpRetry(attemptIndex, error.retryAfterHeader ?? null);
     }
   }
 
   throw new NetworkError('Request failed after retries.');
 }
 
-export async function httpSendStream(
-  options: HttpStreamOptions
+export function httpSend(options: HttpSendOptions): Promise<string> {
+  return sendWithRetries(
+    options,
+    executeLiveRequest,
+    response => response.body
+  );
+}
+
+export function httpSendStream(
+  options: HttpSendOptions
 ): Promise<ReadableStream<Uint8Array>> {
-  const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS;
-  const mockFile = readEnv('ALTERTABLE_MOCK_HTTP_FILE');
-
-  for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
-    try {
-      if (mockFile) {
-        return await executeMockStream(options, attemptIndex);
-      }
-      return await executeLiveStream(options);
-    } catch (error) {
-      if (error instanceof HttpError) {
-        if (
-          shouldRetryHttpRequest(
-            options,
-            error.status,
-            attemptIndex,
-            maxAttempts
-          )
-        ) {
-          await delayBeforeHttpRetry(
-            attemptIndex,
-            error.retryAfterHeader ?? null
-          );
-          continue;
-        }
-      }
-
-      throw error;
-    }
-  }
-
-  throw new NetworkError('Request failed after retries.');
+  return sendWithRetries(options, executeLiveStream, streamMockResponse);
 }

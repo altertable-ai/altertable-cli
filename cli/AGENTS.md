@@ -17,7 +17,7 @@ Preferred — from repo root:
 Install dependencies separately with `bun run setup` from the repository root before verification.
 
 ```bash
-bun run check --quick    # CLI checks only (typecheck, lint, format, knip, coverage, openapi drift)
+bun run check --quick    # skip browser and packaged-artifact tests
 bun run check            # full gate (mirrors CI minus native compile)
 bun run check --integration   # + tests/integration.e2e.ts (mock at :15000)
 ```
@@ -44,7 +44,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 
 - **Dual-plane auth**: lakehouse data plane (HTTP Basic) vs management REST (Bearer API key). See root README credential tables.
 - **`CliRuntime` + `OutputSink`** (`src/lib/runtime.ts`): `defineCommand` injects `runtime`, `sink`, and a lazy `execution` context into every command handler. Commands pass `sink` to output helpers rather than writing to the console.
-- **Command descriptor contract** (`src/lib/command-descriptor.ts`): resolvable command metadata, arguments, finite values, and child commands are normalized once for human help, structured agent help, shell completion, and generated documentation. Declare presentation data on `meta` and `args`; do not build parallel command representations in consumers.
+- **Command descriptor contract** (`src/lib/command-descriptor.ts`): resolvable command metadata, arguments, finite values, and child commands are normalized once for human help, structured agent help, shell completion, and generated documentation. Declare presentation data on `metadata` and `args`; do not build parallel command representations in consumers.
 - **Direct execution**: a leaf command parses its arguments, builds a plain request value, sends it, and presents the result. Request values stay declarative as the seam for a future dry-run mode; there is no operation/effect framework.
 - **`writeCommandOutput`** (`src/lib/command-output.ts`): unified success output — raw API, normalized envelopes, tabular management, deletes. Commands pass their injected `sink` explicitly.
 - **When to use `sink` directly**: bespoke output (custom tables, metadata messages) — `sink.writeJson`, `sink.writeHuman`, `sink.writeMetadata`.
@@ -129,7 +129,7 @@ Source of truth: `src/commands/index.ts`. Verify with `bin/altertable --help`.
 altertable
 ├── login, logout
 ├── app
-│   └── create, dev, build, check, upgrade
+│   └── create, dev, build, lint, upgrade, validate, publish, update
 ├── profile
 │   └── configure, show, list, status, switch, current, env, rename, delete
 ├── catalog
@@ -139,7 +139,7 @@ altertable
 ├── schema, duckdb
 ├── append <DATA>
 │   └── status
-├── upload, upsert
+├── upload, upsert, doctor
 ├── api
 │   ├── spec
 │   ├── route
@@ -173,7 +173,7 @@ import { defineCommand } from '@/lib/command.ts';
 import { sendHttp } from '@/lib/http-request.ts';
 
 export const myfeatureCommand = defineCommand({
-  meta: { name: 'myfeature', description: '…' },
+  metadata: { name: 'myfeature', description: '…' },
   async run({ execution, sink }) {
     const request = {
       plane: 'management',
@@ -197,7 +197,7 @@ altertable api /path -X GET -f q=value   # forced GET puts fields in the query s
 altertable api /new_resource -f …        # invoke (POST inferred)
 ```
 
-Bump the OpenAPI spec and extend `openapi-http-conformance.test.ts` placeholder mapping if new path parameters appear.
+Bump the OpenAPI spec and extend `src/commands/api/lib/http-conformance.test.ts` placeholder mapping if new path parameters appear.
 
 ### Recipe C — Change exit codes or JSON errors
 
@@ -229,7 +229,3 @@ Example mock HTTP test pattern: command tests use `src/test-utils/lakehouse.ts` 
 - HTTP log redaction in tests (`setupHttpLog` / `readHttpLog` in `tests/helpers.ts`)
 - `bin/altertable` launcher unchanged
 - No raw `console.log` in commands
-
-## Plans
-
-Implementation plans live in repo root `plans/`. Update the plan status row in `plans/README.md` when completing work.

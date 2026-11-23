@@ -25,6 +25,7 @@ import {
   resolveFetchTimeoutMs,
   resolveReadTimeoutMs,
   shouldIgnoreSslErrors,
+  type HttpSendOptions,
 } from '@/lib/http.ts';
 import { redactResponseBodyForDebug } from '@/lib/redact.ts';
 import { DEFAULT_CONNECT_TIMEOUT_MS } from '@/lib/transport-defaults.ts';
@@ -179,6 +180,12 @@ describe('http retry policy', () => {
   test('parseRetryAfterMs parses delay seconds', () => {
     expect(parseRetryAfterMs('2')).toBe(2_000);
     expect(parseRetryAfterMs(null)).toBeUndefined();
+  });
+
+  test('falls back to backoff for malformed Retry-After values', () => {
+    for (const value of ['-1', '+9999', '2.5', '2junk']) {
+      expect(computeRetryDelayMs(0, value)).toBe(500);
+    }
   });
 
   test('computeRetryDelayMs uses exponential backoff', () => {
@@ -719,35 +726,45 @@ describe('debug response redaction', () => {
 });
 
 describe('retry-after header', () => {
-  test('honors Retry-After on retriable responses', async () => {
-    writeFileSync(
-      mockFile,
-      JSON.stringify([
-        {
-          urlPattern: '/retry-after',
-          method: 'GET',
-          status: 503,
-          body: 'temporary',
-          retryAfter: '0',
-        },
-        {
-          urlPattern: '/retry-after',
-          method: 'GET',
-          status: 200,
-          body: 'ok',
-        },
-      ])
-    );
+  test.each([
+    ['buffered', httpSend],
+    [
+      'streamed',
+      async (options: HttpSendOptions) =>
+        new Response(await httpSendStream(options)).text(),
+    ],
+  ] as const)(
+    '%s requests honor Retry-After on retriable responses',
+    async (_mode, send) => {
+      writeFileSync(
+        mockFile,
+        JSON.stringify([
+          {
+            urlPattern: '/retry-after',
+            method: 'GET',
+            status: 503,
+            body: 'temporary',
+            retryAfter: '0',
+          },
+          {
+            urlPattern: '/retry-after',
+            method: 'GET',
+            status: 200,
+            body: 'ok',
+          },
+        ])
+      );
 
-    const startMs = Date.now();
-    const response = await httpSend({
-      method: 'GET',
-      url: 'https://example.com/retry-after',
-      authHeader: 'Authorization: Bearer test',
-    });
-    const elapsedMs = Date.now() - startMs;
+      const startMs = Date.now();
+      const response = await send({
+        method: 'GET',
+        url: 'https://example.com/retry-after',
+        authHeader: 'Authorization: Bearer test',
+      });
+      const elapsedMs = Date.now() - startMs;
 
-    expect(response).toBe('ok');
-    expect(elapsedMs).toBeLessThan(500);
-  });
+      expect(response).toBe('ok');
+      expect(elapsedMs).toBeLessThan(500);
+    }
+  );
 });

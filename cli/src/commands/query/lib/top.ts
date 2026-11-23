@@ -82,14 +82,13 @@ export async function fetchQueryTopSnapshot(
   const details = await mapWithConcurrency(listed, DETAIL_CONCURRENCY, query =>
     fetchQueryDetails(query.id, execution)
   );
-  const queries = listed.map((query, index) => ({
-    ...query,
-    details: details[index] ?? null,
-  }));
-  const sortValue = (entry: QueryTopEntry) =>
-    SORT_VALUES[sortKey](toQueryTopRow(entry)) ?? -Infinity;
-  queries.sort((left, right) => sortValue(right) - sortValue(left));
-  return { queries };
+  const sortValue = SORT_VALUES[sortKey];
+  const ranked = listed.map((query, index) => {
+    const entry = { ...query, details: details[index] ?? null };
+    return { entry, rank: sortValue(toQueryTopRow(entry)) ?? -Infinity };
+  });
+  ranked.sort((left, right) => right.rank - left.rank);
+  return { queries: ranked.map(({ entry }) => entry) };
 }
 
 export function renderQueryTopTable(

@@ -1,10 +1,6 @@
 import { CliError } from '@/lib/errors.ts';
 import type { LakehouseApiQueryFormat } from '@/lib/lakehouse/query.ts';
-import {
-  resolvePagerOptions,
-  writePagedOutput,
-  type PagerOptions,
-} from '@/lib/pager.ts';
+import { writePagedOutput, type PagerOptions } from '@/lib/pager.ts';
 import { writeQueryDestination } from '@/lib/query-destination.ts';
 import {
   defaultDisplayOptions,
@@ -113,19 +109,28 @@ export function renderQueryOutputText(
   );
 }
 
+export type QueryOutputOptions = {
+  format: QueryResultFormat;
+  displayOptions: QueryDisplayOptions;
+  pagerOptions: PagerOptions;
+};
+
 export async function writeQueryOutput(
   result: import('./lakehouse-ndjson.ts').LakehouseQueryResult,
-  format: QueryResultFormat,
   sink: OutputSink,
-  displayOptions?: QueryDisplayOptions,
-  pagerOptions?: PagerOptions,
-  outputPath?: string
+  {
+    format,
+    displayOptions,
+    pagerOptions,
+    outputPath,
+  }: QueryOutputOptions & {
+    outputPath?: string;
+  }
 ): Promise<void> {
   const effectiveFormat = sink.json ? 'json' : format;
-  if (isApiNativeQueryFormat(effectiveFormat)) {
-    throw new CliError(
-      `Format ${effectiveFormat} must be streamed from the lakehouse API.`
-    );
+  if (effectiveFormat === 'json' && outputPath === undefined) {
+    sink.writeJson(result);
+    return;
   }
 
   const outputText = renderQueryOutputText(
@@ -133,33 +138,13 @@ export async function writeQueryOutput(
     effectiveFormat,
     displayOptions
   );
-  const usePager = format === 'human' && !sink.json && outputPath === undefined;
-
-  if (usePager) {
-    await writePagedOutput(
-      outputText,
-      pagerOptions ?? resolvePagerOptions(),
-      sink
-    );
-    return;
-  }
-
   if (outputPath !== undefined) {
-    if (effectiveFormat === 'json') {
-      await writeQueryDestination(
-        JSON.stringify(JSON.parse(outputText), null, 2),
-        {
-          outputPath,
-        }
-      );
-      return;
-    }
     await writeQueryDestination(outputText, { outputPath });
     return;
   }
 
-  if (effectiveFormat === 'json' || sink.json) {
-    sink.writeJson(JSON.parse(outputText));
+  if (effectiveFormat === 'human') {
+    await writePagedOutput(outputText, pagerOptions, sink);
     return;
   }
 

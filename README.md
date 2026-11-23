@@ -130,7 +130,7 @@ altertable --version
 git clone https://github.com/altertable-ai/altertable-cli.git
 cd altertable-cli
 git submodule update --init --recursive
-chmod +x bin/altertable
+bun run setup
 export PATH="$PWD/bin:$PATH"
 altertable --version
 ```

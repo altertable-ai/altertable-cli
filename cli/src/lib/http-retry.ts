@@ -21,18 +21,15 @@ export function parseRetryAfterMs(
   }
 
   const trimmed = headerValue.trim();
-  const seconds = Number.parseInt(trimmed, 10);
-  if (!Number.isNaN(seconds)) {
-    return seconds * 1_000;
+  if (/^\d+$/.test(trimmed)) {
+    const delayMs = Number(trimmed) * 1_000;
+    return Number.isSafeInteger(delayMs) ? delayMs : undefined;
   }
 
-  const retryDate = Date.parse(trimmed);
-  if (!Number.isNaN(retryDate)) {
-    const delayMs = retryDate - Date.now();
-    return delayMs > 0 ? delayMs : undefined;
-  }
-
-  return undefined;
+  // HTTP dates start with a weekday. Date.parse also accepts numeric prefixes.
+  if (!/^[a-z]/i.test(trimmed)) return undefined;
+  const delayMs = Date.parse(trimmed) - Date.now();
+  return delayMs > 0 ? delayMs : undefined;
 }
 
 export function computeRetryDelayMs(

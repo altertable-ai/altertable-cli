@@ -22,8 +22,9 @@ export async function runLiveView(options: LiveViewOptions): Promise<void> {
   const controller = new AbortController();
   const interrupt = () => controller.abort();
   process.on('SIGINT', interrupt);
-  await options.write(ENTER_SCREEN);
+  let failed = false;
   try {
+    await options.write(ENTER_SCREEN);
     while (!controller.signal.aborted) {
       const frame = await untilAborted(
         options.render({ rows: process.stdout.rows }),
@@ -35,9 +36,19 @@ export async function runLiveView(options: LiveViewOptions): Promise<void> {
       await options.write(redrawInPlace(frame));
       await abortableSleep(options.intervalMs, controller.signal);
     }
+  } catch (error) {
+    failed = true;
+    throw error;
   } finally {
-    process.off('SIGINT', interrupt);
-    await options.write(LEAVE_SCREEN);
+    try {
+      await Promise.resolve()
+        .then(() => options.write(LEAVE_SCREEN))
+        .catch((error: unknown) => {
+          if (!failed) throw error;
+        });
+    } finally {
+      process.off('SIGINT', interrupt);
+    }
   }
 }
 
@@ -69,6 +80,7 @@ async function untilAborted<T>(
 }
 
 function abortableSleep(milliseconds: number, signal: AbortSignal) {
+  if (signal.aborted) return Promise.resolve();
   return new Promise<void>(resolve => {
     const timer = setTimeout(done, milliseconds);
     signal.addEventListener('abort', done, { once: true });

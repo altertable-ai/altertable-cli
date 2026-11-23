@@ -59,8 +59,7 @@ export function resolveApiCommandRequest(
   });
 }
 
-function repeatableStringArg(value: unknown): string | string[] | undefined {
-  if (typeof value === 'string') return value;
+function repeatableStringArg(value: unknown): string[] | undefined {
   if (Array.isArray(value) && value.every(entry => typeof entry === 'string')) {
     return value;
   }

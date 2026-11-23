@@ -130,6 +130,20 @@ describe('app publish', () => {
 });
 
 describe('app update', () => {
+  test('rejects an app URL where a slug is required', async () => {
+    const error = await runCommandWithTestRuntime([
+      'app',
+      'update',
+      'https://app.example.com/apps/APP-1',
+      '--title',
+      'Stories',
+    ]).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
+      'Provide a data app slug, e.g. APP-1.'
+    );
+  });
+
   test('patches only the provided fields', async () => {
     const file = writeAppFile();
     workspace.writeMocks([
