@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createTestWorkspace, type TestWorkspace } from "./helpers.ts";
-import { jsonMock } from "./mock-http.ts";
+import { jsonMock, textMock } from "./mock-http.ts";
 
 const appendId = "11111111-2222-3333-4444-555555555555";
 
@@ -25,6 +25,26 @@ describe("lakehouse command routing", () => {
     expect(await workspace.httpLogValue("METHOD")).toBe("POST");
     expect((await workspace.httpLogValue("URL")) ?? "").toStartWith("https://lakehouse.example.test/append?");
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, task_id: appendId });
+  });
+
+  test("query preserves headers and rows across blank NDJSON lines", async () => {
+    await workspace.setupMockHttp([textMock("POST", "/query", '\n{}\r\n  \r\n["city"]\n\n["Paris"]\n')]);
+    const json = await workspace.runCommand('altertable --json query "SELECT city FROM cities"');
+    const markdown = await workspace.runCommand('altertable query "SELECT city FROM cities" --format markdown');
+
+    expect(json.exitCode).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({ metadata: {}, columns: ["city"], rows: [["Paris"]] });
+    expect(markdown.exitCode).toBe(0);
+    expect(markdown.stdout).toContain("city");
+    expect(markdown.stdout).toContain("Paris");
+  });
+
+  test.each(["--layout table", "--layout line", "--format markdown"])("query keeps distinct values under duplicate SQL column labels: %s", async flags => {
+    await workspace.setupMockHttp([textMock("POST", "/query", '{}\n["id","id"]\n[17,42]')]);
+    const result = await workspace.runCommand(`altertable query "SELECT 17 AS id, 42 AS id" ${flags}`);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/17[\s\S]*42/);
   });
 
   test("query list fetches running queries", async () => {

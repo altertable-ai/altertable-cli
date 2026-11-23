@@ -32,6 +32,29 @@ describe("altertable query @-", () => {
     });
   });
 
+  test("writes to the exact output filename and leaves stdout empty", async () => {
+    const path = await workspace.writeFile("result.json ", "not written yet");
+    await workspace.setupMockHttp([{ method: "POST", urlPattern: "/query", body: QUERY_RESPONSE }]);
+    const result = await workspace.runCommand(`altertable --json query 'SELECT 1' --output "${path}"`, { env: lakehouseEnv });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(JSON.parse(await workspace.readFile(path)).rows).toEqual([[1]]);
+    expect(await workspace.fileExists(path.trimEnd())).toBe(false);
+  });
+
+  test.each([
+    ["'   '", "SQL statement is empty."],
+    ["'SELECT 1' --output ''", "--output requires a file path."],
+  ])("rejects invalid query arguments before sending SQL: %s", async (args, message) => {
+    await workspace.setupHttpLog();
+    await workspace.setupMockHttp([]);
+    const result = await workspace.runCommand(`altertable --json query ${args}`, { env: lakehouseEnv });
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stderr).message).toBe(message);
+    expect(await workspace.readHttpLog()).toBe("");
+  });
+
   test("rejects empty stdin", async () => {
     const result = await workspace.runCommand("altertable --json query @-", {
       stdin: "  \n",

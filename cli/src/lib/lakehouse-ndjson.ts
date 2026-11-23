@@ -63,65 +63,67 @@ function parseProtocolLine(line: string, lineNumber: number): unknown {
   return value;
 }
 
-function readQueryLine(
-  result: LakehouseQueryResult | undefined,
-  line: string,
-  lineNumber: number
-): LakehouseQueryResult {
-  if (line.trim().length === 0) {
-    if (result) return result;
-    throw new ParseError('Query response is empty.');
-  }
+class QueryResponseReader {
+  private result?: LakehouseQueryResult;
+  private lineNumber = 0;
+  private recordCount = 0;
 
-  const value = parseProtocolLine(line, lineNumber);
-  if (!result) {
-    if (!isRecord(value)) {
-      throw new ParseError('Query response metadata must be a JSON object.', {
-        details: `Line ${lineNumber}: ${line}`,
-      });
-    }
-    return { metadata: value, columns: [], rows: [] };
-  }
+  read(line: string): void {
+    const lineNumber = ++this.lineNumber;
+    if (!line.trim()) return;
+    this.recordCount++;
 
-  if (
-    lineNumber === 2 &&
-    (isColumnNameArray(value) || isColumnObjectArray(value))
-  ) {
-    result.columns = value;
-  } else {
-    if (!Array.isArray(value) && !isRecord(value)) {
-      throw new ParseError(
-        'Query response row must be a JSON array or object.',
-        {
+    const value = parseProtocolLine(line, lineNumber);
+    if (!this.result) {
+      if (!isRecord(value)) {
+        throw new ParseError('Query response metadata must be a JSON object.', {
           details: `Line ${lineNumber}: ${line}`,
-        }
-      );
+        });
+      }
+      this.result = { metadata: value, columns: [], rows: [] };
+      return;
     }
-    result.rows.push(value);
+
+    if (
+      this.recordCount === 2 &&
+      (isColumnNameArray(value) || isColumnObjectArray(value))
+    ) {
+      this.result.columns = value;
+    } else {
+      if (!Array.isArray(value) && !isRecord(value)) {
+        throw new ParseError(
+          'Query response row must be a JSON array or object.',
+          {
+            details: `Line ${lineNumber}: ${line}`,
+          }
+        );
+      }
+      this.result.rows.push(value);
+    }
   }
-  return result;
+
+  finish(): LakehouseQueryResult {
+    if (!this.result) throw new ParseError('Query response is empty.');
+    return this.result;
+  }
 }
 
 export function parseLakehouseQueryResponse(
   responseBody: string
 ): LakehouseQueryResult {
-  let result: LakehouseQueryResult | undefined;
-  let lineNumber = 0;
+  const reader = new QueryResponseReader();
   for (const line of responseBody.split('\n')) {
-    result = readQueryLine(result, line, ++lineNumber);
+    reader.read(line);
   }
-  if (!result) throw new ParseError('Query response is empty.');
-  return result;
+  return reader.finish();
 }
 
 export async function parseLakehouseQueryStream(
   stream: ReadableStream<Uint8Array>
 ): Promise<LakehouseQueryResult> {
-  let result: LakehouseQueryResult | undefined;
-  let lineNumber = 0;
+  const reader = new QueryResponseReader();
   for await (const line of readTextStreamLines(stream)) {
-    result = readQueryLine(result, line, ++lineNumber);
+    reader.read(line);
   }
-  if (!result) throw new ParseError('Query response is empty.');
-  return result;
+  return reader.finish();
 }

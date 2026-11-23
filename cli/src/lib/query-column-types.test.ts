@@ -4,7 +4,6 @@ import {
   getColumnTypeMap,
   mapColumnSqlTypeToDataType,
   resolveCellDataType,
-  selectDisplayColumnNames,
 } from '@/lib/query-column-types.ts';
 
 describe('mapColumnSqlTypeToDataType', () => {
@@ -66,32 +65,5 @@ describe('resolveCellDataType', () => {
     expect(
       resolveCellDataType('2026-06-21T06:35:24.409Z', 'created_at', new Map())
     ).toBe('timestamp');
-  });
-});
-
-describe('selectDisplayColumnNames', () => {
-  const agentEventColumns = [
-    'uuid',
-    'event',
-    'timestamp',
-    'duration_ms',
-    'success',
-    'error_message',
-    'author_type',
-    'author_id',
-    'tool_name',
-    'input',
-  ];
-
-  test('shows all columns by default', () => {
-    const { columns } = selectDisplayColumnNames(agentEventColumns, {});
-    expect(columns).toEqual(agentEventColumns);
-  });
-
-  test('respects explicit column selection', () => {
-    const { columns } = selectDisplayColumnNames(agentEventColumns, {
-      columns: ['event', 'uuid'],
-    });
-    expect(columns).toEqual(['event', 'uuid']);
   });
 });

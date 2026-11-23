@@ -60,7 +60,10 @@ export const queryCommand = defineCommand({
     };
     const output = parseQueryOutputOptions(args, outputContext);
     const { format } = output;
-    const outputPath = optionalStringArg(args, 'output')?.trim() || undefined;
+    const outputPath = optionalStringArg(args, 'output');
+    if (explicitOptions.has('output') && outputPath === undefined) {
+      throw new CliError('--output requires a file path.');
+    }
     const sessionId = optionalStringArg(args, 'session-id');
     const input: LakehouseQueryInput = {
       statement,

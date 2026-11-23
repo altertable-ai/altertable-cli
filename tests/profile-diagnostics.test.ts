@@ -43,6 +43,21 @@ describe("profile diagnostic reports", () => {
     }
   });
 
+  test("profile diagnostics omit invalid stored expiry dates without losing the profile", async () => {
+    await workspace.appendFile(workspace.defaultProfileConfig, "oauth_expiry=9999999999999999999\nlakehouse_credential_expiry=123oops\n");
+    const list = await workspace.runCommand("altertable --json profile list");
+    const show = await workspace.runCommand("altertable --json profile show");
+
+    expect(list.exitCode).toBe(0);
+    expect(show.exitCode).toBe(0);
+    const profile = JSON.parse(list.stdout).profiles.find((entry: { name: string }) => entry.name === "default");
+    expect(profile).toBeDefined();
+    expect(profile).not.toHaveProperty("oauth_expires_at");
+    const timestamps = JSON.parse(show.stdout).profile.timestamps;
+    expect(timestamps).not.toHaveProperty("oauth_expires_at");
+    expect(timestamps).not.toHaveProperty("lakehouse_expires_at");
+  });
+
   test("profile show guides partially configured profiles", async () => {
     const configured = await workspace.runCommand(
       "altertable profile configure --data-plane-url http://localhost:15000",
