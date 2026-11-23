@@ -60,6 +60,30 @@ If credentials were saved inside a project, sign in again after upgrading and re
 
 - Generate and upgrade local data apps with `@altertable/data-app` 0.68.0, using app declarations and registered SQL parameters.
 
+## [1.16.0](https://github.com/altertable-ai/altertable-cli/compare/v1.15.1...v1.16.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** Local app dev and lint require a shared literal app.ts instead of app.json. Existing projects must adapt their own declaration, operations, and local server to SDK 0.78; package upgrade preserves source and does not perform that migration.
+
+### Features
+
+* **app:** adopt data-app SDK 0.79.0 ([#191](https://github.com/altertable-ai/altertable-cli/issues/191)) ([5455194](https://github.com/altertable-ai/altertable-cli/commit/545519405c36eb9e2b7140bffa54c9a376c418f6))
+* **app:** scaffold data apps from published SDK examples ([#187](https://github.com/altertable-ai/altertable-cli/issues/187)) ([97fa08b](https://github.com/altertable-ai/altertable-cli/commit/97fa08b3610bc87d97315efa5ce08d141424375f))
+
+
+### Bug Fixes
+
+* **cli:** preserve query results and tolerate invalid profile expiries ([#192](https://github.com/altertable-ai/altertable-cli/issues/192)) ([ad550d5](https://github.com/altertable-ai/altertable-cli/commit/ad550d56075afd55a1cb45efabaaf5d58c0e57fc))
+* **cli:** restore query output and simplify request handling ([#189](https://github.com/altertable-ai/altertable-cli/issues/189)) ([2895b25](https://github.com/altertable-ai/altertable-cli/commit/2895b259bf76e4434f47123bb4527c638b4fd892))
+* **config:** store Windows secrets in Credential Manager ([#182](https://github.com/altertable-ai/altertable-cli/issues/182)) ([8403a07](https://github.com/altertable-ai/altertable-cli/commit/8403a07bc57d6befc383d081666459f1c903aa7f))
+
+
+### Miscellaneous Chores
+
+* release 1.16.0 ([#188](https://github.com/altertable-ai/altertable-cli/issues/188)) ([1de319d](https://github.com/altertable-ai/altertable-cli/commit/1de319dcc52f98f144c55f4ac0a5846f7bb795b8))
+
 ## [1.15.1](https://github.com/altertable-ai/altertable-cli/compare/v1.15.0...v1.15.1) (2026-11-08)
 
 
