@@ -57,7 +57,7 @@ bun test "$PWD"/tests/integration.e2e.ts
 - Runtime contracts and UI components are maintained in [the Data App repository](https://github.com/altertable-ai/data-app). This repository owns the starter and its integration with CLI commands.
 
 - Declare and export each command immediately after its imports; keep supporting helpers and types below it.
-- Import command types and `defineArgs` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
+- Import command types and `defineArguments` from `src/lib/command.ts`; its metadata drives parsing, help, completion, and generated documentation.
 - Derive related argument schemas from shared fragments instead of repeating flag definitions.
 - Function declarations over const function expressions (except one-liners)
 - Types over interfaces

@@ -12,7 +12,6 @@ import {
   getColumnTypeMap,
   isTimestampValue,
   resolveCellDataType,
-  selectDisplayColumnNames,
   type ColumnTypeMap,
   type QueryDataType,
 } from '@/lib/query-column-types.ts';
@@ -46,10 +45,7 @@ const graphemeSegmenter = new Intl.Segmenter(undefined, {
 
 type QueryColumnAlignment = TerminalTextAlignment;
 
-type QueryDisplayRow = {
-  values: unknown[];
-  rawCells: string[];
-};
+type QueryDisplayRow = unknown[];
 
 type QueryRenderModel = {
   columnNames: string[];
@@ -391,37 +387,15 @@ export function selectColumnNames(
   return filtered;
 }
 
-function getRowCellValues(
-  row: LakehouseRow,
-  columnNames: string[],
-  allColumnNames: string[]
-): unknown[] {
-  if (Array.isArray(row)) {
-    return columnNames.map(name => {
-      const columnIndex = allColumnNames.indexOf(name);
-      if (columnIndex < 0) {
-        return undefined;
-      }
-      return row[columnIndex];
-    });
-  }
-  return columnNames.map(name => row[name]);
-}
-
-function collectQueryDisplayRows(
-  result: LakehouseQueryResult,
-  columnNames: string[],
-  allColumnNames: string[]
-): QueryDisplayRow[] {
-  return result.rows.map(row => {
-    const values = getRowCellValues(row, columnNames, allColumnNames);
-    return {
-      values,
-      rawCells: values.map(value =>
-        renderDisplayText(formatQueryCellRaw(value))
-      ),
-    };
-  });
+function rowProjection(allNames: string[], names: string[]) {
+  const indices =
+    names === allNames
+      ? names.map((_, index) => index)
+      : names.map(name => allNames.indexOf(name));
+  return (row: LakehouseRow): unknown[] =>
+    Array.isArray(row)
+      ? indices.map(index => row[index])
+      : names.map(name => row[name]);
 }
 
 function buildQueryRenderModel(
@@ -430,71 +404,27 @@ function buildQueryRenderModel(
 ): QueryRenderModel {
   const allColumnNames = getQueryColumnNames(result);
   const columnTypeMap = getColumnTypeMap(result.columns);
-  const { columns: columnNames } = selectDisplayColumnNames(
-    allColumnNames,
-    options
-  );
+  const columnNames = selectColumnNames(allColumnNames, options.columns);
   return {
     columnNames,
     columnTypeMap,
-    rows: collectQueryDisplayRows(result, columnNames, allColumnNames),
+    rows: result.rows.map(rowProjection(allColumnNames, columnNames)),
   };
 }
 
 function computeColumnWidths(
-  columnNames: string[],
-  formattedCells: string[][],
-  terminalWidth: number,
-  maxColumnWidth: number
+  model: QueryRenderModel,
+  maxWidth: number
 ): number[] {
-  const naturalWidths = columnNames.map((name, columnIndex) => {
-    const nameWidth = getVisibleTextWidth(renderDisplayText(name));
-    const cellWidths = formattedCells.map(cells =>
-      getVisibleTextWidth(cells[columnIndex] ?? '')
-    );
-    const natural = Math.max(nameWidth, ...cellWidths);
-    return Math.min(natural, maxColumnWidth);
+  return model.columnNames.map((name, index) => {
+    let width = getVisibleTextWidth(renderDisplayText(name));
+    for (const row of model.rows) {
+      if (width >= maxWidth) break;
+      const cell = renderDisplayText(formatQueryCellRaw(row[index]));
+      width = Math.max(width, getVisibleTextWidth(cell));
+    }
+    return Math.min(width, maxWidth);
   });
-
-  const minimumWidths = columnNames.map(name =>
-    Math.min(getVisibleTextWidth(renderDisplayText(name)), maxColumnWidth)
-  );
-
-  const totalNatural = naturalWidths.reduce((sum, width) => sum + width, 0);
-
-  if (totalNatural <= terminalWidth || columnNames.length === 0) {
-    return naturalWidths;
-  }
-
-  let remainingWidth = terminalWidth;
-  const widths = [...minimumWidths];
-  let flexibleColumns = columnNames.map((_name, columnIndex) => columnIndex);
-
-  while (flexibleColumns.length > 0 && remainingWidth > 0) {
-    const share = Math.floor(remainingWidth / flexibleColumns.length);
-    if (share === 0) {
-      break;
-    }
-
-    const nextFlexible: number[] = [];
-    for (const columnIndex of flexibleColumns) {
-      const currentWidth =
-        widths[columnIndex] ?? minimumWidths[columnIndex] ?? 0;
-      const targetWidth = Math.min(
-        naturalWidths[columnIndex] ?? currentWidth,
-        currentWidth + share
-      );
-      widths[columnIndex] = targetWidth;
-      remainingWidth -= targetWidth - currentWidth;
-
-      if (targetWidth < (naturalWidths[columnIndex] ?? targetWidth)) {
-        nextFlexible.push(columnIndex);
-      }
-    }
-    flexibleColumns = nextFlexible;
-  }
-
-  return widths;
 }
 
 function getTableFrameWidth(columnCount: number): number {
@@ -506,23 +436,6 @@ function getTableFrameWidth(columnCount: number): number {
   return outerBorders + innerBorders + columnCount * TABLE_CELL_PADDING * 2;
 }
 
-function computeMinimumTableWidth(
-  columnNames: string[],
-  formattedCells: string[][],
-  maxColumnWidth: number
-): number {
-  const widths = computeColumnWidths(
-    columnNames,
-    formattedCells,
-    Number.MAX_SAFE_INTEGER,
-    maxColumnWidth
-  );
-  return (
-    widths.reduce((sum, width) => sum + width, 0) +
-    getTableFrameWidth(columnNames.length)
-  );
-}
-
 function getColumnAlignment(
   rows: QueryDisplayRow[],
   columnIndex: number,
@@ -530,7 +443,7 @@ function getColumnAlignment(
   columnTypeMap: ColumnTypeMap
 ): QueryColumnAlignment {
   for (const row of rows) {
-    const value = row.values[columnIndex];
+    const value = row[columnIndex];
     const dataType = resolveCellDataType(value, columnName, columnTypeMap);
     if (dataType === 'null') {
       continue;
@@ -613,7 +526,7 @@ function formatCellsForTable(
 ): string[][] {
   const colorize = options.colorize ?? true;
   return rows.map(row =>
-    row.values.map((value, columnIndex) => {
+    row.map((value, columnIndex) => {
       const width = columnWidths[columnIndex] ?? DEFAULT_MAX_COLUMN_WIDTH;
       return formatQueryCell(value, {
         maxWidth: width,
@@ -627,6 +540,7 @@ function formatCellsForTable(
 
 function renderQueryTable(
   model: QueryRenderModel,
+  columnWidths: number[],
   options: QueryDisplayOptions
 ): string {
   const { columnNames, columnTypeMap, rows } = model;
@@ -637,16 +551,6 @@ function renderQueryTable(
     }
   }
 
-  const availableCellWidth = Math.max(
-    0,
-    options.terminalWidth - getTableFrameWidth(columnNames.length)
-  );
-  const columnWidths = computeColumnWidths(
-    columnNames,
-    rows.map(row => row.rawCells),
-    options.layout === 'table' ? Number.MAX_SAFE_INTEGER : availableCellWidth,
-    options.maxColumnWidth
-  );
   const rowValues = formatCellsForTable(
     rows,
     columnNames,
@@ -696,7 +600,7 @@ function renderQueryExpanded(
 
   const records = rows.map((row, rowIndex) => {
     const lines = columnNames.map((name, columnIndex) => {
-      const value = formatQueryCell(row.values[columnIndex], {
+      const value = formatQueryCell(row[columnIndex], {
         colorize,
         includeRelative: true,
         columnName: name,
@@ -773,8 +677,9 @@ export function renderQueryMarkdown(
 
   const headerRow = `| ${selectedNames.map(name => escapeMarkdownCell(name)).join(' | ')} |`;
   const separatorRow = `| ${selectedNames.map(() => '---').join(' | ')} |`;
+  const project = rowProjection(columnNames, selectedNames);
   const bodyRows = result.rows.map(row => {
-    const values = getRowCellValues(row, selectedNames, columnNames);
+    const values = project(row);
     const cells = values
       .map((value, columnIndex) =>
         escapeMarkdownCell(
@@ -804,22 +709,19 @@ export function renderQueryHumanOutput(
 ): string {
   const model = buildQueryRenderModel(result, options);
 
-  const rawCells = model.rows.map(row => row.rawCells);
-  const minimumTableWidth = computeMinimumTableWidth(
-    model.columnNames,
-    rawCells,
-    options.maxColumnWidth
-  );
-
   let body: string;
   if (options.layout === 'line') {
     body = renderQueryExpanded(model, options);
-  } else if (options.layout === 'table') {
-    body = renderQueryTable(model, options);
-  } else if (minimumTableWidth > options.terminalWidth) {
-    body = renderQueryExpanded(model, options);
   } else {
-    body = renderQueryTable(model, options);
+    const widths = computeColumnWidths(model, options.maxColumnWidth);
+    const tableWidth = widths.reduce(
+      (sum, width) => sum + width,
+      getTableFrameWidth(widths.length)
+    );
+    body =
+      options.layout === 'auto' && tableWidth > options.terminalWidth
+        ? renderQueryExpanded(model, options)
+        : renderQueryTable(model, widths, options);
   }
 
   const footer = renderQueryFooter(result, {

@@ -365,7 +365,9 @@ export function listProfiles(): ProfileSummary[] {
       principal: profilePrincipalSummary(snapshot.config),
       management_auth: profileManagementAuthSummary(snapshot.auth),
       lakehouse_auth: profileLakehouseAuthSummary(snapshot.auth),
-      oauth_expires_at: parseTimestampMs(snapshot.config.oauth_expiry),
+      oauth_expires_at: parseProfileExpiry(
+        snapshot.config.oauth_expiry
+      )?.toISOString(),
       status: profileStatus(snapshot),
       data_plane: snapshot.config.api_base,
       control_plane: snapshot.config.management_api_base,
@@ -373,15 +375,10 @@ export function listProfiles(): ProfileSummary[] {
   });
 }
 
-function parseTimestampMs(raw: string | undefined): string | undefined {
-  if (!raw) {
-    return undefined;
-  }
-  const timestamp = Number.parseInt(raw, 10);
-  if (Number.isNaN(timestamp)) {
-    return undefined;
-  }
-  return new Date(timestamp).toISOString();
+export function parseProfileExpiry(raw: string | undefined): Date | undefined {
+  if (!raw || !/^-?\d+$/.test(raw)) return undefined;
+  const date = new Date(Number(raw));
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function envLakehouseAuthKind(): ProfileLakehouseAuth {
@@ -441,10 +438,10 @@ function buildProfileConfiguration(
       created_at: config.created_at,
       updated_at: config.updated_at,
       last_verified_at: config.last_verified_at,
-      oauth_expires_at: parseTimestampMs(config.oauth_expiry),
-      lakehouse_expires_at: parseTimestampMs(
+      oauth_expires_at: parseProfileExpiry(config.oauth_expiry)?.toISOString(),
+      lakehouse_expires_at: parseProfileExpiry(
         config.lakehouse_credential_expiry
-      ),
+      )?.toISOString(),
     },
   };
 }

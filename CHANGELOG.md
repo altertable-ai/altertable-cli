@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve query headers across blank response lines and show distinct values for duplicate SQL column labels. Reject blank SQL and empty output paths before sending the query, and preserve spaces in output filenames.
+- Keep profile diagnostics usable when stored credential expiry dates are malformed or outside the supported date range.
 - Render CSV from `altertable schema` and honor configured query display defaults when no override is supplied. Treat SQL after `--` as an operand and reject non-integer column widths.
 - Report the response line for lakehouse query errors and restore the terminal promptly when `query top --watch` is interrupted.
 - Reject malformed data-app slugs and return an authorization error for malformed preview tokens.

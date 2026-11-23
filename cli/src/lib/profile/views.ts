@@ -4,12 +4,13 @@ import {
   formatConfigureVerifyRemediation,
 } from '@/lib/profile-status.ts';
 import { isFromEnvProfile } from '@/lib/profile-store.ts';
-import type {
-  ConfigureLakehouseCredential,
-  ConfigureManagementCredential,
-  ConfigureShowData,
-  ProfileInspect,
-  ProfileSummary,
+import {
+  parseProfileExpiry,
+  type ConfigureLakehouseCredential,
+  type ConfigureManagementCredential,
+  type ConfigureShowData,
+  type ProfileInspect,
+  type ProfileSummary,
 } from '@/lib/profile/model.ts';
 import {
   document,
@@ -288,14 +289,6 @@ export function profileStatusToJson(
   };
 }
 
-function timestampMsDisplay(raw: string | undefined): string {
-  if (!raw) {
-    return '';
-  }
-  const ms = Number.parseInt(raw, 10);
-  return Number.isNaN(ms) ? '' : new Date(ms).toLocaleString();
-}
-
 function organizationDisplay(
   organization: ConfigureShowData['organization']
 ): string {
@@ -341,7 +334,7 @@ function managementCredentialRows(
         level: 1,
       });
     }
-    const expires = timestampMsDisplay(credential.expires);
+    const expires = parseProfileExpiry(credential.expires)?.toLocaleString();
     if (expires) {
       rows.push({ label: 'Expires:', value: expires, level: 1 });
     }
@@ -382,7 +375,7 @@ function lakehouseCredentialRows(
         value: credential.basic_token ?? 'set',
         level: 1,
       });
-      const expires = timestampMsDisplay(credential.expires);
+      const expires = parseProfileExpiry(credential.expires)?.toLocaleString();
       if (expires) {
         rows.push({ label: 'expires:', value: expires, level: 1 });
       }

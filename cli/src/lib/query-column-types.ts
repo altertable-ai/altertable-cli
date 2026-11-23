@@ -109,17 +109,3 @@ export function resolveCellDataType(
   }
   return 'string';
 }
-
-export function selectDisplayColumnNames(
-  allNames: string[],
-  options: { columns?: string[] }
-): { columns: string[] } {
-  if (options.columns !== undefined && options.columns.length > 0) {
-    const nameSet = new Set(allNames);
-    const filtered = options.columns.filter(name => nameSet.has(name));
-    const columns = filtered.length > 0 ? filtered : allNames;
-    return { columns };
-  }
-
-  return { columns: allNames };
-}
