@@ -10,8 +10,8 @@
         "yaml": "2.9.0",
       },
       "devDependencies": {
-        "@altertable/data-app-examples": "0.78.0",
-        "@altertable/data-app-manifest": "0.78.0",
+        "@altertable/data-app-examples": "0.79.0",
+        "@altertable/data-app-manifest": "0.79.0",
         "@types/bun": "1.4.3",
         "eslint-plugin-no-relative-import-paths": "1.6.1",
         "knip": "6.32.2",
@@ -25,9 +25,9 @@
     },
   },
   "packages": {
-    "@altertable/data-app-examples": ["@altertable/data-app-examples@0.78.0", "", {}, "sha512-6mFLF0W+N/n1i448ZCJks3iytDN2e7RgnyYk9JOxpTHPgYeT7zvY30/GxeeOdS4N5nTr5paItoc6ZWxpoL6sjQ=="],
+    "@altertable/data-app-examples": ["@altertable/data-app-examples@0.79.0", "", {}, "sha512-zvOz2mQmV4gojUSlOcN0P2E9apJLpIjS0SY7xNKTFJtuvmbuusUgiqjLGKCqq8RPEye2GyqfUwNglprir8a22Q=="],
 
-    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.78.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-uX7JmnPwbRstseMo80K98h5c5KIsnJKabCAPlueJ+P34rUvMdUFuc696hp/W1cNl81vDXd3eETNpoQnQLZ73XQ=="],
+    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.79.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-7z9DTIuceocnwI88C5hLqhjPub0wzgLef7T9nVTk7bhC5ldh4r1rV1Tz3/4iS7dRpEsNq/XOtAUuW2+x+11khQ=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 

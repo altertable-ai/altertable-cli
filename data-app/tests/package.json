@@ -16,7 +16,7 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
-    "@altertable/data-app": "0.78.0",
-    "@altertable/data-app-bun": "0.78.0"
+    "@altertable/data-app": "0.79.0",
+    "@altertable/data-app-bun": "0.79.0"
   }
 }

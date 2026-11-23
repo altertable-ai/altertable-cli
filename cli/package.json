@@ -55,8 +55,8 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@altertable/data-app-examples": "0.78.0",
-    "@altertable/data-app-manifest": "0.78.0",
+    "@altertable/data-app-examples": "0.79.0",
+    "@altertable/data-app-manifest": "0.79.0",
     "@types/bun": "1.4.3",
     "eslint-plugin-no-relative-import-paths": "1.6.1",
     "knip": "6.32.2",

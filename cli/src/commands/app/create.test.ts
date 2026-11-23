@@ -112,7 +112,7 @@ describe('app create', () => {
     expect(paths).toContain('src/App.tsx');
     expect(paths).toContain('.oxlintrc.json');
     expect(readFileSync(join(directory, 'AGENTS.md'), 'utf8')).toContain(
-      'https://github.com/altertable-ai/data-app/blob/v0.78.0/docs/app-authoring.md'
+      `https://github.com/altertable-ai/data-app/blob/v${recommendedDataAppVersion(dataAppPayload)}/docs/app-authoring.md`
     );
     expect(
       paths.some(path => /tests|fixtures|node_modules|\.txt$/.test(path))

@@ -67,17 +67,6 @@ bun install --cwd data-app/starter --lockfile-only
 Update the other lockfiles, then run setup and the verification below. Review and commit the
 lockfiles; never resolve `latest` during app creation.
 
-## Upgrades
-
-`app upgrade` updates declared data-app dependencies and lockfiles to the CLI's tested version,
-preserving source, identity, dependency placement, and unrelated packages. It does not downgrade
-newer installations and restores the manifest and lockfile if resolution fails.
-
-SDK 0.78 uses a shared literal `app.ts` declaration, browser-run operations, and
-`serveLocalApp({ app, page })`. Older `app.json` projects require an author-owned source migration
-using their existing identity, queries, and UI. Upgrade never replaces their source with a demo.
-Adapt the source using the installed SDK authoring recipe, run `app lint`, and restart previews.
-
 ## Verify
 
 ```fish

@@ -46,13 +46,11 @@ test('distribution embeds a deterministic starter with an exact package pin and 
     title: identity.title,
     scope: identity.scope,
   });
-  expect(
-    JSON.parse(files['package.json']!).dependencies['@altertable/data-app']
-  ).toBe(recommendedDataAppVersion(dataAppPayload));
+  const version = recommendedDataAppVersion(dataAppPayload);
   expect(JSON.parse(files['package.json']!).dependencies).toMatchObject({
-    '@altertable/data-app': '0.78.0',
-    '@altertable/data-app-react': '0.78.0',
-    '@altertable/data-app-bun': '0.78.0',
+    '@altertable/data-app': version,
+    '@altertable/data-app-react': version,
+    '@altertable/data-app-bun': version,
   });
   expect(files['src/main.tsx']).toContain("from '@altertable/data-app-react'");
   expect(files['src/App.tsx']).toBe(payload.starter['src/App.tsx']);
@@ -68,7 +66,7 @@ test('app-owned authoring links resolve within the generated files', async () =>
     scope: { organization: 'Test', environment: 'test' },
   });
   expect(files['AGENTS.md']).toContain(
-    'https://github.com/altertable-ai/data-app/blob/v0.78.0/docs/app-authoring.md'
+    `https://github.com/altertable-ai/data-app/blob/v${recommendedDataAppVersion(dataAppPayload)}/docs/app-authoring.md`
   );
   for (const [name, content] of Object.entries(files)) {
     if (!name.endsWith('.md')) continue;

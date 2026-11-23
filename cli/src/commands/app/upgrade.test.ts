@@ -13,6 +13,7 @@ import {
 } from '@/commands/app/lib/package.ts';
 import { loadDataAppPayload } from '@/commands/app/lib/payload.ts';
 import { upgradeApp } from '@/commands/app/upgrade.ts';
+import { runCommandWithTestRuntime } from '@/test-utils/cli.ts';
 
 const dataAppPayload = await loadDataAppPayload();
 
@@ -93,6 +94,17 @@ test('an exact current pin is a no-op', async () => {
   const before = await snapshot(directory);
   expect(await upgradeApp(directory)).toBe(false);
   expect(await snapshot(directory)).toEqual(before);
+});
+
+test('upgrade reports an actionable error when the app lockfile is missing', async () => {
+  const directory = await fixture();
+  await rm(join(directory, 'bun.lock'));
+  expect(
+    runCommandWithTestRuntime(['app', 'upgrade', '--dir', directory])
+  ).rejects.toMatchObject({
+    exitCode: 10,
+    message: expect.stringContaining('Cannot read a valid bun.lock'),
+  });
 });
 
 test('failed resolution restores the manifest and lockfile', async () => {
@@ -405,7 +417,18 @@ test('upgrades a published 0.77 app without replacing its identity or custom UI'
     });
   }
   await install();
-  expect(await upgradeApp(directory)).toBe(true);
+  const result = await runCommandWithTestRuntime([
+    'app',
+    'upgrade',
+    '--dir',
+    directory,
+  ]);
+  expect(result.exitCode).toBe(0);
+  const output = JSON.parse(result.stdout.join(''));
+  expect(output).toMatchObject({
+    upgraded: true,
+    runtimeVersion: recommendedDataAppVersion(dataAppPayload),
+  });
   expect(await readFile(join(directory, 'app.ts'), 'utf8')).toBe(appSource);
   expect(await readFile(join(directory, 'src/App.tsx'), 'utf8')).toBe(
     customView
@@ -413,4 +436,14 @@ test('upgrades a published 0.77 app without replacing its identity or custom UI'
   await install(true);
   const { checkAppProject } = await import('@/commands/app/lint.ts');
   await checkAppProject(directory);
+  const current = await runCommandWithTestRuntime([
+    'app',
+    'upgrade',
+    '--dir',
+    directory,
+  ]);
+  expect(JSON.parse(current.stdout.join(''))).toMatchObject({
+    upgraded: false,
+    nextSteps: [],
+  });
 }, 60_000);

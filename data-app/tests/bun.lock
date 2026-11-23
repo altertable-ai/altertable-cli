@@ -5,8 +5,8 @@
     "": {
       "name": "data-app-browser-tests",
       "dependencies": {
-        "@altertable/data-app": "0.78.0",
-        "@altertable/data-app-bun": "0.78.0",
+        "@altertable/data-app": "0.79.0",
+        "@altertable/data-app-bun": "0.79.0",
       },
       "devDependencies": {
         "@playwright/test": "1.63.0",
@@ -17,11 +17,11 @@
     },
   },
   "packages": {
-    "@altertable/data-app": ["@altertable/data-app@0.78.0", "", { "dependencies": { "@internationalized/date": "3.12.4", "chrono-node": "2.10.3" } }, "sha512-oj+glu3jNiEwiTJu0Jd8pYe233ZOjK/xBMefxnahYJGBmaiDi0KostgOwZhFy7yuVfzftXlf5eWoLgeemYNHyA=="],
+    "@altertable/data-app": ["@altertable/data-app@0.79.0", "", { "dependencies": { "@internationalized/date": "3.12.4", "chrono-node": "2.10.3" } }, "sha512-ii9oIcN69/AikIBkfMnyMkDIpemyQ9iZzc4xwHKJpVsZvBOo9cORhni9Dba81eNUmHNPyPbBWygm1vLNPssBSw=="],
 
-    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.78.0", "", { "dependencies": { "@altertable/data-app": "0.78.0", "@altertable/data-app-manifest": "0.78.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" }, "bin": { "data-app-preview": "bin/preview.js" } }, "sha512-blDoWq7CudLrtiEP7o8KxFoujyBM7ePZVmXocA6bpZ//YQ07CVyP2wLxSaRsdSgC+b4Lp29jzZT4BqvEiuUk7A=="],
+    "@altertable/data-app-bun": ["@altertable/data-app-bun@0.79.0", "", { "dependencies": { "@altertable/data-app": "0.79.0", "@altertable/data-app-manifest": "0.79.0", "@altertable/lakehouse": "0.4.1", "get-tsconfig": "4.14.3" }, "bin": { "data-app-preview": "bin/preview.js" } }, "sha512-cRJJ1ARn6fJG1MlpjBSf7xE/WeEoEe9Ra4EIBPPMJzNq8roYBdY6ugtpczGhzeA7KDUkqlmz6xr7guFCHjOz2A=="],
 
-    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.78.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-uX7JmnPwbRstseMo80K98h5c5KIsnJKabCAPlueJ+P34rUvMdUFuc696hp/W1cNl81vDXd3eETNpoQnQLZ73XQ=="],
+    "@altertable/data-app-manifest": ["@altertable/data-app-manifest@0.79.0", "", { "dependencies": { "typescript": "5.9.3" } }, "sha512-7z9DTIuceocnwI88C5hLqhjPub0wzgLef7T9nVTk7bhC5ldh4r1rV1Tz3/4iS7dRpEsNq/XOtAUuW2+x+11khQ=="],
 
     "@altertable/lakehouse": ["@altertable/lakehouse@0.4.1", "", {}, "sha512-m7d15cWt+WUGW7lVw2KYGD+Se8MzO25G7SWSuFd+OasBxWmOJNa2IrgvOHGVEbnZ+kexTUy9NjAGQ69sG4V91w=="],
 
