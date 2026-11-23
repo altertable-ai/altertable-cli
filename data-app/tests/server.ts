@@ -17,9 +17,10 @@ const lakehouse = Bun.serve({
     if (request.headers.get('authorization') !== 'Bearer fixture-token')
       return new Response('Unauthorized', { status: 401 });
     if (mode === 'failure') return new Response('Unavailable', { status: 503 });
-    const { statement, params } = (await request.json()) as {
+    const { statement, params, limit } = (await request.json()) as {
       statement: string;
       params: Record<string, string>;
+      limit: number;
     };
     const query = Object.entries(dataApp.queries).find(
       ([, definition]) => definition.statement === statement
@@ -30,12 +31,7 @@ const lakehouse = Bun.serve({
       string,
       Record<string, { columns: string[]; rows: unknown[][] }>
     >;
-    const scenario =
-      scenarios[`${params.month}/${params.customerName || 'all'}`];
-    const result =
-      scenario?.[
-        query === 'costBreakdown' ? `${query}/${params.breakdown}` : query
-      ];
+    const result = scenarios[params.groupName ?? 'all']?.[query];
     if (!result)
       return new Response('Missing lakehouse fixture', { status: 400 });
     return new Response(
@@ -44,15 +40,12 @@ const lakehouse = Bun.serve({
         JSON.stringify(
           result.columns.map(name => ({
             name,
-            type:
-              name.endsWith('cents') || name.endsWith('count')
-                ? 'BIGINT'
-                : 'VARCHAR',
+            type: name.endsWith('count') ? 'BIGINT' : 'VARCHAR',
           }))
         ),
         ...(mode === 'empty'
           ? []
-          : result.rows.map(row => JSON.stringify(row))),
+          : result.rows.slice(0, limit).map(row => JSON.stringify(row))),
         '',
       ].join('\n'),
       { headers: { 'content-type': 'application/x-ndjson' } }

@@ -14,25 +14,21 @@ test('distributed example filters registered queries and supports inspection acr
   await expect(
     page.getByRole('heading', { name: 'CLI scaffold test', exact: true })
   ).toBeVisible();
-  const total = page.getByRole('region', { name: 'Total cost', exact: true });
-  await expect(total.getByText('$13,200.00', { exact: true })).toBeVisible();
+  const chart = page.getByLabel('Sample counts by group', { exact: true });
+  await expect(chart).toBeVisible();
+  await expect(chart).toContainText('Alpha');
+  await expect(chart).toContainText('Beta');
   await page
-    .getByRole('button', { name: 'All customers Customer', exact: true })
+    .getByRole('button', { name: 'All groups Group', exact: true })
     .click();
-  await page.getByRole('option', { name: 'Atlas', exact: true }).click();
-  await expect(total.getByText('$5,300.00', { exact: true })).toBeVisible();
-  await page
-    .getByRole('button', { name: 'September 2026 Month', exact: true })
-    .click();
-  await page.getByRole('option', { name: 'August 2026', exact: true }).click();
-  await expect(total.getByText('$4,800.00', { exact: true })).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Service Breakdown', exact: true })
-    .click();
-  await page.getByRole('option', { name: 'Customer', exact: true }).click();
-  await expect(
-    page.getByLabel('Costs by customer', { exact: true })
-  ).toBeVisible();
+  await page.getByRole('option', { name: 'Gamma', exact: true }).click();
+  await expect(chart).toContainText('Gamma');
+  await expect(chart).not.toContainText('Alpha');
+  await expect(page.getByText('No matching groups')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Gamma Group', exact: true }).click();
+  await page.getByRole('option', { name: 'Alpha', exact: true }).click();
+  await expect(chart).toContainText('Alpha');
+  await expect(chart).not.toContainText('Beta');
   await page.screenshot({
     path: testInfo.outputPath('starter-light.png'),
     fullPage: true,
@@ -42,7 +38,7 @@ test('distributed example filters registered queries and supports inspection acr
     page.getByRole('button', { name: 'Switch to light theme' })
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'August 2026 Month', exact: true })
+    page.getByRole('button', { name: 'Alpha Group', exact: true })
   ).toBeEnabled();
   await page.screenshot({
     animations: 'disabled',
@@ -50,11 +46,11 @@ test('distributed example filters registered queries and supports inspection acr
     fullPage: true,
   });
   await page
-    .getByRole('button', { name: 'Explore Total cost', exact: true })
+    .getByRole('button', { name: 'Explore Samples by group', exact: true })
     .click();
-  await expect(page.getByRole('dialog')).toContainText('Allocated cost');
+  await expect(page.getByRole('dialog')).toContainText('Sample count');
   await page.getByRole('tab', { name: 'Queries', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('totalCost');
+  await expect(page.getByRole('dialog')).toContainText('sampleCountsByGroup');
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth
@@ -76,13 +72,14 @@ test('loading, empty, failure and recovery keep the example usable', async ({
     await route.continue();
   });
   await page.goto('/');
-  await expect(page.getByText('$13,200.00', { exact: true })).toHaveCount(0);
+  const chart = page.getByLabel('Sample counts by group', { exact: true });
+  await expect(chart).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath('starter-loading.png'),
     fullPage: true,
   });
   release();
-  await expect(page.getByText('$13,200.00', { exact: true })).toBeVisible();
+  await expect(chart).toBeVisible();
   await request.post(control, { data: 'failure' });
   await page.reload();
   await expect(page.getByRole('alert').first()).toBeVisible();
@@ -95,17 +92,11 @@ test('loading, empty, failure and recovery keep the example usable', async ({
     .getByRole('button', { name: 'Retry', exact: true })
     .first()
     .click();
-  await expect(page.getByRole('alert')).toHaveCount(3);
-  for (let remaining = 3; remaining > 0; remaining--) {
-    await page
-      .getByRole('button', { name: 'Retry', exact: true })
-      .first()
-      .click();
-    await expect(page.getByRole('alert')).toHaveCount(remaining - 1);
-  }
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(chart).toBeVisible();
   await request.post(control, { data: 'empty' });
   await page.reload();
-  await expect(page.getByText('No allocations').first()).toBeVisible();
+  await expect(page.getByText('No matching groups').first()).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('starter-empty.png'),
     fullPage: true,
@@ -115,31 +106,37 @@ test('loading, empty, failure and recovery keep the example usable', async ({
 test('local transport only accepts registered queries and declared parameters', async ({
   request,
 }) => {
-  const valid = await request.post('/api/query/totalCost', {
-    data: { limit: 1, params: { month: '2026-09', customerName: '' } },
+  const valid = await request.post('/api/query/sampleCountsByGroup', {
+    data: { limit: 10, params: { groupName: 'all' } },
   });
   expect(valid.status()).toBe(200);
-  expect(await valid.json()).toMatchObject({ rows: [[1320000, 3]] });
+  expect(await valid.json()).toMatchObject({
+    rows: [
+      ['Alpha', 2000],
+      ['Beta', 450],
+      ['Gamma', 0],
+    ],
+  });
   expect(
     (await request.post('/api/query/missing', { data: { limit: 1 } })).status()
   ).toBe(404);
   expect(
     (
-      await request.post('/api/query/totalCost', {
+      await request.post('/api/query/sampleCountsByGroup', {
         data: { statement: 'SELECT 1', limit: 1 },
       })
     ).status()
   ).toBe(400);
   expect(
     (
-      await request.post('/api/query/totalCost', {
+      await request.post('/api/query/sampleCountsByGroup', {
         data: { limit: 1, params: { arbitrarySql: 'DROP TABLE x' } },
       })
     ).status()
   ).toBe(400);
   expect(
     (
-      await request.post('/api/query/totalCost', {
+      await request.post('/api/query/sampleCountsByGroup', {
         headers: { origin: 'https://other.example' },
         data: { limit: 1 },
       })

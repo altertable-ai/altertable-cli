@@ -109,7 +109,7 @@ export async function smokeDataApp(
           throw new Error('File preview did not bundle the app.');
       }
       const query = await fetch(
-        `${url}${singleFile ? '/api/query' : '/api/query/totalCost'}`,
+        `${url}${singleFile ? '/api/query' : '/api/query/sampleCountsByGroup'}`,
         {
           signal: AbortSignal.timeout(5000),
           method: 'POST',
@@ -117,7 +117,7 @@ export async function smokeDataApp(
           body: JSON.stringify(
             singleFile
               ? { queryId: 'connection', limit: 1, params: {} }
-              : { limit: 1, params: { month: '2026-09', customerName: '' } }
+              : { limit: 1, params: { groupName: 'all' } }
           ),
         }
       );
@@ -126,7 +126,7 @@ export async function smokeDataApp(
         rows?: unknown[][];
         data?: unknown;
       };
-      if (result.rows?.[0]?.[0] !== (singleFile ? 1 : 1320000))
+      if (result.rows?.[0]?.[0] !== (singleFile ? 1 : 'Alpha'))
         throw new Error('Preview did not return the lakehouse query result.');
     } catch (error) {
       failure = error;
@@ -204,7 +204,7 @@ export async function smokeDataApp(
         return new Response(
           statement === 'SELECT 1 AS connection_check'
             ? '{"query_id":"smoke"}\n[{"name":"connection_check","type":"INTEGER"}]\n[1]'
-            : '{"query_id":"smoke"}\n[{"name":"cost_cents","type":"BIGINT"},{"name":"customer_count","type":"BIGINT"}]\n[1320000,3]',
+            : '{"query_id":"smoke"}\n[{"name":"group_name","type":"VARCHAR"},{"name":"sample_count","type":"BIGINT"}]\n["Alpha",2000]',
           {
             headers: { 'content-type': 'application/x-ndjson' },
           }
